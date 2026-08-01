@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Bluetooth,
@@ -48,7 +48,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
-import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
+import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
+import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS } from "@/lib/eeg/muse";
 import { saveSession } from "@/lib/eeg/save";
@@ -374,6 +375,11 @@ function Monitor() {
             {user ? (
               <Button asChild variant="ghost" size="sm">
                 <Link to="/compare">Compare</Link>
+              </Button>
+            ) : null}
+            {user ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/calibrate">Calibrate</Link>
               </Button>
             ) : null}
           </div>
