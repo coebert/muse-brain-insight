@@ -9,10 +9,12 @@ import {
   spectralEdge,
   type SignalQuality,
 } from "./dsp";
+import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 
 export type { SignalQuality } from "./dsp";
+export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
 
 export const EPOCH_SECONDS = 4;
@@ -106,12 +108,26 @@ export interface BandPowers {
   gamma: number;
 }
 
+/** Power ratios commonly used to track anaesthetic depth. */
+export interface PowerRatios {
+  /** Delta/alpha — rises with deepening anaesthesia and with encephalopathy. */
+  deltaAlpha: number;
+  /** Beta/alpha — rises with light anaesthesia and benzodiazepine beta. */
+  betaAlpha: number;
+  /** Theta/alpha — supports the ICU slowing picture. */
+  thetaAlpha: number;
+}
+
 export interface Epoch {
   /** Seconds since session start. */
   t: number;
   /** dB values (10·log10 µV²/Hz) for DSA_MIN_HZ..DSA_MAX_HZ. */
   spectrum: number[];
   bands: BandPowers;
+  /** Delta/alpha, beta/alpha and theta/alpha power ratios. */
+  ratios: PowerRatios;
+  /** Shannon / 95 % / state / response spectral entropies (0-1). */
+  entropy: SpectralEntropy;
   totalPower: number;
   sef95: number;
   /** Fraction of this epoch that was isoelectric (0–1). */
@@ -229,6 +245,15 @@ export class EegAnalyzer {
     };
     const totalPower = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma;
     const sef95 = spectralEdge(psd, 0.95);
+    // Guard the ratios: an alpha floor keeps them finite in deep suppression
+    // where alpha power approaches zero.
+    const alphaFloor = Math.max(bands.alpha, totalPower * 1e-3, 1e-6);
+    const ratios: PowerRatios = {
+      deltaAlpha: bands.delta / alphaFloor,
+      betaAlpha: bands.beta / alphaFloor,
+      thetaAlpha: bands.theta / alphaFloor,
+    };
+    const entropy = spectralEntropies(psd, sef95);
 
     // --- signal quality -----------------------------------------------------
     const quality = signalQuality(window, psd, this.fs);
@@ -384,6 +409,8 @@ export class EegAnalyzer {
       t,
       spectrum,
       bands,
+      ratios,
+      entropy,
       totalPower,
       sef95,
       epochSuppression,

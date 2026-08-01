@@ -1,0 +1,1 @@
+ALTER TABLE public.eeg_epochs ADD COLUMN IF NOT EXISTS entropy jsonb, ADD COLUMN IF NOT EXISTS power_ratios jsonb;

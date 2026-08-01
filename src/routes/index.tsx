@@ -606,7 +606,7 @@ function Monitor() {
         </section>
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
           {(() => {
             const tiles: Record<string, React.ReactNode> = {
               depth: (
@@ -693,10 +693,46 @@ function Monitor() {
                   confidence={latest?.confidence.spectral}
                 />
               ),
+              entropy: (
+                <MetricTile
+                  key="entropy"
+                  label="Spectral entropy (state)"
+                  value={latest ? latest.entropy.state.toFixed(2) : "—"}
+                  hint={
+                    latest
+                      ? `Response ${latest.entropy.response.toFixed(2)} · SE95 ${latest.entropy.se95.toFixed(2)} · Shannon ${latest.entropy.shannon.toFixed(2)}`
+                      : "Normalised Shannon entropy of the PSD"
+                  }
+                  tone={latest && latest.entropy.state > 0.9 ? "caution" : "default"}
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+              dar: (
+                <MetricTile
+                  key="dar"
+                  label="Delta / alpha ratio"
+                  value={latest ? latest.ratios.deltaAlpha.toFixed(2) : "—"}
+                  hint={
+                    latest
+                      ? `Theta/alpha ${latest.ratios.thetaAlpha.toFixed(2)} — rises with slowing`
+                      : "Rises with deepening anaesthesia and encephalopathy"
+                  }
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+              bar: (
+                <MetricTile
+                  key="bar"
+                  label="Beta / alpha ratio"
+                  value={latest ? latest.ratios.betaAlpha.toFixed(2) : "—"}
+                  hint="Rises with light anaesthesia and benzodiazepine beta"
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
             };
             const order = icuMode
-              ? ["seizure", "sr", "time", "depth", "sef", "amp"]
-              : ["depth", "sef", "sr", "time", "amp", "seizure"];
+              ? ["seizure", "sr", "time", "depth", "sef", "entropy", "dar", "bar", "amp"]
+              : ["depth", "sef", "entropy", "sr", "time", "dar", "bar", "amp", "seizure"];
             return order.map((k) => tiles[k]);
           })()}
         </section>

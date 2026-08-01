@@ -123,6 +123,54 @@ export function spectralEdge(psd: Psd, fraction: number, maxHz = 30): number {
   return maxHz;
 }
 
+/**
+ * Normalised Shannon entropy of the PSD over [lo, hi), as used by the
+ * Datex-Ohmeda Entropy Module (Viertiö-Oja et al., Acta Anaesthesiol Scand
+ * 2004): the PSD is normalised to a probability distribution over the band,
+ * the Shannon entropy is taken, and the result is divided by log(N) so a flat
+ * (awake-like) spectrum gives 1 and a single-frequency spectrum gives 0.
+ */
+export function spectralEntropy(psd: Psd, lo: number, hi: number): number {
+  let total = 0;
+  let n = 0;
+  for (let k = 0; k < psd.freqs.length; k++) {
+    const f = psd.freqs[k]!;
+    if (f < lo || f >= hi) continue;
+    total += psd.power[k]!;
+    n++;
+  }
+  if (n < 2 || total <= 0) return 0;
+  let h = 0;
+  for (let k = 0; k < psd.freqs.length; k++) {
+    const f = psd.freqs[k]!;
+    if (f < lo || f >= hi) continue;
+    const p = psd.power[k]! / total;
+    if (p > 0) h -= p * Math.log(p);
+  }
+  return Math.min(1, Math.max(0, h / Math.log(n)));
+}
+
+export interface SpectralEntropy {
+  /** Shannon entropy of the whole analysed spectrum, 0.5-45 Hz (0-1). */
+  shannon: number;
+  /** Entropy restricted to 0.5 Hz-SEF95, i.e. the 95 % power band (0-1). */
+  se95: number;
+  /** State-entropy-like index, 0.8-32 Hz — cortical, EMG-free (0-1). */
+  state: number;
+  /** Response-entropy-like index, 0.8-45 Hz — includes frontal EMG (0-1). */
+  response: number;
+}
+
+/** All four entropy variants from one PSD. `sef95` comes from spectralEdge. */
+export function spectralEntropies(psd: Psd, sef95: number): SpectralEntropy {
+  return {
+    shannon: spectralEntropy(psd, 0.5, 45),
+    se95: spectralEntropy(psd, 0.5, Math.max(sef95, 2)),
+    state: spectralEntropy(psd, 0.8, 32),
+    response: spectralEntropy(psd, 0.8, 45),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Biquad filtering (RBJ cookbook)                                     */
 /* ------------------------------------------------------------------ */
