@@ -322,8 +322,8 @@ export async function saveCalibration(
     .insert({
       user_id: userId,
       name,
-      params: params as unknown as Record<string, unknown>,
-      metrics: metrics as unknown as Record<string, unknown>,
+      params: JSON.parse(JSON.stringify(params)),
+      metrics: JSON.parse(JSON.stringify(metrics)),
       source_session_ids: sessionIds,
     })
     .select("id, name, params, metrics, is_active, created_at")
