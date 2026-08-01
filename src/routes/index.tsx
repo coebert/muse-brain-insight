@@ -199,10 +199,23 @@ function Monitor() {
               </>
             ) : (
               <>
-                <Button size="sm" onClick={() => void monitor.connect("muse")}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setMarkers([]);
+                    void monitor.connect("muse");
+                  }}
+                >
                   <Bluetooth className="size-4" /> Connect Muse 2
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => void monitor.connect("simulated")}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setMarkers([]);
+                    void monitor.connect("simulated");
+                  }}
+                >
                   <FlaskConical className="size-4" /> Demo signal
                 </Button>
               </>
@@ -275,6 +288,24 @@ function Monitor() {
           </div>
           <div className="relative h-[320px] bg-[rgb(8,16,34)] md:h-[380px]">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
+            {/* Clinician markers, positioned by time across the visible window */}
+            {markers.map((m, i) => {
+              const age = monitor.elapsed - m.t;
+              if (age > windowMinutes * 60) return null;
+              const left = (1 - age / (windowMinutes * 60)) * 100;
+              return (
+                <div
+                  key={`${m.t}-${i}`}
+                  className="pointer-events-none absolute top-0 bottom-0 z-10"
+                  style={{ left: `${left}%` }}
+                >
+                  <div className="h-full w-px bg-marker/80" />
+                  <span className="metric-value absolute top-1 left-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-[10px] whitespace-nowrap text-marker">
+                    {m.detail}
+                  </span>
+                </div>
+              );
+            })}
             {!monitor.epochs.length ? (
               <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 Connect a Muse 2 headband to start building the spectrogram — or run the demo signal
