@@ -50,6 +50,14 @@ export interface FeatureDigest {
     usableFraction: number;
     poorEpochs: number;
   };
+  /** OpenIBIS-style BIS-like depth index (uncalibrated, frontal montage). */
+  depthIndex: {
+    mean: number | null;
+    min: number | null;
+    max: number | null;
+    latest: number | null;
+    fractionBelow40: number;
+  };
   annotations: { tSeconds: number; label: string }[];
   timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
 }
