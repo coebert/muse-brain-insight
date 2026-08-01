@@ -88,6 +88,18 @@ export async function saveSession(
     spectral_edge_95: Number(e.sef95.toFixed(2)),
     depth_index: e.depth.index === null ? null : Number(e.depth.index.toFixed(1)),
     depth_state: e.depth.state,
+    depth_components: {
+      c1: Number.isFinite(e.depth.components.betaRatio)
+        ? Number(e.depth.components.betaRatio.toFixed(4))
+        : null,
+      c2: Number.isFinite(e.depth.components.synchFastSlow)
+        ? Number(e.depth.components.synchFastSlow.toFixed(4))
+        : null,
+      c3: Number.isFinite(e.depth.components.slowWave)
+        ? Number(e.depth.components.slowWave.toFixed(4))
+        : null,
+      bsr: Number(e.depth.components.bsr.toFixed(2)),
+    } as Record<string, number | null>,
     bands: { ...e.bands } as Record<string, number>,
     entropy: {
       shannon: Number(e.entropy.shannon.toFixed(3)),
