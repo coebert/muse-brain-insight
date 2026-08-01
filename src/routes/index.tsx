@@ -903,6 +903,101 @@ function Monitor() {
                     Consecutive 1 s epochs above threshold before an alert is raised.
                   </p>
                 </div>
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-xs font-semibold">Trend alerts</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Depth-index swings and new or worsening burst suppression are timestamped in
+                    the event log and marked on the DSA timeline.
+                  </p>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Depth drop alert</Label>
+                    <span className="metric-value">−{monitor.settings.depthDropUnits} units</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={5}
+                    max={40}
+                    step={1}
+                    value={[monitor.settings.depthDropUnits]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, depthDropUnits: v ?? 15 })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Depth rise alert</Label>
+                    <span className="metric-value">+{monitor.settings.depthRiseUnits} units</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={5}
+                    max={40}
+                    step={1}
+                    value={[monitor.settings.depthRiseUnits]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, depthRiseUnits: v ?? 15 })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Depth trend window</Label>
+                    <span className="metric-value">{monitor.settings.depthTrendSeconds} s</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={30}
+                    max={300}
+                    step={15}
+                    value={[monitor.settings.depthTrendSeconds]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, depthTrendSeconds: v ?? 60 })
+                    }
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Change is measured across this window; one alert per window at most.
+                  </p>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">New burst suppression at</Label>
+                    <span className="metric-value">{monitor.settings.bsrAlertPercent} % SR</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={1}
+                    max={50}
+                    step={1}
+                    value={[monitor.settings.bsrAlertPercent]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, bsrAlertPercent: v ?? 10 })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Worsening step</Label>
+                    <span className="metric-value">
+                      +{monitor.settings.bsrWorseningPercent} % SR
+                    </span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={2}
+                    max={30}
+                    step={1}
+                    value={[monitor.settings.bsrWorseningPercent]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, bsrWorseningPercent: v ?? 10 })
+                    }
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Re-alerts each time the suppression ratio climbs a further step.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
