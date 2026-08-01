@@ -14,10 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      depth_calibrations: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          metrics: Json
+          name: string
+          params: Json
+          source_session_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metrics?: Json
+          name: string
+          params: Json
+          source_session_ids?: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metrics?: Json
+          name?: string
+          params?: Json
+          source_session_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      depth_state_labels: {
+        Row: {
+          created_at: string
+          end_seconds: number
+          id: string
+          label: string
+          note: string | null
+          session_id: string
+          start_seconds: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_seconds: number
+          id?: string
+          label: string
+          note?: string | null
+          session_id: string
+          start_seconds: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_seconds?: number
+          id?: string
+          label?: string
+          note?: string | null
+          session_id?: string
+          start_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depth_state_labels_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eeg_epochs: {
         Row: {
           bands: Json
           created_at: string
+          depth_components: Json | null
           depth_index: number | null
           depth_state: string | null
           entropy: Json | null
@@ -36,6 +111,7 @@ export type Database = {
         Insert: {
           bands?: Json
           created_at?: string
+          depth_components?: Json | null
           depth_index?: number | null
           depth_state?: string | null
           entropy?: Json | null
@@ -54,6 +130,7 @@ export type Database = {
         Update: {
           bands?: Json
           created_at?: string
+          depth_components?: Json | null
           depth_index?: number | null
           depth_state?: string | null
           entropy?: Json | null
