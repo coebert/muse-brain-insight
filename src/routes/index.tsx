@@ -160,6 +160,11 @@ const MODES: {
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
+
+  // Apply the locally saved depth calibration (if any) to the live estimator.
+  useEffect(() => {
+    setActiveDepthCalibration(loadStoredCalibration());
+  }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
