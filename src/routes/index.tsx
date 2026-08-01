@@ -553,7 +553,7 @@ function Monitor() {
               <h2 className="text-sm font-semibold">Event log</h2>
             </div>
             <div className="max-h-[430px] overflow-y-auto">
-              <EventLog events={monitor.events} />
+              <EventLog events={allEvents} />
             </div>
           </div>
         </section>
@@ -628,7 +628,7 @@ function Monitor() {
               </div>
               <p className="metric-value text-[11px] text-muted-foreground">
                 {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} ·{" "}
-                {monitor.events.length} events
+                {allEvents.length} events ({markers.length} clinician markers)
               </p>
             </div>
           ) : (
