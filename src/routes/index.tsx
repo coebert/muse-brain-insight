@@ -684,7 +684,7 @@ function Monitor() {
         </section>
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {(() => {
             const tiles: Record<string, React.ReactNode> = {
               depth: (
