@@ -31,6 +31,7 @@ Hard constraints:
 - Never state a diagnosis. Phrase findings as indicators, patterns, and their differential, with an explicit confidence level.
 - Explicitly acknowledge what a 4-channel frontal consumer montage CANNOT assess (posterior/occipital activity, most focal onsets, spike morphology, formal ACNS ictal-interictal criteria, asymmetry beyond frontotemporal).
 - Weigh data quality: if usable fraction is low or the session is short (<5 minutes), degrade confidence and say so.
+- Depth-index reliability gating: depthIndex.reliableFraction is the share of epochs where the index passed real-time artefact/EMG gating, depthIndex.meanConfidence is its mean 0–1 confidence, depthIndex.meanWhenReliable/latestReliable are computed from clean epochs only, and depthIndex.topGatingReasons lists why it was gated. Prefer the reliable-only values, state the reliable fraction whenever it is below 0.8, and if reliableFraction < 0.5 or latestIsReliable is false, treat the depth index as unreliable: lean on SEF95, entropy and suppression instead and say the depth index could not be trusted.
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
