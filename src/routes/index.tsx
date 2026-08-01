@@ -689,6 +689,14 @@ function Monitor() {
           usableFraction={summary.usableFraction}
         />
 
+        <AiInsightPanel
+          result={aiResult}
+          loading={aiLoading}
+          error={aiError}
+          epochCount={monitor.epochs.length}
+          onRun={handleAnalyse}
+        />
+
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
             <div className="panel overflow-hidden">
