@@ -14,7 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      eeg_epochs: {
+        Row: {
+          bands: Json
+          created_at: string
+          id: number
+          is_suppressed: boolean
+          seizure_score: number
+          session_id: string
+          spectral_edge_95: number
+          spectrum: Json
+          suppression_ratio: number
+          t_offset_seconds: number
+          total_power: number
+          user_id: string
+        }
+        Insert: {
+          bands?: Json
+          created_at?: string
+          id?: number
+          is_suppressed?: boolean
+          seizure_score?: number
+          session_id: string
+          spectral_edge_95?: number
+          spectrum?: Json
+          suppression_ratio?: number
+          t_offset_seconds: number
+          total_power?: number
+          user_id: string
+        }
+        Update: {
+          bands?: Json
+          created_at?: string
+          id?: number
+          is_suppressed?: boolean
+          seizure_score?: number
+          session_id?: string
+          spectral_edge_95?: number
+          spectrum?: Json
+          suppression_ratio?: number
+          t_offset_seconds?: number
+          total_power?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eeg_epochs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eeg_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          duration_seconds: number
+          id: number
+          kind: string
+          session_id: string
+          severity: string
+          t_offset_seconds: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          duration_seconds?: number
+          id?: number
+          kind: string
+          session_id: string
+          severity?: string
+          t_offset_seconds: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          duration_seconds?: number
+          id?: number
+          kind?: string
+          session_id?: string
+          severity?: string
+          t_offset_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eeg_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eeg_sessions: {
+        Row: {
+          case_code: string
+          context: string
+          created_at: string
+          device_name: string | null
+          duration_seconds: number
+          ended_at: string | null
+          id: string
+          location: string | null
+          max_suppression_ratio: number
+          mean_suppression_ratio: number
+          notes: string | null
+          seizure_alerts: number
+          started_at: string
+          suppression_seconds: number
+          user_id: string
+        }
+        Insert: {
+          case_code: string
+          context?: string
+          created_at?: string
+          device_name?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          location?: string | null
+          max_suppression_ratio?: number
+          mean_suppression_ratio?: number
+          notes?: string | null
+          seizure_alerts?: number
+          started_at?: string
+          suppression_seconds?: number
+          user_id: string
+        }
+        Update: {
+          case_code?: string
+          context?: string
+          created_at?: string
+          device_name?: string | null
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          location?: string | null
+          max_suppression_ratio?: number
+          mean_suppression_ratio?: number
+          notes?: string | null
+          seizure_alerts?: number
+          started_at?: string
+          suppression_seconds?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
