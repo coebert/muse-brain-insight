@@ -48,6 +48,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
+import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -789,10 +790,56 @@ function Monitor() {
                   confidence={latest?.confidence.spectral}
                 />
               ),
+              cindex: (
+                <MetricTile
+                  key="cindex"
+                  label="Consciousness index (qCON-like)"
+                  value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
+                  hint={
+                    latest
+                      ? latest.composite.held
+                        ? "Held — artefact"
+                        : COMPOSITE_BAND_LABEL[latest.composite.cBand]
+                      : "Composite of fast/slow balance, entropy and suppression"
+                  }
+                  tone={
+                    latest?.composite.cIndex == null || latest.composite.held
+                      ? "default"
+                      : latest.composite.cIndex >= 80
+                        ? "caution"
+                        : latest.composite.cIndex < 40
+                          ? "critical"
+                          : "signal"
+                  }
+                  confidence={latest?.confidence.depth}
+                />
+              ),
+              nindex: (
+                <MetricTile
+                  key="nindex"
+                  label="Nociception index (qNOX-like)"
+                  value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
+                  hint={
+                    latest
+                      ? latest.composite.held
+                        ? "Held — artefact"
+                        : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
+                      : "High-frequency drive, reactivity and entropy gap"
+                  }
+                  tone={
+                    latest?.composite.nIndex == null || latest.composite.held
+                      ? "default"
+                      : latest.composite.nIndex >= 60
+                        ? "caution"
+                        : "signal"
+                  }
+                  confidence={latest?.confidence.depth}
+                />
+              ),
             };
             const order = icuMode
-              ? ["seizure", "sr", "time", "depth", "sef", "entropy", "dar", "bar", "amp"]
-              : ["depth", "sef", "entropy", "sr", "time", "dar", "bar", "amp", "seizure"];
+              ? ["seizure", "sr", "time", "depth", "cindex", "sef", "entropy", "dar", "bar", "amp", "nindex"]
+              : ["depth", "cindex", "nindex", "sef", "entropy", "sr", "time", "dar", "bar", "amp", "seizure"];
             return order.map((k) => tiles[k]);
           })()}
         </section>

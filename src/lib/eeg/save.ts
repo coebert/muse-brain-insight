@@ -88,6 +88,16 @@ export async function saveSession(
     spectral_edge_95: Number(e.sef95.toFixed(2)),
     depth_index: e.depth.index === null ? null : Number(e.depth.index.toFixed(1)),
     depth_state: e.depth.state,
+    consciousness_index: e.composite.cIndex,
+    nociception_index: e.composite.nIndex,
+    composite_components: {
+      fast_slow: Number(e.composite.components.fastSlow.toFixed(3)),
+      entropy: Number(e.composite.components.entropy.toFixed(3)),
+      bsr: Number(e.composite.components.bsr.toFixed(2)),
+      emg_drive: Number(e.composite.components.emgDrive.toFixed(3)),
+      reactivity: Number(e.composite.components.reactivity.toFixed(3)),
+      entropy_gap: Number(e.composite.components.entropyGap.toFixed(3)),
+    } as Record<string, number>,
     depth_components: {
       c1: Number.isFinite(e.depth.components.betaRatio)
         ? Number(e.depth.components.betaRatio.toFixed(4))

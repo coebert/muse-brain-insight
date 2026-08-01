@@ -12,10 +12,12 @@ import {
 import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
+import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 
 export type { SignalQuality } from "./dsp";
 export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
+export type { CompositeReading } from "./composite";
 
 export const EPOCH_SECONDS = 4;
 export const HOP_SECONDS = 1;
@@ -184,6 +186,8 @@ export interface Epoch {
   depth: DepthReading;
   /** Artefact/EMG assessment of the depth preprocessing stage. */
   depthArtifact: DepthArtifactReport;
+  /** qCON/qNOX-style composite consciousness and nociception indices. */
+  composite: CompositeReading;
 }
 
 export interface MetricConfidence {
@@ -244,6 +248,7 @@ export class EegAnalyzer {
   private lastBsrAlertValue = 0;
   private depthEstimator = new DepthIndexEstimator();
   private depthGate = new DepthArtifactGate();
+  private compositeEstimator = new CompositeIndexEstimator();
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -272,6 +277,7 @@ export class EegAnalyzer {
     this.lastBsrAlertValue = 0;
     this.depthEstimator.reset();
     this.depthGate.reset();
+    this.compositeEstimator.reset();
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
@@ -509,6 +515,17 @@ export class EegAnalyzer {
       ),
     };
 
+    // --- qCON/qNOX-style composite indices ----------------------------------
+    // Shares the depth artefact gate: an epoch good enough for the depth index
+    // is good enough for the composite, and both hold over rejected epochs.
+    const composite = this.compositeEstimator.update({
+      bands,
+      ratios,
+      entropy,
+      suppressionRatio,
+      usable: depthArtifact.usable && !artifact,
+    });
+
     // Log sustained degradation so it is auditable alongside clinical events.
     if (quality.grade === "poor" && this.poorQualityStart === null) {
       this.poorQualityStart = t;
@@ -545,6 +562,7 @@ export class EegAnalyzer {
       confidence,
       depth,
       depthArtifact,
+      composite,
     };
   }
 }

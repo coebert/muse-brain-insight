@@ -67,6 +67,14 @@ export interface FeatureDigest {
     latest: number | null;
     fractionBelow40: number;
   };
+  /** qCON/qNOX-style composite indices (transparent re-implementation). */
+  compositeIndex: {
+    meanConsciousness: number | null;
+    latestConsciousness: number | null;
+    meanNociception: number | null;
+    latestNociception: number | null;
+    fractionNociceptionAbove60: number;
+  };
   annotations: { tSeconds: number; label: string }[];
   timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
 }
@@ -218,6 +226,19 @@ export function buildFeatureDigest(
         max: Math.max(...vals),
         latest: vals[vals.length - 1]!,
         fractionBelow40: round(vals.filter((v) => v < 40).length / vals.length),
+      };
+    })(),
+    compositeIndex: (() => {
+      const c = epochs.map((e) => e.composite.cIndex).filter((v): v is number => v != null);
+      const n = epochs.map((e) => e.composite.nIndex).filter((v): v is number => v != null);
+      return {
+        meanConsciousness: c.length ? round(mean(c), 0) : null,
+        latestConsciousness: c.length ? c[c.length - 1]! : null,
+        meanNociception: n.length ? round(mean(n), 0) : null,
+        latestNociception: n.length ? n[n.length - 1]! : null,
+        fractionNociceptionAbove60: n.length
+          ? round(n.filter((v) => v >= 60).length / n.length)
+          : 0,
       };
     })(),
     annotations: events

@@ -91,6 +91,8 @@ export type Database = {
       eeg_epochs: {
         Row: {
           bands: Json
+          composite_components: Json | null
+          consciousness_index: number | null
           created_at: string
           depth_components: Json | null
           depth_index: number | null
@@ -98,6 +100,7 @@ export type Database = {
           entropy: Json | null
           id: number
           is_suppressed: boolean
+          nociception_index: number | null
           power_ratios: Json | null
           seizure_score: number
           session_id: string
@@ -110,6 +113,8 @@ export type Database = {
         }
         Insert: {
           bands?: Json
+          composite_components?: Json | null
+          consciousness_index?: number | null
           created_at?: string
           depth_components?: Json | null
           depth_index?: number | null
@@ -117,6 +122,7 @@ export type Database = {
           entropy?: Json | null
           id?: number
           is_suppressed?: boolean
+          nociception_index?: number | null
           power_ratios?: Json | null
           seizure_score?: number
           session_id: string
@@ -129,6 +135,8 @@ export type Database = {
         }
         Update: {
           bands?: Json
+          composite_components?: Json | null
+          consciousness_index?: number | null
           created_at?: string
           depth_components?: Json | null
           depth_index?: number | null
@@ -136,6 +144,7 @@ export type Database = {
           entropy?: Json | null
           id?: number
           is_suppressed?: boolean
+          nociception_index?: number | null
           power_ratios?: Json | null
           seizure_score?: number
           session_id?: string
