@@ -35,11 +35,13 @@ export function MetricTile({
 }: Props) {
   const conf = confidence == null ? null : confidenceTone(confidence);
   return (
-    <div className={cn("panel px-4 py-3", pulse && "alert-pulse border-critical")}>
-      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className={cn("metric-value mt-1 text-3xl leading-none", toneClass[tone])}>
+    <div className={cn("panel px-3 py-3 sm:px-4", pulse && "alert-pulse border-critical")}>
+      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.14em]">
+        {label}
+      </p>
+      <p className={cn("metric-value mt-1 text-2xl leading-none sm:text-3xl", toneClass[tone])}>
         {value}
-        {unit ? <span className="ml-1 text-base text-muted-foreground">{unit}</span> : null}
+        {unit ? <span className="ml-1 text-sm text-muted-foreground sm:text-base">{unit}</span> : null}
       </p>
       {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
       {conf && confidence != null ? (
