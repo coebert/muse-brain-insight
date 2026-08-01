@@ -83,9 +83,54 @@ band (SD 7.7) stays small.
 
 - 1 s epoch cadence instead of 0.5 s; 30 s spectral and 63 s suppression
   windows are unchanged in duration.
-- The sawtooth (ECG/artefact) detector is not implemented; artefact epochs are
-  excluded by the signal-quality gate instead.
+- The reference sawtooth detector is replaced by the depth-specific artefact
+  gate described below (transient repair + EMG/spike/saturation rejection).
 - Validation uses synthetic sample sessions, not recorded patient EEG, and the
   Muse frontal montage is not the BIS sensor montage.
 - The index remains **uncalibrated against clinical endpoints**: it is a trend,
   and the ±10–15 unit error band above must be assumed at minimum.
+
+## Artefact rejection and signal-quality gating (`src/lib/eeg/artifact.ts`)
+
+Preprocessing tuned for the depth index specifically, because its
+subparameters are log power ratios that lean on the 30–47 Hz band:
+
+1. **Transient repair** — contiguous excursions beyond
+   `max(60 µV, 5 × robust σ)` (σ from 1.4826 × MAD, so blinks cannot inflate
+   their own threshold) are replaced by a linear ramp with a 20 ms shoulder.
+   Blanking rather than clipping: a clipped blink still injects a broadband
+   step into the 30–47 Hz band.
+2. **Adaptive EMG rejection** — an epoch is rejected when the 30–45 Hz share
+   exceeds 0.34 **or** absolute 30–45 Hz power exceeds 4 × the running median
+   of the last 15 accepted epochs. The relative share alone misses EMG riding
+   on high-amplitude slow activity (deep anaesthesia); the baseline is updated
+   from accepted epochs only, so an artefact never raises the bar for the next.
+3. **Periodic-spike (ECG/pacing) detection** — autocorrelation of the
+   rectified derivative at 0.7–2.5 Hz, gated on a crest factor ≥ 6 and
+   suspended when robust σ < 5 µV (suppressed records misfire the detector).
+4. **Saturation / dropout / repair-load** — reject above 1 % rail samples,
+   flat trace, or >8 % of samples repaired.
+
+Rejected epochs never enter the 30 s spectral history; the index is *held* on
+the last valid value (surfaced in the UI as "Held Ns — reason"), and depth
+confidence is scaled down by the gated fraction of the window.
+
+### Agreement under artefact load
+
+The six sessions were re-run with injected artefacts (4 s frontalis-EMG bursts
+every 40 s, 180 µV/300 ms blinks every 9 s, a 60 s run of 1.2 Hz ECG spikes —
+13 % of samples contaminated), scored against the clean-signal reference:
+
+| pipeline | r | bias | RMSE | 95 % LoA | epochs gated |
+|---|---|---|---|---|---|
+| no artefacts, gate active | 0.961 | +1.6 | 7.0 | −11.7 to +14.9 | 5.6 % |
+| artefacts, gate bypassed | 0.619 | +10.5 | 26.1 | −36.2 to +57.2 | — |
+| artefacts, gate active | 0.927 | +0.1 | 8.1 | −15.7 to +15.9 | 32.9 % |
+
+Gating removes essentially all of the artefact-induced positive bias
+(+10.5 → +0.1 units) and cuts RMSE by 69 %. The cost on clean signal is small
+(r 0.974 → 0.961, RMSE 6.6 → 7.0), driven by genuine high-frequency activity
+during emergence occasionally tripping the EMG surge test.
+
+Reproduce with `scripts/depth-validation/contaminate.py` (writes `art_*.csv`)
+then `bun scripts/depth-validation/harness_art.ts out.json gated|raw [sess|art]`.
