@@ -35,6 +35,66 @@ export const DEFAULT_SETTINGS: AnalysisSettings = {
   seizureEpochs: 3,
 };
 
+export type DetectionPresetKey = "anaesthesia" | "icu" | "icu_high_sensitivity" | "custom";
+
+export interface DetectionPreset {
+  key: DetectionPresetKey;
+  label: string;
+  description: string;
+  settings: AnalysisSettings;
+}
+
+/**
+ * Theatre wants few false alarms; ICU monitoring for non-convulsive status
+ * wants to catch short, subtle runs even at the cost of extra review.
+ */
+export const DETECTION_PRESETS: DetectionPreset[] = [
+  {
+    key: "anaesthesia",
+    label: "General anaesthesia",
+    description: "Conservative — 0.62 score held for 3 s, 60 s suppression window.",
+    settings: {
+      suppressionThresholdUv: 8,
+      srWindowSeconds: 60,
+      seizureThreshold: 0.62,
+      seizureEpochs: 3,
+    },
+  },
+  {
+    key: "icu",
+    label: "ICU sedation",
+    description: "Balanced — 0.55 score held for 5 s, 120 s suppression window.",
+    settings: {
+      suppressionThresholdUv: 10,
+      srWindowSeconds: 120,
+      seizureThreshold: 0.55,
+      seizureEpochs: 5,
+    },
+  },
+  {
+    key: "icu_high_sensitivity",
+    label: "ICU — high sensitivity",
+    description: "Catches brief subtle runs (NCSE screening); expect more review alerts.",
+    settings: {
+      suppressionThresholdUv: 10,
+      srWindowSeconds: 120,
+      seizureThreshold: 0.42,
+      seizureEpochs: 2,
+    },
+  },
+];
+
+export function matchPreset(settings: AnalysisSettings): DetectionPresetKey {
+  const hit = DETECTION_PRESETS.find(
+    (p) =>
+      p.settings.suppressionThresholdUv === settings.suppressionThresholdUv &&
+      p.settings.srWindowSeconds === settings.srWindowSeconds &&
+      Math.abs(p.settings.seizureThreshold - settings.seizureThreshold) < 1e-6 &&
+      p.settings.seizureEpochs === settings.seizureEpochs,
+  );
+  return hit?.key ?? "custom";
+}
+
 export interface BandPowers {
   delta: number;
   theta: number;
