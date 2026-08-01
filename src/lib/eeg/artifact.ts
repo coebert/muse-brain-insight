@@ -91,6 +91,8 @@ export function robustSigma(data: Float64Array): number {
  * scale, and scores how metronomic their inter-spike intervals are. Rhythmic
  * EEG has no isolated outlier spikes and scores 0.
  */
+const SPIKE_SLOPE_UV_PER_SAMPLE = 5;
+
 export function ecgLikeness(data: Float64Array, fs: number): number {
   const n = data.length;
   if (n < fs * 2) return 0;
@@ -100,7 +102,9 @@ export function ecgLikeness(data: Float64Array, fs: number): number {
   const med = median(d);
   const scale = 1.4826 * median(Float64Array.from(d, (v) => Math.abs(v - med)));
   if (scale <= 0) return 0;
-  const threshold = med + 8 * scale;
+  // Absolute floor: a QRS/pacing transient has a steep edge (~5 uV/sample at
+  // 256 Hz). Without it, a clean high-amplitude delta rhythm looks 'regular'.
+  const threshold = Math.max(med + 8 * scale, SPIKE_SLOPE_UV_PER_SAMPLE);
 
   // Peak-pick discrete transients, with a refractory period so one QRS
   // complex counts once.
