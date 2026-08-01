@@ -605,9 +605,23 @@ function Monitor() {
         </section>
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
           {(() => {
             const tiles: Record<string, React.ReactNode> = {
+              depth: (
+                <MetricTile
+                  key="depth"
+                  label="Depth index (BIS-like)"
+                  value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
+                  hint={
+                    latest
+                      ? DEPTH_STATE_LABEL[latest.depth.state]
+                      : "OpenIBIS-style, uncalibrated"
+                  }
+                  tone={latest ? depthTone(latest.depth.state) : "default"}
+                  confidence={latest?.confidence.depth}
+                />
+              ),
               sr: (
                 <MetricTile
                   key="sr"
@@ -676,8 +690,8 @@ function Monitor() {
               ),
             };
             const order = icuMode
-              ? ["seizure", "sr", "time", "amp", "sef"]
-              : ["sef", "sr", "time", "amp", "seizure"];
+              ? ["seizure", "sr", "time", "depth", "sef", "amp"]
+              : ["depth", "sef", "sr", "time", "amp", "seizure"];
             return order.map((k) => tiles[k]);
           })()}
         </section>
