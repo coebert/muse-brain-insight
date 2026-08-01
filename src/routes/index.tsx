@@ -93,6 +93,34 @@ const MARKER_PRESETS = [
   "Emergence",
 ];
 
+const SEX_OPTIONS = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "other", label: "Other" },
+  { value: "unknown", label: "Not recorded" },
+];
+
+const CLINICAL_FEATURES = [
+  "Sepsis",
+  "Septic shock",
+  "Delirium",
+  "OOHCA",
+  "IHCA",
+  "Hypoxic brain injury",
+  "Dementia",
+  "Traumatic brain injury",
+  "Intracranial haemorrhage",
+  "Stroke",
+  "Known epilepsy",
+  "Status epilepticus",
+  "Liver failure",
+  "Renal failure",
+  "Alcohol / drug withdrawal",
+  "Post-cardiac surgery",
+  "Neuromuscular blockade",
+  "Therapeutic hypothermia",
+];
+
 type MonitorMode = "anaesthesia" | "icu";
 
 const MODES: {
