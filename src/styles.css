@@ -70,6 +70,7 @@
   --color-caution-foreground: var(--caution-foreground);
   --color-critical: var(--critical);
   --color-critical-foreground: var(--critical-foreground);
+  --color-marker: var(--marker);
   --color-panel: var(--panel);
   --color-grid: var(--grid);
 }
@@ -93,6 +94,7 @@
   --caution-foreground: oklch(0.19 0.028 259);
   --critical: oklch(0.65 0.203 20);
   --critical-foreground: oklch(0.97 0.01 20);
+  --marker: oklch(0.78 0.13 250);
   --secondary: oklch(0.29 0.033 258);
   --secondary-foreground: oklch(0.94 0.012 250);
   --muted: oklch(0.28 0.03 258);
