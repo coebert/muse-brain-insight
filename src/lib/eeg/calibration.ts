@@ -149,7 +149,11 @@ function loss(v: number[], samples: CalibrationSample[], regularisation: number)
   for (const s of samples) {
     const p = predictIndex(s, cal);
     const [lo, hi] = TARGETS[s.label];
-    const d = p < lo ? lo - p : p > hi ? p - hi : 0;
+    // Aim a little inside the band so the optimum does not sit on its edge.
+    const inset = 0.15 * (hi - lo);
+    const a = lo + inset;
+    const b = hi - inset;
+    const d = p < a ? a - p : p > b ? p - b : 0;
     total += d * d;
   }
   total /= Math.max(1, samples.length);
