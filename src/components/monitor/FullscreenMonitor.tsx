@@ -101,7 +101,10 @@ export function FullscreenMonitor({
     };
     document.addEventListener("fullscreenchange", onChange);
     window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
+      document.body.style.overflow = prevOverflow;
       document.removeEventListener("fullscreenchange", onChange);
       window.removeEventListener("keydown", onKey);
       if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => undefined);
