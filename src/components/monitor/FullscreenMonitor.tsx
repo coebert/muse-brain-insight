@@ -62,7 +62,7 @@ function BigNumber({
     >
       <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
       <p className={cn("metric-value leading-none", toneText[tone])}>
-        <span className="text-[clamp(1.8rem,6vw,3rem)]">{value}</span>
+        <span className="text-[clamp(1.6rem,5.5vmin,3rem)]">{value}</span>
         {unit ? <span className="ml-1 text-sm text-muted-foreground">{unit}</span> : null}
       </p>
       {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
@@ -157,9 +157,9 @@ export function FullscreenMonitor({
       ) : null}
 
       {/* Bedside grid */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-auto p-2 lg:grid-cols-[minmax(0,1fr)_260px] lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-auto p-2 lg:grid-cols-[minmax(0,1fr)_260px] lg:overflow-hidden short:grid-cols-[minmax(0,1fr)_180px]! short:overflow-hidden!">
         {/* Traces */}
-        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1.6fr)_minmax(0,1fr)] gap-2">
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1.6fr)_minmax(0,1fr)] gap-2 short:grid-rows-[auto_minmax(0,1fr)]!">
           <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
             <div className="flex items-center justify-between px-2 pt-1">
               <span className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -169,7 +169,7 @@ export function FullscreenMonitor({
                 {latest ? `${latest.amplitudeUv.toFixed(0)} µV p-p` : "—"}
               </span>
             </div>
-            <div className="h-[70px] sm:h-[90px]">
+            <div className="h-[70px] sm:h-[90px] short:h-[60px]!">
               <WaveformStrip
                 data={waveform}
                 suppressionThresholdUv={suppressionThresholdUv}
@@ -207,7 +207,7 @@ export function FullscreenMonitor({
             })}
           </div>
 
-          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
                 <span className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -247,8 +247,8 @@ export function FullscreenMonitor({
         </div>
 
         {/* Numerics column */}
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:content-start">
-          <div className="col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:content-start short:grid-cols-1! short:content-start! short:overflow-y-auto!">
+          <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <BigNumber
               label="Depth index"
               value={depth?.index != null ? String(depth.index) : "—"}
@@ -285,7 +285,7 @@ export function FullscreenMonitor({
             value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
             sub={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
           />
-          <div className="col-span-2 lg:col-span-1">
+          <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <BigNumber
               label="Seizure score"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
