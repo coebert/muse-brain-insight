@@ -233,6 +233,34 @@ function Monitor() {
             </span>
           ) : null}
 
+          <div
+            role="group"
+            aria-label="Monitoring mode"
+            className="flex items-center gap-1 rounded-full border border-border p-0.5"
+          >
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              const active = m.key === mode;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  aria-pressed={active}
+                  title={m.blurb}
+                  onClick={() => selectMode(m.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "bg-signal/15 text-signal"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5" /> {m.label}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {streaming ? (
               <>
