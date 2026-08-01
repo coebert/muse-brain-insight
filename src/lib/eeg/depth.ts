@@ -37,6 +37,14 @@ export interface DepthReading {
   raw: number | null;
   state: DepthState;
   components: DepthComponents;
+  /** Epoch was rejected by the artefact gate; the index is being held. */
+  held: boolean;
+  /** Seconds the index has been held on stale (pre-artefact) data. */
+  heldSeconds: number;
+  /** Share of the 30 s spectral window rejected by the gate (0-1). */
+  gatedFraction: number;
+  /** Why the current epoch was rejected, empty when accepted. */
+  gateReasons: string[];
 }
 
 export type DepthState =
@@ -257,24 +265,25 @@ export class DepthIndexEstimator {
   private psdHistory: (Float64Array | null)[] = [];
   private bsrMap: number[] = [];
   private epochSeconds = 1;
+  private heldEpochs = 0;
 
   reset() {
     this.psdHistory = [];
     this.bsrMap = [];
+    this.heldEpochs = 0;
   }
 
   /**
-   * @param window most recent 4 s of signal, µV
+   * @param window most recent 4 s of artefact-repaired signal, µV
    * @param fs sample rate
-   * @param qualityScore 0-1 signal quality; low quality epochs are excluded
-   * @param artifact true when the epoch is artefact-contaminated
+   * @param gate artefact gate: whether this epoch may enter the spectral
+   *   window, plus the reasons it was rejected
    * @param epochSeconds hop between calls, seconds
    */
   update(
     window: Float64Array,
     fs: number,
-    qualityScore: number,
-    artifact: boolean,
+    gate: { usable: boolean; reasons?: string[] },
     epochSeconds = 1,
   ): DepthReading {
     this.epochSeconds = epochSeconds;
@@ -297,10 +306,14 @@ export class DepthIndexEstimator {
     // --- spectrum (openibis `logPowerRatios`) -----------------------------
     const blank = Math.max(1, Math.round(SUPPRESSION_BLANK_EPOCHS / epochSeconds));
     const recentlySuppressed = this.bsrMap.slice(-blank).some((v) => v === 1);
-    const usable = !recentlySuppressed && !artifact && qualityScore >= 0.35;
+    const usable = !recentlySuppressed && gate.usable;
     this.psdHistory.push(usable ? dftPower(window, fs) : null);
     const keep = Math.max(1, Math.round(SPECTRAL_WINDOW_S / epochSeconds));
     while (this.psdHistory.length > keep) this.psdHistory.shift();
+    // Suppressed epochs are a clinical state, not an artefact — only the
+    // artefact gate counts as "held".
+    if (gate.usable) this.heldEpochs = 0;
+    else this.heldEpochs++;
 
     const rows = this.psdHistory.filter((r): r is Float64Array => r != null);
 
@@ -351,11 +364,18 @@ export class DepthIndexEstimator {
     };
 
     const index = rawValue == null ? null : Math.round(rawValue);
+    const gatedFraction = this.psdHistory.length
+      ? this.psdHistory.filter((r) => r == null).length / this.psdHistory.length
+      : 1;
     return {
       index,
       raw: rawValue == null ? null : Math.round(rawValue),
       state: depthState(index, bsr),
       components,
+      held: !gate.usable && index != null,
+      heldSeconds: this.heldEpochs * epochSeconds,
+      gatedFraction,
+      gateReasons: gate.reasons ?? [],
     };
   }
 
