@@ -1,3 +1,4 @@
+/// <reference types="web-bluetooth" />
 /**
  * Muse 2 (and Muse S / Muse 2016) Web Bluetooth client.
  * Streams the four scalp electrodes at 256 Hz.
