@@ -64,6 +64,9 @@ function Sessions() {
           <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
           <div className="ml-auto flex gap-2">
             <Button asChild variant="outline" size="sm">
+              <Link to="/compare">Compare metrics</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/">
                 <ArrowLeft className="size-4" /> Monitor
               </Link>
