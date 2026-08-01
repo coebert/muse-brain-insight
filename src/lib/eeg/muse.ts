@@ -121,7 +121,6 @@ export class MuseClient implements EegSource {
 export class SimulatedSource implements EegSource {
   name = "Simulated signal";
   private timer: ReturnType<typeof setInterval> | null = null;
-  private phase = 0;
   private t = 0;
 
   onDisconnect() {
@@ -135,7 +134,9 @@ export class SimulatedSource implements EegSource {
       for (const channel of MUSE_CHANNELS) {
         const out = new Float64Array(chunk);
         for (let i = 0; i < chunk; i++) {
-          out[i] = this.sample(channel);
+          // Time is shared across channels: the phase must depend on the
+          // sample index, not on how many channels have been rendered.
+          out[i] = this.sample(channel, this.t + i / fs);
         }
         onSamples(channel, out);
       }
@@ -143,10 +144,9 @@ export class SimulatedSource implements EegSource {
     }, (chunk / fs) * 1000);
   }
 
-  private sample(channel: MuseChannel): number {
-    const fs = 256;
-    this.phase += 1 / fs;
-    const cycle = this.t % 240;
+  private sample(channel: MuseChannel, time: number): number {
+    const phase = time;
+    const cycle = time % 240;
     const jitter = (Math.random() - 0.5) * 4;
     const gain = channel === "AF7" || channel === "AF8" ? 1.1 : 0.9;
 
