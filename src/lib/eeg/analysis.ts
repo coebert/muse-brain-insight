@@ -106,12 +106,26 @@ export interface BandPowers {
   gamma: number;
 }
 
+/** Power ratios commonly used to track anaesthetic depth. */
+export interface PowerRatios {
+  /** Delta/alpha — rises with deepening anaesthesia and with encephalopathy. */
+  deltaAlpha: number;
+  /** Beta/alpha — rises with light anaesthesia and benzodiazepine beta. */
+  betaAlpha: number;
+  /** Theta/alpha — supports the ICU slowing picture. */
+  thetaAlpha: number;
+}
+
 export interface Epoch {
   /** Seconds since session start. */
   t: number;
   /** dB values (10·log10 µV²/Hz) for DSA_MIN_HZ..DSA_MAX_HZ. */
   spectrum: number[];
   bands: BandPowers;
+  /** Delta/alpha, beta/alpha and theta/alpha power ratios. */
+  ratios: PowerRatios;
+  /** Shannon / 95 % / state / response spectral entropies (0-1). */
+  entropy: SpectralEntropy;
   totalPower: number;
   sef95: number;
   /** Fraction of this epoch that was isoelectric (0–1). */
