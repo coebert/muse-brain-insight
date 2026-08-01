@@ -17,10 +17,12 @@ import { bandPower, type Psd } from "./dsp";
 export interface DepthArtifactReport {
   /** Epoch may contribute to the depth spectral window. */
   usable: boolean;
-  /** Fraction of samples that were repaired by transient winsorising (0-1). */
+  /** Fraction of samples replaced by transient repair (0-1). */
   repairedFraction: number;
   /** 30-45 Hz share of total power after repair (0-1). */
   emgIndex: number;
+  /** Current 30-45 Hz power divided by its running clean-epoch baseline. */
+  emgSurge: number;
   /** Fraction of the epoch occupied by ocular/movement transients (0-1). */
   transientFraction: number;
   /** Regularity of periodic spike trains at 0.7-2.5 Hz — ECG/pacing (0-1). */
@@ -47,10 +49,21 @@ const TRANSIENT_SIGMA = 5;
 const TRANSIENT_FLOOR_UV = 60;
 /** Above this 30-45 Hz share the beta ratio is EMG, not EEG. */
 const EMG_REJECT = 0.34;
+/**
+ * A relative share alone misses EMG riding on high-amplitude slow activity
+ * (deep anaesthesia), so the gate also watches for a step rise in absolute
+ * 30-45 Hz power against the running baseline of accepted epochs.
+ */
+const EMG_SURGE_REJECT = 3;
+/** Absolute 30-45 Hz power floor, µV²; below this a surge is just quiet noise. */
+const EMG_POWER_FLOOR = 0.5;
 const ECG_REJECT = 0.6;
+/** Below this robust amplitude the record is suppressed, where the spike detector misfires. */
+const ECG_MIN_SIGMA_UV = 5;
 const SATURATION_REJECT = 0.01;
-const REPAIR_REJECT = 0.25;
+const REPAIR_REJECT = 0.08;
 const FLAT_UV = 0.5;
+const BASELINE_EPOCHS = 120;
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
@@ -108,93 +121,130 @@ export function ecgLikeness(data: Float64Array, fs: number): number {
 }
 
 /**
- * Repairs bounded ocular/movement transients and reports whether the epoch is
- * clean enough to feed the depth index.
- *
- * @param window filtered epoch, µV
- * @param psd PSD of the same (unrepaired) window
- * @param fs sample rate
- * @param qualityScore overall epoch quality, 0-1
+ * Replaces contiguous excursions beyond `limit` with a linear ramp between the
+ * last and first in-range samples. Blanking beats clipping here: a clipped
+ * blink still injects a broadband step into the 30-47 Hz band the depth index
+ * depends on, whereas an interpolated segment injects almost nothing.
  */
-export function preprocessForDepth(
-  window: Float64Array,
-  psd: Psd,
-  fs: number,
-  qualityScore: number,
-): DepthPreprocessResult {
+function repairTransients(window: Float64Array, limit: number, fs: number) {
   const n = window.length;
-  const sigma = robustSigma(window);
-  const limit = Math.max(TRANSIENT_FLOOR_UV, TRANSIENT_SIGMA * sigma);
-
-  const signal = new Float64Array(n);
+  const signal = Float64Array.from(window);
+  const minRun = Math.max(2, Math.round(0.01 * fs));
+  const pad = Math.round(0.02 * fs); // taper the shoulders of each excursion
   let repaired = 0;
-  let saturated = 0;
-  let min = Infinity;
-  let max = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const v = window[i]!;
-    if (v < min) min = v;
-    if (v > max) max = v;
-    if (Math.abs(v) >= RAIL_UV) saturated++;
-    if (v > limit) {
-      signal[i] = limit;
-      repaired++;
-    } else if (v < -limit) {
-      signal[i] = -limit;
-      repaired++;
-    } else {
-      signal[i] = v;
-    }
-  }
-
-  // Contiguous excursions past the limit are the ocular/movement transients;
-  // isolated samples are noise and are covered by repairedFraction alone.
   let transientSamples = 0;
-  let run = 0;
-  const minRun = Math.max(2, Math.round(0.02 * fs));
-  for (let i = 0; i <= n; i++) {
-    const over = i < n && Math.abs(window[i]!) > limit;
-    if (over) {
-      run++;
-    } else {
-      if (run >= minRun) transientSamples += run;
-      run = 0;
+  let i = 0;
+  while (i < n) {
+    if (Math.abs(window[i]!) <= limit) {
+      i++;
+      continue;
     }
+    let j = i;
+    while (j < n && Math.abs(window[j]!) > limit) j++;
+    const runLen = j - i;
+    const a = Math.max(0, i - pad);
+    const b = Math.min(n - 1, j - 1 + pad);
+    const va = signal[a]!;
+    const vb = signal[b]!;
+    for (let k = a; k <= b; k++) {
+      signal[k] = va + ((vb - va) * (k - a)) / Math.max(1, b - a);
+      repaired++;
+    }
+    if (runLen >= minRun) transientSamples += b - a + 1;
+    i = j;
+  }
+  return { signal, repaired, transientSamples };
+}
+
+/**
+ * Stateful preprocessing gate for the depth index. Holds a running baseline of
+ * clean high-frequency power so EMG can be detected as a *change*, not only as
+ * a share of total power (which slow-wave-dominated deep anaesthesia hides).
+ */
+export class DepthArtifactGate {
+  private gammaBaseline: number[] = [];
+
+  reset() {
+    this.gammaBaseline = [];
   }
 
-  const total =
-    bandPower(psd, 0.5, 4) +
-    bandPower(psd, 4, 8) +
-    bandPower(psd, 8, 13) +
-    bandPower(psd, 13, 30) +
-    bandPower(psd, 30, 45);
-  const emgIndex = total > 0 ? bandPower(psd, 30, 45) / total : 0;
-  const ecg = ecgLikeness(window, fs);
+  /**
+   * @param window filtered epoch, µV
+   * @param psd PSD of the same (unrepaired) window
+   * @param fs sample rate
+   * @param qualityScore overall epoch quality, 0-1
+   */
+  evaluate(
+    window: Float64Array,
+    psd: Psd,
+    fs: number,
+    qualityScore: number,
+  ): DepthPreprocessResult {
+    const n = window.length;
+    const sigma = robustSigma(window);
+    const limit = Math.max(TRANSIENT_FLOOR_UV, TRANSIENT_SIGMA * sigma);
 
-  const repairedFraction = n ? repaired / n : 0;
-  const transientFraction = n ? transientSamples / n : 0;
-  const saturationFraction = n ? saturated / n : 0;
-  const flat = max - min < FLAT_UV;
+    let saturated = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const v = window[i]!;
+      if (v < min) min = v;
+      if (v > max) max = v;
+      if (Math.abs(v) >= RAIL_UV) saturated++;
+    }
 
-  const reasons: string[] = [];
-  if (flat) reasons.push("No signal — electrode contact lost");
-  if (saturationFraction > SATURATION_REJECT) reasons.push("Amplifier saturation");
-  if (emgIndex > EMG_REJECT) reasons.push("Frontalis EMG contaminating the beta ratio");
-  if (ecg > ECG_REJECT) reasons.push("Periodic spike artefact (ECG/pacing)");
-  if (repairedFraction > REPAIR_REJECT) reasons.push("Movement/ocular artefact");
-  if (qualityScore < 0.35) reasons.push("Overall signal quality too low");
+    const { signal, repaired, transientSamples } = repairTransients(window, limit, fs);
 
-  return {
-    signal,
-    report: {
-      usable: reasons.length === 0,
-      repairedFraction,
-      emgIndex,
-      transientFraction,
-      ecgLikeness: ecg,
-      saturationFraction,
-      robustSigmaUv: sigma,
-      reasons,
-    },
-  };
+    const gamma = bandPower(psd, 30, 45);
+    const total =
+      bandPower(psd, 0.5, 4) +
+      bandPower(psd, 4, 8) +
+      bandPower(psd, 8, 13) +
+      bandPower(psd, 13, 30) +
+      gamma;
+    const emgIndex = total > 0 ? gamma / total : 0;
+    const base = this.gammaBaseline.length ? median(this.gammaBaseline) : NaN;
+    const emgSurge =
+      Number.isFinite(base) && base > 0 && gamma > EMG_POWER_FLOOR ? gamma / base : 1;
+    const ecg = sigma >= ECG_MIN_SIGMA_UV ? ecgLikeness(window, fs) : 0;
+
+    const repairedFraction = n ? repaired / n : 0;
+    const transientFraction = n ? transientSamples / n : 0;
+    const saturationFraction = n ? saturated / n : 0;
+    const flat = max - min < FLAT_UV;
+
+    const reasons: string[] = [];
+    if (flat) reasons.push("No signal — electrode contact lost");
+    if (saturationFraction > SATURATION_REJECT) reasons.push("Amplifier saturation");
+    if (emgIndex > EMG_REJECT || emgSurge > EMG_SURGE_REJECT) {
+      reasons.push("Frontalis EMG contaminating the beta ratio");
+    }
+    if (ecg > ECG_REJECT) reasons.push("Periodic spike artefact (ECG/pacing)");
+    if (repairedFraction > REPAIR_REJECT) reasons.push("Movement/ocular artefact");
+    if (qualityScore < 0.35) reasons.push("Overall signal quality too low");
+
+    const usable = reasons.length === 0;
+    // Baseline tracks accepted epochs only, so an artefact never raises the bar
+    // that detects the next one.
+    if (usable && Number.isFinite(gamma)) {
+      this.gammaBaseline.push(gamma);
+      if (this.gammaBaseline.length > BASELINE_EPOCHS) this.gammaBaseline.shift();
+    }
+
+    return {
+      signal,
+      report: {
+        usable,
+        repairedFraction,
+        emgIndex,
+        emgSurge,
+        transientFraction,
+        ecgLikeness: ecg,
+        saturationFraction,
+        robustSigmaUv: sigma,
+        reasons,
+      },
+    };
+  }
 }
