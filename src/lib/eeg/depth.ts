@@ -23,6 +23,8 @@ export interface DepthComponents {
   betaRatio: number;
   /** openibis component 2: trimmed log ratio of very-high to whole-band power concentration, dB. */
   synchFastSlow: number;
+  /** openibis component 3: mean 0.5-4 Hz power minus mid-band power, dB. */
+  slowWave: number;
   /** Burst-suppression ratio used by the mixer, 0-100 %. */
   bsr: number;
   sedationScore: number;
@@ -70,6 +72,45 @@ export const DEPTH_STATE_LABEL: Record<DepthState, string> = {
 /** Sigmoid used by openibis to map a subparameter onto the 0-100 scale. */
 function scurve(x: number, eo: number, emax: number, x50: number, xwidth: number): number {
   return eo - emax / (1 + Math.exp((x - x50) / xwidth));
+}
+
+/** Fittable sigmoid weights of the openibis mixer. */
+export interface SigmoidWeights {
+  eo: number;
+  emax: number;
+  x50: number;
+  xwidth: number;
+}
+
+export interface DepthCalibration {
+  /** Sedation branch sigmoid (beta ratio -> score). */
+  sedation: SigmoidWeights;
+  /** General-anaesthesia branch sigmoid (SynchFastSlow -> score). */
+  general: SigmoidWeights;
+}
+
+/** Published openibis constants (Connor CW, Anesth Analg 2022). */
+export const DEFAULT_DEPTH_CALIBRATION: DepthCalibration = {
+  sedation: { eo: 104.4, emax: 49.4, x50: -13.9, xwidth: 5.29 },
+  general: { eo: 61.3, emax: 72.6, x50: -24.0, xwidth: 3.55 },
+};
+
+let activeCalibration: DepthCalibration = DEFAULT_DEPTH_CALIBRATION;
+
+export function getActiveDepthCalibration(): DepthCalibration {
+  return activeCalibration;
+}
+
+export function setActiveDepthCalibration(cal: DepthCalibration | null) {
+  activeCalibration = cal ?? DEFAULT_DEPTH_CALIBRATION;
+}
+
+export function isDefaultCalibration(cal: DepthCalibration): boolean {
+  return (["sedation", "general"] as const).every((k) =>
+    (["eo", "emax", "x50", "xwidth"] as const).every(
+      (p) => Math.abs(cal[k][p] - DEFAULT_DEPTH_CALIBRATION[k][p]) < 1e-9,
+    ),
+  );
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -240,10 +281,18 @@ export function depthTone(state: DepthState): "default" | "signal" | "caution" |
 }
 
 /** openibis mixer — verbatim constants from the published algorithm. */
-export function depthMixer(c1: number, c2: number, c3: number, bsr: number) {
-  const sedationScore = scurve(c1, 104.4, 49.4, -13.9, 5.29);
+export function depthMixer(
+  c1: number,
+  c2: number,
+  c3: number,
+  bsr: number,
+  cal: DepthCalibration = getActiveDepthCalibration(),
+) {
+  const s = cal.sedation;
+  const g = cal.general;
+  const sedationScore = scurve(c1, s.eo, s.emax, s.x50, s.xwidth);
   let generalScore = piecewise(c2, [-60.89, -30], [-40, 42]);
-  if (c2 >= -30) generalScore += scurve(c2, 61.3, 72.6, -24.0, 3.55);
+  if (c2 >= -30) generalScore += scurve(c2, g.eo, g.emax, g.x50, g.xwidth);
   const bsrScore = piecewise(bsr, [0, 100], [50, 0]);
   const generalWeight = piecewise(c3, [0, 5], [0.5, 1]) * (generalScore < sedationScore ? 1 : 0);
   const bsrWeight = piecewise(bsr, [10, 50], [0, 1]);
