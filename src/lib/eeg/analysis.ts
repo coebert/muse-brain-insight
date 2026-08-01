@@ -457,7 +457,7 @@ export class EegAnalyzer {
     // --- depth index change alerts ------------------------------------------
     // Only trend on ungated values so the artefact "hold" does not read as a
     // real change; a cooldown of one trend window prevents alert storms.
-    if (!depth.held && Number.isFinite(depth.index)) {
+    if (!depth.held && typeof depth.index === "number" && Number.isFinite(depth.index)) {
       this.depthHistory.push({ t, value: depth.index });
     }
     const depthCutoff = t - this.settings.depthTrendSeconds;
