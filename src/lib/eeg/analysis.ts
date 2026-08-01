@@ -9,6 +9,7 @@ import {
   spectralEdge,
   type SignalQuality,
 } from "./dsp";
+import { DepthIndexEstimator, type DepthReading } from "./depth";
 
 export type { SignalQuality } from "./dsp";
 
@@ -126,6 +127,8 @@ export interface Epoch {
   quality: SignalQuality;
   /** 0–1 confidence in each reported metric, given quality and data maturity. */
   confidence: MetricConfidence;
+  /** OpenIBIS-style depth-of-anaesthesia index (BIS-like, uncalibrated). */
+  depth: DepthReading;
 }
 
 export interface MetricConfidence {
@@ -135,6 +138,8 @@ export interface MetricConfidence {
   seizure: number;
   /** DSA, spectral edge and band powers. */
   spectral: number;
+  /** Depth-of-anaesthesia index. */
+  depth: number;
 }
 
 export interface DetectedEvent {
@@ -170,6 +175,7 @@ export class EegAnalyzer {
   private activeSeizureStart: number | null = null;
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
+  private depthEstimator = new DepthIndexEstimator();
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -192,6 +198,7 @@ export class EegAnalyzer {
     this.activeSeizureStart = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
+    this.depthEstimator.reset();
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
