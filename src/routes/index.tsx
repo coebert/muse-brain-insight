@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { EventLog } from "@/components/monitor/EventLog";
 import { MetricTile } from "@/components/monitor/MetricTile";
+import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
 import {
@@ -447,6 +448,7 @@ function Monitor() {
             unit="%"
             tone={srTone as never}
             hint={`Peak ${summary.maxSr.toFixed(0)} %`}
+            confidence={latest?.confidence.suppression}
           />
           <MetricTile
             label="Suppression time"
@@ -454,6 +456,7 @@ function Monitor() {
             unit={summary.suppressionSeconds < 60 ? "s" : "min"}
             hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
             tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
+            confidence={latest?.confidence.suppression}
           />
           <MetricTile
             label="Seizure score"
@@ -461,12 +464,14 @@ function Monitor() {
             tone={seizureAlert ? "critical" : latest && latest.seizureScore > 0.4 ? "caution" : "default"}
             hint={`${summary.seizureAlerts} event(s) this session`}
             pulse={seizureAlert}
+            confidence={latest?.confidence.seizure}
           />
           <MetricTile
             label="Spectral edge 95"
             value={latest ? latest.sef95.toFixed(1) : "—"}
             unit="Hz"
             hint="Frequency below which 95 % of power sits"
+            confidence={latest?.confidence.spectral}
           />
           <MetricTile
             label="Amplitude (p-p)"
@@ -474,8 +479,16 @@ function Monitor() {
             unit="µV"
             hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
             tone={latest?.artifact ? "caution" : "default"}
+            confidence={latest?.confidence.spectral}
           />
         </section>
+
+        <SignalQualityPanel
+          quality={latest?.quality ?? null}
+          channels={MUSE_CHANNELS}
+          channelQuality={monitor.channelQuality}
+          usableFraction={summary.usableFraction}
+        />
 
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">

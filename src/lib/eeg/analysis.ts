@@ -5,8 +5,12 @@ import {
   lineLength,
   peakToPeak,
   rhythmicity,
+  signalQuality,
   spectralEdge,
+  type SignalQuality,
 } from "./dsp";
+
+export type { SignalQuality } from "./dsp";
 
 export const EPOCH_SECONDS = 4;
 export const HOP_SECONDS = 1;
@@ -58,14 +62,31 @@ export interface Epoch {
   /** Amplitude looked implausible for EEG (movement/diathermy). */
   artifact: boolean;
   amplitudeUv: number;
+  /** Real-time artefact/quality assessment of this epoch. */
+  quality: SignalQuality;
+  /** 0–1 confidence in each reported metric, given quality and data maturity. */
+  confidence: MetricConfidence;
+}
+
+export interface MetricConfidence {
+  /** Suppression ratio / suppression time. */
+  suppression: number;
+  /** Seizure score and alerting. */
+  seizure: number;
+  /** DSA, spectral edge and band powers. */
+  spectral: number;
 }
 
 export interface DetectedEvent {
-  kind: "burst_suppression" | "seizure" | "isoelectric" | "annotation";
+  kind: "burst_suppression" | "seizure" | "isoelectric" | "annotation" | "signal_quality";
   severity: "info" | "warning" | "critical";
   t: number;
   duration: number;
   detail: string;
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
 function median(values: number[]): number {
@@ -87,6 +108,8 @@ export class EegAnalyzer {
   private suppressionHistory: { t: number; fraction: number }[] = [];
   private activeSuppressionStart: number | null = null;
   private activeSeizureStart: number | null = null;
+  private poorQualityStart: number | null = null;
+  private recentQuality: number[] = [];
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -107,6 +130,8 @@ export class EegAnalyzer {
     this.suppressionHistory = [];
     this.activeSuppressionStart = null;
     this.activeSeizureStart = null;
+    this.poorQualityStart = null;
+    this.recentQuality = [];
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
@@ -132,6 +157,13 @@ export class EegAnalyzer {
     const totalPower = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma;
     const sef95 = spectralEdge(psd, 0.95);
 
+    // --- signal quality -----------------------------------------------------
+    const quality = signalQuality(window, psd, this.fs);
+    this.recentQuality.push(quality.score);
+    if (this.recentQuality.length > 30) this.recentQuality.shift();
+    const sustainedQuality =
+      this.recentQuality.reduce((a, b) => a + b, 0) / this.recentQuality.length;
+
     // --- burst suppression -------------------------------------------------
     const seg = Math.round(this.fs * 0.5);
     let suppressedSegs = 0;
@@ -144,7 +176,7 @@ export class EegAnalyzer {
       segs++;
     }
     const epochSuppression = segs ? suppressedSegs / segs : 0;
-    const artifact = maxP2p > 500;
+    const artifact = maxP2p > 500 || quality.grade === "poor";
     const isSuppressed = !artifact && epochSuppression >= 0.5;
 
     if (!artifact) {
@@ -223,6 +255,38 @@ export class EegAnalyzer {
       this.consecutiveSeizureEpochs = 0;
     }
 
+    // --- per-metric confidence ---------------------------------------------
+    const srFill = clamp01(
+      this.suppressionHistory.length / Math.max(1, this.settings.srWindowSeconds / HOP_SECONDS),
+    );
+    const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
+    const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const confidence: MetricConfidence = {
+      spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
+      suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
+      seizure: clamp01(
+        quality.score * (0.3 + 0.7 * baselineMaturity) * (1 - 0.6 * emgPenalty) *
+          (isSuppressed ? 0.6 : 1),
+      ),
+    };
+
+    // Log sustained degradation so it is auditable alongside clinical events.
+    if (quality.grade === "poor" && this.poorQualityStart === null) {
+      this.poorQualityStart = t;
+    } else if (quality.grade !== "poor" && this.poorQualityStart !== null) {
+      const duration = t - this.poorQualityStart;
+      if (duration >= 5) {
+        this.events.push({
+          kind: "signal_quality",
+          severity: duration >= 30 ? "warning" : "info",
+          t: this.poorQualityStart,
+          duration,
+          detail: `Poor signal quality for ${duration.toFixed(0)} s — metrics unreliable`,
+        });
+      }
+      this.poorQualityStart = null;
+    }
+
     return {
       t,
       spectrum,
@@ -236,6 +300,8 @@ export class EegAnalyzer {
       seizureAlert,
       artifact,
       amplitudeUv: maxP2p,
+      quality,
+      confidence,
     };
   }
 }

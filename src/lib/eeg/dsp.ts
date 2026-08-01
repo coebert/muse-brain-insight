@@ -227,6 +227,93 @@ export function lineLength(data: Float64Array): number {
   return sum / (data.length - 1);
 }
 
+/* ------------------------------------------------------------------ */
+/* Signal quality                                                      */
+/* ------------------------------------------------------------------ */
+
+export interface SignalQuality {
+  /** 0–1 overall usability of the epoch. */
+  score: number;
+  grade: "good" | "fair" | "poor";
+  /** Fraction of samples at or beyond the plausible EEG rail (0–1). */
+  clipFraction: number;
+  /** Share of 30–45 Hz power — muscle/diathermy contamination (0–1). */
+  emgIndex: number;
+  /** Abrupt sample-to-sample steps per second — movement/cable transients. */
+  jumpRate: number;
+  /** Peak-to-peak amplitude of the epoch, µV. */
+  amplitudeUv: number;
+  /** No measurable signal — electrode off the skin. */
+  flat: boolean;
+  /** Human-readable causes of any quality loss. */
+  reasons: string[];
+}
+
+const CLIP_UV = 350;
+const JUMP_UV = 30;
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/**
+ * Rates a filtered epoch for artefact load. Cheap enough to run every hop.
+ * `emgIndex` needs the PSD of the same window.
+ */
+export function signalQuality(data: Float64Array, psd: Psd, fs = MUSE_SAMPLE_RATE): SignalQuality {
+  const n = data.length;
+  let clipped = 0;
+  let jumps = 0;
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const v = data[i]!;
+    if (v < min) min = v;
+    if (v > max) max = v;
+    if (Math.abs(v) >= CLIP_UV) clipped++;
+    if (i > 0 && Math.abs(v - data[i - 1]!) > JUMP_UV) jumps++;
+  }
+  const amplitudeUv = n ? max - min : 0;
+  const clipFraction = n ? clipped / n : 0;
+  const jumpRate = n ? jumps / (n / fs) : 0;
+
+  const total =
+    bandPower(psd, 0.5, 4) +
+    bandPower(psd, 4, 8) +
+    bandPower(psd, 8, 13) +
+    bandPower(psd, 13, 30) +
+    bandPower(psd, 30, 45);
+  const emgIndex = total > 0 ? bandPower(psd, 30, 45) / total : 0;
+  const flat = amplitudeUv < 0.5;
+
+  const reasons: string[] = [];
+  let penalty = 0;
+  if (flat) {
+    penalty = 0.95;
+    reasons.push("No signal — check electrode contact");
+  } else {
+    const clipPen = clamp01(clipFraction * 8) * 0.5;
+    const emgPen = clamp01((emgIndex - 0.15) / 0.35) * 0.35;
+    const jumpPen = clamp01(jumpRate / 5) * 0.3;
+    penalty = clipPen + emgPen + jumpPen;
+    if (clipPen > 0.05) reasons.push("Amplitude saturating (movement or diathermy)");
+    if (emgPen > 0.05) reasons.push("High-frequency muscle activity");
+    if (jumpPen > 0.05) reasons.push("Step artefact — cable or electrode movement");
+  }
+
+  const score = clamp01(1 - penalty);
+  return {
+    score,
+    grade: score >= 0.75 ? "good" : score >= 0.45 ? "fair" : "poor",
+    clipFraction,
+    emgIndex,
+    jumpRate,
+    amplitudeUv,
+    flat,
+    reasons,
+  };
+}
+
 /**
  * Strength of the dominant autocorrelation peak between minHz and maxHz.
  * Rhythmic (seizure-like) discharges give a value near 1; noise gives ~0.

@@ -9,7 +9,14 @@ import {
   type DetectedEvent,
   type Epoch,
 } from "@/lib/eeg/analysis";
-import { MUSE_SAMPLE_RATE, makeEegFilter, type FilterChain } from "@/lib/eeg/dsp";
+import {
+  MUSE_SAMPLE_RATE,
+  computePsd,
+  makeEegFilter,
+  signalQuality,
+  type FilterChain,
+  type SignalQuality,
+} from "@/lib/eeg/dsp";
 import {
   MUSE_CHANNELS,
   MuseClient,
@@ -57,6 +64,7 @@ export function useEegMonitor() {
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
   const [contactOk, setContactOk] = useState<Record<string, boolean>>({});
+  const [channelQuality, setChannelQuality] = useState<Record<string, SignalQuality>>({});
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
@@ -146,18 +154,15 @@ export function useEegMonitor() {
       setEvents([...analyzerRef.current.events]);
 
       const contact: Record<string, boolean> = {};
+      const quality: Record<string, SignalQuality> = {};
       for (const c of MUSE_CHANNELS) {
-        const seg = readLast(buffersRef.current[c]!, MUSE_SAMPLE_RATE);
-        let min = Infinity;
-        let max = -Infinity;
-        for (let i = 0; i < seg.length; i++) {
-          if (seg[i]! < min) min = seg[i]!;
-          if (seg[i]! > max) max = seg[i]!;
-        }
-        const p2p = max - min;
-        contact[c] = p2p > 0.5 && p2p < 400;
+        const seg = readLast(buffersRef.current[c]!, MUSE_SAMPLE_RATE * 2);
+        const q = signalQuality(seg, computePsd(seg, MUSE_SAMPLE_RATE), MUSE_SAMPLE_RATE);
+        quality[c] = q;
+        contact[c] = !q.flat && q.grade !== "poor";
       }
       setContactOk(contact);
+      setChannelQuality(quality);
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal]);
@@ -181,7 +186,14 @@ export function useEegMonitor() {
 
   const summary = useMemo(() => {
     if (!epochs.length) {
-      return { meanSr: 0, maxSr: 0, suppressionSeconds: 0, seizureAlerts: 0 };
+      return {
+        meanSr: 0,
+        maxSr: 0,
+        suppressionSeconds: 0,
+        seizureAlerts: 0,
+        meanQuality: 0,
+        usableFraction: 0,
+      };
     }
     const meanSr = epochs.reduce((a, e) => a + e.epochSuppression, 0) / epochs.length * 100;
     const maxSr = epochs.reduce((a, e) => Math.max(a, e.suppressionRatio), 0);
@@ -190,6 +202,9 @@ export function useEegMonitor() {
       maxSr,
       suppressionSeconds: analyzerRef.current.suppressionSeconds,
       seizureAlerts: events.filter((e) => e.kind === "seizure").length,
+      meanQuality: epochs.reduce((a, e) => a + e.quality.score, 0) / epochs.length,
+      usableFraction:
+        epochs.filter((e) => e.quality.grade !== "poor").length / epochs.length,
     };
   }, [epochs, events]);
 
@@ -207,6 +222,7 @@ export function useEegMonitor() {
     waveform,
     elapsed,
     contactOk,
+    channelQuality,
     summary,
     connect,
     stop,
