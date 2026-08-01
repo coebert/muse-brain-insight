@@ -5,6 +5,8 @@ import {
   Bluetooth,
   CircleStop,
   FlaskConical,
+  HeartPulse,
+  Stethoscope,
   Save,
   TriangleAlert,
   Undo2,
@@ -90,10 +92,41 @@ const MARKER_PRESETS = [
   "Emergence",
 ];
 
+type MonitorMode = "anaesthesia" | "icu";
+
+const MODES: {
+  key: MonitorMode;
+  label: string;
+  icon: typeof Stethoscope;
+  blurb: string;
+  presetKey: string;
+  context: string;
+}[] = [
+  {
+    key: "anaesthesia",
+    label: "Anaesthesia",
+    icon: Stethoscope,
+    blurb:
+      "Continuous DSA with spectral edge, suppression ratio and suppression time up front. Seizure detection runs conservatively in the background.",
+    presetKey: "anaesthesia",
+    context: "general_anaesthesia",
+  },
+  {
+    key: "icu",
+    label: "ICU",
+    icon: HeartPulse,
+    blurb:
+      "Seizure- and burst-suppression-led: sensitive ictal alerting, longer suppression window, seizure score and suppression burden shown first.",
+    presetKey: "icu",
+    context: "icu_sedation",
+  },
+];
+
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
   const [windowMinutes, setWindowMinutes] = useState(10);
+  const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
@@ -108,6 +141,17 @@ function Monitor() {
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
   const seizureAlert = latest?.seizureAlert ?? false;
+  const icuMode = mode === "icu";
+  const activeMode = MODES.find((m) => m.key === mode)!;
+
+  function selectMode(next: MonitorMode) {
+    setMode(next);
+    const cfg = MODES.find((m) => m.key === next)!;
+    const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    if (preset) monitor.setSettings({ ...preset.settings });
+    setMeta((prev) => ({ ...prev, context: cfg.context }));
+    setWindowMinutes(next === "icu" ? 30 : 10);
+  }
 
   const allEvents = useMemo(
     () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
