@@ -279,6 +279,7 @@ export function FullscreenMonitor({
                   : "Awaiting data"
               }
               tone={dTone}
+              unreliable={latest ? !latest.depthReliability.reliable : false}
             />
           </div>
           <BigNumber
