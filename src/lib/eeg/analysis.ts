@@ -198,7 +198,15 @@ export interface MetricConfidence {
 }
 
 export interface DetectedEvent {
-  kind: "burst_suppression" | "seizure" | "isoelectric" | "annotation" | "signal_quality";
+  kind:
+    | "burst_suppression"
+    | "seizure"
+    | "isoelectric"
+    | "annotation"
+    | "signal_quality"
+    | "depth_drop"
+    | "depth_rise"
+    | "suppression_burden";
   severity: "info" | "warning" | "critical";
   t: number;
   duration: number;
@@ -230,6 +238,10 @@ export class EegAnalyzer {
   private activeSeizureStart: number | null = null;
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
+  private depthHistory: { t: number; value: number }[] = [];
+  private lastDepthAlertT = -Infinity;
+  private bsrAlerted = false;
+  private lastBsrAlertValue = 0;
   private depthEstimator = new DepthIndexEstimator();
   private depthGate = new DepthArtifactGate();
 
@@ -254,6 +266,10 @@ export class EegAnalyzer {
     this.activeSeizureStart = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
+    this.depthHistory = [];
+    this.lastDepthAlertT = -Infinity;
+    this.bsrAlerted = false;
+    this.lastBsrAlertValue = 0;
     this.depthEstimator.reset();
     this.depthGate.reset();
     this.suppressionSeconds = 0;
