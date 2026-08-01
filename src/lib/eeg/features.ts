@@ -187,6 +187,16 @@ export function buildFeatureDigest(
         Math.sqrt(mean(sefs.map((v) => (v - mean(sefs)) ** 2))),
         2,
       ),
+      meanStateEntropy: round(mean(epochs.map((e) => e.entropy.state))),
+      meanResponseEntropy: round(mean(epochs.map((e) => e.entropy.response))),
+      meanSe95Entropy: round(mean(epochs.map((e) => e.entropy.se95))),
+      entropyTrendPerHour: round(
+        slope(epochs.map((e) => ({ t: e.t, y: e.entropy.state }))) * 3600,
+        2,
+      ),
+      meanDeltaAlphaRatio: round(mean(epochs.map((e) => e.ratios.deltaAlpha))),
+      meanBetaAlphaRatio: round(mean(epochs.map((e) => e.ratios.betaAlpha))),
+      meanThetaAlphaRatio: round(mean(epochs.map((e) => e.ratios.thetaAlpha))),
     },
     quality: {
       meanScore: round(mean(epochs.map((e) => e.quality.score))),
