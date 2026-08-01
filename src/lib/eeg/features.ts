@@ -67,6 +67,14 @@ export interface FeatureDigest {
     latest: number | null;
     fractionBelow40: number;
   };
+  /** qCON/qNOX-style composite indices (transparent re-implementation). */
+  compositeIndex: {
+    meanConsciousness: number | null;
+    latestConsciousness: number | null;
+    meanNociception: number | null;
+    latestNociception: number | null;
+    fractionNociceptionAbove60: number;
+  };
   annotations: { tSeconds: number; label: string }[];
   timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
 }
