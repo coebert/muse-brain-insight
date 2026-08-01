@@ -358,6 +358,39 @@ export class EegAnalyzer {
       this.activeSuppressionStart = null;
     }
 
+    // --- burst-suppression burden alerts -----------------------------------
+    // Fires once on crossing the configured suppression ratio, then again each
+    // time the burden worsens by a further step.
+    if (!artifact) {
+      if (!this.bsrAlerted && suppressionRatio >= this.settings.bsrAlertPercent) {
+        this.bsrAlerted = true;
+        this.lastBsrAlertValue = suppressionRatio;
+        this.events.push({
+          kind: "suppression_burden",
+          severity: suppressionRatio >= 40 ? "critical" : "warning",
+          t,
+          duration: 0,
+          detail: `New burst suppression — SR ${suppressionRatio.toFixed(0)} % over ${this.settings.srWindowSeconds} s`,
+        });
+      } else if (
+        this.bsrAlerted &&
+        suppressionRatio >= this.lastBsrAlertValue + this.settings.bsrWorseningPercent
+      ) {
+        const from = this.lastBsrAlertValue;
+        this.lastBsrAlertValue = suppressionRatio;
+        this.events.push({
+          kind: "suppression_burden",
+          severity: suppressionRatio >= 40 ? "critical" : "warning",
+          t,
+          duration: 0,
+          detail: `Worsening burst suppression — SR ${from.toFixed(0)} % → ${suppressionRatio.toFixed(0)} %`,
+        });
+      } else if (this.bsrAlerted && suppressionRatio < this.settings.bsrAlertPercent * 0.5) {
+        this.bsrAlerted = false;
+        this.lastBsrAlertValue = 0;
+      }
+    }
+
     // --- seizure likelihood -------------------------------------------------
     const ll = lineLength(window);
     const baseline = median(this.lineLengthBaseline) || ll;
