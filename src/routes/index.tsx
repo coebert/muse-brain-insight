@@ -366,6 +366,14 @@ function Monitor() {
                 >
                   <CircleStop className="size-4" /> Stop
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setFullscreen(true)}
+                >
+                  <Maximize2 className="size-4" /> Monitor view
+                </Button>
               </>
             ) : (
               <>
