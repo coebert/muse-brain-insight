@@ -1,6 +1,7 @@
 import { Radio } from "lucide-react";
 
 import type { SignalQuality } from "@/lib/eeg/dsp";
+import type { DepthArtifactReport } from "@/lib/eeg/artifact";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -8,6 +9,10 @@ interface Props {
   channels: readonly string[];
   channelQuality: Record<string, SignalQuality>;
   usableFraction: number;
+  /** Depth-index preprocessing gate for the latest epoch. */
+  depthArtifact?: DepthArtifactReport | null;
+  /** Share of the depth spectral window currently rejected (0-1). */
+  depthGatedFraction?: number | undefined;
 }
 
 const gradeClass: Record<SignalQuality["grade"], string> = {
@@ -40,7 +45,14 @@ function Bar({ label, value, display }: { label: string; value: number; display:
   );
 }
 
-export function SignalQualityPanel({ quality, channels, channelQuality, usableFraction }: Props) {
+export function SignalQualityPanel({
+  quality,
+  channels,
+  channelQuality,
+  usableFraction,
+  depthArtifact,
+  depthGatedFraction,
+}: Props) {
   return (
     <div className="panel px-4 py-4">
       <div className="flex items-center gap-2">
@@ -106,6 +118,25 @@ export function SignalQualityPanel({ quality, channels, channelQuality, usableFr
               : "Clean epoch — metrics reported at full confidence."}{" "}
             {(usableFraction * 100).toFixed(0)} % of the session has been usable.
           </p>
+
+          {depthArtifact ? (
+            <p className="mt-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+              <span className="text-foreground/80">Depth index input: </span>
+              {depthArtifact.usable ? (
+                <span className="text-signal">accepted</span>
+              ) : (
+                <span className="text-caution">
+                  rejected — {depthArtifact.reasons.join(" · ")}
+                </span>
+              )}
+              {typeof depthGatedFraction === "number"
+                ? ` · ${(depthGatedFraction * 100).toFixed(0)} % of the 30 s window gated`
+                : null}
+              {depthArtifact.repairedFraction > 0
+                ? ` · ${(depthArtifact.repairedFraction * 100).toFixed(1)} % of samples repaired`
+                : null}
+            </p>
+          ) : null}
         </>
       ) : (
         <p className="mt-3 text-[11px] text-muted-foreground">

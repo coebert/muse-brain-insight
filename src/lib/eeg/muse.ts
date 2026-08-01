@@ -121,7 +121,6 @@ export class MuseClient implements EegSource {
 export class SimulatedSource implements EegSource {
   name = "Simulated signal";
   private timer: ReturnType<typeof setInterval> | null = null;
-  private phase = 0;
   private t = 0;
 
   onDisconnect() {
@@ -135,7 +134,9 @@ export class SimulatedSource implements EegSource {
       for (const channel of MUSE_CHANNELS) {
         const out = new Float64Array(chunk);
         for (let i = 0; i < chunk; i++) {
-          out[i] = this.sample(channel);
+          // Time is shared across channels: the phase must depend on the
+          // sample index, not on how many channels have been rendered.
+          out[i] = this.sample(channel, this.t + i / fs);
         }
         onSamples(channel, out);
       }
@@ -143,10 +144,9 @@ export class SimulatedSource implements EegSource {
     }, (chunk / fs) * 1000);
   }
 
-  private sample(channel: MuseChannel): number {
-    const fs = 256;
-    this.phase += 1 / fs;
-    const cycle = this.t % 240;
+  private sample(channel: MuseChannel, time: number): number {
+    const phase = time;
+    const cycle = time % 240;
     const jitter = (Math.random() - 0.5) * 4;
     const gain = channel === "AF7" || channel === "AF8" ? 1.1 : 0.9;
 
@@ -154,16 +154,16 @@ export class SimulatedSource implements EegSource {
       // Adequate general anaesthesia: strong slow-delta + alpha spindles.
       return (
         gain *
-        (28 * Math.sin(2 * Math.PI * 1.4 * this.phase) +
-          16 * Math.sin(2 * Math.PI * 9.5 * this.phase) +
+        (28 * Math.sin(2 * Math.PI * 1.4 * phase) +
+          16 * Math.sin(2 * Math.PI * 9.5 * phase) +
           jitter)
       );
     }
     if (cycle < 120) {
       // Burst suppression: ~8 s period, 2 s bursts.
-      const inBurst = this.t % 8 < 2;
+      const inBurst = time % 8 < 2;
       return inBurst
-        ? gain * (60 * Math.sin(2 * Math.PI * 2.5 * this.phase) + jitter * 2)
+        ? gain * (60 * Math.sin(2 * Math.PI * 2.5 * phase) + jitter * 2)
         : jitter * 0.5;
     }
     if (cycle < 180) {
@@ -171,16 +171,16 @@ export class SimulatedSource implements EegSource {
       const ramp = Math.min(1, (cycle - 120) / 20);
       return (
         gain *
-        (70 * ramp * Math.sin(2 * Math.PI * 3 * this.phase) +
-          25 * ramp * Math.sin(2 * Math.PI * 6 * this.phase) +
+        (70 * ramp * Math.sin(2 * Math.PI * 3 * phase) +
+          25 * ramp * Math.sin(2 * Math.PI * 6 * phase) +
           jitter)
       );
     }
     // Light sedation: mixed beta and theta.
     return (
       gain *
-      (10 * Math.sin(2 * Math.PI * 6 * this.phase) +
-        8 * Math.sin(2 * Math.PI * 18 * this.phase) +
+      (10 * Math.sin(2 * Math.PI * 6 * phase) +
+        8 * Math.sin(2 * Math.PI * 18 * phase) +
         jitter * 1.5)
     );
   }

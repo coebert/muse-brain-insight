@@ -616,10 +616,14 @@ function Monitor() {
                   value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
                   hint={
                     latest
-                      ? DEPTH_STATE_LABEL[latest.depth.state]
+                      ? latest.depth.held
+                        ? `Held ${latest.depth.heldSeconds.toFixed(0)}s — ${
+                            latest.depth.gateReasons[0] ?? "artefact"
+                          }`
+                        : DEPTH_STATE_LABEL[latest.depth.state]
                       : "OpenIBIS algorithm · ±10 units vs reference"
                   }
-                  tone={latest ? depthTone(latest.depth.state) : "default"}
+                  tone={latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"}
                   confidence={latest?.confidence.depth}
                 />
               ),
@@ -702,6 +706,8 @@ function Monitor() {
           channels={MUSE_CHANNELS}
           channelQuality={monitor.channelQuality}
           usableFraction={summary.usableFraction}
+          depthArtifact={latest?.depthArtifact ?? null}
+          depthGatedFraction={latest?.depth.gatedFraction}
         />
 
         <AiInsightPanel

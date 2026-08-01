@@ -17,7 +17,7 @@ for (const name of Object.keys(ref)) {
   const est = new DepthIndexEstimator();
   const t: number[] = [], idx: (number | null)[] = [];
   for (let end = WIN; end <= sig.length; end += HOP) {
-    const r = est.update(sig.subarray(end - WIN, end), FS, 1, false, 1);
+    const r = est.update(sig.subarray(end - WIN, end), FS, { usable: true }, 1);
     t.push(end / FS); idx.push(r.index);
   }
   out[name] = { t, idx };
