@@ -193,7 +193,7 @@ function Monitor() {
                 value={monitor.channel}
                 onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
               >
-                <SelectTrigger size="sm" className="w-[150px]">
+                <SelectTrigger className="w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +209,7 @@ function Monitor() {
                 value={String(windowMinutes)}
                 onValueChange={(v) => setWindowMinutes(Number(v))}
               >
-                <SelectTrigger size="sm" className="w-[110px]">
+                <SelectTrigger className="w-[110px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
