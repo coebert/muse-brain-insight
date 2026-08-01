@@ -87,12 +87,18 @@ export interface DepthCalibration {
   sedation: SigmoidWeights;
   /** General-anaesthesia branch sigmoid (SynchFastSlow -> score). */
   general: SigmoidWeights;
+  /**
+   * Linear segment of the general branch, which drives the index in the deep
+   * range where the sigmoid is inactive: SynchFastSlow xLo..xHi maps to yLo..yHi.
+   */
+  generalLinear: { xLo: number; xHi: number; yLo: number; yHi: number };
 }
 
 /** Published openibis constants (Connor CW, Anesth Analg 2022). */
 export const DEFAULT_DEPTH_CALIBRATION: DepthCalibration = {
   sedation: { eo: 104.4, emax: 49.4, x50: -13.9, xwidth: 5.29 },
   general: { eo: 61.3, emax: 72.6, x50: -24.0, xwidth: 3.55 },
+  generalLinear: { xLo: -60.89, xHi: -30, yLo: -40, yHi: 42 },
 };
 
 let activeCalibration: DepthCalibration = DEFAULT_DEPTH_CALIBRATION;
@@ -106,10 +112,15 @@ export function setActiveDepthCalibration(cal: DepthCalibration | null) {
 }
 
 export function isDefaultCalibration(cal: DepthCalibration): boolean {
-  return (["sedation", "general"] as const).every((k) =>
-    (["eo", "emax", "x50", "xwidth"] as const).every(
-      (p) => Math.abs(cal[k][p] - DEFAULT_DEPTH_CALIBRATION[k][p]) < 1e-9,
-    ),
+  const same = (a: Record<string, number>, b: Record<string, number>) =>
+    Object.keys(b).every((p) => Math.abs((a?.[p] ?? NaN) - b[p]!) < 1e-9);
+  return (
+    same(cal.sedation as unknown as Record<string, number>, DEFAULT_DEPTH_CALIBRATION.sedation as unknown as Record<string, number>) &&
+    same(cal.general as unknown as Record<string, number>, DEFAULT_DEPTH_CALIBRATION.general as unknown as Record<string, number>) &&
+    same(
+      (cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear) as unknown as Record<string, number>,
+      DEFAULT_DEPTH_CALIBRATION.generalLinear as unknown as Record<string, number>,
+    )
   );
 }
 
@@ -290,9 +301,10 @@ export function depthMixer(
 ) {
   const s = cal.sedation;
   const g = cal.general;
+  const gl = cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear;
   const sedationScore = scurve(c1, s.eo, s.emax, s.x50, s.xwidth);
-  let generalScore = piecewise(c2, [-60.89, -30], [-40, 42]);
-  if (c2 >= -30) generalScore += scurve(c2, g.eo, g.emax, g.x50, g.xwidth);
+  let generalScore = piecewise(c2, [gl.xLo, gl.xHi], [gl.yLo, gl.yHi]);
+  if (c2 >= gl.xHi) generalScore += scurve(c2, g.eo, g.emax, g.x50, g.xwidth);
   const bsrScore = piecewise(bsr, [0, 100], [50, 0]);
   const generalWeight = piecewise(c3, [0, 5], [0.5, 1]) * (generalScore < sedationScore ? 1 : 0);
   const bsrWeight = piecewise(bsr, [10, 50], [0, 1]);
