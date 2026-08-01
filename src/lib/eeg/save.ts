@@ -60,7 +60,7 @@ export async function saveSession(
     seizure_score: Number(e.seizureScore.toFixed(3)),
     total_power: Number(e.totalPower.toFixed(3)),
     spectral_edge_95: Number(e.sef95.toFixed(2)),
-    bands: e.bands,
+    bands: { ...e.bands } as Record<string, number>,
     spectrum: e.spectrum.map((v) => Number(v.toFixed(1))),
   }));
   for (let i = 0; i < rows.length; i += 200) {
