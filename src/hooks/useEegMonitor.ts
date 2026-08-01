@@ -79,7 +79,7 @@ export function useEegMonitor() {
     const out = new Float64Array(length);
     for (const c of MUSE_CHANNELS) {
       const seg = readLast(buffersRef.current[c]!, length);
-      for (let i = 0; i < length; i++) out[i] += seg[i]! / MUSE_CHANNELS.length;
+      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / MUSE_CHANNELS.length;
     }
     return out;
   }, []);
