@@ -7,6 +7,22 @@ export interface SessionMeta {
   location: string;
   notes: string;
   deviceName: string;
+  /** Age in whole years; ages ≥ 90 are stored as a band only. */
+  ageYears: string;
+  sex: string;
+  admissionDiagnosis: string;
+  clinicalFeatures: string[];
+}
+
+/** Coarse banding keeps records non-identifying even when age is recorded. */
+export function ageBand(age: number | null): string | null {
+  if (age === null || Number.isNaN(age)) return null;
+  if (age < 18) return "<18";
+  if (age < 40) return "18-39";
+  if (age < 60) return "40-59";
+  if (age < 75) return "60-74";
+  if (age < 90) return "75-89";
+  return "90+";
 }
 
 /** Store at most this many epochs per session; older data is decimated evenly. */
@@ -40,6 +56,16 @@ export async function saveSession(
       location: meta.location || null,
       notes: meta.notes || null,
       device_name: meta.deviceName || null,
+      age_years: (() => {
+        const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
+        if (n === null || Number.isNaN(n)) return null;
+        // Never store an exact age of 90+, which can be identifying.
+        return n >= 90 ? null : Math.round(n);
+      })(),
+      age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
+      sex: meta.sex || null,
+      admission_diagnosis: meta.admissionDiagnosis.trim() || null,
+      clinical_features: meta.clinicalFeatures,
       duration_seconds: Math.round(elapsed),
       mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
       max_suppression_ratio: Number(summary.maxSr.toFixed(2)),

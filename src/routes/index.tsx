@@ -93,6 +93,34 @@ const MARKER_PRESETS = [
   "Emergence",
 ];
 
+const SEX_OPTIONS = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "other", label: "Other" },
+  { value: "unknown", label: "Not recorded" },
+];
+
+const CLINICAL_FEATURES = [
+  "Sepsis",
+  "Septic shock",
+  "Delirium",
+  "OOHCA",
+  "IHCA",
+  "Hypoxic brain injury",
+  "Dementia",
+  "Traumatic brain injury",
+  "Intracranial haemorrhage",
+  "Stroke",
+  "Known epilepsy",
+  "Status epilepticus",
+  "Liver failure",
+  "Renal failure",
+  "Alcohol / drug withdrawal",
+  "Post-cardiac surgery",
+  "Neuromuscular blockade",
+  "Therapeutic hypothermia",
+];
+
 type MonitorMode = "anaesthesia" | "icu";
 
 const MODES: {
@@ -137,6 +165,10 @@ function Monitor() {
     context: "general_anaesthesia",
     location: "",
     notes: "",
+    ageYears: "",
+    sex: "",
+    admissionDiagnosis: "",
+    clinicalFeatures: [] as string[],
   });
 
   const { latest, summary, status } = monitor;
@@ -820,6 +852,80 @@ function Monitor() {
                     value={meta.location}
                     onChange={(e) => setMeta({ ...meta, location: e.target.value })}
                   />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="age">Age (years)</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    min={0}
+                    max={120}
+                    className="mt-1.5"
+                    placeholder="e.g. 68"
+                    value={meta.ageYears}
+                    onChange={(e) => setMeta({ ...meta, ageYears: e.target.value })}
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Ages of 90 and over are stored as a “90+” band only.
+                  </p>
+                </div>
+                <div>
+                  <Label>Sex</Label>
+                  <Select value={meta.sex} onValueChange={(v) => setMeta({ ...meta, sex: v })}>
+                    <SelectTrigger className="mt-1.5 w-full">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SEX_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="dx">Admission diagnosis</Label>
+                <Input
+                  id="dx"
+                  className="mt-1.5"
+                  placeholder="e.g. community-acquired pneumonia"
+                  value={meta.admissionDiagnosis}
+                  onChange={(e) => setMeta({ ...meta, admissionDiagnosis: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Admission / clinical features</Label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {CLINICAL_FEATURES.map((f) => {
+                    const on = meta.clinicalFeatures.includes(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          setMeta({
+                            ...meta,
+                            clinicalFeatures: on
+                              ? meta.clinicalFeatures.filter((x) => x !== f)
+                              : [...meta.clinicalFeatures, f],
+                          })
+                        }
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                          on
+                            ? "border-signal bg-signal/15 text-signal"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {f}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div>

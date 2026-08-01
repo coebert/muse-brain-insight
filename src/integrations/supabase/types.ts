@@ -113,7 +113,11 @@ export type Database = {
       }
       eeg_sessions: {
         Row: {
+          admission_diagnosis: string | null
+          age_band: string | null
+          age_years: number | null
           case_code: string
+          clinical_features: string[]
           context: string
           created_at: string
           device_name: string | null
@@ -125,12 +129,17 @@ export type Database = {
           mean_suppression_ratio: number
           notes: string | null
           seizure_alerts: number
+          sex: string | null
           started_at: string
           suppression_seconds: number
           user_id: string
         }
         Insert: {
+          admission_diagnosis?: string | null
+          age_band?: string | null
+          age_years?: number | null
           case_code: string
+          clinical_features?: string[]
           context?: string
           created_at?: string
           device_name?: string | null
@@ -142,12 +151,17 @@ export type Database = {
           mean_suppression_ratio?: number
           notes?: string | null
           seizure_alerts?: number
+          sex?: string | null
           started_at?: string
           suppression_seconds?: number
           user_id: string
         }
         Update: {
+          admission_diagnosis?: string | null
+          age_band?: string | null
+          age_years?: number | null
           case_code?: string
+          clinical_features?: string[]
           context?: string
           created_at?: string
           device_name?: string | null
@@ -159,6 +173,7 @@ export type Database = {
           mean_suppression_ratio?: number
           notes?: string | null
           seizure_alerts?: number
+          sex?: string | null
           started_at?: string
           suppression_seconds?: number
           user_id?: string
