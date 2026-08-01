@@ -497,7 +497,6 @@ export class EegAnalyzer {
     }
 
     const confidence: MetricConfidence = {
-      // (composite indices are computed just below, from the same inputs)
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
       seizure: clamp01(
@@ -515,6 +514,17 @@ export class EegAnalyzer {
           (depth.held ? 0.7 : 1),
       ),
     };
+
+    // --- qCON/qNOX-style composite indices ----------------------------------
+    // Shares the depth artefact gate: an epoch good enough for the depth index
+    // is good enough for the composite, and both hold over rejected epochs.
+    const composite = this.compositeEstimator.update({
+      bands,
+      ratios,
+      entropy,
+      suppressionRatio,
+      usable: depthArtifact.usable && !artifact,
+    });
 
     // Log sustained degradation so it is auditable alongside clinical events.
     if (quality.grade === "poor" && this.poorQualityStart === null) {
