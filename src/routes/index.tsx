@@ -590,9 +590,9 @@ function Monitor() {
           </div>
 
           {/* Contemporaneous event marking */}
-          <div className="border-t border-border px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <div className="border-t border-border px-3 py-3 sm:px-4">
+            <div className="-mx-3 flex snap-x items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+              <span className="shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Mark event
               </span>
               {MARKER_PRESETS.map((preset) => (
@@ -601,7 +601,7 @@ function Monitor() {
                   type="button"
                   onClick={() => addMarker(preset)}
                   disabled={!streaming}
-                  className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
+                  className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
                 >
                   {preset}
                 </button>
@@ -612,7 +612,7 @@ function Monitor() {
                 value={markerText}
                 disabled={!streaming}
                 placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
-                className="h-9 max-w-sm"
+                className="h-9 w-full sm:w-auto sm:max-w-sm sm:flex-1"
                 onChange={(e) => setMarkerText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
