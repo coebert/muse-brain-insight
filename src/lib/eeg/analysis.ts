@@ -497,6 +497,7 @@ export class EegAnalyzer {
     }
 
     const confidence: MetricConfidence = {
+      // (composite indices are computed just below, from the same inputs)
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
       seizure: clamp01(
