@@ -109,25 +109,32 @@ const PARAM_KEYS = [
   ["general", "emax"],
   ["general", "x50"],
   ["general", "xwidth"],
+  ["generalLinear", "yLo"],
+  ["generalLinear", "yHi"],
+  ["generalLinear", "xLo"],
+  ["generalLinear", "xHi"],
 ] as const;
 
 function toVector(cal: DepthCalibration): number[] {
-  return PARAM_KEYS.map(([g, p]) => cal[g][p]);
+  return PARAM_KEYS.map(([g, p]) => (cal[g] as Record<string, number>)[p]!);
 }
 
 function fromVector(v: number[]): DepthCalibration {
   const cal: DepthCalibration = {
     sedation: { ...DEFAULT_DEPTH_CALIBRATION.sedation },
     general: { ...DEFAULT_DEPTH_CALIBRATION.general },
+    generalLinear: { ...DEFAULT_DEPTH_CALIBRATION.generalLinear },
   };
   PARAM_KEYS.forEach(([g, p], i) => {
-    cal[g][p] = v[i]!;
+    (cal[g] as Record<string, number>)[p] = v[i]!;
   });
   // Keep the sigmoids well formed.
   cal.sedation.xwidth = Math.max(0.5, cal.sedation.xwidth);
   cal.general.xwidth = Math.max(0.5, cal.general.xwidth);
   cal.sedation.emax = Math.max(1, cal.sedation.emax);
   cal.general.emax = Math.max(1, cal.general.emax);
+  // The linear segment must stay monotone increasing in x.
+  cal.generalLinear.xHi = Math.max(cal.generalLinear.xLo + 1, cal.generalLinear.xHi);
   return cal;
 }
 
@@ -213,7 +220,7 @@ export function fitCalibration(
   regularisation = 0.5,
 ): FitResult {
   const start = toVector(DEFAULT_DEPTH_CALIBRATION);
-  const steps = [8, 8, 3, 1.5, 8, 8, 3, 1.5];
+  const steps = [8, 8, 3, 1.5, 8, 8, 3, 1.5, 8, 8, 4, 2];
   const best = nelderMead((v) => loss(v, samples, regularisation), start, steps);
   const calibration = fromVector(best);
   return {
