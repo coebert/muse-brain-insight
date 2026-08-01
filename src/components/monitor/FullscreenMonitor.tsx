@@ -49,9 +49,9 @@ function BigNumber({
 }: {
   label: string;
   value: string;
-  sub?: string;
+  sub?: string | undefined;
   tone?: string;
-  unit?: string;
+  unit?: string | undefined;
 }) {
   return (
     <div
