@@ -186,6 +186,8 @@ export interface Epoch {
   depth: DepthReading;
   /** Artefact/EMG assessment of the depth preprocessing stage. */
   depthArtifact: DepthArtifactReport;
+  /** qCON/qNOX-style composite consciousness and nociception indices. */
+  composite: CompositeReading;
 }
 
 export interface MetricConfidence {
