@@ -12,7 +12,7 @@ interface Props {
   /** Depth-index preprocessing gate for the latest epoch. */
   depthArtifact?: DepthArtifactReport | null;
   /** Share of the depth spectral window currently rejected (0-1). */
-  depthGatedFraction?: number;
+  depthGatedFraction?: number | undefined;
 }
 
 const gradeClass: Record<SignalQuality["grade"], string> = {
