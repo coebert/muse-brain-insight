@@ -470,6 +470,50 @@ function Monitor() {
           </div>
           <div className="relative h-[320px] bg-[rgb(8,16,34)] md:h-[380px]">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
+            {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
+            {monitor.events
+              .filter(
+                (e) =>
+                  e.kind === "depth_drop" ||
+                  e.kind === "depth_rise" ||
+                  e.kind === "suppression_burden",
+              )
+              .map((e, i) => {
+                const age = monitor.elapsed - e.t;
+                if (age > windowMinutes * 60) return null;
+                const left = (1 - age / (windowMinutes * 60)) * 100;
+                const tone = e.severity === "critical" ? "critical" : "caution";
+                return (
+                  <div
+                    key={`alert-${e.kind}-${e.t}-${i}`}
+                    className="pointer-events-none absolute top-0 bottom-0 z-10"
+                    style={{ left: `${left}%` }}
+                  >
+                    <div
+                      className={cn(
+                        "h-full w-px",
+                        tone === "critical" ? "bg-critical/80" : "bg-caution/80",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "metric-value absolute bottom-1 max-w-[150px] truncate rounded px-1 py-0.5 text-[10px] whitespace-nowrap",
+                        tone === "critical"
+                          ? "bg-critical/20 text-critical"
+                          : "bg-caution/20 text-caution",
+                        left > 65 ? "right-1" : "left-1",
+                      )}
+                    >
+                      {e.kind === "depth_drop"
+                        ? "Depth ↓"
+                        : e.kind === "depth_rise"
+                          ? "Depth ↑"
+                          : "BSR"}{" "}
+                      {formatClock(e.t)}
+                    </span>
+                  </div>
+                );
+              })}
             {/* Clinician markers, positioned by time across the visible window */}
             {markers.map((m, i) => {
               const age = monitor.elapsed - m.t;
