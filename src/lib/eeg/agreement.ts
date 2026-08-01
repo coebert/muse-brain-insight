@@ -124,13 +124,14 @@ export function guessColumns(table: ParsedTable): ColumnGuess {
 
   const pick = (hints: string[], exclude: (number | null)[]) => {
     let bestCol: number | null = null;
+    void bestCol;
     let bestScore = 0;
     headers.forEach((h, c) => {
       if (exclude.includes(c) || !numeric[c]) return;
       const s = score(h, hints);
       if (s > bestScore) {
         bestScore = s;
-        bestCol = c;
+        bestCol = c as number | null;
       }
     });
     return bestCol;
