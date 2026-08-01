@@ -271,7 +271,7 @@ function Calibrate() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="size-5 text-signal" />
             <div>
@@ -297,9 +297,9 @@ function Calibrate() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] space-y-4 px-4 py-4">
-        <div className="panel flex flex-wrap items-end gap-3 px-4 py-3">
-          <div className="min-w-64 space-y-1">
+      <main className="mx-auto max-w-[1400px] space-y-4 px-3 py-4 sm:px-4">
+        <div className="panel flex flex-wrap items-end gap-3 px-3 py-3 sm:px-4">
+          <div className="w-full min-w-0 space-y-1 sm:w-auto sm:min-w-64">
             <Label className="text-xs text-muted-foreground">Session</Label>
             <Select value={sessionId} onValueChange={setSessionId}>
               <SelectTrigger className="h-9">

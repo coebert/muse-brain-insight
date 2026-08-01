@@ -187,10 +187,12 @@ function Compare() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <Activity className="size-5 text-signal" />
-          <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
-          <div className="ml-auto flex gap-2">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
+          <Activity className="size-5 shrink-0 text-signal" />
+          <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
+            CortexTrace
+          </span>
+          <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
             <Button asChild variant="outline" size="sm">
               <Link to="/sessions">Sessions</Link>
             </Button>
@@ -203,15 +205,15 @@ function Compare() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-3 py-6 sm:px-4">
         <h1 className="text-lg font-semibold">Metric comparison</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Overlay the depth index against SEF95, suppression and entropy for one anonymised case,
           then read how tightly they track each other over time.
         </p>
 
-        <div className="panel mt-4 flex flex-wrap items-end gap-4 px-4 py-3">
-          <div className="min-w-64">
+        <div className="panel mt-4 flex flex-wrap items-end gap-4 px-3 py-3 sm:px-4">
+          <div className="w-full min-w-0 sm:w-auto sm:min-w-64">
             <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
               Patient / case
             </label>

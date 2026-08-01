@@ -293,10 +293,12 @@ function Monitor() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Activity className="size-5 text-signal" />
-            <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Activity className="size-5 shrink-0 text-signal" />
+            <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
+              CortexTrace
+            </span>
           </div>
           <span
             className={cn(
@@ -317,7 +319,7 @@ function Monitor() {
           <div
             role="group"
             aria-label="Monitoring mode"
-            className="flex items-center gap-1 rounded-full border border-border p-0.5"
+            className="flex w-full items-center gap-1 rounded-full border border-border p-0.5 sm:w-auto"
           >
             {MODES.map((m) => {
               const Icon = m.icon;
@@ -330,7 +332,7 @@ function Monitor() {
                   title={m.blurb}
                   onClick={() => selectMode(m.key)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none sm:py-1",
                     active
                       ? "bg-signal/15 text-signal"
                       : "text-muted-foreground hover:text-foreground",
@@ -342,13 +344,23 @@ function Monitor() {
             })}
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:justify-end">
             {streaming ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setSaveOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setSaveOpen(true)}
+                >
                   <Save className="size-4" /> Save session
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => void monitor.stop()}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => void monitor.stop()}
+                >
                   <CircleStop className="size-4" /> Stop
                 </Button>
               </>
@@ -356,6 +368,7 @@ function Monitor() {
               <>
                 <Button
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => {
                     setMarkers([]);
                     void monitor.connect("muse");
@@ -366,6 +379,7 @@ function Monitor() {
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => {
                     setMarkers([]);
                     void monitor.connect("simulated");
@@ -392,7 +406,7 @@ function Monitor() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-4">
+      <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 sm:px-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
             {activeMode.label} mode
@@ -433,15 +447,15 @@ function Monitor() {
 
         {/* Density spectral array */}
         <section className="panel overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
             <h1 className="text-sm font-semibold">Density spectral array</h1>
             <DsaLegend />
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
               <Select
                 value={monitor.channel}
                 onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -457,7 +471,7 @@ function Monitor() {
                 value={String(windowMinutes)}
                 onValueChange={(v) => setWindowMinutes(Number(v))}
               >
-                <SelectTrigger className="w-[110px]">
+                <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -469,7 +483,7 @@ function Monitor() {
               </Select>
             </div>
           </div>
-          <div className="relative h-[320px] bg-[rgb(8,16,34)] md:h-[380px]">
+          <div className="relative h-[240px] bg-[rgb(8,16,34)] sm:h-[320px] md:h-[380px]">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
             {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
             {monitor.events
@@ -576,9 +590,12 @@ function Monitor() {
           </div>
 
           {/* Contemporaneous event marking */}
-          <div className="border-t border-border px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <div className="border-t border-border px-3 py-3 sm:px-4">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:hidden">
+              Mark event
+            </p>
+            <div className="-mx-3 flex snap-x items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+              <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:inline">
                 Mark event
               </span>
               {MARKER_PRESETS.map((preset) => (
@@ -587,7 +604,7 @@ function Monitor() {
                   type="button"
                   onClick={() => addMarker(preset)}
                   disabled={!streaming}
-                  className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
+                  className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
                 >
                   {preset}
                 </button>
@@ -598,7 +615,7 @@ function Monitor() {
                 value={markerText}
                 disabled={!streaming}
                 placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
-                className="h-9 max-w-sm"
+                className="h-9 w-full sm:w-auto sm:max-w-sm sm:flex-1"
                 onChange={(e) => setMarkerText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -667,7 +684,7 @@ function Monitor() {
         </section>
 
         {/* Metrics */}
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {(() => {
             const tiles: Record<string, React.ReactNode> = {
               depth: (
@@ -864,12 +881,12 @@ function Monitor() {
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
             <div className="panel overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
                 <h2 className="text-sm font-semibold">Filtered EEG · last 4 s</h2>
                 <span className="metric-value text-[11px] text-muted-foreground">
                   0.5–45 Hz, 50 Hz notch · ±80 µV
                 </span>
-                <div className="ml-auto flex gap-1.5">
+                <div className="flex gap-1.5 sm:ml-auto">
                   {MUSE_CHANNELS.map((c) => (
                     <span
                       key={c}
@@ -894,7 +911,7 @@ function Monitor() {
               </div>
             </div>
 
-            <div className="panel px-4 py-4">
+            <div className="panel px-3 py-4 sm:px-4">
               <h2 className="text-sm font-semibold">Detection thresholds</h2>
               <div className="mt-3">
                 <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
