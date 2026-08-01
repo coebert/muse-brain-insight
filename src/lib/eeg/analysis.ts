@@ -328,7 +328,13 @@ export class EegAnalyzer {
     );
     const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
     const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
-    const depth = this.depthEstimator.update(psd, suppressionRatio, quality.score, artifact);
+    const depth = this.depthEstimator.update(
+      window,
+      this.fs,
+      quality.score,
+      artifact,
+      HOP_SECONDS,
+    );
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),

@@ -612,12 +612,12 @@ function Monitor() {
               depth: (
                 <MetricTile
                   key="depth"
-                  label="Depth index (BIS-like)"
+                  label="Depth index (OpenIBIS)"
                   value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
                   hint={
                     latest
                       ? DEPTH_STATE_LABEL[latest.depth.state]
-                      : "OpenIBIS-style, uncalibrated"
+                      : "OpenIBIS algorithm · ±10 units vs reference"
                   }
                   tone={latest ? depthTone(latest.depth.state) : "default"}
                   confidence={latest?.confidence.depth}
