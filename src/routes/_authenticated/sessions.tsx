@@ -96,10 +96,33 @@ function Sessions() {
                   {CONTEXT_LABELS[s.context ?? "other"] ?? s.context}
                   {s.location ? ` · ${s.location}` : ""}
                 </span>
+                <span className="metric-value text-xs text-muted-foreground">
+                  {[
+                    s.age_years ? `${s.age_years} y` : s.age_band ? `${s.age_band} y` : null,
+                    s.sex && s.sex !== "unknown" ? s.sex : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
                 <span className="ml-auto text-xs text-muted-foreground">
                   {new Date(s.created_at).toLocaleString()}
                 </span>
               </div>
+              {s.admission_diagnosis ? (
+                <p className="mt-2 text-sm">{s.admission_diagnosis}</p>
+              ) : null}
+              {s.clinical_features?.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {s.clinical_features.map((f: string) => (
+                    <span
+                      key={f}
+                      className="rounded-full bg-signal/15 px-2 py-0.5 text-[11px] text-signal"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
                 <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
