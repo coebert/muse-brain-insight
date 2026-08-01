@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type React from "react";
 import { useMemo, useState } from "react";
 import {
   Activity,
   Bluetooth,
   CircleStop,
   FlaskConical,
+  HeartPulse,
+  Stethoscope,
   Save,
   TriangleAlert,
   Undo2,
@@ -90,10 +93,41 @@ const MARKER_PRESETS = [
   "Emergence",
 ];
 
+type MonitorMode = "anaesthesia" | "icu";
+
+const MODES: {
+  key: MonitorMode;
+  label: string;
+  icon: typeof Stethoscope;
+  blurb: string;
+  presetKey: string;
+  context: string;
+}[] = [
+  {
+    key: "anaesthesia",
+    label: "Anaesthesia",
+    icon: Stethoscope,
+    blurb:
+      "Continuous DSA with spectral edge, suppression ratio and suppression time up front. Seizure detection runs conservatively in the background.",
+    presetKey: "anaesthesia",
+    context: "general_anaesthesia",
+  },
+  {
+    key: "icu",
+    label: "ICU",
+    icon: HeartPulse,
+    blurb:
+      "Seizure- and burst-suppression-led: sensitive ictal alerting, longer suppression window, seizure score and suppression burden shown first.",
+    presetKey: "icu",
+    context: "icu_sedation",
+  },
+];
+
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
   const [windowMinutes, setWindowMinutes] = useState(10);
+  const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
@@ -108,6 +142,17 @@ function Monitor() {
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
   const seizureAlert = latest?.seizureAlert ?? false;
+  const icuMode = mode === "icu";
+  const activeMode = MODES.find((m) => m.key === mode)!;
+
+  function selectMode(next: MonitorMode) {
+    setMode(next);
+    const cfg = MODES.find((m) => m.key === next)!;
+    const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    if (preset) monitor.setSettings({ ...preset.settings });
+    setMeta((prev) => ({ ...prev, context: cfg.context }));
+    setWindowMinutes(next === "icu" ? 30 : 10);
+  }
 
   const allEvents = useMemo(
     () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
@@ -189,6 +234,34 @@ function Monitor() {
             </span>
           ) : null}
 
+          <div
+            role="group"
+            aria-label="Monitoring mode"
+            className="flex items-center gap-1 rounded-full border border-border p-0.5"
+          >
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              const active = m.key === mode;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  aria-pressed={active}
+                  title={m.blurb}
+                  onClick={() => selectMode(m.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "bg-signal/15 text-signal"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5" /> {m.label}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {streaming ? (
               <>
@@ -230,6 +303,12 @@ function Monitor() {
       </header>
 
       <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
+            {activeMode.label} mode
+          </span>
+          <span>{activeMode.blurb}</span>
+        </div>
         {monitor.error ? (
           <div className="panel border-critical/60 px-4 py-3 text-sm text-critical">
             {monitor.error}
@@ -237,11 +316,23 @@ function Monitor() {
         ) : null}
 
         {seizureAlert ? (
-          <div className="panel alert-pulse flex items-center gap-3 border-critical px-4 py-3">
-            <TriangleAlert className="size-5 text-critical" />
+          <div
+            className={cn(
+              "panel flex items-center gap-3 px-4 py-3",
+              icuMode ? "alert-pulse border-critical" : "border-caution/60",
+            )}
+          >
+            <TriangleAlert className={cn("size-5", icuMode ? "text-critical" : "text-caution")} />
             <div>
-              <p className="text-sm font-semibold text-critical">
-                Possible seizure activity — review the raw trace
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  icuMode ? "text-critical" : "text-caution",
+                )}
+              >
+                {icuMode
+                  ? "Possible seizure activity — review the raw trace"
+                  : "Rhythmic activity flagged — review when convenient"}
               </p>
               <p className="text-xs text-muted-foreground">
                 Sustained rhythmic discharges detected. Score {latest?.seizureScore.toFixed(2)}.
@@ -443,45 +534,80 @@ function Monitor() {
 
         {/* Metrics */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <MetricTile
-            label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
-            value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
-            unit="%"
-            tone={srTone as never}
-            hint={`Peak ${summary.maxSr.toFixed(0)} %`}
-            confidence={latest?.confidence.suppression}
-          />
-          <MetricTile
-            label="Suppression time"
-            value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
-            unit={summary.suppressionSeconds < 60 ? "s" : "min"}
-            hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
-            tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
-            confidence={latest?.confidence.suppression}
-          />
-          <MetricTile
-            label="Seizure score"
-            value={latest ? latest.seizureScore.toFixed(2) : "—"}
-            tone={seizureAlert ? "critical" : latest && latest.seizureScore > 0.4 ? "caution" : "default"}
-            hint={`${summary.seizureAlerts} event(s) this session`}
-            pulse={seizureAlert}
-            confidence={latest?.confidence.seizure}
-          />
-          <MetricTile
-            label="Spectral edge 95"
-            value={latest ? latest.sef95.toFixed(1) : "—"}
-            unit="Hz"
-            hint="Frequency below which 95 % of power sits"
-            confidence={latest?.confidence.spectral}
-          />
-          <MetricTile
-            label="Amplitude (p-p)"
-            value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
-            unit="µV"
-            hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
-            tone={latest?.artifact ? "caution" : "default"}
-            confidence={latest?.confidence.spectral}
-          />
+          {(() => {
+            const tiles: Record<string, React.ReactNode> = {
+              sr: (
+                <MetricTile
+                  key="sr"
+                  label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
+                  value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
+                  unit="%"
+                  tone={srTone as never}
+                  hint={`Peak ${summary.maxSr.toFixed(0)} %`}
+                  confidence={latest?.confidence.suppression}
+                />
+              ),
+              time: (
+                <MetricTile
+                  key="time"
+                  label="Suppression time"
+                  value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
+                  unit={summary.suppressionSeconds < 60 ? "s" : "min"}
+                  hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
+                  tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
+                  confidence={latest?.confidence.suppression}
+                />
+              ),
+              seizure: (
+                <MetricTile
+                  key="seizure"
+                  label="Seizure score"
+                  value={latest ? latest.seizureScore.toFixed(2) : "—"}
+                  tone={
+                    seizureAlert
+                      ? icuMode
+                        ? "critical"
+                        : "caution"
+                      : latest && latest.seizureScore > 0.4 && icuMode
+                        ? "caution"
+                        : "default"
+                  }
+                  hint={
+                    icuMode
+                      ? `${summary.seizureAlerts} event(s) — high sensitivity`
+                      : `${summary.seizureAlerts} event(s) — background watch`
+                  }
+                  pulse={seizureAlert && icuMode}
+                  confidence={latest?.confidence.seizure}
+                />
+              ),
+              sef: (
+                <MetricTile
+                  key="sef"
+                  label="Spectral edge 95"
+                  value={latest ? latest.sef95.toFixed(1) : "—"}
+                  unit="Hz"
+                  hint="Frequency below which 95 % of power sits"
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+              amp: (
+                <MetricTile
+                  key="amp"
+                  label="Amplitude (p-p)"
+                  value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
+                  unit="µV"
+                  hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
+                  tone={latest?.artifact ? "caution" : "default"}
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+            };
+            const order = icuMode
+              ? ["seizure", "sr", "time", "amp", "sef"]
+              : ["sef", "sr", "time", "amp", "seizure"];
+            return order.map((k) => tiles[k]);
+          })()}
         </section>
 
         <SignalQualityPanel
