@@ -228,6 +228,19 @@ export function buildFeatureDigest(
         fractionBelow40: round(vals.filter((v) => v < 40).length / vals.length),
       };
     })(),
+    compositeIndex: (() => {
+      const c = epochs.map((e) => e.composite.cIndex).filter((v): v is number => v != null);
+      const n = epochs.map((e) => e.composite.nIndex).filter((v): v is number => v != null);
+      return {
+        meanConsciousness: c.length ? round(mean(c), 0) : null,
+        latestConsciousness: c.length ? c[c.length - 1]! : null,
+        meanNociception: n.length ? round(mean(n), 0) : null,
+        latestNociception: n.length ? n[n.length - 1]! : null,
+        fractionNociceptionAbove60: n.length
+          ? round(n.filter((v) => v >= 60).length / n.length)
+          : 0,
+      };
+    })(),
     annotations: events
       .filter((e) => e.kind === "annotation")
       .map((e) => ({ tSeconds: round(e.t, 0), label: e.detail })),
