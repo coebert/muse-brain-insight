@@ -328,12 +328,19 @@ export class EegAnalyzer {
     );
     const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
     const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const depth = this.depthEstimator.update(psd, suppressionRatio, quality.score, artifact);
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
       seizure: clamp01(
         quality.score * (0.3 + 0.7 * baselineMaturity) * (1 - 0.6 * emgPenalty) *
           (isSuppressed ? 0.6 : 1),
+      ),
+      // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
+      // penalises the depth index harder than the plain spectral metrics.
+      depth: clamp01(
+        quality.score * (0.4 + 0.6 * clamp01(this.recentQuality.length / 15)) *
+          (1 - 0.7 * emgPenalty),
       ),
     };
 
@@ -369,6 +376,7 @@ export class EegAnalyzer {
       amplitudeUv: maxP2p,
       quality,
       confidence,
+      depth,
     };
   }
 }
