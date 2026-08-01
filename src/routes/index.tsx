@@ -533,45 +533,80 @@ function Monitor() {
 
         {/* Metrics */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <MetricTile
-            label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
-            value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
-            unit="%"
-            tone={srTone as never}
-            hint={`Peak ${summary.maxSr.toFixed(0)} %`}
-            confidence={latest?.confidence.suppression}
-          />
-          <MetricTile
-            label="Suppression time"
-            value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
-            unit={summary.suppressionSeconds < 60 ? "s" : "min"}
-            hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
-            tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
-            confidence={latest?.confidence.suppression}
-          />
-          <MetricTile
-            label="Seizure score"
-            value={latest ? latest.seizureScore.toFixed(2) : "—"}
-            tone={seizureAlert ? "critical" : latest && latest.seizureScore > 0.4 ? "caution" : "default"}
-            hint={`${summary.seizureAlerts} event(s) this session`}
-            pulse={seizureAlert}
-            confidence={latest?.confidence.seizure}
-          />
-          <MetricTile
-            label="Spectral edge 95"
-            value={latest ? latest.sef95.toFixed(1) : "—"}
-            unit="Hz"
-            hint="Frequency below which 95 % of power sits"
-            confidence={latest?.confidence.spectral}
-          />
-          <MetricTile
-            label="Amplitude (p-p)"
-            value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
-            unit="µV"
-            hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
-            tone={latest?.artifact ? "caution" : "default"}
-            confidence={latest?.confidence.spectral}
-          />
+          {(() => {
+            const tiles: Record<string, JSX.Element> = {
+              sr: (
+                <MetricTile
+                  key="sr"
+                  label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
+                  value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
+                  unit="%"
+                  tone={srTone as never}
+                  hint={`Peak ${summary.maxSr.toFixed(0)} %`}
+                  confidence={latest?.confidence.suppression}
+                />
+              ),
+              time: (
+                <MetricTile
+                  key="time"
+                  label="Suppression time"
+                  value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
+                  unit={summary.suppressionSeconds < 60 ? "s" : "min"}
+                  hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
+                  tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
+                  confidence={latest?.confidence.suppression}
+                />
+              ),
+              seizure: (
+                <MetricTile
+                  key="seizure"
+                  label="Seizure score"
+                  value={latest ? latest.seizureScore.toFixed(2) : "—"}
+                  tone={
+                    seizureAlert
+                      ? icuMode
+                        ? "critical"
+                        : "caution"
+                      : latest && latest.seizureScore > 0.4 && icuMode
+                        ? "caution"
+                        : "default"
+                  }
+                  hint={
+                    icuMode
+                      ? `${summary.seizureAlerts} event(s) — high sensitivity`
+                      : `${summary.seizureAlerts} event(s) — background watch`
+                  }
+                  pulse={seizureAlert && icuMode}
+                  confidence={latest?.confidence.seizure}
+                />
+              ),
+              sef: (
+                <MetricTile
+                  key="sef"
+                  label="Spectral edge 95"
+                  value={latest ? latest.sef95.toFixed(1) : "—"}
+                  unit="Hz"
+                  hint="Frequency below which 95 % of power sits"
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+              amp: (
+                <MetricTile
+                  key="amp"
+                  label="Amplitude (p-p)"
+                  value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
+                  unit="µV"
+                  hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
+                  tone={latest?.artifact ? "caution" : "default"}
+                  confidence={latest?.confidence.spectral}
+                />
+              ),
+            };
+            const order = icuMode
+              ? ["seizure", "sr", "time", "amp", "sef"]
+              : ["sef", "sr", "time", "amp", "seizure"];
+            return order.map((k) => tiles[k]);
+          })()}
         </section>
 
         <SignalQualityPanel
