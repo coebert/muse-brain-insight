@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
+import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS } from "@/lib/eeg/muse";
 import { saveSession } from "@/lib/eeg/save";
@@ -525,7 +526,33 @@ function Monitor() {
 
             <div className="panel px-4 py-4">
               <h2 className="text-sm font-semibold">Detection thresholds</h2>
-              <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <div className="mt-3">
+                <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {DETECTION_PRESETS.map((p) => {
+                    const active = matchPreset(monitor.settings) === p.key;
+                    return (
+                      <Button
+                        key={p.key}
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        title={p.description}
+                        onClick={() => monitor.setSettings({ ...p.settings })}
+                      >
+                        {p.label}
+                      </Button>
+                    );
+                  })}
+                  {matchPreset(monitor.settings) === "custom" && (
+                    <span className="self-center text-xs text-muted-foreground">Custom</span>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {DETECTION_PRESETS.find((p) => p.key === matchPreset(monitor.settings))
+                    ?.description ?? "Manually tuned thresholds."}
+                </p>
+              </div>
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
                 <div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <Label className="text-xs">Suppression amplitude</Label>
@@ -546,6 +573,22 @@ function Monitor() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Suppression ratio window</Label>
+                    <span className="metric-value">{monitor.settings.srWindowSeconds} s</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={30}
+                    max={300}
+                    step={30}
+                    value={[monitor.settings.srWindowSeconds]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, srWindowSeconds: v ?? 60 })
+                    }
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
                     <Label className="text-xs">Seizure alert threshold</Label>
                     <span className="metric-value">
                       {monitor.settings.seizureThreshold.toFixed(2)}
@@ -561,6 +604,25 @@ function Monitor() {
                       monitor.setSettings({ ...monitor.settings, seizureThreshold: v ?? 0.62 })
                     }
                   />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <Label className="text-xs">Alert persistence</Label>
+                    <span className="metric-value">{monitor.settings.seizureEpochs} s</span>
+                  </div>
+                  <Slider
+                    className="mt-3"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={[monitor.settings.seizureEpochs]}
+                    onValueChange={([v]) =>
+                      monitor.setSettings({ ...monitor.settings, seizureEpochs: v ?? 3 })
+                    }
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Consecutive 1 s epochs above threshold before an alert is raised.
+                  </p>
                 </div>
               </div>
             </div>
