@@ -182,6 +182,8 @@ export interface Epoch {
   quality: SignalQuality;
   /** 0–1 confidence in each reported metric, given quality and data maturity. */
   confidence: MetricConfidence;
+  /** Real-time reliability verdict for the depth index (gating for display). */
+  depthReliability: MetricReliability;
   /** OpenIBIS-style depth-of-anaesthesia index (BIS-like, uncalibrated). */
   depth: DepthReading;
   /** Artefact/EMG assessment of the depth preprocessing stage. */
@@ -199,6 +201,15 @@ export interface MetricConfidence {
   spectral: number;
   /** Depth-of-anaesthesia index. */
   depth: number;
+}
+
+export type ReliabilityLevel = "ok" | "degraded" | "unreliable";
+
+/** Whether a metric should be trusted right now, and why not if it shouldn't. */
+export interface MetricReliability {
+  level: ReliabilityLevel;
+  reliable: boolean;
+  reasons: string[];
 }
 
 export interface DetectedEvent {
