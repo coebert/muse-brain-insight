@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
 import { useMemo, useState } from "react";
 import {
@@ -224,6 +225,39 @@ function Monitor() {
       : latest.suppressionRatio >= 10
         ? "caution"
         : "signal";
+
+  const runInterpretation = useServerFn(interpretSession);
+
+  async function handleAnalyse() {
+    if (!user) {
+      toast.error("Sign in to use AI interpretation.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const digest = buildFeatureDigest(
+        monitor.epochs,
+        allEvents,
+        {
+          ageYears: meta.ageYears,
+          sex: meta.sex,
+          admissionDiagnosis: meta.admissionDiagnosis,
+          clinicalFeatures: meta.clinicalFeatures,
+          context: meta.context,
+          notes: meta.notes,
+        },
+        monitor.elapsed,
+        activeMode.label,
+      );
+      const result = await runInterpretation({ data: { digest } });
+      setAiResult(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI analysis failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
