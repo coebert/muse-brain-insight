@@ -8,7 +8,7 @@ interface Props {
   tone?: "default" | "caution" | "critical" | "signal";
   pulse?: boolean;
   /** 0–1 confidence in this metric; renders a small quality bar. */
-  confidence?: number;
+  confidence?: number | undefined;
 }
 
 const toneClass: Record<NonNullable<Props["tone"]>, string> = {
