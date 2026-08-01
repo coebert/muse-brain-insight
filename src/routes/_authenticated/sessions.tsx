@@ -66,6 +66,9 @@ function Sessions() {
             <Button asChild variant="outline" size="sm">
               <Link to="/compare">Compare metrics</Link>
             </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/calibrate">Calibrate depth</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/">
                 <ArrowLeft className="size-4" /> Monitor
