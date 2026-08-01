@@ -300,7 +300,12 @@ function Monitor() {
                   style={{ left: `${left}%` }}
                 >
                   <div className="h-full w-px bg-marker/80" />
-                  <span className="metric-value absolute top-1 left-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-[10px] whitespace-nowrap text-marker">
+                  <span
+                    className={cn(
+                      "metric-value absolute top-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-[10px] whitespace-nowrap text-marker",
+                      left > 65 ? "right-1" : "left-1",
+                    )}
+                  >
                     {m.detail}
                   </span>
                 </div>
