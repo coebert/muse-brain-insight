@@ -293,10 +293,12 @@ function Monitor() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Activity className="size-5 text-signal" />
-            <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Activity className="size-5 shrink-0 text-signal" />
+            <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
+              CortexTrace
+            </span>
           </div>
           <span
             className={cn(
@@ -317,7 +319,7 @@ function Monitor() {
           <div
             role="group"
             aria-label="Monitoring mode"
-            className="flex items-center gap-1 rounded-full border border-border p-0.5"
+            className="flex w-full items-center gap-1 rounded-full border border-border p-0.5 sm:w-auto"
           >
             {MODES.map((m) => {
               const Icon = m.icon;
@@ -330,7 +332,7 @@ function Monitor() {
                   title={m.blurb}
                   onClick={() => selectMode(m.key)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none sm:py-1",
                     active
                       ? "bg-signal/15 text-signal"
                       : "text-muted-foreground hover:text-foreground",
@@ -342,13 +344,23 @@ function Monitor() {
             })}
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:justify-end">
             {streaming ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => setSaveOpen(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setSaveOpen(true)}
+                >
                   <Save className="size-4" /> Save session
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => void monitor.stop()}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => void monitor.stop()}
+                >
                   <CircleStop className="size-4" /> Stop
                 </Button>
               </>
@@ -356,6 +368,7 @@ function Monitor() {
               <>
                 <Button
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => {
                     setMarkers([]);
                     void monitor.connect("muse");
@@ -366,6 +379,7 @@ function Monitor() {
                 <Button
                   variant="secondary"
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   onClick={() => {
                     setMarkers([]);
                     void monitor.connect("simulated");
@@ -392,7 +406,7 @@ function Monitor() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-4">
+      <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 sm:px-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
             {activeMode.label} mode
