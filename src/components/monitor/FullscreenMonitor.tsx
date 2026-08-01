@@ -46,22 +46,38 @@ function BigNumber({
   sub,
   tone = "default",
   unit,
+  unreliable,
 }: {
   label: string;
   value: string;
   sub?: string | undefined;
   tone?: string;
   unit?: string | undefined;
+  unreliable?: boolean | undefined;
 }) {
   return (
     <div
       className={cn(
         "flex min-w-0 flex-col justify-center rounded-lg border bg-[rgb(8,16,34)] px-3 py-2",
         toneBorder[tone],
+        unreliable && "border-dashed border-muted-foreground/50",
       )}
     >
-      <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
-      <p className={cn("metric-value leading-none", toneText[tone])}>
+      <p className="flex items-center gap-1.5 text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+        {label}
+        {unreliable ? (
+          <span className="rounded-sm bg-critical/15 px-1 py-px text-[9px] tracking-normal text-critical">
+            unreliable
+          </span>
+        ) : null}
+      </p>
+      <p
+        className={cn(
+          "metric-value leading-none",
+          toneText[tone],
+          unreliable && "text-muted-foreground opacity-60",
+        )}
+      >
         <span className="text-[clamp(1.6rem,5.5vmin,3rem)]">{value}</span>
         {unit ? <span className="ml-1 text-sm text-muted-foreground">{unit}</span> : null}
       </p>
@@ -263,6 +279,7 @@ export function FullscreenMonitor({
                   : "Awaiting data"
               }
               tone={dTone}
+              unreliable={latest ? !latest.depthReliability.reliable : false}
             />
           </div>
           <BigNumber

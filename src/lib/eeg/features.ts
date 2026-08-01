@@ -66,6 +66,18 @@ export interface FeatureDigest {
     max: number | null;
     latest: number | null;
     fractionBelow40: number;
+    /** Fraction of epochs where the depth index was trustworthy (0-1). */
+    reliableFraction: number;
+    /** Mean 0-1 confidence in the depth index across the session. */
+    meanConfidence: number;
+    /** Mean of the depth index restricted to reliable epochs. */
+    meanWhenReliable: number | null;
+    /** Latest depth index from a reliable epoch. */
+    latestReliable: number | null;
+    /** Whether the most recent epoch's depth index was reliable. */
+    latestIsReliable: boolean;
+    /** Most common reasons the depth index was gated, with counts. */
+    topGatingReasons: { reason: string; epochs: number }[];
   };
   /** qCON/qNOX-style composite indices (transparent re-implementation). */
   compositeIndex: {
@@ -217,8 +229,35 @@ export function buildFeatureDigest(
       const vals = epochs
         .map((e) => e.depth.index)
         .filter((v): v is number => v != null);
+      const reliableEpochs = epochs.filter((e) => e.depthReliability.reliable);
+      const reliableVals = reliableEpochs
+        .map((e) => e.depth.index)
+        .filter((v): v is number => v != null);
+      const reasonCounts = new Map<string, number>();
+      for (const e of epochs) {
+        if (e.depthReliability.reliable) continue;
+        for (const r of e.depthReliability.reasons) {
+          // Strip epoch-specific numbers so reasons aggregate.
+          const key = r.replace(/\d+(\.\d+)?/g, "N");
+          reasonCounts.set(key, (reasonCounts.get(key) ?? 0) + 1);
+        }
+      }
+      const topGatingReasons = [...reasonCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([reason, count]) => ({ reason, epochs: count }));
+      const reliability = {
+        reliableFraction: round(epochs.length ? reliableEpochs.length / epochs.length : 0),
+        meanConfidence: round(mean(epochs.map((e) => e.confidence.depth))),
+        meanWhenReliable: reliableVals.length ? round(mean(reliableVals), 0) : null,
+        latestReliable: reliableVals.length ? reliableVals[reliableVals.length - 1]! : null,
+        latestIsReliable: epochs.length
+          ? epochs[epochs.length - 1]!.depthReliability.reliable
+          : false,
+        topGatingReasons,
+      };
       if (!vals.length) {
-        return { mean: null, min: null, max: null, latest: null, fractionBelow40: 0 };
+        return { mean: null, min: null, max: null, latest: null, fractionBelow40: 0, ...reliability };
       }
       return {
         mean: round(mean(vals), 0),
@@ -226,6 +265,7 @@ export function buildFeatureDigest(
         max: Math.max(...vals),
         latest: vals[vals.length - 1]!,
         fractionBelow40: round(vals.filter((v) => v < 40).length / vals.length),
+        ...reliability,
       };
     })(),
     compositeIndex: (() => {

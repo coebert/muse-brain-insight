@@ -735,6 +735,9 @@ function Monitor() {
                   }
                   tone={latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"}
                   confidence={latest?.confidence.depth}
+                  unreliable={latest ? !latest.depthReliability.reliable : false}
+                  degraded={latest?.depthReliability.level === "degraded"}
+                  reliabilityReasons={latest?.depthReliability.reasons}
                 />
               ),
               sr: (

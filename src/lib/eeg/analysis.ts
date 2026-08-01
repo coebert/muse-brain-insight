@@ -182,6 +182,8 @@ export interface Epoch {
   quality: SignalQuality;
   /** 0–1 confidence in each reported metric, given quality and data maturity. */
   confidence: MetricConfidence;
+  /** Real-time reliability verdict for the depth index (gating for display). */
+  depthReliability: MetricReliability;
   /** OpenIBIS-style depth-of-anaesthesia index (BIS-like, uncalibrated). */
   depth: DepthReading;
   /** Artefact/EMG assessment of the depth preprocessing stage. */
@@ -199,6 +201,15 @@ export interface MetricConfidence {
   spectral: number;
   /** Depth-of-anaesthesia index. */
   depth: number;
+}
+
+export type ReliabilityLevel = "ok" | "degraded" | "unreliable";
+
+/** Whether a metric should be trusted right now, and why not if it shouldn't. */
+export interface MetricReliability {
+  level: ReliabilityLevel;
+  reliable: boolean;
+  reasons: string[];
 }
 
 export interface DetectedEvent {
@@ -516,6 +527,41 @@ export class EegAnalyzer {
     };
 
     // --- qCON/qNOX-style composite indices ----------------------------------
+    // --- depth reliability gating -------------------------------------------
+    // The depth index is the most artefact-sensitive metric on this montage, so
+    // it gets an explicit verdict rather than only a confidence bar.
+    const depthReasons: string[] = [];
+    if (depth.index == null) depthReasons.push("warming up — not enough clean EEG yet");
+    if (quality.grade === "poor") depthReasons.push("poor electrode signal");
+    if (artifact) depthReasons.push("amplitude outside physiological range");
+    if (emgPenalty > 0.5) depthReasons.push("EMG contamination of the 30–47 Hz band");
+    if (depth.gatedFraction > 0.3) {
+      depthReasons.push(
+        `${(depth.gatedFraction * 100).toFixed(0)} % of the depth window artefact-gated`,
+      );
+    }
+    if (depth.held) {
+      depthReasons.push(
+        `holding last clean value for ${depth.heldSeconds.toFixed(0)} s — ${
+          depth.gateReasons[0] ?? "epoch rejected"
+        }`,
+      );
+    }
+    const depthLevel: ReliabilityLevel =
+      depth.index == null ||
+      confidence.depth < 0.35 ||
+      (depth.held && depth.heldSeconds >= 10) ||
+      quality.grade === "poor"
+        ? "unreliable"
+        : confidence.depth < 0.6 || depthReasons.length > 0
+          ? "degraded"
+          : "ok";
+    const depthReliability: MetricReliability = {
+      level: depthLevel,
+      reliable: depthLevel !== "unreliable",
+      reasons: depthReasons,
+    };
+
     // Shares the depth artefact gate: an epoch good enough for the depth index
     // is good enough for the composite, and both hold over rejected epochs.
     const composite = this.compositeEstimator.update({
@@ -561,6 +607,7 @@ export class EegAnalyzer {
       quality,
       confidence,
       depth,
+      depthReliability,
       depthArtifact,
       composite,
     };
