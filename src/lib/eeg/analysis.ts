@@ -12,10 +12,12 @@ import {
 import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
+import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 
 export type { SignalQuality } from "./dsp";
 export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
+export type { CompositeReading } from "./composite";
 
 export const EPOCH_SECONDS = 4;
 export const HOP_SECONDS = 1;
