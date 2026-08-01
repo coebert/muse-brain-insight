@@ -18,8 +18,10 @@ export type Database = {
         Row: {
           bands: Json
           created_at: string
+          entropy: Json | null
           id: number
           is_suppressed: boolean
+          power_ratios: Json | null
           seizure_score: number
           session_id: string
           spectral_edge_95: number
@@ -32,8 +34,10 @@ export type Database = {
         Insert: {
           bands?: Json
           created_at?: string
+          entropy?: Json | null
           id?: number
           is_suppressed?: boolean
+          power_ratios?: Json | null
           seizure_score?: number
           session_id: string
           spectral_edge_95?: number
@@ -46,8 +50,10 @@ export type Database = {
         Update: {
           bands?: Json
           created_at?: string
+          entropy?: Json | null
           id?: number
           is_suppressed?: boolean
+          power_ratios?: Json | null
           seizure_score?: number
           session_id?: string
           spectral_edge_95?: number
