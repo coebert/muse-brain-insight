@@ -31,6 +31,16 @@ export interface AnalysisSettings {
   seizureThreshold: number;
   /** Consecutive epochs above threshold required before alerting. */
   seizureEpochs: number;
+  /** Fall in depth index over the trend window that raises an alert. */
+  depthDropUnits: number;
+  /** Rise in depth index over the trend window that raises an alert. */
+  depthRiseUnits: number;
+  /** Trend window, seconds, over which depth-index change is measured. */
+  depthTrendSeconds: number;
+  /** Suppression ratio, %, at which a burst-suppression burden alert fires. */
+  bsrAlertPercent: number;
+  /** Further rise in suppression ratio, %, that counts as worsening. */
+  bsrWorseningPercent: number;
 }
 
 export const DEFAULT_SETTINGS: AnalysisSettings = {
@@ -38,6 +48,11 @@ export const DEFAULT_SETTINGS: AnalysisSettings = {
   srWindowSeconds: 60,
   seizureThreshold: 0.62,
   seizureEpochs: 3,
+  depthDropUnits: 15,
+  depthRiseUnits: 15,
+  depthTrendSeconds: 60,
+  bsrAlertPercent: 10,
+  bsrWorseningPercent: 10,
 };
 
 export type DetectionPresetKey = "anaesthesia" | "icu" | "icu_high_sensitivity" | "custom";
@@ -63,6 +78,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 60,
       seizureThreshold: 0.62,
       seizureEpochs: 3,
+      depthDropUnits: 15,
+      depthRiseUnits: 15,
+      depthTrendSeconds: 60,
+      bsrAlertPercent: 10,
+      bsrWorseningPercent: 10,
     },
   },
   {
@@ -74,6 +94,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 120,
       seizureThreshold: 0.55,
       seizureEpochs: 5,
+      depthDropUnits: 20,
+      depthRiseUnits: 20,
+      depthTrendSeconds: 120,
+      bsrAlertPercent: 5,
+      bsrWorseningPercent: 10,
     },
   },
   {
@@ -85,6 +110,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 120,
       seizureThreshold: 0.42,
       seizureEpochs: 2,
+      depthDropUnits: 15,
+      depthRiseUnits: 15,
+      depthTrendSeconds: 90,
+      bsrAlertPercent: 3,
+      bsrWorseningPercent: 5,
     },
   },
 ];
@@ -95,7 +125,12 @@ export function matchPreset(settings: AnalysisSettings): DetectionPresetKey {
       p.settings.suppressionThresholdUv === settings.suppressionThresholdUv &&
       p.settings.srWindowSeconds === settings.srWindowSeconds &&
       Math.abs(p.settings.seizureThreshold - settings.seizureThreshold) < 1e-6 &&
-      p.settings.seizureEpochs === settings.seizureEpochs,
+      p.settings.seizureEpochs === settings.seizureEpochs &&
+      p.settings.depthDropUnits === settings.depthDropUnits &&
+      p.settings.depthRiseUnits === settings.depthRiseUnits &&
+      p.settings.depthTrendSeconds === settings.depthTrendSeconds &&
+      p.settings.bsrAlertPercent === settings.bsrAlertPercent &&
+      p.settings.bsrWorseningPercent === settings.bsrWorseningPercent,
   );
   return hit?.key ?? "custom";
 }
@@ -163,7 +198,15 @@ export interface MetricConfidence {
 }
 
 export interface DetectedEvent {
-  kind: "burst_suppression" | "seizure" | "isoelectric" | "annotation" | "signal_quality";
+  kind:
+    | "burst_suppression"
+    | "seizure"
+    | "isoelectric"
+    | "annotation"
+    | "signal_quality"
+    | "depth_drop"
+    | "depth_rise"
+    | "suppression_burden";
   severity: "info" | "warning" | "critical";
   t: number;
   duration: number;
@@ -195,6 +238,10 @@ export class EegAnalyzer {
   private activeSeizureStart: number | null = null;
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
+  private depthHistory: { t: number; value: number }[] = [];
+  private lastDepthAlertT = -Infinity;
+  private bsrAlerted = false;
+  private lastBsrAlertValue = 0;
   private depthEstimator = new DepthIndexEstimator();
   private depthGate = new DepthArtifactGate();
 
@@ -219,6 +266,10 @@ export class EegAnalyzer {
     this.activeSeizureStart = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
+    this.depthHistory = [];
+    this.lastDepthAlertT = -Infinity;
+    this.bsrAlerted = false;
+    this.lastBsrAlertValue = 0;
     this.depthEstimator.reset();
     this.depthGate.reset();
     this.suppressionSeconds = 0;
@@ -307,6 +358,39 @@ export class EegAnalyzer {
       this.activeSuppressionStart = null;
     }
 
+    // --- burst-suppression burden alerts -----------------------------------
+    // Fires once on crossing the configured suppression ratio, then again each
+    // time the burden worsens by a further step.
+    if (!artifact) {
+      if (!this.bsrAlerted && suppressionRatio >= this.settings.bsrAlertPercent) {
+        this.bsrAlerted = true;
+        this.lastBsrAlertValue = suppressionRatio;
+        this.events.push({
+          kind: "suppression_burden",
+          severity: suppressionRatio >= 40 ? "critical" : "warning",
+          t,
+          duration: 0,
+          detail: `New burst suppression — SR ${suppressionRatio.toFixed(0)} % over ${this.settings.srWindowSeconds} s`,
+        });
+      } else if (
+        this.bsrAlerted &&
+        suppressionRatio >= this.lastBsrAlertValue + this.settings.bsrWorseningPercent
+      ) {
+        const from = this.lastBsrAlertValue;
+        this.lastBsrAlertValue = suppressionRatio;
+        this.events.push({
+          kind: "suppression_burden",
+          severity: suppressionRatio >= 40 ? "critical" : "warning",
+          t,
+          duration: 0,
+          detail: `Worsening burst suppression — SR ${from.toFixed(0)} % → ${suppressionRatio.toFixed(0)} %`,
+        });
+      } else if (this.bsrAlerted && suppressionRatio < this.settings.bsrAlertPercent * 0.5) {
+        this.bsrAlerted = false;
+        this.lastBsrAlertValue = 0;
+      }
+    }
+
     // --- seizure likelihood -------------------------------------------------
     const ll = lineLength(window);
     const baseline = median(this.lineLengthBaseline) || ll;
@@ -369,6 +453,43 @@ export class EegAnalyzer {
       { usable: depthArtifact.usable && !artifact, reasons: depthArtifact.reasons },
       HOP_SECONDS,
     );
+
+    // --- depth index change alerts ------------------------------------------
+    // Only trend on ungated values so the artefact "hold" does not read as a
+    // real change; a cooldown of one trend window prevents alert storms.
+    if (!depth.held && typeof depth.index === "number" && Number.isFinite(depth.index)) {
+      this.depthHistory.push({ t, value: depth.index });
+    }
+    const depthCutoff = t - this.settings.depthTrendSeconds;
+    while (this.depthHistory.length && this.depthHistory[0]!.t < depthCutoff) {
+      this.depthHistory.shift();
+    }
+    if (this.depthHistory.length >= 2 && t - this.lastDepthAlertT >= this.settings.depthTrendSeconds) {
+      const first = this.depthHistory[0]!;
+      const last = this.depthHistory[this.depthHistory.length - 1]!;
+      const change = last.value - first.value;
+      const span = Math.max(1, last.t - first.t);
+      if (change <= -this.settings.depthDropUnits) {
+        this.lastDepthAlertT = t;
+        this.events.push({
+          kind: "depth_drop",
+          severity: last.value <= 30 ? "critical" : "warning",
+          t,
+          duration: span,
+          detail: `Depth index fell ${Math.abs(change).toFixed(0)} units in ${span.toFixed(0)} s (${first.value.toFixed(0)} → ${last.value.toFixed(0)}) — deepening`,
+        });
+      } else if (change >= this.settings.depthRiseUnits) {
+        this.lastDepthAlertT = t;
+        this.events.push({
+          kind: "depth_rise",
+          severity: last.value >= 80 ? "critical" : "warning",
+          t,
+          duration: span,
+          detail: `Depth index rose ${change.toFixed(0)} units in ${span.toFixed(0)} s (${first.value.toFixed(0)} → ${last.value.toFixed(0)}) — lightening`,
+        });
+      }
+    }
+
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
