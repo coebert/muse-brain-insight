@@ -10,7 +10,7 @@ import {
   type SignalQuality,
 } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
-import { preprocessForDepth, type DepthArtifactReport } from "./artifact";
+import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 
 export type { SignalQuality } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
@@ -180,6 +180,7 @@ export class EegAnalyzer {
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
   private depthEstimator = new DepthIndexEstimator();
+  private depthGate = new DepthArtifactGate();
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -203,6 +204,7 @@ export class EegAnalyzer {
     this.poorQualityStart = null;
     this.recentQuality = [];
     this.depthEstimator.reset();
+    this.depthGate.reset();
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
@@ -334,7 +336,7 @@ export class EegAnalyzer {
     const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
     // Depth-specific preprocessing: repair bounded ocular/movement transients,
     // reject EMG-, spike- and saturation-contaminated epochs outright.
-    const prep = preprocessForDepth(window, psd, this.fs, quality.score);
+    const prep = this.depthGate.evaluate(window, psd, this.fs, quality.score);
     const depthArtifact = prep.report;
     const depth = this.depthEstimator.update(
       prep.signal,
