@@ -59,10 +59,12 @@ function Sessions() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <Activity className="size-5 text-signal" />
-          <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
-          <div className="ml-auto flex gap-2">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
+          <Activity className="size-5 shrink-0 text-signal" />
+          <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
+            CortexTrace
+          </span>
+          <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
             <Button asChild variant="outline" size="sm">
               <Link to="/compare">Compare metrics</Link>
             </Button>
@@ -81,7 +83,7 @@ function Sessions() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-3 py-6 sm:px-4">
         <h1 className="text-lg font-semibold">Saved sessions</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Anonymised records only — identified by the case code you entered at save time.
