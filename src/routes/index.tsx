@@ -302,6 +302,12 @@ function Monitor() {
       </header>
 
       <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-4">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
+            {activeMode.label} mode
+          </span>
+          <span>{activeMode.blurb}</span>
+        </div>
         {monitor.error ? (
           <div className="panel border-critical/60 px-4 py-3 text-sm text-critical">
             {monitor.error}
@@ -309,11 +315,23 @@ function Monitor() {
         ) : null}
 
         {seizureAlert ? (
-          <div className="panel alert-pulse flex items-center gap-3 border-critical px-4 py-3">
-            <TriangleAlert className="size-5 text-critical" />
+          <div
+            className={cn(
+              "panel flex items-center gap-3 px-4 py-3",
+              icuMode ? "alert-pulse border-critical" : "border-caution/60",
+            )}
+          >
+            <TriangleAlert className={cn("size-5", icuMode ? "text-critical" : "text-caution")} />
             <div>
-              <p className="text-sm font-semibold text-critical">
-                Possible seizure activity — review the raw trace
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  icuMode ? "text-critical" : "text-caution",
+                )}
+              >
+                {icuMode
+                  ? "Possible seizure activity — review the raw trace"
+                  : "Rhythmic activity flagged — review when convenient"}
               </p>
               <p className="text-xs text-muted-foreground">
                 Sustained rhythmic discharges detected. Score {latest?.seizureScore.toFixed(2)}.
