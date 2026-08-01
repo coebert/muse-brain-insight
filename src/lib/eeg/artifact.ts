@@ -107,6 +107,11 @@ export function ecgLikeness(data: Float64Array, fs: number): number {
   const peak = Math.max(...d);
   const crest = mean > 0 ? peak / mean : 0;
   if (crest < 6) return 0;
+  // ...and a sparse one: a spike train spends almost none of its time near the
+  // peak, whereas rhythmic EEG (and its harmonics) spends a lot.
+  let near = 0;
+  for (let i = 0; i < d.length; i++) if (d[i]! > 0.5 * peak) near++;
+  if (near / d.length > 0.02) return 0;
 
   const minLag = Math.floor(fs / 2.5);
   const maxLag = Math.floor(fs / 0.7);
