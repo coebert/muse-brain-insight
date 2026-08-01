@@ -248,6 +248,7 @@ export class EegAnalyzer {
   private lastBsrAlertValue = 0;
   private depthEstimator = new DepthIndexEstimator();
   private depthGate = new DepthArtifactGate();
+  private compositeEstimator = new CompositeIndexEstimator();
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -276,6 +277,7 @@ export class EegAnalyzer {
     this.lastBsrAlertValue = 0;
     this.depthEstimator.reset();
     this.depthGate.reset();
+    this.compositeEstimator.reset();
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
@@ -549,6 +551,7 @@ export class EegAnalyzer {
       confidence,
       depth,
       depthArtifact,
+      composite,
     };
   }
 }
