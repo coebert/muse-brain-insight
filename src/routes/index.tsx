@@ -137,6 +137,10 @@ function Monitor() {
     context: "general_anaesthesia",
     location: "",
     notes: "",
+    ageYears: "",
+    sex: "",
+    admissionDiagnosis: "",
+    clinicalFeatures: [] as string[],
   });
 
   const { latest, summary, status } = monitor;
