@@ -342,6 +342,96 @@ function Monitor() {
               );
             })()}
           </div>
+
+          {/* Contemporaneous event marking */}
+          <div className="border-t border-border px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Mark event
+              </span>
+              {MARKER_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => addMarker(preset)}
+                  disabled={!streaming}
+                  className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Input
+                value={markerText}
+                disabled={!streaming}
+                placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
+                className="h-9 max-w-sm"
+                onChange={(e) => setMarkerText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addMarker(markerText);
+                    setMarkerText("");
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!streaming || !markerText.trim()}
+                onClick={() => {
+                  addMarker(markerText);
+                  setMarkerText("");
+                }}
+              >
+                Mark now
+              </Button>
+              {markers.length ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMarkers((prev) => prev.slice(0, -1))}
+                  >
+                    <Undo2 className="size-4" /> Undo last
+                  </Button>
+                  <span className="metric-value text-[11px] text-muted-foreground">
+                    {markers.length} marker{markers.length === 1 ? "" : "s"} this session
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">
+                  Markers are timestamped against the running clock and saved with the session.
+                </span>
+              )}
+            </div>
+            {markers.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {[...markers]
+                  .reverse()
+                  .slice(0, 8)
+                  .map((m, i) => (
+                    <span
+                      key={`${m.t}-${i}`}
+                      className="flex items-center gap-1.5 rounded-full bg-marker/15 px-2 py-1 text-xs text-marker"
+                    >
+                      <span className="metric-value text-[11px] opacity-80">
+                        {formatClock(m.t)}
+                      </span>
+                      {m.detail}
+                      <button
+                        type="button"
+                        aria-label={`Remove marker ${m.detail}`}
+                        onClick={() => setMarkers((prev) => prev.filter((x) => x !== m))}
+                        className="opacity-70 hover:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         {/* Metrics */}
