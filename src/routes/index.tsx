@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
 import { useMemo, useState } from "react";
 import {
@@ -17,6 +18,9 @@ import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { EventLog } from "@/components/monitor/EventLog";
+import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
+import { buildFeatureDigest } from "@/lib/eeg/features";
+import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
@@ -160,6 +164,9 @@ function Monitor() {
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   const [markerText, setMarkerText] = useState("");
+  const [aiResult, setAiResult] = useState<Interpretation | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [meta, setMeta] = useState({
     caseCode: "",
     context: "general_anaesthesia",
@@ -218,6 +225,39 @@ function Monitor() {
       : latest.suppressionRatio >= 10
         ? "caution"
         : "signal";
+
+  const runInterpretation = useServerFn(interpretSession);
+
+  async function handleAnalyse() {
+    if (!user) {
+      toast.error("Sign in to use AI interpretation.");
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const digest = buildFeatureDigest(
+        monitor.epochs,
+        allEvents,
+        {
+          ageYears: meta.ageYears,
+          sex: meta.sex,
+          admissionDiagnosis: meta.admissionDiagnosis,
+          clinicalFeatures: meta.clinicalFeatures,
+          context: meta.context,
+          notes: meta.notes,
+        },
+        monitor.elapsed,
+        activeMode.label,
+      );
+      const result = await runInterpretation({ data: { digest } });
+      setAiResult(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI analysis failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
@@ -647,6 +687,14 @@ function Monitor() {
           channels={MUSE_CHANNELS}
           channelQuality={monitor.channelQuality}
           usableFraction={summary.usableFraction}
+        />
+
+        <AiInsightPanel
+          result={aiResult}
+          loading={aiLoading}
+          error={aiError}
+          epochCount={monitor.epochs.length}
+          onRun={handleAnalyse}
         />
 
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
