@@ -1,0 +1,1 @@
+ALTER TABLE public.eeg_epochs ADD COLUMN IF NOT EXISTS depth_index numeric, ADD COLUMN IF NOT EXISTS depth_state text;
