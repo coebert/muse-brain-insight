@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Activity, Bluetooth, CircleStop, FlaskConical, Save, TriangleAlert } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Activity,
+  Bluetooth,
+  CircleStop,
+  FlaskConical,
+  Save,
+  TriangleAlert,
+  Undo2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
@@ -29,6 +38,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
+import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS } from "@/lib/eeg/muse";
 import { saveSession } from "@/lib/eeg/save";
@@ -63,12 +73,29 @@ const CONTEXTS = [
   { value: "other", label: "Other" },
 ];
 
+const MARKER_PRESETS = [
+  "Induction",
+  "Propofol bolus",
+  "Ketamine bolus",
+  "Rocuronium bolus",
+  "Opioid bolus",
+  "Vasopressor bolus",
+  "Laryngoscopy",
+  "Surgical incision",
+  "Facial twitching noted",
+  "Movement / artefact",
+  "Sedation hold",
+  "Emergence",
+];
+
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [markers, setMarkers] = useState<DetectedEvent[]>([]);
+  const [markerText, setMarkerText] = useState("");
   const [meta, setMeta] = useState({
     caseCode: "",
     context: "general_anaesthesia",
@@ -79,6 +106,31 @@ function Monitor() {
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
   const seizureAlert = latest?.seizureAlert ?? false;
+
+  const allEvents = useMemo(
+    () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
+    [monitor.events, markers],
+  );
+
+  function addMarker(label: string) {
+    const text = label.trim();
+    if (!text) return;
+    if (!streaming) {
+      toast.error("Start monitoring before marking events.");
+      return;
+    }
+    setMarkers((prev) => [
+      ...prev,
+      {
+        kind: "annotation",
+        severity: "info",
+        t: monitor.elapsed,
+        duration: 0,
+        detail: text,
+      },
+    ]);
+    toast.success(`${text} marked at ${formatClock(monitor.elapsed)}`);
+  }
 
   const srTone = !latest
     ? "default"
@@ -98,7 +150,7 @@ function Monitor() {
       await saveSession(
         { ...meta, deviceName: monitor.sourceName },
         monitor.epochs,
-        monitor.events,
+        allEvents,
         summary,
         monitor.elapsed,
       );
