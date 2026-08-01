@@ -86,6 +86,8 @@ export async function saveSession(
     seizure_score: Number(e.seizureScore.toFixed(3)),
     total_power: Number(e.totalPower.toFixed(3)),
     spectral_edge_95: Number(e.sef95.toFixed(2)),
+    depth_index: e.depth.index === null ? null : Number(e.depth.index.toFixed(1)),
+    depth_state: e.depth.state,
     bands: { ...e.bands } as Record<string, number>,
     entropy: {
       shannon: Number(e.entropy.shannon.toFixed(3)),

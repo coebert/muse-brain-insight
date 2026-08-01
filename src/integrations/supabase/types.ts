@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           bands: Json
           created_at: string
+          depth_index: number | null
+          depth_state: string | null
           entropy: Json | null
           id: number
           is_suppressed: boolean
@@ -34,6 +36,8 @@ export type Database = {
         Insert: {
           bands?: Json
           created_at?: string
+          depth_index?: number | null
+          depth_state?: string | null
           entropy?: Json | null
           id?: number
           is_suppressed?: boolean
@@ -50,6 +54,8 @@ export type Database = {
         Update: {
           bands?: Json
           created_at?: string
+          depth_index?: number | null
+          depth_state?: string | null
           entropy?: Json | null
           id?: number
           is_suppressed?: boolean
