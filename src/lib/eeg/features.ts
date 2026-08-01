@@ -44,6 +44,15 @@ export interface FeatureDigest {
     meanTotalPowerDb: number;
     alphaDeltaRatio: number;
     spectralVariability: number;
+    /** Mean normalised Shannon entropy variants of the PSD (0-1). */
+    meanStateEntropy: number;
+    meanResponseEntropy: number;
+    meanSe95Entropy: number;
+    entropyTrendPerHour: number;
+    /** Mean power ratios. */
+    meanDeltaAlphaRatio: number;
+    meanBetaAlphaRatio: number;
+    meanThetaAlphaRatio: number;
   };
   quality: {
     meanScore: number;
