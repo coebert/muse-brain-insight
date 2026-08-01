@@ -293,7 +293,7 @@ function Monitor() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3 short:gap-y-1 short:py-1.5!">
           <div className="flex min-w-0 items-center gap-2">
             <Activity className="size-5 shrink-0 text-signal" />
             <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
@@ -407,7 +407,7 @@ function Monitor() {
       </header>
 
       <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 sm:px-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground short:hidden">
           <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
             {activeMode.label} mode
           </span>
@@ -483,7 +483,7 @@ function Monitor() {
               </Select>
             </div>
           </div>
-          <div className="relative h-[240px] bg-[rgb(8,16,34)] sm:h-[320px] md:h-[380px]">
+          <div className="relative h-[240px] bg-[rgb(8,16,34)] sm:h-[320px] md:h-[380px] short:h-[200px]!">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
             {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
             {monitor.events
