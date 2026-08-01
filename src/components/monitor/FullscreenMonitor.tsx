@@ -88,9 +88,13 @@ export function FullscreenMonitor({
   // Enter the browser's fullscreen mode where allowed, and mirror Esc/F11 exits.
   useEffect(() => {
     const el = document.documentElement;
+    let wasFullscreen = false;
     void el.requestFullscreen?.({ navigationUI: "hide" }).catch(() => undefined);
     const onChange = () => {
-      if (!document.fullscreenElement) onExit();
+      // Only close the view when the browser leaves a fullscreen we actually entered
+      // (Esc / F11); a rejected request must not bounce the user back.
+      if (document.fullscreenElement) wasFullscreen = true;
+      else if (wasFullscreen) onExit();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onExit();
