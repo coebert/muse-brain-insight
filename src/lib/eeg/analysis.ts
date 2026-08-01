@@ -10,8 +10,10 @@ import {
   type SignalQuality,
 } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
+import { preprocessForDepth, type DepthArtifactReport } from "./artifact";
 
 export type { SignalQuality } from "./dsp";
+export type { DepthArtifactReport } from "./artifact";
 
 export const EPOCH_SECONDS = 4;
 export const HOP_SECONDS = 1;
@@ -129,6 +131,8 @@ export interface Epoch {
   confidence: MetricConfidence;
   /** OpenIBIS-style depth-of-anaesthesia index (BIS-like, uncalibrated). */
   depth: DepthReading;
+  /** Artefact/EMG assessment of the depth preprocessing stage. */
+  depthArtifact: DepthArtifactReport;
 }
 
 export interface MetricConfidence {
@@ -328,11 +332,14 @@ export class EegAnalyzer {
     );
     const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
     const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    // Depth-specific preprocessing: repair bounded ocular/movement transients,
+    // reject EMG-, spike- and saturation-contaminated epochs outright.
+    const prep = preprocessForDepth(window, psd, this.fs, quality.score);
+    const depthArtifact = prep.report;
     const depth = this.depthEstimator.update(
-      window,
+      prep.signal,
       this.fs,
-      quality.score,
-      artifact,
+      { usable: depthArtifact.usable && !artifact, reasons: depthArtifact.reasons },
       HOP_SECONDS,
     );
     const confidence: MetricConfidence = {
@@ -343,10 +350,14 @@ export class EegAnalyzer {
           (isSuppressed ? 0.6 : 1),
       ),
       // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
-      // penalises the depth index harder than the plain spectral metrics.
+      // penalises the depth index harder than the plain spectral metrics; the
+      // share of the 30 s window lost to the artefact gate matters just as much.
       depth: clamp01(
-        quality.score * (0.4 + 0.6 * clamp01(this.recentQuality.length / 15)) *
-          (1 - 0.7 * emgPenalty),
+        quality.score *
+          (0.4 + 0.6 * clamp01(this.recentQuality.length / 15)) *
+          (1 - 0.7 * emgPenalty) *
+          (1 - 0.6 * depth.gatedFraction) *
+          (depth.held ? 0.7 : 1),
       ),
     };
 
@@ -383,6 +394,7 @@ export class EegAnalyzer {
       quality,
       confidence,
       depth,
+      depthArtifact,
     };
   }
 }
