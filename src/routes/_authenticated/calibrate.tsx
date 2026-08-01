@@ -536,7 +536,7 @@ function Calibrate() {
                   ))}
                 </div>
 
-                <div className="grid gap-2 text-xs md:grid-cols-2">
+                <div className="grid gap-2 text-xs md:grid-cols-3">
                   {(["sedation", "general"] as const).map((branch) => (
                     <div key={branch} className="rounded-md border border-border/60 p-3">
                       <h3 className="text-xs font-semibold capitalize">{branch} sigmoid</h3>
@@ -557,6 +557,24 @@ function Calibrate() {
                       </table>
                     </div>
                   ))}
+                  <div className="rounded-md border border-border/60 p-3">
+                    <h3 className="text-xs font-semibold">Deep (linear) segment</h3>
+                    <table className="mt-1 w-full">
+                      <tbody>
+                        {(["xLo", "xHi", "yLo", "yHi"] as const).map((p) => (
+                          <tr key={p}>
+                            <td className="text-muted-foreground">{p}</td>
+                            <td className="metric-value text-right">
+                              {DEFAULT_DEPTH_CALIBRATION.generalLinear[p].toFixed(2)}
+                            </td>
+                            <td className="metric-value text-right text-signal">
+                              {fit.calibration.generalLinear[p].toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2">
