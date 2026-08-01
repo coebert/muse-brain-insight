@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
+import { buildFeatureDigest } from "@/lib/eeg/features";
+import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
