@@ -143,9 +143,16 @@ export function useEegMonitor() {
     if (status !== "streaming") return;
     const id = setInterval(() => {
       const anyBuffer = buffersRef.current[MUSE_CHANNELS[0]]!;
+      console.log("[tick]", anyBuffer.count, EPOCH_LEN);
       if (anyBuffer.count < EPOCH_LEN) return;
       const t = (Date.now() - startedAtRef.current) / 1000;
-      const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
+      let epoch;
+      try {
+        epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
+      } catch (err) {
+        console.error("[analyze failed]", err);
+        return;
+      }
       setElapsed(t);
       setEpochs((prev) => {
         const next = [...prev, epoch];
