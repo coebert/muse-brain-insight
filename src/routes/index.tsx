@@ -706,6 +706,8 @@ function Monitor() {
           channels={MUSE_CHANNELS}
           channelQuality={monitor.channelQuality}
           usableFraction={summary.usableFraction}
+          depthArtifact={latest?.depthArtifact ?? null}
+          depthGatedFraction={latest?.depth.gatedFraction}
         />
 
         <AiInsightPanel
