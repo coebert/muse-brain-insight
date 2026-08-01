@@ -87,6 +87,17 @@ export async function saveSession(
     total_power: Number(e.totalPower.toFixed(3)),
     spectral_edge_95: Number(e.sef95.toFixed(2)),
     bands: { ...e.bands } as Record<string, number>,
+    entropy: {
+      shannon: Number(e.entropy.shannon.toFixed(3)),
+      se95: Number(e.entropy.se95.toFixed(3)),
+      state: Number(e.entropy.state.toFixed(3)),
+      response: Number(e.entropy.response.toFixed(3)),
+    } as Record<string, number>,
+    power_ratios: {
+      delta_alpha: Number(e.ratios.deltaAlpha.toFixed(3)),
+      beta_alpha: Number(e.ratios.betaAlpha.toFixed(3)),
+      theta_alpha: Number(e.ratios.thetaAlpha.toFixed(3)),
+    } as Record<string, number>,
     spectrum: e.spectrum.map((v) => Number(v.toFixed(1))),
   }));
   for (let i = 0; i < rows.length; i += 200) {
