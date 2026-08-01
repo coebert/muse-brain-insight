@@ -14,7 +14,7 @@ const out: Record<string, { t: number[]; idx: (number | null)[] }> = {};
 let gated = 0;
 let total = 0;
 for (const name of Object.keys(ref)) {
-  const raw = readFileSync(`/tmp/valid/art_${name}.csv`, "utf8").trim().split("\n").map(Number);
+  const raw = readFileSync(`/tmp/valid/${process.argv[4] ?? "art"}_${name}.csv`, "utf8").trim().split("\n").map(Number);
   const f = makeEegFilter(FS);
   const sig = Float64Array.from(raw, (v) => f.process(v));
   const est = new DepthIndexEstimator();
