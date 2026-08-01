@@ -371,6 +371,11 @@ function Monitor() {
             <Button asChild variant="ghost" size="sm">
               <Link to={user ? "/sessions" : "/auth"}>{user ? "Sessions" : "Sign in"}</Link>
             </Button>
+            {user ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/compare">Compare</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>
