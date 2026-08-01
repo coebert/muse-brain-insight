@@ -295,6 +295,22 @@ function Monitor() {
 
   return (
     <div className="min-h-screen bg-background">
+      {fullscreen ? (
+        <FullscreenMonitor
+          epochs={monitor.epochs}
+          latest={latest}
+          waveform={monitor.waveform}
+          elapsed={monitor.elapsed}
+          sourceName={monitor.sourceName}
+          streaming={streaming}
+          modeLabel={activeMode.label}
+          windowMinutes={windowMinutes}
+          markers={markers}
+          suppressionSeconds={summary.suppressionSeconds}
+          suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+          onExit={() => setFullscreen(false)}
+        />
+      ) : null}
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3 short:gap-y-1 short:py-1.5!">
           <div className="flex min-w-0 items-center gap-2">
