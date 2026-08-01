@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Activity, Bluetooth, CircleStop, FlaskConical, Save, TriangleAlert } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Activity,
+  Bluetooth,
+  CircleStop,
+  FlaskConical,
+  Save,
+  TriangleAlert,
+  Undo2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
@@ -29,6 +38,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
+import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS } from "@/lib/eeg/muse";
 import { saveSession } from "@/lib/eeg/save";
@@ -63,12 +73,29 @@ const CONTEXTS = [
   { value: "other", label: "Other" },
 ];
 
+const MARKER_PRESETS = [
+  "Induction",
+  "Propofol bolus",
+  "Ketamine bolus",
+  "Rocuronium bolus",
+  "Opioid bolus",
+  "Vasopressor bolus",
+  "Laryngoscopy",
+  "Surgical incision",
+  "Facial twitching noted",
+  "Movement / artefact",
+  "Sedation hold",
+  "Emergence",
+];
+
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [markers, setMarkers] = useState<DetectedEvent[]>([]);
+  const [markerText, setMarkerText] = useState("");
   const [meta, setMeta] = useState({
     caseCode: "",
     context: "general_anaesthesia",
@@ -79,6 +106,31 @@ function Monitor() {
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
   const seizureAlert = latest?.seizureAlert ?? false;
+
+  const allEvents = useMemo(
+    () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
+    [monitor.events, markers],
+  );
+
+  function addMarker(label: string) {
+    const text = label.trim();
+    if (!text) return;
+    if (!streaming) {
+      toast.error("Start monitoring before marking events.");
+      return;
+    }
+    setMarkers((prev) => [
+      ...prev,
+      {
+        kind: "annotation",
+        severity: "info",
+        t: monitor.elapsed,
+        duration: 0,
+        detail: text,
+      },
+    ]);
+    toast.success(`${text} marked at ${formatClock(monitor.elapsed)}`);
+  }
 
   const srTone = !latest
     ? "default"
@@ -98,7 +150,7 @@ function Monitor() {
       await saveSession(
         { ...meta, deviceName: monitor.sourceName },
         monitor.epochs,
-        monitor.events,
+        allEvents,
         summary,
         monitor.elapsed,
       );
@@ -147,10 +199,23 @@ function Monitor() {
               </>
             ) : (
               <>
-                <Button size="sm" onClick={() => void monitor.connect("muse")}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setMarkers([]);
+                    void monitor.connect("muse");
+                  }}
+                >
                   <Bluetooth className="size-4" /> Connect Muse 2
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => void monitor.connect("simulated")}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setMarkers([]);
+                    void monitor.connect("simulated");
+                  }}
+                >
                   <FlaskConical className="size-4" /> Demo signal
                 </Button>
               </>
@@ -223,6 +288,29 @@ function Monitor() {
           </div>
           <div className="relative h-[320px] bg-[rgb(8,16,34)] md:h-[380px]">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
+            {/* Clinician markers, positioned by time across the visible window */}
+            {markers.map((m, i) => {
+              const age = monitor.elapsed - m.t;
+              if (age > windowMinutes * 60) return null;
+              const left = (1 - age / (windowMinutes * 60)) * 100;
+              return (
+                <div
+                  key={`${m.t}-${i}`}
+                  className="pointer-events-none absolute top-0 bottom-0 z-10"
+                  style={{ left: `${left}%` }}
+                >
+                  <div className="h-full w-px bg-marker/80" />
+                  <span
+                    className={cn(
+                      "metric-value absolute top-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-[10px] whitespace-nowrap text-marker",
+                      left > 65 ? "right-1" : "left-1",
+                    )}
+                  >
+                    {m.detail}
+                  </span>
+                </div>
+              );
+            })}
             {!monitor.epochs.length ? (
               <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 Connect a Muse 2 headband to start building the spectrogram — or run the demo signal
@@ -258,6 +346,96 @@ function Monitor() {
                 </>
               );
             })()}
+          </div>
+
+          {/* Contemporaneous event marking */}
+          <div className="border-t border-border px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Mark event
+              </span>
+              {MARKER_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => addMarker(preset)}
+                  disabled={!streaming}
+                  className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Input
+                value={markerText}
+                disabled={!streaming}
+                placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
+                className="h-9 max-w-sm"
+                onChange={(e) => setMarkerText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addMarker(markerText);
+                    setMarkerText("");
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!streaming || !markerText.trim()}
+                onClick={() => {
+                  addMarker(markerText);
+                  setMarkerText("");
+                }}
+              >
+                Mark now
+              </Button>
+              {markers.length ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMarkers((prev) => prev.slice(0, -1))}
+                  >
+                    <Undo2 className="size-4" /> Undo last
+                  </Button>
+                  <span className="metric-value text-[11px] text-muted-foreground">
+                    {markers.length} marker{markers.length === 1 ? "" : "s"} this session
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">
+                  Markers are timestamped against the running clock and saved with the session.
+                </span>
+              )}
+            </div>
+            {markers.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {[...markers]
+                  .reverse()
+                  .slice(0, 8)
+                  .map((m, i) => (
+                    <span
+                      key={`${m.t}-${i}`}
+                      className="flex items-center gap-1.5 rounded-full bg-marker/15 px-2 py-1 text-xs text-marker"
+                    >
+                      <span className="metric-value text-[11px] opacity-80">
+                        {formatClock(m.t)}
+                      </span>
+                      {m.detail}
+                      <button
+                        type="button"
+                        aria-label={`Remove marker ${m.detail}`}
+                        onClick={() => setMarkers((prev) => prev.filter((x) => x !== m))}
+                        className="opacity-70 hover:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -380,7 +558,7 @@ function Monitor() {
               <h2 className="text-sm font-semibold">Event log</h2>
             </div>
             <div className="max-h-[430px] overflow-y-auto">
-              <EventLog events={monitor.events} />
+              <EventLog events={allEvents} />
             </div>
           </div>
         </section>
@@ -455,7 +633,7 @@ function Monitor() {
               </div>
               <p className="metric-value text-[11px] text-muted-foreground">
                 {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} ·{" "}
-                {monitor.events.length} events
+                {allEvents.length} events ({markers.length} clinician markers)
               </p>
             </div>
           ) : (

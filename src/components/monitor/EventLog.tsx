@@ -1,4 +1,4 @@
-import { AlertTriangle, Activity, MinusCircle } from "lucide-react";
+import { AlertTriangle, Activity, MinusCircle, BookmarkCheck } from "lucide-react";
 
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { formatClock } from "@/lib/eeg/format";
@@ -8,6 +8,7 @@ const meta = {
   seizure: { icon: AlertTriangle, label: "Possible seizure activity" },
   burst_suppression: { icon: Activity, label: "Burst suppression" },
   isoelectric: { icon: MinusCircle, label: "Isoelectric period" },
+  annotation: { icon: BookmarkCheck, label: "Clinical marker" },
 } as const;
 
 export function EventLog({ events }: { events: DetectedEvent[] }) {
@@ -22,12 +23,15 @@ export function EventLog({ events }: { events: DetectedEvent[] }) {
     <ul className="divide-y divide-border">
       {[...events].reverse().map((event, i) => {
         const { icon: Icon, label } = meta[event.kind];
+        const isMarker = event.kind === "annotation";
         return (
           <li key={`${event.kind}-${event.t}-${i}`} className="flex gap-3 px-4 py-3">
             <Icon
               className={cn(
                 "mt-0.5 size-4 shrink-0",
-                event.severity === "critical"
+                isMarker
+                  ? "text-marker"
+                  : event.severity === "critical"
                   ? "text-critical"
                   : event.severity === "warning"
                     ? "text-caution"
@@ -35,10 +39,11 @@ export function EventLog({ events }: { events: DetectedEvent[] }) {
               )}
             />
             <div className="min-w-0">
-              <p className="text-sm font-medium">{label}</p>
-              <p className="text-xs text-muted-foreground">{event.detail}</p>
+              <p className="text-sm font-medium">{isMarker ? event.detail : label}</p>
+              {isMarker ? null : <p className="text-xs text-muted-foreground">{event.detail}</p>}
               <p className="metric-value mt-0.5 text-[11px] text-muted-foreground">
-                {formatClock(event.t)} · {event.duration.toFixed(0)} s
+                {formatClock(event.t)}
+                {isMarker ? " · marked by clinician" : ` · ${event.duration.toFixed(0)} s`}
               </p>
             </div>
           </li>

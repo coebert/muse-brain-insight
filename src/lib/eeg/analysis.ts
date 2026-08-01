@@ -61,7 +61,7 @@ export interface Epoch {
 }
 
 export interface DetectedEvent {
-  kind: "burst_suppression" | "seizure" | "isoelectric";
+  kind: "burst_suppression" | "seizure" | "isoelectric" | "annotation";
   severity: "info" | "warning" | "critical";
   t: number;
   duration: number;
