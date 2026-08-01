@@ -2,7 +2,7 @@
 // preprocessing gate enabled ("gated") or bypassed ("raw").
 import { readFileSync, writeFileSync } from "fs";
 import { computePsd, makeEegFilter, signalQuality } from "../../src/lib/eeg/dsp";
-import { preprocessForDepth } from "../../src/lib/eeg/artifact";
+import { DepthArtifactGate } from "../../src/lib/eeg/artifact";
 import { DepthIndexEstimator } from "../../src/lib/eeg/depth";
 
 const FS = 256,
@@ -18,6 +18,7 @@ for (const name of Object.keys(ref)) {
   const f = makeEegFilter(FS);
   const sig = Float64Array.from(raw, (v) => f.process(v));
   const est = new DepthIndexEstimator();
+  const gate = new DepthArtifactGate();
   const t: number[] = [];
   const idx: (number | null)[] = [];
   for (let end = WIN; end <= sig.length; end += HOP) {
@@ -28,7 +29,7 @@ for (const name of Object.keys(ref)) {
     } else {
       const psd = computePsd(w, FS);
       const q = signalQuality(w, psd, FS);
-      const p = preprocessForDepth(w, psd, FS, q.score);
+      const p = gate.evaluate(w, psd, FS, q.score);
       if (!p.report.usable) gated++;
       total++;
       r = est.update(p.signal, FS, { usable: p.report.usable, reasons: p.report.reasons }, 1);

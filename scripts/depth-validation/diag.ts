@@ -1,7 +1,7 @@
 // Distribution of artefact metrics over contaminated vs clean sessions.
 import { readFileSync } from "fs";
 import { computePsd, makeEegFilter, signalQuality } from "../../src/lib/eeg/dsp";
-import { preprocessForDepth } from "../../src/lib/eeg/artifact";
+import { DepthArtifactGate } from "../../src/lib/eeg/artifact";
 
 const FS = 256,
   WIN = 4 * FS;
@@ -10,13 +10,15 @@ for (const prefix of ["sess", "art"]) {
   const raw = readFileSync(`/tmp/valid/${prefix}_${name}.csv`, "utf8").trim().split("\n").map(Number);
   const f = makeEegFilter(FS);
   const sig = Float64Array.from(raw, (v) => f.process(v));
-  const cols: Record<string, number[]> = { emg: [], repaired: [], ecg: [], q: [], sigma: [] };
+  const gate = new DepthArtifactGate();
+  const cols: Record<string, number[]> = { emg: [], surge: [], repaired: [], ecg: [], q: [], sigma: [] };
   for (let end = WIN; end <= sig.length; end += FS) {
     const w = sig.subarray(end - WIN, end);
     const psd = computePsd(w, FS);
     const q = signalQuality(w, psd, FS);
-    const p = preprocessForDepth(w, psd, FS, q.score);
+    const p = gate.evaluate(w, psd, FS, q.score);
     cols['emg']!.push(p.report.emgIndex);
+    cols['surge']!.push(p.report.emgSurge);
     cols['repaired']!.push(p.report.repairedFraction);
     cols['ecg']!.push(p.report.ecgLikeness);
     cols['q']!.push(q.score);
