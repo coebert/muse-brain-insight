@@ -54,7 +54,7 @@ const EMG_REJECT = 0.34;
  * (deep anaesthesia), so the gate also watches for a step rise in absolute
  * 30-45 Hz power against the running baseline of accepted epochs.
  */
-const EMG_SURGE_REJECT = 3;
+const EMG_SURGE_REJECT = 4;
 /** Absolute 30-45 Hz power floor, µV²; below this a surge is just quiet noise. */
 const EMG_POWER_FLOOR = 0.5;
 const ECG_REJECT = 0.6;
@@ -63,7 +63,7 @@ const ECG_MIN_SIGMA_UV = 5;
 const SATURATION_REJECT = 0.01;
 const REPAIR_REJECT = 0.08;
 const FLAT_UV = 0.5;
-const BASELINE_EPOCHS = 120;
+const BASELINE_EPOCHS = 15;
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
