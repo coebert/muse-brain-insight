@@ -123,18 +123,15 @@ export function guessColumns(table: ParsedTable): ColumnGuess {
   );
 
   const pick = (hints: string[], exclude: (number | null)[]) => {
-    let bestCol: number | null = null;
-    void bestCol;
-    let bestScore = 0;
-    headers.forEach((h, c) => {
-      if (exclude.includes(c) || !numeric[c]) return;
-      const s = score(h, hints);
-      if (s > bestScore) {
-        bestScore = s;
-        bestCol = c as number | null;
-      }
-    });
-    return bestCol;
+    const best = headers.reduce<{ col: number; score: number }>(
+      (acc, h, c) => {
+        if (exclude.includes(c) || !numeric[c]) return acc;
+        const s = score(h, hints);
+        return s > acc.score ? { col: c, score: s } : acc;
+      },
+      { col: -1, score: 0 },
+    );
+    return best.col >= 0 ? best.col : null;
   };
 
   let timeColumn = pick(TIME_HINTS, []);
