@@ -85,44 +85,48 @@ export function robustSigma(data: Float64Array): number {
 }
 
 /**
- * Regularity of a spike train in the 0.7-2.5 Hz range, measured on the
- * rectified derivative so it responds to QRS/pacing spikes rather than to
- * genuine delta rhythms.
+ * Regularity of a spike train in the 0.7-2.5 Hz range. Works on the rectified
+ * derivative (so it responds to QRS/pacing transients rather than to genuine
+ * delta rhythms), finds discrete spikes well above the robust derivative
+ * scale, and scores how metronomic their inter-spike intervals are. Rhythmic
+ * EEG has no isolated outlier spikes and scores 0.
  */
 export function ecgLikeness(data: Float64Array, fs: number): number {
   const n = data.length;
   if (n < fs * 2) return 0;
   const d = new Float64Array(n - 1);
-  let mean = 0;
-  for (let i = 1; i < n; i++) {
-    d[i - 1] = Math.abs(data[i]! - data[i - 1]!);
-    mean += d[i - 1]!;
-  }
-  mean /= d.length;
-  let denom = 0;
-  for (let i = 0; i < d.length; i++) denom += (d[i]! - mean) ** 2;
-  if (denom <= 0) return 0;
+  for (let i = 1; i < n; i++) d[i - 1] = Math.abs(data[i]! - data[i - 1]!);
 
-  // Only a peaky (impulsive) derivative can be a spike train.
-  const peak = Math.max(...d);
-  const crest = mean > 0 ? peak / mean : 0;
-  if (crest < 6) return 0;
-  // ...and a sparse one: a spike train spends almost none of its time near the
-  // peak, whereas rhythmic EEG (and its harmonics) spends a lot.
-  let near = 0;
-  for (let i = 0; i < d.length; i++) if (d[i]! > 0.5 * peak) near++;
-  if (near / d.length > 0.02) return 0;
+  const med = median(d);
+  const scale = 1.4826 * median(Float64Array.from(d, (v) => Math.abs(v - med)));
+  if (scale <= 0) return 0;
+  const threshold = med + 8 * scale;
 
-  const minLag = Math.floor(fs / 2.5);
-  const maxLag = Math.floor(fs / 0.7);
-  let best = 0;
-  for (let lag = minLag; lag <= maxLag && lag < d.length; lag++) {
-    let acc = 0;
-    for (let i = lag; i < d.length; i++) acc += (d[i]! - mean) * (d[i - lag]! - mean);
-    const r = acc / denom;
-    if (r > best) best = r;
+  // Peak-pick discrete transients, with a refractory period so one QRS
+  // complex counts once.
+  const refractory = Math.round(0.2 * fs);
+  const peaks: number[] = [];
+  for (let i = 0; i < d.length; i++) {
+    if (d[i]! < threshold) continue;
+    if (peaks.length && i - peaks[peaks.length - 1]! < refractory) {
+      if (d[i]! > d[peaks[peaks.length - 1]!]!) peaks[peaks.length - 1] = i;
+      continue;
+    }
+    peaks.push(i);
   }
-  return clamp01(best);
+
+  const seconds = n / fs;
+  const rate = peaks.length / seconds;
+  if (peaks.length < 4 || rate < 0.7 || rate > 2.5) return 0;
+
+  const isi: number[] = [];
+  for (let i = 1; i < peaks.length; i++) isi.push((peaks[i]! - peaks[i - 1]!) / fs);
+  const m = isi.reduce((a, b) => a + b, 0) / isi.length;
+  if (m <= 0) return 0;
+  const sd = Math.sqrt(isi.reduce((a, b) => a + (b - m) ** 2, 0) / isi.length);
+  const cv = sd / m;
+  // CV 0 (metronomic) -> 1, CV >= 0.3 (irregular) -> 0.
+  return clamp01(1 - cv / 0.3);
 }
 
 /**
