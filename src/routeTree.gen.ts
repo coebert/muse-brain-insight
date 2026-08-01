@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
+import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +46,11 @@ const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedValidateRoute = AuthenticatedValidateRouteImport.update({
+  id: '/validate',
+  path: '/validate',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/validate': typeof AuthenticatedValidateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/validate': typeof AuthenticatedValidateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -68,12 +76,14 @@ export interface FileRoutesById {
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
+  '/_authenticated/validate': typeof AuthenticatedValidateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/calibrate' | '/compare' | '/sessions'
+  fullPaths:
+    '/' | '/auth' | '/calibrate' | '/compare' | '/sessions' | '/validate'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/calibrate' | '/compare' | '/sessions'
+  to: '/' | '/auth' | '/calibrate' | '/compare' | '/sessions' | '/validate'
   id:
     | '__root__'
     | '/'
@@ -82,6 +92,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calibrate'
     | '/_authenticated/compare'
     | '/_authenticated/sessions'
+    | '/_authenticated/validate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -134,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSessionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/validate': {
+      id: '/_authenticated/validate'
+      path: '/validate'
+      fullPath: '/validate'
+      preLoaderRoute: typeof AuthenticatedValidateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -141,12 +159,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
+  AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
+  AuthenticatedValidateRoute: AuthenticatedValidateRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

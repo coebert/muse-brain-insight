@@ -194,6 +194,9 @@ function Compare() {
           </span>
           <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
             <Button asChild variant="outline" size="sm">
+              <Link to="/validate">Agreement report</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/sessions">Sessions</Link>
             </Button>
             <Button asChild variant="outline" size="sm">

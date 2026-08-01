@@ -429,6 +429,11 @@ function Monitor() {
                 <Link to="/calibrate">Calibrate</Link>
               </Button>
             ) : null}
+            {user ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/validate">Validate</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>
