@@ -1,4 +1,13 @@
-import { AlertTriangle, Activity, MinusCircle, BookmarkCheck, WifiOff } from "lucide-react";
+import {
+  AlertTriangle,
+  Activity,
+  MinusCircle,
+  BookmarkCheck,
+  WifiOff,
+  TrendingDown,
+  TrendingUp,
+  Waves,
+} from "lucide-react";
 
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { formatClock } from "@/lib/eeg/format";
@@ -10,6 +19,9 @@ const meta = {
   isoelectric: { icon: MinusCircle, label: "Isoelectric period" },
   annotation: { icon: BookmarkCheck, label: "Clinical marker" },
   signal_quality: { icon: WifiOff, label: "Signal quality degraded" },
+  depth_drop: { icon: TrendingDown, label: "Depth index drop" },
+  depth_rise: { icon: TrendingUp, label: "Depth index rise" },
+  suppression_burden: { icon: Waves, label: "Burst-suppression burden" },
 } as const;
 
 export function EventLog({ events }: { events: DetectedEvent[] }) {
