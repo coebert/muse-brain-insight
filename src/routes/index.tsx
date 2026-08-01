@@ -878,12 +878,12 @@ function Monitor() {
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
             <div className="panel overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
                 <h2 className="text-sm font-semibold">Filtered EEG · last 4 s</h2>
                 <span className="metric-value text-[11px] text-muted-foreground">
                   0.5–45 Hz, 50 Hz notch · ±80 µV
                 </span>
-                <div className="ml-auto flex gap-1.5">
+                <div className="flex gap-1.5 sm:ml-auto">
                   {MUSE_CHANNELS.map((c) => (
                     <span
                       key={c}
@@ -908,7 +908,7 @@ function Monitor() {
               </div>
             </div>
 
-            <div className="panel px-4 py-4">
+            <div className="panel px-3 py-4 sm:px-4">
               <h2 className="text-sm font-semibold">Detection thresholds</h2>
               <div className="mt-3">
                 <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
