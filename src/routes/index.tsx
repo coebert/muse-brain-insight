@@ -302,7 +302,7 @@ function Monitor() {
           </div>
           <span
             className={cn(
-              "metric-value rounded-full border px-2.5 py-0.5 text-[11px]",
+              "metric-value rounded-full border px-2.5 py-0.5 text-[11px] short:hidden md:short:inline",
               streaming
                 ? "border-signal/50 text-signal"
                 : "border-border text-muted-foreground",
