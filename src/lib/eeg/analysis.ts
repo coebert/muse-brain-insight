@@ -9,6 +9,7 @@ import {
   spectralEdge,
   type SignalQuality,
 } from "./dsp";
+import { DepthIndexEstimator, type DepthReading } from "./depth";
 
 export type { SignalQuality } from "./dsp";
 
@@ -126,6 +127,8 @@ export interface Epoch {
   quality: SignalQuality;
   /** 0–1 confidence in each reported metric, given quality and data maturity. */
   confidence: MetricConfidence;
+  /** OpenIBIS-style depth-of-anaesthesia index (BIS-like, uncalibrated). */
+  depth: DepthReading;
 }
 
 export interface MetricConfidence {
@@ -135,6 +138,8 @@ export interface MetricConfidence {
   seizure: number;
   /** DSA, spectral edge and band powers. */
   spectral: number;
+  /** Depth-of-anaesthesia index. */
+  depth: number;
 }
 
 export interface DetectedEvent {
@@ -170,6 +175,7 @@ export class EegAnalyzer {
   private activeSeizureStart: number | null = null;
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
+  private depthEstimator = new DepthIndexEstimator();
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -192,6 +198,7 @@ export class EegAnalyzer {
     this.activeSeizureStart = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
+    this.depthEstimator.reset();
     this.suppressionSeconds = 0;
     this.events.length = 0;
   }
@@ -321,12 +328,19 @@ export class EegAnalyzer {
     );
     const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
     const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const depth = this.depthEstimator.update(psd, suppressionRatio, quality.score, artifact);
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
       seizure: clamp01(
         quality.score * (0.3 + 0.7 * baselineMaturity) * (1 - 0.6 * emgPenalty) *
           (isSuppressed ? 0.6 : 1),
+      ),
+      // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
+      // penalises the depth index harder than the plain spectral metrics.
+      depth: clamp01(
+        quality.score * (0.4 + 0.6 * clamp01(this.recentQuality.length / 15)) *
+          (1 - 0.7 * emgPenalty),
       ),
     };
 
@@ -362,6 +376,7 @@ export class EegAnalyzer {
       amplitudeUv: maxP2p,
       quality,
       confidence,
+      depth,
     };
   }
 }

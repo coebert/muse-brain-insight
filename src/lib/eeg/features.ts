@@ -50,6 +50,14 @@ export interface FeatureDigest {
     usableFraction: number;
     poorEpochs: number;
   };
+  /** OpenIBIS-style BIS-like depth index (uncalibrated, frontal montage). */
+  depthIndex: {
+    mean: number | null;
+    min: number | null;
+    max: number | null;
+    latest: number | null;
+    fractionBelow40: number;
+  };
   annotations: { tSeconds: number; label: string }[];
   timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
 }
@@ -178,6 +186,21 @@ export function buildFeatureDigest(
       ),
       poorEpochs: epochs.filter((e) => e.quality.grade === "poor").length,
     },
+    depthIndex: (() => {
+      const vals = epochs
+        .map((e) => e.depth.index)
+        .filter((v): v is number => v != null);
+      if (!vals.length) {
+        return { mean: null, min: null, max: null, latest: null, fractionBelow40: 0 };
+      }
+      return {
+        mean: round(mean(vals), 0),
+        min: Math.min(...vals),
+        max: Math.max(...vals),
+        latest: vals[vals.length - 1]!,
+        fractionBelow40: round(vals.filter((v) => v < 40).length / vals.length),
+      };
+    })(),
     annotations: events
       .filter((e) => e.kind === "annotation")
       .map((e) => ({ tSeconds: round(e.t, 0), label: e.detail })),
