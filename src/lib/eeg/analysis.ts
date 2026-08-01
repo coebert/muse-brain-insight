@@ -31,6 +31,16 @@ export interface AnalysisSettings {
   seizureThreshold: number;
   /** Consecutive epochs above threshold required before alerting. */
   seizureEpochs: number;
+  /** Fall in depth index over the trend window that raises an alert. */
+  depthDropUnits: number;
+  /** Rise in depth index over the trend window that raises an alert. */
+  depthRiseUnits: number;
+  /** Trend window, seconds, over which depth-index change is measured. */
+  depthTrendSeconds: number;
+  /** Suppression ratio, %, at which a burst-suppression burden alert fires. */
+  bsrAlertPercent: number;
+  /** Further rise in suppression ratio, %, that counts as worsening. */
+  bsrWorseningPercent: number;
 }
 
 export const DEFAULT_SETTINGS: AnalysisSettings = {
@@ -38,6 +48,11 @@ export const DEFAULT_SETTINGS: AnalysisSettings = {
   srWindowSeconds: 60,
   seizureThreshold: 0.62,
   seizureEpochs: 3,
+  depthDropUnits: 15,
+  depthRiseUnits: 15,
+  depthTrendSeconds: 60,
+  bsrAlertPercent: 10,
+  bsrWorseningPercent: 10,
 };
 
 export type DetectionPresetKey = "anaesthesia" | "icu" | "icu_high_sensitivity" | "custom";
@@ -63,6 +78,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 60,
       seizureThreshold: 0.62,
       seizureEpochs: 3,
+      depthDropUnits: 15,
+      depthRiseUnits: 15,
+      depthTrendSeconds: 60,
+      bsrAlertPercent: 10,
+      bsrWorseningPercent: 10,
     },
   },
   {
@@ -74,6 +94,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 120,
       seizureThreshold: 0.55,
       seizureEpochs: 5,
+      depthDropUnits: 20,
+      depthRiseUnits: 20,
+      depthTrendSeconds: 120,
+      bsrAlertPercent: 5,
+      bsrWorseningPercent: 10,
     },
   },
   {
@@ -85,6 +110,11 @@ export const DETECTION_PRESETS: DetectionPreset[] = [
       srWindowSeconds: 120,
       seizureThreshold: 0.42,
       seizureEpochs: 2,
+      depthDropUnits: 15,
+      depthRiseUnits: 15,
+      depthTrendSeconds: 90,
+      bsrAlertPercent: 3,
+      bsrWorseningPercent: 5,
     },
   },
 ];
@@ -95,7 +125,12 @@ export function matchPreset(settings: AnalysisSettings): DetectionPresetKey {
       p.settings.suppressionThresholdUv === settings.suppressionThresholdUv &&
       p.settings.srWindowSeconds === settings.srWindowSeconds &&
       Math.abs(p.settings.seizureThreshold - settings.seizureThreshold) < 1e-6 &&
-      p.settings.seizureEpochs === settings.seizureEpochs,
+      p.settings.seizureEpochs === settings.seizureEpochs &&
+      p.settings.depthDropUnits === settings.depthDropUnits &&
+      p.settings.depthRiseUnits === settings.depthRiseUnits &&
+      p.settings.depthTrendSeconds === settings.depthTrendSeconds &&
+      p.settings.bsrAlertPercent === settings.bsrAlertPercent &&
+      p.settings.bsrWorseningPercent === settings.bsrWorseningPercent,
   );
   return hit?.key ?? "custom";
 }
