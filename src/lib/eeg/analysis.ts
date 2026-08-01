@@ -453,6 +453,43 @@ export class EegAnalyzer {
       { usable: depthArtifact.usable && !artifact, reasons: depthArtifact.reasons },
       HOP_SECONDS,
     );
+
+    // --- depth index change alerts ------------------------------------------
+    // Only trend on ungated values so the artefact "hold" does not read as a
+    // real change; a cooldown of one trend window prevents alert storms.
+    if (!depth.held && Number.isFinite(depth.index)) {
+      this.depthHistory.push({ t, value: depth.index });
+    }
+    const depthCutoff = t - this.settings.depthTrendSeconds;
+    while (this.depthHistory.length && this.depthHistory[0]!.t < depthCutoff) {
+      this.depthHistory.shift();
+    }
+    if (this.depthHistory.length >= 2 && t - this.lastDepthAlertT >= this.settings.depthTrendSeconds) {
+      const first = this.depthHistory[0]!;
+      const last = this.depthHistory[this.depthHistory.length - 1]!;
+      const change = last.value - first.value;
+      const span = Math.max(1, last.t - first.t);
+      if (change <= -this.settings.depthDropUnits) {
+        this.lastDepthAlertT = t;
+        this.events.push({
+          kind: "depth_drop",
+          severity: last.value <= 30 ? "critical" : "warning",
+          t,
+          duration: span,
+          detail: `Depth index fell ${Math.abs(change).toFixed(0)} units in ${span.toFixed(0)} s (${first.value.toFixed(0)} → ${last.value.toFixed(0)}) — deepening`,
+        });
+      } else if (change >= this.settings.depthRiseUnits) {
+        this.lastDepthAlertT = t;
+        this.events.push({
+          kind: "depth_rise",
+          severity: last.value >= 80 ? "critical" : "warning",
+          t,
+          duration: span,
+          detail: `Depth index rose ${change.toFixed(0)} units in ${span.toFixed(0)} s (${first.value.toFixed(0)} → ${last.value.toFixed(0)}) — lightening`,
+        });
+      }
+    }
+
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
