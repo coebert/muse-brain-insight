@@ -406,6 +406,7 @@ export class DepthIndexEstimator {
     const components: DepthComponents = {
       betaRatio: c1,
       synchFastSlow: c2,
+      slowWave: c3,
       bsr,
       sedationScore: mixed.sedationScore,
       generalScore: mixed.generalScore,
