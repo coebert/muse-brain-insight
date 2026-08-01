@@ -8,6 +8,7 @@ import {
   CircleStop,
   FlaskConical,
   HeartPulse,
+  Maximize2,
   Stethoscope,
   Save,
   TriangleAlert,
@@ -17,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
+import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { buildFeatureDigest } from "@/lib/eeg/features";
@@ -169,6 +171,7 @@ function Monitor() {
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   const [markerText, setMarkerText] = useState("");
