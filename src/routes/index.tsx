@@ -447,15 +447,15 @@ function Monitor() {
 
         {/* Density spectral array */}
         <section className="panel overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
             <h1 className="text-sm font-semibold">Density spectral array</h1>
             <DsaLegend />
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
               <Select
                 value={monitor.channel}
                 onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -471,7 +471,7 @@ function Monitor() {
                 value={String(windowMinutes)}
                 onValueChange={(v) => setWindowMinutes(Number(v))}
               >
-                <SelectTrigger className="w-[110px]">
+                <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,7 +483,7 @@ function Monitor() {
               </Select>
             </div>
           </div>
-          <div className="relative h-[320px] bg-[rgb(8,16,34)] md:h-[380px]">
+          <div className="relative h-[240px] bg-[rgb(8,16,34)] sm:h-[320px] md:h-[380px]">
             <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
             {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
             {monitor.events
