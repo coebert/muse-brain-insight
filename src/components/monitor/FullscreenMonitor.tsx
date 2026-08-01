@@ -239,7 +239,7 @@ export function FullscreenMonitor({
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">
                 <TrendLine values={sefTrend} min={0} max={30} color="rgb(120,200,90)" />
                 <div className="pointer-events-none absolute inset-0">
-                  <TrendLine values={srTrend} min={0} max={100} color="rgb(245,190,40)" />
+                  <TrendLine values={srTrend} min={0} max={100} color="rgb(245,190,40)" transparent />
                 </div>
               </div>
             </div>

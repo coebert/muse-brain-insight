@@ -9,10 +9,20 @@ interface Props {
   /** Optional horizontal target band, in value units. */
   band?: [number, number];
   height?: number;
+  /** Skip the opaque backdrop when layering a second trend on top. */
+  transparent?: boolean;
 }
 
 /** Compact canvas trend line used by the fullscreen monitor. */
-export function TrendLine({ values, min, max, color, band, height = 90 }: Props) {
+export function TrendLine({
+  values,
+  min,
+  max,
+  color,
+  band,
+  height = 90,
+  transparent = false,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -28,8 +38,10 @@ export function TrendLine({ values, min, max, color, band, height = 90 }: Props)
     const h = canvas.height;
 
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgb(8,16,34)";
-    ctx.fillRect(0, 0, w, h);
+    if (!transparent) {
+      ctx.fillStyle = "rgb(8,16,34)";
+      ctx.fillRect(0, 0, w, h);
+    }
 
     const y = (v: number) => h - ((v - min) / (max - min)) * h;
 
@@ -39,7 +51,8 @@ export function TrendLine({ values, min, max, color, band, height = 90 }: Props)
       ctx.fillRect(0, top, w, y(band[0]) - top);
     }
 
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    if (!transparent) ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    else ctx.strokeStyle = "rgba(0,0,0,0)";
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
       const gy = (h / 4) * i;
@@ -70,7 +83,7 @@ export function TrendLine({ values, min, max, color, band, height = 90 }: Props)
       }
     });
     ctx.stroke();
-  }, [values, min, max, color, band]);
+  }, [values, min, max, color, band, transparent]);
 
   return <canvas ref={canvasRef} className="block h-full w-full" style={{ height }} />;
 }
