@@ -9,10 +9,12 @@ import {
   spectralEdge,
   type SignalQuality,
 } from "./dsp";
+import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 
 export type { SignalQuality } from "./dsp";
+export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
 
 export const EPOCH_SECONDS = 4;
@@ -243,6 +245,15 @@ export class EegAnalyzer {
     };
     const totalPower = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma;
     const sef95 = spectralEdge(psd, 0.95);
+    // Guard the ratios: an alpha floor keeps them finite in deep suppression
+    // where alpha power approaches zero.
+    const alphaFloor = Math.max(bands.alpha, totalPower * 1e-3, 1e-6);
+    const ratios: PowerRatios = {
+      deltaAlpha: bands.delta / alphaFloor,
+      betaAlpha: bands.beta / alphaFloor,
+      thetaAlpha: bands.theta / alphaFloor,
+    };
+    const entropy = spectralEntropies(psd, sef95);
 
     // --- signal quality -----------------------------------------------------
     const quality = signalQuality(window, psd, this.fs);
@@ -398,6 +409,8 @@ export class EegAnalyzer {
       t,
       spectrum,
       bands,
+      ratios,
+      entropy,
       totalPower,
       sef95,
       epochSuppression,
