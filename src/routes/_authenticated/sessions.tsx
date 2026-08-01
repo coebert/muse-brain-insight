@@ -71,6 +71,9 @@ function Sessions() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/calibrate">Calibrate depth</Link>
             </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/validate">Agreement report</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/">
                 <ArrowLeft className="size-4" /> Monitor
