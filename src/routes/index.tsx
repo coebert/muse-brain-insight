@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { EventLog } from "@/components/monitor/EventLog";
+import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
@@ -160,6 +161,9 @@ function Monitor() {
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   const [markerText, setMarkerText] = useState("");
+  const [aiResult, setAiResult] = useState<Interpretation | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [meta, setMeta] = useState({
     caseCode: "",
     context: "general_anaesthesia",
