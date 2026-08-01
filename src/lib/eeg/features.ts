@@ -66,6 +66,18 @@ export interface FeatureDigest {
     max: number | null;
     latest: number | null;
     fractionBelow40: number;
+    /** Fraction of epochs where the depth index was trustworthy (0-1). */
+    reliableFraction: number;
+    /** Mean 0-1 confidence in the depth index across the session. */
+    meanConfidence: number;
+    /** Mean of the depth index restricted to reliable epochs. */
+    meanWhenReliable: number | null;
+    /** Latest depth index from a reliable epoch. */
+    latestReliable: number | null;
+    /** Whether the most recent epoch's depth index was reliable. */
+    latestIsReliable: boolean;
+    /** Most common reasons the depth index was gated, with counts. */
+    topGatingReasons: { reason: string; epochs: number }[];
   };
   /** qCON/qNOX-style composite indices (transparent re-implementation). */
   compositeIndex: {
