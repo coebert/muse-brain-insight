@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type React from "react";
 import { useMemo, useState } from "react";
 import {
   Activity,
@@ -534,7 +535,7 @@ function Monitor() {
         {/* Metrics */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {(() => {
-            const tiles: Record<string, JSX.Element> = {
+            const tiles: Record<string, React.ReactNode> = {
               sr: (
                 <MetricTile
                   key="sr"
