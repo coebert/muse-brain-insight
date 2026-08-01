@@ -1,0 +1,134 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Activity, ArrowLeft } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { formatClock, formatDuration } from "@/lib/eeg/format";
+
+export const Route = createFileRoute("/_authenticated/sessions")({
+  head: () => ({
+    meta: [
+      { title: "Saved EEG sessions — CortexTrace" },
+      {
+        name: "description",
+        content:
+          "Review anonymised Muse 2 monitoring records: suppression ratio, suppression time and detected seizure events per case.",
+      },
+      { property: "og:title", content: "Saved EEG sessions — CortexTrace" },
+      {
+        property: "og:description",
+        content: "Anonymised depth-of-anaesthesia session records with suppression and seizure summaries.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Sessions,
+});
+
+const CONTEXT_LABELS: Record<string, string> = {
+  general_anaesthesia: "General anaesthesia",
+  icu_sedation: "ICU sedation",
+  procedural_sedation: "Procedural sedation",
+  other: "Other",
+};
+
+function Sessions() {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["eeg_sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("eeg_sessions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  async function remove(id: string) {
+    await supabase.from("eeg_sessions").delete().eq("id", id);
+    void refetch();
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+          <Activity className="size-5 text-signal" />
+          <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
+          <div className="ml-auto flex gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/">
+                <ArrowLeft className="size-4" /> Monitor
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+              Sign out
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 py-6">
+        <h1 className="text-lg font-semibold">Saved sessions</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Anonymised records only — identified by the case code you entered at save time.
+        </p>
+
+        <div className="mt-5 space-y-3">
+          {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+          {data && !data.length ? (
+            <div className="panel px-4 py-8 text-center text-sm text-muted-foreground">
+              No sessions saved yet. Record a session on the monitor and choose “Save session”.
+            </div>
+          ) : null}
+          {data?.map((s) => (
+            <article key={s.id} className="panel px-4 py-4">
+              <div className="flex flex-wrap items-baseline gap-3">
+                <h2 className="metric-value text-base font-semibold">{s.case_code}</h2>
+                <span className="text-xs text-muted-foreground">
+                  {CONTEXT_LABELS[s.context ?? "other"] ?? s.context}
+                  {s.location ? ` · ${s.location}` : ""}
+                </span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {new Date(s.created_at).toLocaleString()}
+                </span>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
+                <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
+                <Stat label="Peak SR" value={`${(s.max_suppression_ratio ?? 0).toFixed(0)} %`} />
+                <Stat
+                  label="Suppression time"
+                  value={formatDuration(s.suppression_seconds ?? 0)}
+                />
+                <Stat label="Seizure events" value={String(s.seizure_alerts ?? 0)} />
+              </dl>
+              {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}
+              <div className="mt-3">
+                <Button variant="ghost" size="sm" onClick={() => void remove(s.id)}>
+                  Delete
+                </Button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dd className="metric-value mt-0.5 text-sm">{value}</dd>
+    </div>
+  );
+}
