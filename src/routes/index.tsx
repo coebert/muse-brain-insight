@@ -8,6 +8,7 @@ import {
   CircleStop,
   FlaskConical,
   HeartPulse,
+  Maximize2,
   Stethoscope,
   Save,
   TriangleAlert,
@@ -17,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
+import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { buildFeatureDigest } from "@/lib/eeg/features";
@@ -169,6 +171,7 @@ function Monitor() {
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   const [markerText, setMarkerText] = useState("");
@@ -292,6 +295,22 @@ function Monitor() {
 
   return (
     <div className="min-h-screen bg-background">
+      {fullscreen ? (
+        <FullscreenMonitor
+          epochs={monitor.epochs}
+          latest={latest}
+          waveform={monitor.waveform}
+          elapsed={monitor.elapsed}
+          sourceName={monitor.sourceName}
+          streaming={streaming}
+          modeLabel={activeMode.label}
+          windowMinutes={windowMinutes}
+          markers={markers}
+          suppressionSeconds={summary.suppressionSeconds}
+          suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+          onExit={() => setFullscreen(false)}
+        />
+      ) : null}
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3 short:gap-y-1 short:py-1.5!">
           <div className="flex min-w-0 items-center gap-2">
@@ -362,6 +381,14 @@ function Monitor() {
                   onClick={() => void monitor.stop()}
                 >
                   <CircleStop className="size-4" /> Stop
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setFullscreen(true)}
+                >
+                  <Maximize2 className="size-4" /> Monitor view
                 </Button>
               </>
             ) : (
