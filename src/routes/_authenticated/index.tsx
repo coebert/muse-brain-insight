@@ -946,7 +946,16 @@ function Monitor() {
           loading={aiLoading}
           error={aiError}
           epochCount={monitor.epochs.length}
-          onRun={handleAnalyse}
+          onRun={() => void analyse(false)}
+          watch={aiWatch}
+          onWatchChange={(next) => {
+            setAiWatch(next);
+            if (next) {
+              toast.info("Continuous AI surveillance on — reviewing every 3 minutes.");
+              if (monitor.epochs.length >= 30) void analyse(true);
+            }
+          }}
+          lastRunAt={aiLastRunAt}
         />
 
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
