@@ -18,6 +18,7 @@ import { Activity, ArrowLeft } from "lucide-react";
 
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
+import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -382,6 +383,25 @@ function Trends() {
             </div>
 
             <section className="panel mt-4 px-3 py-3 sm:px-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold">Whole-session density spectral array</h2>
+                <span className="text-[11px] text-muted-foreground">
+                  {spectra.length} epochs compressed to screen width
+                </span>
+              </div>
+              <div className="mt-2 h-64 sm:h-80">
+                <SessionDsa spectra={spectra} times={times} />
+              </div>
+            </section>
+
+            <div className="mt-4">
+              <SessionAlertTimeline
+                sessionId={selected?.id ?? null}
+                durationSeconds={summary.duration}
+              />
+            </div>
+
+            <section className="hidden">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">Whole-session density spectral array</h2>
                 <span className="text-[11px] text-muted-foreground">
