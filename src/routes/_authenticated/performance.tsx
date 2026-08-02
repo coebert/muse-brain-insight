@@ -17,6 +17,7 @@ import {
 import { ArrowLeft, Gauge, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
 import {
   Select,
   SelectContent,
