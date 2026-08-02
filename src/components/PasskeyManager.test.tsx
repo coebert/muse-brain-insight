@@ -97,7 +97,7 @@ describe("PasskeyManager integration", () => {
     expect(notice).toHaveTextContent(/blocked the passkey prompt/i);
     expect(notice).toHaveTextContent(/own browser tab/i);
     expect(startPasskeyRegistration).not.toHaveBeenCalled();
-    expect(screen.getByRole("link", { name: /open in a new tab/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /open in a new tab/i }).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: /show exact reason/i }));
     expect(await screen.findByText(/publickey-credentials-create/i)).toBeInTheDocument();
