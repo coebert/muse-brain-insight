@@ -1,41 +1,14 @@
 import { useEffect, useRef } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ, type Epoch } from "@/lib/eeg/analysis";
-
-const STOPS: [number, number, number][] = [
-  [8, 16, 34], // floor
-  [18, 62, 96],
-  [16, 150, 138],
-  [120, 200, 90],
-  [245, 190, 40],
-  [235, 80, 70],
-  [255, 240, 230],
-];
-
-/** Frequency bands shown on the y-axis (gamma is above the DSA range). */
-const BANDS: { label: string; lo: number; hi: number; color: string }[] = [
-  { label: "Delta", lo: 0.5, hi: 4, color: "rgba(99,102,241,0.35)" },
-  { label: "Theta", lo: 4, hi: 8, color: "rgba(34,211,238,0.30)" },
-  { label: "Alpha", lo: 8, hi: 13, color: "rgba(52,211,153,0.30)" },
-  { label: "Beta", lo: 13, hi: 30, color: "rgba(250,204,21,0.30)" },
-];
+import {
+  DSA_STOPS,
+  drawBandGutter,
+  paintDsaHeatmap,
+} from "@/lib/eeg/dsa-render";
 
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
-const MARGIN_CSS = { top: 10, right: 54, bottom: 34, left: 48 };
-
-function colorFor(db: number, min: number, max: number): [number, number, number] {
-  const x = Math.max(0, Math.min(1, (db - min) / (max - min)));
-  const scaled = x * (STOPS.length - 1);
-  const i = Math.min(STOPS.length - 2, Math.floor(scaled));
-  const f = scaled - i;
-  const a = STOPS[i]!;
-  const b = STOPS[i + 1]!;
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * f),
-    Math.round(a[1] + (b[1] - a[1]) * f),
-    Math.round(a[2] + (b[2] - a[2]) * f),
-  ];
-}
+const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
 
 interface Props {
   epochs: Epoch[];
@@ -77,32 +50,26 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
     const visible = epochs.slice(-windowSeconds);
     const bins = visible[visible.length - 1]?.spectrum.length ?? 0;
 
-    // Spectrogram image, restricted to the plot area.
+    // Continuous heat map: interpolated in time and frequency so the display
+    // reads as a smooth bedside-monitor spectrogram rather than 1 s stripes.
     if (visible.length && bins) {
-      const image = ctx.createImageData(plotW, plotH);
-      for (let px = 0; px < plotW; px++) {
-        // Right-aligned: newest column at the right edge.
-        const colIndex = Math.floor((px / plotW) * windowSeconds) - (windowSeconds - visible.length);
-        const epoch = colIndex >= 0 && colIndex < visible.length ? visible[colIndex] : undefined;
-        for (let py = 0; py < plotH; py++) {
-          const idx = (py * plotW + px) * 4;
-          if (!epoch) {
-            image.data[idx] = 8;
-            image.data[idx + 1] = 16;
-            image.data[idx + 2] = 34;
-            image.data[idx + 3] = 255;
-            continue;
-          }
-          const bin = Math.min(bins - 1, Math.floor(((plotH - 1 - py) / plotH) * bins));
-          const db = epoch.spectrum[bin] ?? dbMin;
-          const [r, g, b] = colorFor(db, dbMin, dbMax);
-          image.data[idx] = r;
-          image.data[idx + 1] = g;
-          image.data[idx + 2] = b;
-          image.data[idx + 3] = 255;
-        }
-      }
-      ctx.putImageData(image, margin.left, margin.top);
+      const offset = windowSeconds - visible.length;
+      paintDsaHeatmap(
+        ctx,
+        { x: margin.left, y: margin.top, w: plotW, h: plotH },
+        (px) => {
+          // Right-aligned: newest column at the right edge.
+          const pos = (px / Math.max(1, plotW - 1)) * (windowSeconds - 1) - offset;
+          const i = Math.floor(pos);
+          return {
+            lo: i >= 0 && i < visible.length ? visible[i]!.spectrum : undefined,
+            hi: i + 1 >= 0 && i + 1 < visible.length ? visible[i + 1]!.spectrum : undefined,
+            f: pos - i,
+          };
+        },
+        dbMin,
+        dbMax,
+      );
     }
 
     // Plot-area border.
@@ -113,34 +80,18 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
     const yForHz = (f: number) =>
       margin.top + plotH - ((f - DSA_MIN_HZ) / (DSA_MAX_HZ - DSA_MIN_HZ)) * plotH;
 
-    // Frequency band backgrounds + boundary lines.
-    for (const band of BANDS) {
-      const yLo = yForHz(band.lo);
-      const yHi = yForHz(band.hi);
-      const bandH = yLo - yHi;
-      ctx.fillStyle = band.color;
-      ctx.fillRect(margin.left, yHi, plotW, bandH);
-
-      // Boundary tick on the y-axis.
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.setLineDash([3 * dpr, 3 * dpr]);
-      ctx.beginPath();
-      ctx.moveTo(margin.left, yHi);
-      ctx.lineTo(margin.left + plotW, yHi);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Band label on the right.
-      const centerY = (yHi + yLo) / 2;
-      ctx.font = `600 ${10 * dpr}px "Inter", system-ui, sans-serif`;
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(band.label, margin.left + plotW + 7 * dpr, centerY);
-    }
+    // Band key lives in the right gutter so the heat map colours read true.
+    drawBandGutter(ctx, {
+      left: margin.left,
+      plotW,
+      dpr,
+      yForHz,
+      minHz: DSA_MIN_HZ,
+      maxHz: DSA_MAX_HZ,
+    });
 
     // Frequency gridlines and y-axis labels.
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
     ctx.font = `${10 * dpr}px "IBM Plex Mono", monospace`;
     ctx.fillStyle = "rgba(255,255,255,0.65)";
