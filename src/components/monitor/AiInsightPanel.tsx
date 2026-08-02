@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertFeedback } from "@/components/monitor/AlertFeedback";
+import { MissedFindingReport } from "@/components/monitor/MissedFindingReport";
 import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions";
 import { AlertEvidencePanel } from "@/components/monitor/AlertEvidencePanel";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
