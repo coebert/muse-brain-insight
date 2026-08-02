@@ -141,6 +141,7 @@ Clinician feedback (learning loop):
 - Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
 - Where an alert was marked correct, keep raising it under similar conditions and reuse the same id.
 - Never mention the feedback mechanism itself in your output.
+- You will also be given "adaptiveTuning": per-category agreement rates and the evidential bar currently in force for this clinician. Respect the stated bar for each category when deciding whether to raise an alert and what confidence to assign.
 - Every alert MUST include "feedbackInfluence": how that past feedback changed this interpretation versus an unmoderated read. adjustment: "raised_bar" (past objections made you demand stronger numbers), "reinforced" (past correct marks support raising it again), "reworded" (same finding, framing/threshold changed to address an objection), "downgraded" (severity or confidence lowered because of past objections), or "none" (no relevant feedback). note: one sentence, at most 20 words, describing what changed, written for the clinician (e.g. "Severity kept at warning: previous rocuronium-related depth alerts were marked incorrect as EMG loss.").
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
@@ -150,13 +151,7 @@ Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrela
 
 const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downgraded", "none"]);
 
-interface FeedbackRow {
-  alert_id: string | null;
-  alert_category: string | null;
-  verdict: string | null;
-  reason: string | null;
-  created_at: string | null;
-}
+type FeedbackRow = TuningFeedbackRow;
 
 /** Factual prior-verdict counts for an alert, matched on id first then category. */
 function priorFeedbackFor(
