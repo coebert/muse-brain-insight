@@ -292,5 +292,11 @@ export const interpretSession = createServerFn({ method: "POST" })
     );
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
-    return { ...extractJson(text), modelVersion: AI_MODEL_VERSION };
+    const parsed = extractJson(text);
+    const rows = (feedback ?? []) as FeedbackRow[];
+    return {
+      ...parsed,
+      alerts: parsed.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+      modelVersion: AI_MODEL_VERSION,
+    };
   });
