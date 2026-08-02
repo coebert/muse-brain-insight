@@ -8,6 +8,22 @@ export interface InterpretationFinding {
   supporting: string[];
 }
 
+export interface AlertEvidence {
+  /** Metric name as displayed in the app, e.g. "Suppression ratio". */
+  feature: string;
+  /** Observed value with units, e.g. "38 %". */
+  value: string;
+  /** Threshold or typical range compared against. */
+  expected?: string | null;
+  direction: "high" | "low" | "rising" | "falling" | "unstable" | "normal";
+  /** Relative contribution to the alert, 0–1. */
+  weight: number;
+  /** Session time window (seconds) the value was measured over. */
+  windowStartSeconds?: number | null;
+  windowEndSeconds?: number | null;
+  note?: string | null;
+}
+
 export interface ClinicalAlert {
   /** Stable-ish key so repeat analyses don't re-alert for the same problem. */
   id: string;
@@ -27,6 +43,8 @@ export interface ClinicalAlert {
   action: string;
   confidence: "low" | "moderate" | "high";
   tSeconds?: number | null;
+  /** Top contributing features/metrics that triggered this alert. */
+  evidence?: AlertEvidence[];
 }
 
 export interface Interpretation {
@@ -70,6 +88,15 @@ Alerting:
 - tSeconds: session time the problem is anchored to, or null.
 - Never alert purely on poor signal quality unless quality is the problem — use category signal_quality then.
 
+Explainability (required for every alert):
+- Each alert MUST include "evidence": the 2–4 top contributing features/metrics that actually triggered it, most influential first.
+- feature: metric name as displayed in the app (e.g. "Suppression ratio", "SEF95", "Depth index", "Seizure score", "State entropy", "Delta/alpha ratio", "Beta/alpha ratio", "Total power", "qCON", "qNOX", "Usable fraction", or a named marker response).
+- value: the observed number with units, taken from the digest — never invent numbers. expected: the threshold or typical range you compare against, or null.
+- direction: one of high, low, rising, falling, unstable, normal.
+- weight: your 0–1 estimate of how much that feature drove the alert (they need not sum to 1).
+- windowStartSeconds/windowEndSeconds: the session time window in seconds from session start that the value covers; use the window of the digest field you cite, or null for whole-session values.
+- note: at most 15 words on why that feature supports the alert.
+
 Clinician feedback (learning loop):
 - You may be given "clinicianFeedback": past alerts this clinician marked correct or incorrect, with their stated reason. Treat it as calibration for this user and setting.
 - Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
@@ -78,7 +105,7 @@ Clinician feedback (learning loop):
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
-{"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
+{"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}]}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
 Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrelations (one per notable marker, naming the marker), at most 5 pathology indicators, at most 5 recommended checks and 4 limitations.`;
 
 function extractJson(text: string): Interpretation {
@@ -90,9 +117,25 @@ function extractJson(text: string): Interpretation {
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) throw new Error("The AI response could not be parsed.");
   const parsed = JSON.parse(cleaned.slice(start, end + 1)) as Interpretation;
+  const alerts = Array.isArray(parsed.alerts) ? parsed.alerts : [];
   return {
     ...parsed,
-    alerts: Array.isArray(parsed.alerts) ? parsed.alerts : [],
+    alerts: alerts.map((a) => ({
+      ...a,
+      evidence: Array.isArray(a?.evidence)
+        ? a.evidence
+            .filter((e) => e && typeof e.feature === "string")
+            .map((e) => ({
+              ...e,
+              weight:
+                typeof e.weight === "number" && isFinite(e.weight)
+                  ? Math.max(0, Math.min(1, e.weight))
+                  : 0.5,
+            }))
+            .sort((x, y) => y.weight - x.weight)
+            .slice(0, 4)
+        : [],
+    })),
     markerCorrelations: Array.isArray(parsed.markerCorrelations) ? parsed.markerCorrelations : [],
     pathologyIndicators: Array.isArray(parsed.pathologyIndicators) ? parsed.pathologyIndicators : [],
     recommendedChecks: Array.isArray(parsed.recommendedChecks) ? parsed.recommendedChecks : [],
