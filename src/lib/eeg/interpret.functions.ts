@@ -8,6 +8,9 @@ export interface InterpretationFinding {
   supporting: string[];
 }
 
+/** AI model backing the alert reviewer — recorded with clinician feedback. */
+export const AI_MODEL_VERSION = "openai/gpt-5.6-sol";
+
 export interface AlertEvidence {
   /** Metric name as displayed in the app, e.g. "Suppression ratio". */
   feature: string;
@@ -58,6 +61,8 @@ export interface Interpretation {
   recommendedChecks: string[];
   limitations: string[];
   dataQualityCaveat: string;
+  /** Model that produced this interpretation. */
+  modelVersion?: string;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology decision-support assistant reviewing quantitative EEG derived from a 4-channel consumer Muse 2 headband (frontal/temporal electrodes: TP9, AF7, AF8, TP10) used during general anaesthesia or ICU sedation.
@@ -216,7 +221,7 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     const text = await streamText(
       {
-        model: "openai/gpt-5.6-sol",
+        model: AI_MODEL_VERSION,
         stream: true,
         input: [
           { role: "system", content: SYSTEM_PROMPT },
@@ -233,5 +238,5 @@ export const interpretSession = createServerFn({ method: "POST" })
     );
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
-    return extractJson(text);
+    return { ...extractJson(text), modelVersion: AI_MODEL_VERSION };
   });

@@ -73,9 +73,11 @@ export type Database = {
           alert_id: string
           alert_severity: string
           alert_title: string
+          clinician_label: string | null
           context: string | null
           created_at: string
           id: string
+          model_version: string
           reason: string | null
           session_id: string | null
           user_id: string
@@ -86,9 +88,11 @@ export type Database = {
           alert_id: string
           alert_severity?: string
           alert_title?: string
+          clinician_label?: string | null
           context?: string | null
           created_at?: string
           id?: string
+          model_version?: string
           reason?: string | null
           session_id?: string | null
           user_id: string
@@ -99,9 +103,11 @@ export type Database = {
           alert_id?: string
           alert_severity?: string
           alert_title?: string
+          clinician_label?: string | null
           context?: string | null
           created_at?: string
           id?: string
+          model_version?: string
           reason?: string | null
           session_id?: string | null
           user_id?: string
