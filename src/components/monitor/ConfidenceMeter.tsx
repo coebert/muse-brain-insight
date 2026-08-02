@@ -20,7 +20,7 @@ function pct(v: number | null | undefined): string {
 }
 
 const VERDICT_STYLE: Record<ModelReliability["verdict"], { label: string; cls: string }> = {
-  "well-calibrated": { label: "Well calibrated", cls: "border-normal/50 text-normal" },
+  "well-calibrated": { label: "Well calibrated", cls: "border-signal/50 text-signal" },
   "over-confident": { label: "Over-confident", cls: "border-critical/50 text-critical" },
   "under-confident": { label: "Under-confident", cls: "border-caution/50 text-caution" },
   "insufficient-data": { label: "Too few verdicts", cls: "border-border text-muted-foreground" },
