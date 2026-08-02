@@ -21,6 +21,7 @@ import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
 import { TimelineScrubber, type ScrubWindow } from "@/components/monitor/TimelineScrubber";
+import type { CoverageEpoch } from "@/lib/eeg/coverage";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -196,6 +197,21 @@ function Trends() {
     [epochs.data],
   );
   const times = useMemo(() => rows.map((r) => r.t), [rows]);
+
+  /** Per-epoch completeness record used to flag alert windows with missing EEG. */
+  const coverageEpochs = useMemo<CoverageEpoch[]>(
+    () =>
+      rows.map((r, i) => ({
+        t: r.t,
+        depth: r.depth,
+        sef95: r.sef95,
+        sr: r.sr,
+        seizure: r.seizure,
+        entropy: r.entropy,
+        spectrumBins: spectra[i]?.length ?? 0,
+      })),
+    [rows, spectra],
+  );
 
   const summary = useMemo(() => {
     const vals = (key: "depth" | "sef95" | "sr" | "seizure") =>
@@ -492,6 +508,7 @@ function Trends() {
                 onSelectAlert={selectAlert}
                 onWindowsChange={handleWindows}
                 cursor={cursor}
+                epochs={coverageEpochs}
               />
             </div>
 
