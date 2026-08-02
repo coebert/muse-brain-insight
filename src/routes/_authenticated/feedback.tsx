@@ -168,7 +168,11 @@ function FeedbackAnalyticsPage() {
             model version.
           </p>
         </div>
-        <div className="ml-auto w-40">
+        <div className="ml-auto flex items-center gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/performance">Model performance</Link>
+          </Button>
+          <div className="w-40">
           <Select value={windowDays} onValueChange={setWindowDays}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue />
@@ -181,6 +185,7 @@ function FeedbackAnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
+          </div>
         </div>
       </header>
 
