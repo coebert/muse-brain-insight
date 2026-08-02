@@ -42,10 +42,13 @@ export function SessionCoverageSummary({
   coverage,
   incompleteAlerts,
   totalAlerts,
+  settings,
 }: {
   coverage: SessionCoverage;
   incompleteAlerts: number;
   totalAlerts: number;
+  /** Optional threshold-settings control rendered in the header. */
+  settings?: React.ReactNode;
 }) {
   const style = LEVEL_STYLE[coverage.level];
   const Icon = style.Icon;
@@ -54,12 +57,15 @@ export function SessionCoverageSummary({
     <section className="panel px-3 py-3 sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Data completeness</h2>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${style.className}`}
-        >
-          <Icon className="size-3.5" />
-          {style.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${style.className}`}
+          >
+            <Icon className="size-3.5" />
+            {style.label}
+          </span>
+          {settings}
+        </div>
       </div>
 
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
