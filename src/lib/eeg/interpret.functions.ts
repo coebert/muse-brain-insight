@@ -266,7 +266,7 @@ async function streamText(body: unknown, apiKey: string): Promise<string> {
 
 export const interpretSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { digest: unknown }) => {
+  .inputValidator((input: { digest: unknown; sessionId?: string | null }) => {
     if (!input || typeof input.digest !== "object" || input.digest === null) {
       throw new Error("A session digest is required.");
     }
@@ -278,9 +278,14 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     const { data: feedback } = await context.supabase
       .from("ai_alert_feedback")
-      .select("alert_id, alert_category, alert_severity, alert_title, verdict, reason, created_at")
+      .select(
+        "alert_id, alert_category, alert_severity, alert_title, verdict, reason, created_at, session_id",
+      )
       .order("created_at", { ascending: false })
       .limit(40);
+
+    const rows = (feedback ?? []) as FeedbackRow[];
+    const tuning = deriveAlertTuning(rows, data.sessionId ?? null);
 
     const text = await streamText(
       {
@@ -290,7 +295,7 @@ export const interpretSession = createServerFn({ method: "POST" })
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(feedback ?? [])}`,
+            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(rows)}\n\nadaptiveTuning (evidential bar in force per category):\n${tuningPromptBlock(tuning)}`,
           },
         ],
         reasoning: { effort: "medium", summary: "auto" },
@@ -302,10 +307,16 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
     const parsed = extractJson(text);
-    const rows = (feedback ?? []) as FeedbackRow[];
+    const withFeedback = parsed.alerts.map((a) => ({
+      ...a,
+      priorFeedback: priorFeedbackFor(a, rows),
+    }));
+    const tuned = applyAlertTuning(withFeedback, tuning);
     return {
       ...parsed,
-      alerts: parsed.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+      alerts: tuned,
+      alertTuning: tuning,
+      suppressedByTuning: Math.max(0, withFeedback.length - tuned.length),
       modelVersion: AI_MODEL_VERSION,
     };
   });
