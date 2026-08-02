@@ -513,6 +513,7 @@ function Trends() {
                     />
                     <ReferenceLine y={40} stroke="var(--destructive)" strokeDasharray="4 4" />
                     {eventLines(100)}
+                    {focusOverlay(100)}
                     <Area
                       type="monotone"
                       dataKey="sr"
@@ -544,6 +545,7 @@ function Trends() {
                       labelFormatter={(v) => `t ${formatClock(Number(v))}`}
                     />
                     {eventLines(30)}
+                    {focusOverlay(30)}
                     <Line
                       type="monotone"
                       dataKey="sef95"
@@ -575,6 +577,7 @@ function Trends() {
                     <ReferenceLine y={40} stroke="var(--chart-4)" strokeDasharray="4 4" />
                     <ReferenceLine y={60} stroke="var(--chart-4)" strokeDasharray="4 4" />
                     {eventLines(100)}
+                    {focusOverlay(100)}
                     <Line
                       type="monotone"
                       dataKey="depth"
@@ -624,6 +627,7 @@ function Trends() {
                       labelFormatter={(v) => `t ${formatClock(Number(v))}`}
                     />
                     {eventLines(100)}
+                    {focusOverlay(100)}
                     <Line
                       type="monotone"
                       dataKey="entropy"
