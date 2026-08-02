@@ -401,18 +401,6 @@ function Trends() {
               />
             </div>
 
-            <section className="hidden">
-              <div className="flex items-baseline justify-between gap-2">
-                <h2 className="text-sm font-semibold">Whole-session density spectral array</h2>
-                <span className="text-[11px] text-muted-foreground">
-                  {spectra.length} epochs compressed to screen width
-                </span>
-              </div>
-              <div className="mt-2 h-64 sm:h-80">
-                <SessionDsa spectra={spectra} times={times} />
-              </div>
-            </section>
-
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
               <TrendPanel title="Suppression ratio (%)" hint="burst-suppression burden">
                 <ResponsiveContainer width="100%" height="100%">
