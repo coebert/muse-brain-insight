@@ -1,7 +1,17 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, CircleDashed, Clock, Flag, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
+  Clock,
+  Flag,
+  Send,
+  SignalZero,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 
 import { formatClock } from "@/lib/eeg/format";
 import {
@@ -11,6 +21,15 @@ import {
 import { useAlertActions, roleLabel, stanceLabel } from "@/components/monitor/AlertActions";
 import type { AlertActionRow } from "@/lib/eeg/alert-actions.functions";
 import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
+import {
+  assessEvidence,
+  assessWindowCoverage,
+  epochCadence,
+  worstLevel,
+  type CoverageEpoch,
+  type EvidenceCompleteness,
+  type WindowCoverage,
+} from "@/lib/eeg/coverage";
 
 interface TimelineEntry {
   alertId: string;
@@ -24,6 +43,10 @@ interface TimelineEntry {
   evidence: AlertEvidence[];
   actions: AlertActionRow[];
   feedback: AlertFeedbackRow[];
+  /** EEG coverage inside the alert window; null when the window is unknown. */
+  coverage: WindowCoverage | null;
+  evidenceQuality: EvidenceCompleteness;
+  dataLevel: "ok" | "partial" | "insufficient";
 }
 
 const SEVERITY_CLASS: Record<string, string> = {
@@ -38,6 +61,22 @@ const STANCE_CLASS: Record<string, string> = {
   override: "bg-critical/15 text-critical",
   defer: "bg-muted text-muted-foreground",
 };
+
+const DATA_CLASS: Record<string, string> = {
+  ok: "border-success/40 bg-success/10 text-success",
+  partial: "border-caution/50 bg-caution/10 text-caution",
+  insufficient: "border-critical/50 bg-critical/10 text-critical",
+};
+
+const DATA_LABEL: Record<string, string> = {
+  ok: "Data complete",
+  partial: "Partial data",
+  insufficient: "Insufficient data",
+};
+
+/** Hatched overlay marking windows whose EEG or evidence is incomplete. */
+const HATCH =
+  "repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 2px, transparent 2px 5px)";
 
 function windowOf(evidence: AlertEvidence[]): { start: number | null; end: number | null } {
   const starts = evidence
@@ -64,6 +103,7 @@ export function SessionAlertTimeline({
   onSelectAlert,
   onWindowsChange,
   cursor = null,
+  epochs = [],
 }: {
   sessionId: string | null;
   durationSeconds: number;
@@ -76,6 +116,8 @@ export function SessionAlertTimeline({
   ) => void;
   /** Session-relative scrubber position, drawn on the strip. */
   cursor?: number | null;
+  /** Stored epochs for the session, used to flag windows with missing EEG data. */
+  epochs?: CoverageEpoch[];
 }) {
   const { data: actions, isLoading: actionsLoading } = useAlertActions(sessionId);
   const listFeedback = useServerFn(listSessionAlertFeedback);
@@ -88,10 +130,11 @@ export function SessionAlertTimeline({
 
   const entries = useMemo<TimelineEntry[]>(() => {
     const map = new Map<string, TimelineEntry>();
+    const cadence = epochCadence(epochs);
     const ensure = (
       id: string,
       seed: { title: string; category: string; severity: string; createdAt: string },
-    ) => {
+    ): TimelineEntry => {
       let e = map.get(id);
       if (!e) {
         e = {
@@ -105,6 +148,9 @@ export function SessionAlertTimeline({
           evidence: [],
           actions: [],
           feedback: [],
+          coverage: null,
+          evidenceQuality: { total: 0, incomplete: 0, reasons: [], level: "insufficient" },
+          dataLevel: "insufficient",
         };
         map.set(id, e);
       }
@@ -138,6 +184,15 @@ export function SessionAlertTimeline({
       e.windowEnd = w.end;
       e.actions.sort((a, b) => a.created_at.localeCompare(b.created_at));
       e.feedback.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      e.evidenceQuality = assessEvidence(e.evidence);
+      e.coverage =
+        e.windowStart == null || !epochs.length
+          ? null
+          : assessWindowCoverage(epochs, e.windowStart, e.windowEnd ?? e.windowStart, cadence);
+      e.dataLevel = worstLevel(
+        e.evidenceQuality.level,
+        e.coverage ? e.coverage.level : epochs.length ? "insufficient" : "partial",
+      );
     }
     return [...map.values()].sort((a, b) => {
       const at = a.windowStart ?? Number.POSITIVE_INFINITY;
@@ -145,7 +200,7 @@ export function SessionAlertTimeline({
       if (at !== bt) return at - bt;
       return a.firstSeen.localeCompare(b.firstSeen);
     });
-  }, [actions, feedback]);
+  }, [actions, feedback, epochs]);
 
   const span = Math.max(durationSeconds, 1);
 
@@ -160,9 +215,12 @@ export function SessionAlertTimeline({
           severity: e.severity,
           start: e.windowStart as number,
           end: e.windowEnd ?? (e.windowStart as number),
+          dataLevel: e.dataLevel,
         })),
     );
   }, [entries, onWindowsChange]);
+
+  const incompleteCount = entries.filter((e) => e.dataLevel !== "ok").length;
 
   return (
     <section className="panel px-3 py-3 sm:px-4">
@@ -171,6 +229,16 @@ export function SessionAlertTimeline({
         <span className="text-[11px] text-muted-foreground">
           {entries.length} alert{entries.length === 1 ? "" : "s"} with captured evidence and
           decisions
+          {entries.length ? (
+            <>
+              {" · "}
+              <span className={incompleteCount ? "text-caution" : "text-success"}>
+                {incompleteCount
+                  ? `${incompleteCount} with missing data`
+                  : "all fully evidenced"}
+              </span>
+            </>
+          ) : null}
         </span>
       </div>
 
@@ -190,17 +258,22 @@ export function SessionAlertTimeline({
                   <button
                     key={`bar-${e.alertId}`}
                     type="button"
-                    title={`${e.title} · ${formatClock(e.windowStart)}`}
+                    title={`${e.title} · ${formatClock(e.windowStart)}${
+                      e.dataLevel === "ok" ? "" : ` · ${DATA_LABEL[e.dataLevel]}`
+                    }`}
                     onClick={() => onSelectAlert?.(e.alertId)}
                     className={`absolute top-1 bottom-1 rounded-sm border ${
                       SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
-                    } ${selectedAlertId === e.alertId ? "ring-2 ring-signal" : ""}`}
+                    } ${selectedAlertId === e.alertId ? "ring-2 ring-signal" : ""} ${
+                      e.dataLevel === "insufficient" ? "border-dashed" : ""
+                    }`}
                     style={{
                       left: `${Math.min(99, (e.windowStart / span) * 100)}%`,
                       width: `${Math.max(
                         0.8,
                         (((e.windowEnd ?? e.windowStart) - e.windowStart) / span) * 100,
                       )}%`,
+                      ...(e.dataLevel === "ok" ? {} : { backgroundImage: HATCH }),
                     }}
                   />
                 ),
@@ -216,6 +289,9 @@ export function SessionAlertTimeline({
               <span>00:00</span>
               <span>{formatClock(span)}</span>
             </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Hatched bars mark windows with incomplete EEG coverage or evidence.
+            </p>
           </div>
 
           <ol className="mt-3 space-y-2 border-l border-border pl-3">
@@ -253,7 +329,55 @@ export function SessionAlertTimeline({
                     <span className="text-[10px] text-muted-foreground">
                       {e.category.replace(/_/g, " ")}
                     </span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        DATA_CLASS[e.dataLevel]
+                      }`}
+                    >
+                      {e.dataLevel === "ok" ? (
+                        <CheckCircle2 className="size-3" />
+                      ) : e.dataLevel === "insufficient" ? (
+                        <SignalZero className="size-3" />
+                      ) : (
+                        <AlertTriangle className="size-3" />
+                      )}
+                      {DATA_LABEL[e.dataLevel]}
+                    </span>
                   </button>
+
+                  {e.dataLevel === "ok" ? null : (
+                    <ul className="mt-2 space-y-0.5 rounded-md border border-dashed border-border bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
+                      {e.coverage ? (
+                        <>
+                          <li>
+                            EEG coverage {Math.round(e.coverage.fraction * 100)}% (
+                            {e.coverage.present}/{e.coverage.expected} epochs
+                            {e.coverage.largestGapSeconds >= 1
+                              ? `, largest gap ${Math.round(e.coverage.largestGapSeconds)} s`
+                              : ""}
+                            )
+                          </li>
+                          {e.coverage.spectrumMissingFraction > 0 ? (
+                            <li>
+                              No spectrum stored for{" "}
+                              {Math.round(e.coverage.spectrumMissingFraction * 100)}% of the window
+                              — the DSA cannot be reviewed here.
+                            </li>
+                          ) : null}
+                          {e.coverage.missingMetrics.length ? (
+                            <li>Metrics unavailable: {e.coverage.missingMetrics.join(", ")}</li>
+                          ) : null}
+                        </>
+                      ) : (
+                        <li>
+                          No time window on this alert, so its EEG coverage cannot be checked.
+                        </li>
+                      )}
+                      {e.evidenceQuality.reasons.map((r) => (
+                        <li key={`${e.alertId}-gap-${r}`}>Evidence: {r}</li>
+                      ))}
+                    </ul>
+                  )}
 
                   {e.evidence.length ? (
                     <ul className="mt-2 grid gap-1 sm:grid-cols-2">
@@ -263,11 +387,17 @@ export function SessionAlertTimeline({
                             <span className="truncate">
                               {ev.feature}
                               <span className="metric-value ml-1 text-muted-foreground">
-                                {ev.value}
+                                {ev.value && String(ev.value).trim() ? (
+                                  ev.value
+                                ) : (
+                                  <span className="text-caution">no value</span>
+                                )}
                               </span>
                             </span>
                             <span className="shrink-0 text-[10px] text-muted-foreground">
-                              {ev.direction}
+                              {typeof ev.windowStartSeconds === "number"
+                                ? ev.direction
+                                : `${ev.direction} · no window`}
                             </span>
                           </div>
                           <div className="mt-0.5 h-1 rounded-full bg-muted">

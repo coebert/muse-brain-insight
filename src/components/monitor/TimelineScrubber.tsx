@@ -11,6 +11,8 @@ export interface ScrubWindow {
   severity: string;
   start: number;
   end: number;
+  /** EEG/evidence completeness for this window. */
+  dataLevel?: "ok" | "partial" | "insufficient";
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -92,7 +94,13 @@ export function TimelineScrubber({
           <button
             key={`tick-${w.alertId}`}
             type="button"
-            title={`${w.title} · ${formatClock(w.start)}`}
+            title={`${w.title} · ${formatClock(w.start)}${
+              w.dataLevel && w.dataLevel !== "ok"
+                ? w.dataLevel === "insufficient"
+                  ? " · insufficient EEG data"
+                  : " · partial data"
+                : ""
+            }`}
             aria-label={`Jump to ${w.title}`}
             onClick={() => {
               onSelectWindow(w.alertId);
@@ -104,6 +112,12 @@ export function TimelineScrubber({
             style={{
               left: `${Math.min(99, (w.start / span) * 100)}%`,
               width: `${Math.max(0.7, ((w.end - w.start) / span) * 100)}%`,
+              ...(w.dataLevel && w.dataLevel !== "ok"
+                ? {
+                    backgroundImage:
+                      "repeating-linear-gradient(45deg, rgba(255,255,255,0.4) 0 2px, transparent 2px 5px)",
+                  }
+                : {}),
             }}
           />
         ))}
