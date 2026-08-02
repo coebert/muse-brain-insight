@@ -18,6 +18,7 @@ import { Activity, ArrowLeft } from "lucide-react";
 
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
+import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -392,6 +393,13 @@ function Trends() {
                 <SessionDsa spectra={spectra} times={times} />
               </div>
             </section>
+
+            <div className="mt-4">
+              <SessionAlertTimeline
+                sessionId={selected?.id ?? null}
+                durationSeconds={summary.duration}
+              />
+            </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
               <TrendPanel title="Suppression ratio (%)" hint="burst-suppression burden">

@@ -74,6 +74,24 @@ export const listAlertFeedback = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return (data ?? []) as AlertFeedbackRow[];
   });
+
+/** Feedback verdicts for one saved session, oldest last — used by the session timeline. */
+export const listSessionAlertFeedback = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { sessionId?: string | null } | undefined) => input ?? {})
+  .handler(async ({ data, context }): Promise<AlertFeedbackRow[]> => {
+    if (!data.sessionId) return [];
+    const { data: rows, error } = await context.supabase
+      .from("ai_alert_feedback")
+      .select(
+        "id, alert_id, alert_category, alert_severity, alert_title, verdict, reason, context, created_at",
+      )
+      .eq("session_id", data.sessionId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as AlertFeedbackRow[];
+  });
 export interface FeedbackBucket {
   key: string;
   label: string;

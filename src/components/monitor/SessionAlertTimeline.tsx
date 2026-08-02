@@ -1,0 +1,315 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { CheckCircle2, CircleDashed, Clock, Flag, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+
+import { formatClock } from "@/lib/eeg/format";
+import {
+  listSessionAlertFeedback,
+  type AlertFeedbackRow,
+} from "@/lib/eeg/alert-feedback.functions";
+import { useAlertActions, roleLabel, stanceLabel } from "@/components/monitor/AlertActions";
+import type { AlertActionRow } from "@/lib/eeg/alert-actions.functions";
+import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
+
+interface TimelineEntry {
+  alertId: string;
+  title: string;
+  category: string;
+  severity: string;
+  /** Session-relative window derived from the evidence snapshot, when available. */
+  windowStart: number | null;
+  windowEnd: number | null;
+  firstSeen: string;
+  evidence: AlertEvidence[];
+  actions: AlertActionRow[];
+  feedback: AlertFeedbackRow[];
+}
+
+const SEVERITY_CLASS: Record<string, string> = {
+  critical: "border-critical/50 bg-critical/10 text-critical",
+  warning: "border-caution/50 bg-caution/10 text-caution",
+  advisory: "border-border bg-muted/40 text-muted-foreground",
+};
+
+const STANCE_CLASS: Record<string, string> = {
+  agree: "bg-success/15 text-success",
+  partial: "bg-caution/15 text-caution",
+  override: "bg-critical/15 text-critical",
+  defer: "bg-muted text-muted-foreground",
+};
+
+function windowOf(evidence: AlertEvidence[]): { start: number | null; end: number | null } {
+  const starts = evidence
+    .map((e) => e.windowStartSeconds)
+    .filter((v): v is number => typeof v === "number");
+  const ends = evidence
+    .map((e) => e.windowEndSeconds)
+    .filter((v): v is number => typeof v === "number");
+  return {
+    start: starts.length ? Math.min(...starts) : null,
+    end: ends.length ? Math.max(...ends) : null,
+  };
+}
+
+/**
+ * Chronological review of every alert raised in a saved session: the evidence
+ * snapshot captured at the time, the time window it covered, the clinician's
+ * acknowledge/escalate rationale and the feedback verdict that followed.
+ */
+export function SessionAlertTimeline({
+  sessionId,
+  durationSeconds,
+}: {
+  sessionId: string | null;
+  durationSeconds: number;
+}) {
+  const { data: actions, isLoading: actionsLoading } = useAlertActions(sessionId);
+  const listFeedback = useServerFn(listSessionAlertFeedback);
+  const { data: feedback } = useQuery({
+    queryKey: ["alert-feedback", "session", sessionId ?? "none"],
+    enabled: Boolean(sessionId),
+    queryFn: () => listFeedback({ data: { sessionId } }),
+    staleTime: 15_000,
+  });
+
+  const entries = useMemo<TimelineEntry[]>(() => {
+    const map = new Map<string, TimelineEntry>();
+    const ensure = (
+      id: string,
+      seed: { title: string; category: string; severity: string; createdAt: string },
+    ) => {
+      let e = map.get(id);
+      if (!e) {
+        e = {
+          alertId: id,
+          title: seed.title || id,
+          category: seed.category,
+          severity: seed.severity,
+          windowStart: null,
+          windowEnd: null,
+          firstSeen: seed.createdAt,
+          evidence: [],
+          actions: [],
+          feedback: [],
+        };
+        map.set(id, e);
+      }
+      if (seed.createdAt < e.firstSeen) e.firstSeen = seed.createdAt;
+      return e;
+    };
+
+    for (const a of actions ?? []) {
+      const e = ensure(a.alert_id, {
+        title: a.alert_title,
+        category: a.alert_category,
+        severity: a.alert_severity,
+        createdAt: a.created_at,
+      });
+      e.actions.push(a);
+      const snap = Array.isArray(a.evidence_snapshot) ? a.evidence_snapshot : [];
+      if (snap.length > e.evidence.length) e.evidence = snap;
+    }
+    for (const f of feedback ?? []) {
+      const e = ensure(f.alert_id, {
+        title: f.alert_title,
+        category: f.alert_category,
+        severity: f.alert_severity,
+        createdAt: f.created_at,
+      });
+      e.feedback.push(f);
+    }
+    for (const e of map.values()) {
+      const w = windowOf(e.evidence);
+      e.windowStart = w.start;
+      e.windowEnd = w.end;
+      e.actions.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      e.feedback.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+    return [...map.values()].sort((a, b) => {
+      const at = a.windowStart ?? Number.POSITIVE_INFINITY;
+      const bt = b.windowStart ?? Number.POSITIVE_INFINITY;
+      if (at !== bt) return at - bt;
+      return a.firstSeen.localeCompare(b.firstSeen);
+    });
+  }, [actions, feedback]);
+
+  const span = Math.max(durationSeconds, 1);
+
+  return (
+    <section className="panel px-3 py-3 sm:px-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold">Alert &amp; decision timeline</h2>
+        <span className="text-[11px] text-muted-foreground">
+          {entries.length} alert{entries.length === 1 ? "" : "s"} with captured evidence and
+          decisions
+        </span>
+      </div>
+
+      {!entries.length ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {actionsLoading
+            ? "Loading decisions…"
+            : "No acknowledgements, escalations or feedback recorded for this case yet. Run an AI review and action the alerts to build the timeline."}
+        </p>
+      ) : (
+        <>
+          {/* Session-relative scatter of alert windows */}
+          <div className="mt-3">
+            <div className="relative h-8 rounded border border-border bg-muted/20">
+              {entries.map((e) =>
+                e.windowStart == null ? null : (
+                  <div
+                    key={`bar-${e.alertId}`}
+                    title={`${e.title} · ${formatClock(e.windowStart)}`}
+                    className={`absolute top-1 bottom-1 rounded-sm border ${
+                      SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
+                    }`}
+                    style={{
+                      left: `${Math.min(99, (e.windowStart / span) * 100)}%`,
+                      width: `${Math.max(
+                        0.8,
+                        (((e.windowEnd ?? e.windowStart) - e.windowStart) / span) * 100,
+                      )}%`,
+                    }}
+                  />
+                ),
+              )}
+            </div>
+            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+              <span>00:00</span>
+              <span>{formatClock(span)}</span>
+            </div>
+          </div>
+
+          <ol className="mt-3 space-y-2 border-l border-border pl-3">
+            {entries.map((e) => (
+              <li key={e.alertId} className="relative">
+                <span
+                  className={`absolute -left-[19px] top-2 size-2.5 rounded-full border ${
+                    SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
+                  }`}
+                />
+                <div className="rounded-md border border-border bg-card/40 px-3 py-2">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="metric-value text-[11px] text-muted-foreground">
+                      <Clock className="mr-1 inline size-3" />
+                      {e.windowStart == null
+                        ? new Date(e.firstSeen).toLocaleTimeString()
+                        : `${formatClock(e.windowStart)}–${formatClock(e.windowEnd ?? e.windowStart)}`}
+                    </span>
+                    <span className="text-sm font-medium">{e.title}</span>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
+                      }`}
+                    >
+                      {e.severity}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {e.category.replace(/_/g, " ")}
+                    </span>
+                  </div>
+
+                  {e.evidence.length ? (
+                    <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                      {e.evidence.slice(0, 6).map((ev, i) => (
+                        <li key={`${e.alertId}-ev-${i}`} className="text-[11px]">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="truncate">
+                              {ev.feature}
+                              <span className="metric-value ml-1 text-muted-foreground">
+                                {ev.value}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">
+                              {ev.direction}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 h-1 rounded-full bg-muted">
+                            <div
+                              className="h-1 rounded-full bg-signal"
+                              style={{
+                                width: `${Math.round(Math.min(1, Math.max(0, ev.weight || 0)) * 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      No evidence snapshot was captured for this alert.
+                    </p>
+                  )}
+
+                  <ul className="mt-2 space-y-1 text-[11px]">
+                    {e.actions.map((a) => (
+                      <li key={a.id} className="flex flex-wrap items-baseline gap-x-2">
+                        {a.action === "escalated" ? (
+                          <Send className="size-3 text-critical" />
+                        ) : a.action === "resolved" ? (
+                          <CircleDashed className="size-3 text-muted-foreground" />
+                        ) : (
+                          <CheckCircle2 className="size-3 text-caution" />
+                        )}
+                        <span className="metric-value text-muted-foreground">
+                          {new Date(a.created_at).toLocaleTimeString()}
+                        </span>
+                        <span>
+                          {a.action === "escalated"
+                            ? `Escalated to ${roleLabel(a.escalated_to)}`
+                            : a.action === "resolved"
+                              ? "Resolved"
+                              : "Acknowledged"}
+                        </span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${
+                            STANCE_CLASS[a.override_stance ?? "agree"] ?? "bg-muted"
+                          }`}
+                        >
+                          {stanceLabel(a.override_stance)}
+                        </span>
+                        {a.override_rationale ? (
+                          <span className="w-full italic text-muted-foreground">
+                            “{a.override_rationale}”
+                          </span>
+                        ) : null}
+                        {a.cited_features?.length ? (
+                          <span className="w-full text-[10px] text-muted-foreground">
+                            Linked evidence: {a.cited_features.join(" · ")}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                    {e.feedback.map((f) => (
+                      <li key={f.id} className="flex flex-wrap items-baseline gap-x-2">
+                        {f.verdict === "correct" ? (
+                          <ThumbsUp className="size-3 text-success" />
+                        ) : f.verdict === "incorrect" ? (
+                          <ThumbsDown className="size-3 text-critical" />
+                        ) : (
+                          <Flag className="size-3 text-muted-foreground" />
+                        )}
+                        <span className="metric-value text-muted-foreground">
+                          {new Date(f.created_at).toLocaleTimeString()}
+                        </span>
+                        <span>Marked {f.verdict}</span>
+                        {f.reason ? (
+                          <span className="w-full italic text-muted-foreground">“{f.reason}”</span>
+                        ) : null}
+                      </li>
+                    ))}
+                    {!e.actions.length && !e.feedback.length ? (
+                      <li className="text-muted-foreground">No decision recorded.</li>
+                    ) : null}
+                  </ul>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </section>
+  );
+}
