@@ -1,5 +1,49 @@
 import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
 
+/** Clinician-configurable thresholds that decide when data is flagged. */
+export interface QualityThresholds {
+  /** Alert window epoch coverage below this is "insufficient" (0–1). */
+  windowCoverageInsufficient: number;
+  /** Alert window epoch coverage below this is "partial" (0–1). */
+  windowCoveragePartial: number;
+  /** Whole-session epoch coverage below this is "insufficient" (0–1). */
+  sessionCoverageInsufficient: number;
+  /** Whole-session epoch coverage below this is "partial" (0–1). */
+  sessionCoveragePartial: number;
+  /** Fraction of epochs allowed to lack a spectrum before "insufficient" (0–1). */
+  spectrumMissingMax: number;
+  /** A metric counts as missing when present in fewer than this fraction of epochs (0–1). */
+  metricPresenceMin: number;
+  /** Gap length, in epoch cadences, that flags an alert window as partial. */
+  windowGapCadences: number;
+  /** Gap length, in epoch cadences, that flags the session as partial. */
+  sessionGapCadences: number;
+  /** Fraction of evidence features allowed to be incomplete before "insufficient" (0–1). */
+  evidenceIncompleteMax: number;
+}
+
+export const DEFAULT_QUALITY_THRESHOLDS: QualityThresholds = {
+  windowCoverageInsufficient: 0.5,
+  windowCoveragePartial: 0.9,
+  sessionCoverageInsufficient: 0.75,
+  sessionCoveragePartial: 0.95,
+  spectrumMissingMax: 0.5,
+  metricPresenceMin: 0.5,
+  windowGapCadences: 2,
+  sessionGapCadences: 5,
+  evidenceIncompleteMax: 0.5,
+};
+
+/** Fills in any missing/invalid fields from the defaults. */
+export function normaliseThresholds(input?: Partial<QualityThresholds> | null): QualityThresholds {
+  const out = { ...DEFAULT_QUALITY_THRESHOLDS };
+  for (const key of Object.keys(out) as (keyof QualityThresholds)[]) {
+    const v = input?.[key];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) out[key] = v;
+  }
+  return out;
+}
+
 /** Minimal per-epoch record needed to judge data completeness in a window. */
 export interface CoverageEpoch {
   t: number;
