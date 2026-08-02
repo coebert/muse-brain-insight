@@ -23,6 +23,8 @@ import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline"
 import { TimelineScrubber, type ScrubWindow } from "@/components/monitor/TimelineScrubber";
 import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
 import { SessionCoverageSummary } from "@/components/monitor/SessionCoverageSummary";
+import { QualityThresholdSettings } from "@/components/monitor/QualityThresholdSettings";
+import { useQualityThresholds } from "@/lib/eeg/quality-settings";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -247,9 +249,11 @@ function Trends() {
     [alertWindows, selectedAlertId],
   );
 
+  const { thresholds, update: updateThresholds, reset: resetThresholds } = useQualityThresholds();
+
   const sessionCoverage = useMemo(
-    () => assessSessionCoverage(coverageEpochs, summary.duration),
-    [coverageEpochs, summary.duration],
+    () => assessSessionCoverage(coverageEpochs, summary.duration, thresholds),
+    [coverageEpochs, summary.duration, thresholds],
   );
   const incompleteAlerts = alertWindows.filter(
     (w) => w.dataLevel === "partial" || w.dataLevel === "insufficient",
@@ -477,6 +481,13 @@ function Trends() {
                 coverage={sessionCoverage}
                 incompleteAlerts={incompleteAlerts}
                 totalAlerts={alertWindows.length}
+                settings={
+                  <QualityThresholdSettings
+                    thresholds={thresholds}
+                    onChange={updateThresholds}
+                    onReset={resetThresholds}
+                  />
+                }
               />
             </div>
 
@@ -527,6 +538,7 @@ function Trends() {
                 onWindowsChange={handleWindows}
                 cursor={cursor}
                 epochs={coverageEpochs}
+                thresholds={thresholds}
               />
             </div>
 

@@ -24,10 +24,12 @@ import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
 import {
   assessEvidence,
   assessWindowCoverage,
+  DEFAULT_QUALITY_THRESHOLDS,
   epochCadence,
   worstLevel,
   type CoverageEpoch,
   type EvidenceCompleteness,
+  type QualityThresholds,
   type WindowCoverage,
 } from "@/lib/eeg/coverage";
 
@@ -104,6 +106,7 @@ export function SessionAlertTimeline({
   onWindowsChange,
   cursor = null,
   epochs = [],
+  thresholds = DEFAULT_QUALITY_THRESHOLDS,
 }: {
   sessionId: string | null;
   durationSeconds: number;
@@ -118,6 +121,8 @@ export function SessionAlertTimeline({
   cursor?: number | null;
   /** Stored epochs for the session, used to flag windows with missing EEG data. */
   epochs?: CoverageEpoch[];
+  /** Clinician-configured data-quality thresholds. */
+  thresholds?: QualityThresholds;
 }) {
   const { data: actions, isLoading: actionsLoading } = useAlertActions(sessionId);
   const listFeedback = useServerFn(listSessionAlertFeedback);
@@ -184,11 +189,17 @@ export function SessionAlertTimeline({
       e.windowEnd = w.end;
       e.actions.sort((a, b) => a.created_at.localeCompare(b.created_at));
       e.feedback.sort((a, b) => a.created_at.localeCompare(b.created_at));
-      e.evidenceQuality = assessEvidence(e.evidence);
+      e.evidenceQuality = assessEvidence(e.evidence, thresholds);
       e.coverage =
         e.windowStart == null || !epochs.length
           ? null
-          : assessWindowCoverage(epochs, e.windowStart, e.windowEnd ?? e.windowStart, cadence);
+          : assessWindowCoverage(
+              epochs,
+              e.windowStart,
+              e.windowEnd ?? e.windowStart,
+              cadence,
+              thresholds,
+            );
       e.dataLevel = worstLevel(
         e.evidenceQuality.level,
         e.coverage ? e.coverage.level : epochs.length ? "insufficient" : "partial",
@@ -200,7 +211,7 @@ export function SessionAlertTimeline({
       if (at !== bt) return at - bt;
       return a.firstSeen.localeCompare(b.firstSeen);
     });
-  }, [actions, feedback, epochs]);
+  }, [actions, feedback, epochs, thresholds]);
 
   const span = Math.max(durationSeconds, 1);
 
