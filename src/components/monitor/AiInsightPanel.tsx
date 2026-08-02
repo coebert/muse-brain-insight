@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertFeedback } from "@/components/monitor/AlertFeedback";
+import { MissedFindingReport } from "@/components/monitor/MissedFindingReport";
 import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions";
 import { AlertEvidencePanel } from "@/components/monitor/AlertEvidencePanel";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
@@ -206,6 +207,12 @@ export function AiInsightPanel({
                 No actionable alerts raised from this review.
               </p>
             )}
+
+            <MissedFindingReport
+              sessionId={sessionId ?? null}
+              context={feedbackContext ?? null}
+              modelVersion={result.modelVersion ?? null}
+            />
 
             <div className="grid gap-4 md:grid-cols-3">
               <Section title="Depth / background">{result.depthOfAnaesthesia}</Section>

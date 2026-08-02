@@ -70,6 +70,7 @@ export type Database = {
       ai_alert_feedback: {
         Row: {
           alert_category: string
+          alert_confidence: string
           alert_id: string
           alert_severity: string
           alert_title: string
@@ -85,6 +86,7 @@ export type Database = {
         }
         Insert: {
           alert_category?: string
+          alert_confidence?: string
           alert_id: string
           alert_severity?: string
           alert_title?: string
@@ -100,6 +102,7 @@ export type Database = {
         }
         Update: {
           alert_category?: string
+          alert_confidence?: string
           alert_id?: string
           alert_severity?: string
           alert_title?: string
