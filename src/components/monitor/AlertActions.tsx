@@ -156,12 +156,81 @@ export function AlertActions({ alert, sessionId, context }: Props) {
               size="sm"
               variant="ghost"
               className="ml-auto h-6 w-6 p-0"
-              onClick={() => setMode(null)}
+              onClick={resetForm}
               aria-label="Cancel"
             >
               <X className="h-3 w-3" />
             </Button>
           </div>
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Your position on the AI read
+            </span>
+            <Select value={stance} onValueChange={(v) => setStance(v as OverrideStance)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OVERRIDE_STANCES.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              {OVERRIDE_STANCES.find((s) => s.value === stance)?.hint}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Clinician rationale{needsRationale ? " (required)" : " (optional)"}
+            </span>
+            <Textarea
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value.slice(0, 2000))}
+              rows={2}
+              placeholder={
+                stance === "agree"
+                  ? "Why this alert is clinically valid and what you are doing about it…"
+                  : "Why the clinical picture differs from the AI read (drugs, stimulation, artefact, comorbidity…)"
+              }
+              className="text-xs"
+            />
+          </div>
+          {evidence.length ? (
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Evidence features your rationale refers to
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {evidence.map((e) => {
+                  const on = cited.includes(e.feature);
+                  return (
+                    <button
+                      key={e.feature}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setCited((prev) =>
+                          prev.includes(e.feature)
+                            ? prev.filter((f) => f !== e.feature)
+                            : [...prev, e.feature],
+                        )
+                      }
+                      className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
+                        on
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      {e.feature} · {e.value}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {mode === "escalated" ? (
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger className="h-8 text-xs">
@@ -191,7 +260,11 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             <Button
               size="sm"
               className="h-7 px-3 text-[11px]"
-              disabled={busy || (mode === "escalated" && !role)}
+              disabled={
+                busy ||
+                (mode === "escalated" && !role) ||
+                (needsRationale && !rationale.trim())
+              }
               onClick={() => mutation.mutate(mode)}
             >
               {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
