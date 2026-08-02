@@ -18,42 +18,57 @@ export type Database = {
         Row: {
           action: string
           alert_category: string
+          alert_confidence: string
           alert_id: string
           alert_severity: string
           alert_title: string
+          cited_features: string[]
           context: string | null
           created_at: string
           escalated_to: string | null
+          evidence_snapshot: Json
           id: string
           note: string | null
+          override_rationale: string | null
+          override_stance: string
           session_id: string | null
           user_id: string
         }
         Insert: {
           action: string
           alert_category?: string
+          alert_confidence?: string
           alert_id: string
           alert_severity?: string
           alert_title?: string
+          cited_features?: string[]
           context?: string | null
           created_at?: string
           escalated_to?: string | null
+          evidence_snapshot?: Json
           id?: string
           note?: string | null
+          override_rationale?: string | null
+          override_stance?: string
           session_id?: string | null
           user_id: string
         }
         Update: {
           action?: string
           alert_category?: string
+          alert_confidence?: string
           alert_id?: string
           alert_severity?: string
           alert_title?: string
+          cited_features?: string[]
           context?: string | null
           created_at?: string
           escalated_to?: string | null
+          evidence_snapshot?: Json
           id?: string
           note?: string | null
+          override_rationale?: string | null
+          override_stance?: string
           session_id?: string | null
           user_id?: string
         }
