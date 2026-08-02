@@ -61,9 +61,9 @@ function sampleSpectrum(spectrum: number[] | undefined, frac: number): number | 
 
 export interface ColumnSample {
   /** Spectrum at or before this pixel column. */
-  lo?: number[];
+  lo?: number[] | undefined;
   /** Spectrum after this pixel column (used for smooth time interpolation). */
-  hi?: number[];
+  hi?: number[] | undefined;
   /** Blend factor between `lo` and `hi` (0..1). */
   f: number;
 }
