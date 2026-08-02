@@ -59,7 +59,7 @@ export async function saveSession(
       ],
     },
   });
-  const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed;
+  const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
 
   const { data: session, error } = await supabase
     .from("eeg_sessions")
@@ -67,8 +67,8 @@ export async function saveSession(
       user_id: userId,
       case_code: sealedCase ?? meta.caseCode,
       context: meta.context,
-      location: sealedLocation,
-      notes: sealedNotes,
+      location: sealedLocation ?? null,
+      notes: sealedNotes ?? null,
       device_name: meta.deviceName || null,
       age_years: (() => {
         const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
@@ -78,7 +78,7 @@ export async function saveSession(
       })(),
       age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
       sex: meta.sex || null,
-      admission_diagnosis: sealedDiagnosis,
+      admission_diagnosis: sealedDiagnosis ?? null,
       clinical_features: meta.clinicalFeatures,
       duration_seconds: Math.round(elapsed),
       mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
