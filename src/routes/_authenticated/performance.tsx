@@ -18,6 +18,7 @@ import { ArrowLeft, Gauge, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
+import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
   SelectContent,
@@ -247,6 +248,8 @@ function ModelPerformancePage() {
                 </ResponsiveContainer>
               </div>
             </section>
+
+            <ConfidenceMeter models={data.reliabilityByModel} />
 
             <CalibrationPanel performance={data} />
 
