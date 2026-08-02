@@ -4,8 +4,11 @@ import { Activity, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PasskeyManager } from "@/components/PasskeyManager";
+import { DataPrivacyPanel } from "@/components/DataPrivacyPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { unseal, downloadJson } from "@/lib/privacy";
+import { deleteSessionData, exportMyData } from "@/lib/privacy.functions";
 
 export const Route = createFileRoute("/_authenticated/sessions")({
   head: () => ({
@@ -44,13 +47,18 @@ function Sessions() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return unseal(data, ["case_code", "location", "notes", "admission_diagnosis"]);
     },
   });
 
   async function remove(id: string) {
-    await supabase.from("eeg_sessions").delete().eq("id", id);
+    await deleteSessionData({ data: { sessionId: id } });
     void refetch();
+  }
+
+  async function exportOne(id: string, caseCode: string) {
+    const bundle = await exportMyData({ data: { sessionId: id } });
+    downloadJson(`cortextrace-${caseCode.replace(/\W+/g, "-").toLowerCase()}.json`, bundle);
   }
 
   async function signOut() {
@@ -94,6 +102,7 @@ function Sessions() {
         </p>
 
         <PasskeyManager />
+        <DataPrivacyPanel onChanged={() => void refetch()} />
 
         <div className="mt-5 space-y-3">
           {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
@@ -149,6 +158,13 @@ function Sessions() {
               </dl>
               {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}
               <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void exportOne(s.id, s.case_code)}
+                >
+                  Export
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => void remove(s.id)}>
                   Delete
                 </Button>

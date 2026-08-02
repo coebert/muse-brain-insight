@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { unseal } from "@/lib/privacy";
 import { formatClock } from "@/lib/eeg/format";
 import {
   DEFAULT_DEPTH_CALIBRATION,
@@ -119,7 +120,7 @@ function Calibrate() {
         .select("id, case_code, started_at, duration_seconds, context")
         .order("started_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return unseal(data ?? [], ["case_code"]);
     },
   });
 

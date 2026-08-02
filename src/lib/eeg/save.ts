@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import { sealTexts } from "@/lib/privacy.functions";
 
 export interface SessionMeta {
   caseCode: string;
@@ -47,14 +48,27 @@ export async function saveSession(
   const userId = userData.user?.id;
   if (!userId) throw new Error("You need to be signed in to save a session.");
 
+  // Free-text fields are encrypted (AES-256-GCM) before they leave the browser session.
+  const { values: sealed } = await sealTexts({
+    data: {
+      values: [
+        meta.caseCode,
+        meta.location || null,
+        meta.notes || null,
+        meta.admissionDiagnosis.trim() || null,
+      ],
+    },
+  });
+  const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
+
   const { data: session, error } = await supabase
     .from("eeg_sessions")
     .insert({
       user_id: userId,
-      case_code: meta.caseCode,
+      case_code: sealedCase ?? meta.caseCode,
       context: meta.context,
-      location: meta.location || null,
-      notes: meta.notes || null,
+      location: sealedLocation ?? null,
+      notes: sealedNotes ?? null,
       device_name: meta.deviceName || null,
       age_years: (() => {
         const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
@@ -64,7 +78,7 @@ export async function saveSession(
       })(),
       age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
       sex: meta.sex || null,
-      admission_diagnosis: meta.admissionDiagnosis.trim() || null,
+      admission_diagnosis: sealedDiagnosis ?? null,
       clinical_features: meta.clinicalFeatures,
       duration_seconds: Math.round(elapsed),
       mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),

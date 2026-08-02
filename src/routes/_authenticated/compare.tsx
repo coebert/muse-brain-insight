@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { unseal } from "@/lib/privacy";
 import { formatClock } from "@/lib/eeg/format";
 import { correlate, correlationStrength, rollingCorrelation } from "@/lib/eeg/correlation";
 
@@ -84,7 +85,7 @@ function Compare() {
         .select("id, case_code, context, created_at, duration_seconds, age_band, sex")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return unseal(data, ["case_code"]);
     },
   });
 
