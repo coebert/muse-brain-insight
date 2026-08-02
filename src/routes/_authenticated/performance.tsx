@@ -17,6 +17,7 @@ import {
 import { ArrowLeft, Gauge, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
 import {
   Select,
   SelectContent,
@@ -246,6 +247,8 @@ function ModelPerformancePage() {
                 </ResponsiveContainer>
               </div>
             </section>
+
+            <CalibrationPanel performance={data} />
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
