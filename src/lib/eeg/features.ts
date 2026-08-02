@@ -1,4 +1,10 @@
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import {
+  analyseMarkers,
+  buildMarkerPhases,
+  type MarkerPhase,
+  type MarkerResponse,
+} from "@/lib/eeg/marker-analysis";
 
 export interface PatientContext {
   ageYears: string;
@@ -88,6 +94,12 @@ export interface FeatureDigest {
     fractionNociceptionAbove60: number;
   };
   annotations: { tSeconds: number; label: string }[];
+  /** Before/after index changes around each user marker. */
+  markerResponses: MarkerResponse[];
+  /** Session segmented by markers, with mean indices per phase. */
+  markerPhases: MarkerPhase[];
+  /** Automatically detected events (suppression, seizure, trend alerts). */
+  detectedEvents: { tSeconds: number; kind: string; severity: string; detail: string }[];
   timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
 }
 
