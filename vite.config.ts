@@ -12,4 +12,14 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    resolve: {
+      alias: {
+        // tslib's "modules/index.js" default-imports the CJS build and destructures it,
+        // which yields `undefined` in the Worker bundle (crashes @peculiar/x509 at module
+        // init and 500s every SSR request). Force the pure-ESM build instead.
+        tslib: "tslib/tslib.es6.mjs",
+      },
+    },
+  },
 });
