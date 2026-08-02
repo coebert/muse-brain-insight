@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { getPasskeyEnvironment, describePasskeyFailure } from "@/lib/webauthn-support";
 import { startPasskeyLogin, finishPasskeyLogin } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -58,6 +59,17 @@ function AuthPage() {
       toast.error("Enter your email address first.");
       return;
     }
+    const env = getPasskeyEnvironment();
+    if (!env.supported) {
+      toast.error("This browser doesn't support passkeys — sign in with your password.");
+      return;
+    }
+    if (env.embedded) {
+      toast.error(
+        "Biometric sign-in is blocked inside the preview frame. Open the app in its own browser tab.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const options = await startPasskeyLogin({ data: { email } });
@@ -71,8 +83,7 @@ function AuthPage() {
       });
       if (error) throw new Error(error.message);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Biometric sign-in failed.";
-      if (!/NotAllowed|abort/i.test(message)) toast.error(message);
+      toast.error(describePasskeyFailure(err));
     } finally {
       setBusy(false);
     }
