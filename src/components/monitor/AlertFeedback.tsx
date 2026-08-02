@@ -50,6 +50,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
           sessionId: sessionId ?? null,
           context: context ?? null,
           modelVersion: modelVersion ?? null,
+          alertConfidence: alert.confidence ?? null,
         },
       });
       setVerdict(next);
