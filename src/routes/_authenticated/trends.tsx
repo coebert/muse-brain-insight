@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,6 +9,7 @@ import {
   Line,
   LineChart,
   ReferenceLine,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,6 +20,7 @@ import { Activity, ArrowLeft } from "lucide-react";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
+import { TimelineScrubber, type ScrubWindow } from "@/components/monitor/TimelineScrubber";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,6 +218,69 @@ function Trends() {
 
   const markers = events.data ?? [];
 
+  // --- Review scrubber state: shared cursor + selected alert window ---------
+  const [cursor, setCursor] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [alertWindows, setAlertWindows] = useState<ScrubWindow[]>([]);
+  const handleWindows = useCallback((w: ScrubWindow[]) => setAlertWindows(w), []);
+
+  const selectedWindow = useMemo(
+    () => alertWindows.find((w) => w.alertId === selectedAlertId) ?? null,
+    [alertWindows, selectedAlertId],
+  );
+
+  const selectAlert = useCallback(
+    (id: string | null) => {
+      setSelectedAlertId(id);
+      setPlaying(false);
+      const w = alertWindows.find((x) => x.alertId === id);
+      if (w) setCursor(w.start);
+    },
+    [alertWindows],
+  );
+
+  const cursorRow = useMemo(() => {
+    if (!rows.length) return null;
+    let best = rows[0]!;
+    for (const r of rows) {
+      if (Math.abs(r.t - cursor) < Math.abs(best.t - cursor)) best = r;
+    }
+    return best;
+  }, [rows, cursor]);
+
+  const readout = useMemo(() => {
+    const num = (v: number | null | undefined, digits = 1, suffix = "") =>
+      typeof v === "number" ? `${v.toFixed(digits)}${suffix}` : "—";
+    return [
+      { label: "At", value: cursorRow ? formatClock(cursorRow.t) : "—" },
+      { label: "Depth", value: num(cursorRow?.depth, 0) },
+      { label: "SEF95", value: num(cursorRow?.sef95, 1, " Hz") },
+      { label: "SR", value: num(cursorRow?.sr, 1, " %") },
+      { label: "Entropy", value: num(cursorRow?.entropy, 0) },
+      { label: "Seizure", value: num(cursorRow?.seizure, 2) },
+    ];
+  }, [cursorRow]);
+
+  const focusOverlay = (domainMax: number) => (
+    <>
+      {selectedWindow ? (
+        <ReferenceArea
+          x1={selectedWindow.start}
+          x2={Math.max(selectedWindow.end, selectedWindow.start + 1)}
+          y1={0}
+          y2={domainMax}
+          fill="var(--foreground)"
+          fillOpacity={0.1}
+          stroke="var(--foreground)"
+          strokeOpacity={0.35}
+          ifOverflow="extendDomain"
+        />
+      ) : null}
+      <ReferenceLine x={cursor} stroke="var(--chart-2)" strokeWidth={1.5} ifOverflow="extendDomain" />
+    </>
+  );
+
   const [aiResult, setAiResult] = useState<Interpretation | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -390,14 +455,43 @@ function Trends() {
                 </span>
               </div>
               <div className="mt-2 h-64 sm:h-80">
-                <SessionDsa spectra={spectra} times={times} />
+                <SessionDsa
+                  spectra={spectra}
+                  times={times}
+                  highlight={
+                    selectedWindow ? { start: selectedWindow.start, end: selectedWindow.end } : null
+                  }
+                  cursor={cursor}
+                  onSeek={(t) => {
+                    setPlaying(false);
+                    setCursor(t);
+                  }}
+                />
               </div>
             </section>
+
+            <div className="mt-4">
+              <TimelineScrubber
+                durationSeconds={summary.duration}
+                cursor={cursor}
+                onCursorChange={setCursor}
+                windows={alertWindows}
+                selectedAlertId={selectedAlertId}
+                onSelectWindow={selectAlert}
+                playing={playing}
+                onPlayingChange={setPlaying}
+                readout={readout}
+              />
+            </div>
 
             <div className="mt-4">
               <SessionAlertTimeline
                 sessionId={selected?.id ?? null}
                 durationSeconds={summary.duration}
+                selectedAlertId={selectedAlertId}
+                onSelectAlert={selectAlert}
+                onWindowsChange={handleWindows}
+                cursor={cursor}
               />
             </div>
 
