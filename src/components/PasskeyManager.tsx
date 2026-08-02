@@ -94,8 +94,8 @@ export function PasskeyManager() {
       </div>
 
       {env && env.supported && !env.allowedToCreate && (
-        <div className="mt-3 flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-caution/40 bg-caution/10 px-3 py-2 text-xs">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-caution" />
           <div>
             <p>
               Passkey registration is blocked while the app runs inside the preview frame.
