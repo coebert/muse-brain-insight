@@ -112,6 +112,7 @@ export function assessWindowCoverage(
   start: number,
   end: number,
   cadence = epochCadence(epochs),
+  thresholds: QualityThresholds = DEFAULT_QUALITY_THRESHOLDS,
 ): WindowCoverage {
   const lo = Math.min(start, end);
   const hi = Math.max(end, lo + cadence);
@@ -136,16 +137,19 @@ export function assessWindowCoverage(
   const missingMetrics: string[] = [];
   for (const [key, label] of METRIC_LABELS) {
     const have = inWindow.filter((e) => typeof e[key] === "number").length;
-    if (!present || have / present < 0.5) missingMetrics.push(label);
+    if (!present || have / present < thresholds.metricPresenceMin) missingMetrics.push(label);
   }
   const spectrumMissingFraction = present
     ? inWindow.filter((e) => !e.spectrumBins).length / present
     : 1;
 
   const level: WindowCoverage["level"] =
-    fraction < 0.5 || spectrumMissingFraction > 0.5
+    fraction < thresholds.windowCoverageInsufficient ||
+    spectrumMissingFraction > thresholds.spectrumMissingMax
       ? "insufficient"
-      : fraction < 0.9 || missingMetrics.length > 0 || largestGapSeconds >= cadence * 2
+      : fraction < thresholds.windowCoveragePartial ||
+          missingMetrics.length > 0 ||
+          largestGapSeconds >= cadence * thresholds.windowGapCadences
         ? "partial"
         : "ok";
 
@@ -161,7 +165,10 @@ export function assessWindowCoverage(
 }
 
 /** Flags alert evidence that lacks values, weights or time windows. */
-export function assessEvidence(evidence: AlertEvidence[]): EvidenceCompleteness {
+export function assessEvidence(
+  evidence: AlertEvidence[],
+  thresholds: QualityThresholds = DEFAULT_QUALITY_THRESHOLDS,
+): EvidenceCompleteness {
   const total = evidence.length;
   if (!total) {
     return {
@@ -184,7 +191,11 @@ export function assessEvidence(evidence: AlertEvidence[]): EvidenceCompleteness 
 
   const incomplete = Math.max(noValue, noWeight, noWindow);
   const level: EvidenceCompleteness["level"] =
-    incomplete / total > 0.5 ? "insufficient" : incomplete > 0 ? "partial" : "ok";
+    incomplete / total > thresholds.evidenceIncompleteMax
+      ? "insufficient"
+      : incomplete > 0
+        ? "partial"
+        : "ok";
   return { total, incomplete, reasons, level };
 }
 
@@ -223,6 +234,7 @@ export interface SessionCoverage {
 export function assessSessionCoverage(
   epochs: CoverageEpoch[],
   durationSeconds?: number,
+  thresholds: QualityThresholds = DEFAULT_QUALITY_THRESHOLDS,
 ): SessionCoverage {
   const cadence = epochCadence(epochs);
   const sorted = [...epochs].sort((a, b) => a.t - b.t);
@@ -260,16 +272,19 @@ export function assessSessionCoverage(
   const missingMetrics: string[] = [];
   for (const [key, label] of METRIC_LABELS) {
     const have = sorted.filter((e) => typeof e[key] === "number").length;
-    if (!present || have / present < 0.5) missingMetrics.push(label);
+    if (!present || have / present < thresholds.metricPresenceMin) missingMetrics.push(label);
   }
   const spectrumMissingFraction = present
     ? sorted.filter((e) => !e.spectrumBins).length / present
     : 1;
 
   const level: SessionCoverage["level"] =
-    fraction < 0.75 || spectrumMissingFraction > 0.5
+    fraction < thresholds.sessionCoverageInsufficient ||
+    spectrumMissingFraction > thresholds.spectrumMissingMax
       ? "insufficient"
-      : fraction < 0.95 || missingMetrics.length > 0 || worstGapSeconds >= cadence * 5
+      : fraction < thresholds.sessionCoveragePartial ||
+          missingMetrics.length > 0 ||
+          worstGapSeconds >= cadence * thresholds.sessionGapCadences
         ? "partial"
         : "ok";
 
