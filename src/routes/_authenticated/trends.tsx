@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Area,
   AreaChart,
@@ -17,6 +18,7 @@ import { Activity, ArrowLeft } from "lucide-react";
 
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
+import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -28,6 +30,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { buildStoredDigest } from "@/lib/eeg/stored-digest";
+import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 
 export const Route = createFileRoute("/_authenticated/trends")({
   head: () => ({
@@ -123,11 +127,11 @@ function Trends() {
       const { data, error } = await supabase
         .from("eeg_sessions")
         .select(
-          "id, case_code, context, created_at, duration_seconds, age_band, sex, mean_suppression_ratio, max_suppression_ratio",
+          "id, case_code, context, created_at, duration_seconds, age_band, sex, mean_suppression_ratio, max_suppression_ratio, admission_diagnosis, clinical_features, notes",
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return unseal(data, ["case_code"]);
+      return unseal(data, ["case_code", "admission_diagnosis", "notes"]);
     },
   });
 
@@ -210,6 +214,43 @@ function Trends() {
   }, [rows]);
 
   const markers = events.data ?? [];
+
+  const [aiResult, setAiResult] = useState<Interpretation | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const runInterpretation = useServerFn(interpretSession);
+
+  async function reviewCase() {
+    if (!selected || rows.length === 0) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const digest = buildStoredDigest(
+        rows,
+        markers.map((m) => ({
+          t: Number(m.t_offset_seconds) || 0,
+          kind: m.kind,
+          severity: m.severity ?? "info",
+          detail: m.detail ?? m.kind,
+        })),
+        {
+          caseCode: selected.case_code ?? "",
+          context: selected.context ?? "general_anaesthesia",
+          ageBand: selected.age_band ?? null,
+          sex: selected.sex ?? null,
+          admissionDiagnosis: selected.admission_diagnosis ?? null,
+          clinicalFeatures: (selected.clinical_features as string[] | null) ?? [],
+          notes: selected.notes ?? null,
+          durationSeconds: summary.duration,
+        },
+      );
+      setAiResult(await runInterpretation({ data: { digest } }));
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI analysis failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const eventLines = (domainMax: number) =>
     markers.map((m, i) => (
@@ -324,6 +365,17 @@ function Trends() {
               <Stat
                 label="Peak seizure score"
                 value={summary.maxSeizure == null ? "—" : summary.maxSeizure.toFixed(2)}
+              />
+            </div>
+
+            <div className="mt-4">
+              <AiInsightPanel
+                result={aiResult}
+                loading={aiLoading}
+                error={aiError}
+                epochCount={rows.length}
+                onRun={() => void reviewCase()}
+                runLabel="Review this case"
               />
             </div>
 
