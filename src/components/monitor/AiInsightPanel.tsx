@@ -3,6 +3,7 @@ import { AlertTriangle, Brain, Info, Loader2, ShieldAlert, Sparkles, Tag } from 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { AlertFeedback } from "@/components/monitor/AlertFeedback";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -35,6 +36,10 @@ interface Props {
   lastRunAt?: number | null;
   /** Label for the run button, e.g. "Review saved case". */
   runLabel?: string;
+  /** Saved session the alerts belong to, when available. */
+  sessionId?: string | null;
+  /** Monitoring context, e.g. "general_anaesthesia" or "icu". */
+  feedbackContext?: string | null;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -58,6 +63,8 @@ export function AiInsightPanel({
   onWatchChange,
   lastRunAt,
   runLabel,
+  sessionId,
+  feedbackContext,
 }: Props) {
   const enoughData = epochCount >= 30;
 
@@ -142,6 +149,12 @@ export function AiInsightPanel({
                     {a.action ? (
                       <p className="mt-1 text-xs font-medium">Suggested action: {a.action}</p>
                     ) : null}
+                    <AlertFeedback
+                      key={`${a.id}-fb`}
+                      alert={a}
+                      sessionId={sessionId ?? null}
+                      context={feedbackContext ?? null}
+                    />
                   </li>
                 ))}
               </ul>

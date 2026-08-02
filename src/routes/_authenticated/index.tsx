@@ -956,6 +956,7 @@ function Monitor() {
             }
           }}
           lastRunAt={aiLastRunAt}
+          feedbackContext={mode}
         />
 
         <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">

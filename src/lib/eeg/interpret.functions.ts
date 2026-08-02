@@ -69,6 +69,12 @@ Alerting:
 - action: one concrete clinical next step (e.g. "Reduce propofol infusion and re-check suppression ratio in 5 min", "Consider urgent formal EEG for non-convulsive status").
 - tSeconds: session time the problem is anchored to, or null.
 - Never alert purely on poor signal quality unless quality is the problem — use category signal_quality then.
+
+Clinician feedback (learning loop):
+- You may be given "clinicianFeedback": past alerts this clinician marked correct or incorrect, with their stated reason. Treat it as calibration for this user and setting.
+- Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
+- Where an alert was marked correct, keep raising it under similar conditions and reuse the same id.
+- Never mention the feedback mechanism itself in your output.
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
@@ -155,9 +161,15 @@ export const interpretSession = createServerFn({ method: "POST" })
     }
     return input;
   })
-  .handler(async ({ data }): Promise<Interpretation> => {
+  .handler(async ({ data, context }): Promise<Interpretation> => {
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("AI is not configured for this project.");
+
+    const { data: feedback } = await context.supabase
+      .from("ai_alert_feedback")
+      .select("alert_id, alert_category, alert_severity, alert_title, verdict, reason, created_at")
+      .order("created_at", { ascending: false })
+      .limit(40);
 
     const text = await streamText(
       {
@@ -167,7 +179,7 @@ export const interpretSession = createServerFn({ method: "POST" })
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}`,
+            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(feedback ?? [])}`,
           },
         ],
         reasoning: { effort: "medium", summary: "auto" },
