@@ -248,6 +248,8 @@ function ModelPerformancePage() {
               </div>
             </section>
 
+            <CalibrationPanel performance={data} />
+
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
                 <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
