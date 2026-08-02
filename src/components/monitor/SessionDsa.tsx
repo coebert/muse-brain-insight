@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ } from "@/lib/eeg/analysis";
 import { formatClock } from "@/lib/eeg/format";
@@ -43,10 +43,24 @@ interface Props {
   times: number[];
   dbMin?: number;
   dbMax?: number;
+  /** Highlighted review window (session-relative seconds). */
+  highlight?: { start: number; end: number } | null;
+  /** Scrubber cursor position in session-relative seconds. */
+  cursor?: number | null;
+  /** Called with a session-relative time when the plot area is clicked or dragged. */
+  onSeek?: (t: number) => void;
 }
 
 /** Whole-session density spectral array: the full recording compressed to one canvas. */
-export function SessionDsa({ spectra, times, dbMin = -6, dbMax = 26 }: Props) {
+export function SessionDsa({
+  spectra,
+  times,
+  dbMin = -6,
+  dbMax = 26,
+  highlight = null,
+  cursor = null,
+  onSeek,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -196,9 +210,76 @@ export function SessionDsa({ spectra, times, dbMin = -6, dbMax = 26 }: Props) {
     ctx.textAlign = "right";
     ctx.textBaseline = "top";
     ctx.fillText("Elapsed time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
-  }, [spectra, times, dbMin, dbMax]);
+
+    const xForTime = (t: number) =>
+      margin.left + ((Math.max(tStart, Math.min(tEnd, t)) - tStart) / span) * plotW;
+
+    // Selected alert window overlay.
+    if (highlight) {
+      const x0 = xForTime(Math.min(highlight.start, highlight.end));
+      const x1 = xForTime(Math.max(highlight.start, highlight.end));
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(margin.left, margin.top, plotW, plotH);
+      ctx.clip();
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fillRect(x0, margin.top, Math.max(2 * dpr, x1 - x0), plotH);
+      ctx.strokeStyle = "rgba(255,255,255,0.65)";
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.setLineDash([4 * dpr, 3 * dpr]);
+      ctx.strokeRect(x0, margin.top, Math.max(2 * dpr, x1 - x0), plotH);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Scrubber cursor.
+    if (cursor != null) {
+      const x = xForTime(cursor);
+      ctx.strokeStyle = "rgb(56,214,175)";
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + plotH);
+      ctx.stroke();
+      ctx.fillStyle = "rgb(56,214,175)";
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x - 4 * dpr, margin.top - 6 * dpr);
+      ctx.lineTo(x + 4 * dpr, margin.top - 6 * dpr);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }, [spectra, times, dbMin, dbMax, highlight, cursor]);
+
+  const seekFromEvent = useCallback(
+    (clientX: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas || !onSeek) return;
+      const rect = canvas.getBoundingClientRect();
+      const plotLeft = rect.left + MARGIN_CSS.left;
+      const plotW = Math.max(1, rect.width - MARGIN_CSS.left - MARGIN_CSS.right);
+      const frac = Math.max(0, Math.min(1, (clientX - plotLeft) / plotW));
+      const tStart = times[0] ?? 0;
+      const tEnd = times[times.length - 1] ?? tStart + 1;
+      onSeek(tStart + frac * Math.max(1, tEnd - tStart));
+    },
+    [onSeek, times],
+  );
 
   return (
-    <canvas ref={canvasRef} className="h-full w-full rounded-md" aria-label="Whole-session density spectral array" />
+    <canvas
+      ref={canvasRef}
+      className={`h-full w-full rounded-md ${onSeek ? "cursor-crosshair" : ""}`}
+      aria-label="Whole-session density spectral array"
+      onPointerDown={(e) => {
+        if (!onSeek) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        seekFromEvent(e.clientX);
+      }}
+      onPointerMove={(e) => {
+        if (!onSeek || e.buttons !== 1) return;
+        seekFromEvent(e.clientX);
+      }}
+    />
   );
 }
