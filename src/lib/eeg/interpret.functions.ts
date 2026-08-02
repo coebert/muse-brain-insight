@@ -134,6 +134,33 @@ Respond with JSON ONLY, no markdown fences, in this exact shape:
 {"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}],"feedbackInfluence":{"adjustment":"raised_bar"|"reinforced"|"reworded"|"downgraded"|"none","note":string}}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
 Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrelations (one per notable marker, naming the marker), at most 5 pathology indicators, at most 5 recommended checks and 4 limitations.`;
 
+const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downgraded", "none"]);
+
+interface FeedbackRow {
+  alert_id: string | null;
+  alert_category: string | null;
+  verdict: string | null;
+  reason: string | null;
+  created_at: string | null;
+}
+
+/** Factual prior-verdict counts for an alert, matched on id first then category. */
+function priorFeedbackFor(
+  alert: ClinicalAlert,
+  rows: FeedbackRow[],
+): AlertPriorFeedback | null {
+  const byId = rows.filter((r) => r.alert_id && r.alert_id === alert.id);
+  const matched = byId.length ? byId : rows.filter((r) => r.alert_category === alert.category);
+  if (!matched.length) return null;
+  const correct = matched.filter((r) => r.verdict === "correct").length;
+  const incorrect = matched.filter((r) => r.verdict === "incorrect").length;
+  const reasons = matched
+    .filter((r) => r.verdict === "incorrect" && r.reason)
+    .map((r) => r.reason as string)
+    .slice(0, 3);
+  return { correct, incorrect, reasons, lastVerdictAt: matched[0]?.created_at ?? null };
+}
+
 function extractJson(text: string): Interpretation {
   const cleaned = text
     .replace(/^\s*```(?:json)?/i, "")
@@ -148,6 +175,12 @@ function extractJson(text: string): Interpretation {
     ...parsed,
     alerts: alerts.map((a) => ({
       ...a,
+      feedbackInfluence:
+        a?.feedbackInfluence &&
+        typeof a.feedbackInfluence.note === "string" &&
+        INFLUENCE_VALUES.has(a.feedbackInfluence.adjustment)
+          ? a.feedbackInfluence
+          : null,
       evidence: Array.isArray(a?.evidence)
         ? a.evidence
             .filter((e) => e && typeof e.feature === "string")
