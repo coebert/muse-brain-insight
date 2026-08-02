@@ -329,7 +329,55 @@ export function SessionAlertTimeline({
                     <span className="text-[10px] text-muted-foreground">
                       {e.category.replace(/_/g, " ")}
                     </span>
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                        DATA_CLASS[e.dataLevel]
+                      }`}
+                    >
+                      {e.dataLevel === "ok" ? (
+                        <CheckCircle2 className="size-3" />
+                      ) : e.dataLevel === "insufficient" ? (
+                        <SignalZero className="size-3" />
+                      ) : (
+                        <AlertTriangle className="size-3" />
+                      )}
+                      {DATA_LABEL[e.dataLevel]}
+                    </span>
                   </button>
+
+                  {e.dataLevel === "ok" ? null : (
+                    <ul className="mt-2 space-y-0.5 rounded-md border border-dashed border-border bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
+                      {e.coverage ? (
+                        <>
+                          <li>
+                            EEG coverage {Math.round(e.coverage.fraction * 100)}% (
+                            {e.coverage.present}/{e.coverage.expected} epochs
+                            {e.coverage.largestGapSeconds >= 1
+                              ? `, largest gap ${Math.round(e.coverage.largestGapSeconds)} s`
+                              : ""}
+                            )
+                          </li>
+                          {e.coverage.spectrumMissingFraction > 0 ? (
+                            <li>
+                              No spectrum stored for{" "}
+                              {Math.round(e.coverage.spectrumMissingFraction * 100)}% of the window
+                              — the DSA cannot be reviewed here.
+                            </li>
+                          ) : null}
+                          {e.coverage.missingMetrics.length ? (
+                            <li>Metrics unavailable: {e.coverage.missingMetrics.join(", ")}</li>
+                          ) : null}
+                        </>
+                      ) : (
+                        <li>
+                          No time window on this alert, so its EEG coverage cannot be checked.
+                        </li>
+                      )}
+                      {e.evidenceQuality.reasons.map((r) => (
+                        <li key={`${e.alertId}-gap-${r}`}>Evidence: {r}</li>
+                      ))}
+                    </ul>
+                  )}
 
                   {e.evidence.length ? (
                     <ul className="mt-2 grid gap-1 sm:grid-cols-2">
