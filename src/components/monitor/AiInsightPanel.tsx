@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertFeedback } from "@/components/monitor/AlertFeedback";
 import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions";
+import { AlertEvidencePanel } from "@/components/monitor/AlertEvidencePanel";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -150,6 +151,7 @@ export function AiInsightPanel({
                     {a.action ? (
                       <p className="mt-1 text-xs font-medium">Suggested action: {a.action}</p>
                     ) : null}
+                    <AlertEvidencePanel evidence={a.evidence} />
                     <AlertActions
                       alert={a}
                       sessionId={sessionId ?? null}
