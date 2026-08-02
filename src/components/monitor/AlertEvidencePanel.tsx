@@ -18,6 +18,7 @@ import type {
   AlertFeedbackInfluence,
   AlertPriorFeedback,
 } from "@/lib/eeg/interpret.functions";
+import type { AlertTuningEffect } from "@/lib/eeg/alert-tuning";
 
 const DIRECTION_LABEL: Record<string, string> = {
   high: "↑ high",
@@ -93,13 +94,15 @@ export function AlertEvidencePanel({
   evidence,
   feedbackInfluence,
   priorFeedback,
+  tuning,
 }: {
   evidence?: AlertEvidence[] | undefined;
   feedbackInfluence?: AlertFeedbackInfluence | null;
   priorFeedback?: AlertPriorFeedback | null;
+  tuning?: AlertTuningEffect | null;
 }) {
   const [open, setOpen] = useState(false);
-  const hasFeedback = Boolean(feedbackInfluence || priorFeedback);
+  const hasFeedback = Boolean(feedbackInfluence || priorFeedback || tuning);
   if (!evidence?.length && !hasFeedback) return null;
 
   const items = evidence ?? [];
@@ -132,6 +135,11 @@ export function AlertEvidencePanel({
             className={`metric-value rounded-full border px-1.5 py-0.5 text-[9px] normal-case tracking-normal ${influenceMeta.className}`}
           >
             {influenceMeta.label}
+          </span>
+        ) : null}
+        {tuning && (tuning.originalConfidence || tuning.originalSeverity) ? (
+          <span className="metric-value rounded-full border border-marker/40 bg-marker/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-marker">
+            Auto-tuned
           </span>
         ) : null}
       </button>
@@ -198,6 +206,12 @@ export function AlertEvidencePanel({
                   {priorFeedback.reasons.length
                     ? ` — reasons given: ${priorFeedback.reasons.join("; ")}`
                     : ""}
+                </p>
+              ) : null}
+              {tuning ? (
+                <p className="metric-value mt-0.5 text-[10px] opacity-90">
+                  Adaptive tuning: {tuning.note} Confidence weight ×
+                  {tuning.confidenceWeight.toFixed(2)}, evidence bar {tuning.evidenceBar}.
                 </p>
               ) : null}
             </div>
