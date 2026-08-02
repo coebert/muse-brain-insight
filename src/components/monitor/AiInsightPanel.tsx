@@ -207,6 +207,12 @@ export function AiInsightPanel({
               </p>
             )}
 
+            <MissedFindingReport
+              sessionId={sessionId ?? null}
+              context={feedbackContext ?? null}
+              modelVersion={result.modelVersion ?? null}
+            />
+
             <div className="grid gap-4 md:grid-cols-3">
               <Section title="Depth / background">{result.depthOfAnaesthesia}</Section>
               <Section title="Burst suppression">{result.burstSuppression}</Section>
