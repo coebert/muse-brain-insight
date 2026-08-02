@@ -1,4 +1,4 @@
-import { AlertTriangle, Brain, Info, Loader2, ShieldAlert, Sparkles, Tag } from "lucide-react";
+import { AlertTriangle, Brain, Info, Loader2, ShieldAlert, SlidersHorizontal, Sparkles, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,6 +7,7 @@ import { AlertFeedback } from "@/components/monitor/AlertFeedback";
 import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions";
 import { AlertEvidencePanel } from "@/components/monitor/AlertEvidencePanel";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
+import { tuningSummary } from "@/lib/eeg/alert-tuning";
 
 const CONFIDENCE_TONE: Record<string, string> = {
   high: "bg-critical/15 text-critical",
@@ -155,6 +156,7 @@ export function AiInsightPanel({
                       evidence={a.evidence}
                       feedbackInfluence={a.feedbackInfluence ?? null}
                       priorFeedback={a.priorFeedback ?? null}
+                      tuning={a.tuning ?? null}
                     />
                     <AlertActions
                       alert={a}
