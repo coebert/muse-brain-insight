@@ -1,7 +1,17 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, CircleDashed, Clock, Flag, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
+  Clock,
+  Flag,
+  Send,
+  SignalZero,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 
 import { formatClock } from "@/lib/eeg/format";
 import {
@@ -11,6 +21,15 @@ import {
 import { useAlertActions, roleLabel, stanceLabel } from "@/components/monitor/AlertActions";
 import type { AlertActionRow } from "@/lib/eeg/alert-actions.functions";
 import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
+import {
+  assessEvidence,
+  assessWindowCoverage,
+  epochCadence,
+  worstLevel,
+  type CoverageEpoch,
+  type EvidenceCompleteness,
+  type WindowCoverage,
+} from "@/lib/eeg/coverage";
 
 interface TimelineEntry {
   alertId: string;
@@ -24,6 +43,10 @@ interface TimelineEntry {
   evidence: AlertEvidence[];
   actions: AlertActionRow[];
   feedback: AlertFeedbackRow[];
+  /** EEG coverage inside the alert window; null when the window is unknown. */
+  coverage: WindowCoverage | null;
+  evidenceQuality: EvidenceCompleteness;
+  dataLevel: "ok" | "partial" | "insufficient";
 }
 
 const SEVERITY_CLASS: Record<string, string> = {
@@ -38,6 +61,22 @@ const STANCE_CLASS: Record<string, string> = {
   override: "bg-critical/15 text-critical",
   defer: "bg-muted text-muted-foreground",
 };
+
+const DATA_CLASS: Record<string, string> = {
+  ok: "border-success/40 bg-success/10 text-success",
+  partial: "border-caution/50 bg-caution/10 text-caution",
+  insufficient: "border-critical/50 bg-critical/10 text-critical",
+};
+
+const DATA_LABEL: Record<string, string> = {
+  ok: "Data complete",
+  partial: "Partial data",
+  insufficient: "Insufficient data",
+};
+
+/** Hatched overlay marking windows whose EEG or evidence is incomplete. */
+const HATCH =
+  "repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 2px, transparent 2px 5px)";
 
 function windowOf(evidence: AlertEvidence[]): { start: number | null; end: number | null } {
   const starts = evidence
