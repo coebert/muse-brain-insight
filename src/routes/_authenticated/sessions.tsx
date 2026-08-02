@@ -75,6 +75,9 @@ function Sessions() {
           </span>
           <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
             <Button asChild variant="outline" size="sm">
+              <Link to="/trends">Session trends</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/compare">Compare metrics</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
