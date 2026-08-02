@@ -472,6 +472,14 @@ function Trends() {
               />
             </div>
 
+            <div className="mt-4">
+              <SessionCoverageSummary
+                coverage={sessionCoverage}
+                incompleteAlerts={incompleteAlerts}
+                totalAlerts={alertWindows.length}
+              />
+            </div>
+
             <section className="panel mt-4 px-3 py-3 sm:px-4">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">Whole-session density spectral array</h2>
