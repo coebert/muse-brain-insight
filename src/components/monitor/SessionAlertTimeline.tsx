@@ -215,9 +215,12 @@ export function SessionAlertTimeline({
           severity: e.severity,
           start: e.windowStart as number,
           end: e.windowEnd ?? (e.windowStart as number),
+          dataLevel: e.dataLevel,
         })),
     );
   }, [entries, onWindowsChange]);
+
+  const incompleteCount = entries.filter((e) => e.dataLevel !== "ok").length;
 
   return (
     <section className="panel px-3 py-3 sm:px-4">
@@ -226,6 +229,16 @@ export function SessionAlertTimeline({
         <span className="text-[11px] text-muted-foreground">
           {entries.length} alert{entries.length === 1 ? "" : "s"} with captured evidence and
           decisions
+          {entries.length ? (
+            <>
+              {" · "}
+              <span className={incompleteCount ? "text-caution" : "text-success"}>
+                {incompleteCount
+                  ? `${incompleteCount} with missing data`
+                  : "all fully evidenced"}
+              </span>
+            </>
+          ) : null}
         </span>
       </div>
 
@@ -245,17 +258,22 @@ export function SessionAlertTimeline({
                   <button
                     key={`bar-${e.alertId}`}
                     type="button"
-                    title={`${e.title} · ${formatClock(e.windowStart)}`}
+                    title={`${e.title} · ${formatClock(e.windowStart)}${
+                      e.dataLevel === "ok" ? "" : ` · ${DATA_LABEL[e.dataLevel]}`
+                    }`}
                     onClick={() => onSelectAlert?.(e.alertId)}
                     className={`absolute top-1 bottom-1 rounded-sm border ${
                       SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
-                    } ${selectedAlertId === e.alertId ? "ring-2 ring-signal" : ""}`}
+                    } ${selectedAlertId === e.alertId ? "ring-2 ring-signal" : ""} ${
+                      e.dataLevel === "insufficient" ? "border-dashed" : ""
+                    }`}
                     style={{
                       left: `${Math.min(99, (e.windowStart / span) * 100)}%`,
                       width: `${Math.max(
                         0.8,
                         (((e.windowEnd ?? e.windowStart) - e.windowStart) / span) * 100,
                       )}%`,
+                      ...(e.dataLevel === "ok" ? {} : { backgroundImage: HATCH }),
                     }}
                   />
                 ),
@@ -271,6 +289,9 @@ export function SessionAlertTimeline({
               <span>00:00</span>
               <span>{formatClock(span)}</span>
             </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Hatched bars mark windows with incomplete EEG coverage or evidence.
+            </p>
           </div>
 
           <ol className="mt-3 space-y-2 border-l border-border pl-3">
