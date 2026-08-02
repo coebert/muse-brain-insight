@@ -387,11 +387,17 @@ export function SessionAlertTimeline({
                             <span className="truncate">
                               {ev.feature}
                               <span className="metric-value ml-1 text-muted-foreground">
-                                {ev.value}
+                                {ev.value && String(ev.value).trim() ? (
+                                  ev.value
+                                ) : (
+                                  <span className="text-caution">no value</span>
+                                )}
                               </span>
                             </span>
                             <span className="shrink-0 text-[10px] text-muted-foreground">
-                              {ev.direction}
+                              {typeof ev.windowStartSeconds === "number"
+                                ? ev.direction
+                                : `${ev.direction} · no window`}
                             </span>
                           </div>
                           <div className="mt-0.5 h-1 rounded-full bg-muted">
