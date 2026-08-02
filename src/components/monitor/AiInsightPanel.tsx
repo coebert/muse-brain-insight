@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertFeedback } from "@/components/monitor/AlertFeedback";
+import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
 
 const CONFIDENCE_TONE: Record<string, string> = {
@@ -149,6 +150,11 @@ export function AiInsightPanel({
                     {a.action ? (
                       <p className="mt-1 text-xs font-medium">Suggested action: {a.action}</p>
                     ) : null}
+                    <AlertActions
+                      alert={a}
+                      sessionId={sessionId ?? null}
+                      context={feedbackContext ?? null}
+                    />
                     <AlertFeedback
                       key={`${a.id}-fb`}
                       alert={a}
@@ -243,6 +249,8 @@ export function AiInsightPanel({
             {result.dataQualityCaveat ? (
               <p className="text-xs text-muted-foreground">{result.dataQualityCaveat}</p>
             ) : null}
+
+            <AlertActionLog sessionId={sessionId ?? null} />
 
             <p className="flex items-start gap-2 rounded-md bg-caution/10 p-3 text-xs text-caution">
               <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
