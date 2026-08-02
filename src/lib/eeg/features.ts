@@ -296,6 +296,17 @@ export function buildFeatureDigest(
     annotations: events
       .filter((e) => e.kind === "annotation")
       .map((e) => ({ tSeconds: round(e.t, 0), label: e.detail })),
+    markerResponses: analyseMarkers(epochs, events),
+    markerPhases: buildMarkerPhases(epochs, events),
+    detectedEvents: events
+      .filter((e) => e.kind !== "annotation")
+      .slice(-25)
+      .map((e) => ({
+        tSeconds: round(e.t, 0),
+        kind: e.kind,
+        severity: e.severity,
+        detail: e.detail,
+      })),
     timeline: sampleTimeline(epochs),
   };
 }
