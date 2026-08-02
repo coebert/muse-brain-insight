@@ -421,6 +421,11 @@ function Monitor() {
             </Button>
             {user ? (
               <Button asChild variant="ghost" size="sm">
+                <Link to="/trends">Trends</Link>
+              </Button>
+            ) : null}
+            {user ? (
+              <Button asChild variant="ghost" size="sm">
                 <Link to="/compare">Compare</Link>
               </Button>
             ) : null}
