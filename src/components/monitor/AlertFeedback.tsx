@@ -24,9 +24,11 @@ interface Props {
   sessionId?: string | null;
   /** Free-text context, e.g. "general_anaesthesia" or "icu". */
   context?: string | null;
+  /** Model that produced the alert, recorded with the verdict. */
+  modelVersion?: string | null;
 }
 
-export function AlertFeedback({ alert, sessionId, context }: Props) {
+export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props) {
   const submit = useServerFn(submitAlertFeedback);
   const [verdict, setVerdict] = useState<AlertVerdict | null>(null);
   const [pendingVerdict, setPendingVerdict] = useState<AlertVerdict | null>(null);
@@ -47,6 +49,7 @@ export function AlertFeedback({ alert, sessionId, context }: Props) {
           reason: withReason || null,
           sessionId: sessionId ?? null,
           context: context ?? null,
+          modelVersion: modelVersion ?? null,
         },
       });
       setVerdict(next);

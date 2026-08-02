@@ -162,6 +162,7 @@ export function AiInsightPanel({
                       alert={a}
                       sessionId={sessionId ?? null}
                       context={feedbackContext ?? null}
+                      modelVersion={result.modelVersion ?? null}
                     />
                   </li>
                 ))}
