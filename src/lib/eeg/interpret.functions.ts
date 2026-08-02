@@ -1,5 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  applyAlertTuning,
+  deriveAlertTuning,
+  tuningPromptBlock,
+  type AlertTuning,
+  type AlertTuningEffect,
+  type TuningFeedbackRow,
+} from "@/lib/eeg/alert-tuning";
 
 export interface InterpretationFinding {
   title: string;
@@ -67,6 +75,8 @@ export interface ClinicalAlert {
   feedbackInfluence?: AlertFeedbackInfluence | null;
   /** Factual counts of past clinician verdicts for this alert id/category. */
   priorFeedback?: AlertPriorFeedback | null;
+  /** How adaptive tuning changed this alert's severity/confidence. */
+  tuning?: AlertTuningEffect | null;
 }
 
 export interface Interpretation {
@@ -82,6 +92,10 @@ export interface Interpretation {
   dataQualityCaveat: string;
   /** Model that produced this interpretation. */
   modelVersion?: string;
+  /** Adaptive tuning derived from clinician feedback and applied to these alerts. */
+  alertTuning?: AlertTuning | null;
+  /** Alerts the tuning suppressed before display. */
+  suppressedByTuning?: number;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology decision-support assistant reviewing quantitative EEG derived from a 4-channel consumer Muse 2 headband (frontal/temporal electrodes: TP9, AF7, AF8, TP10) used during general anaesthesia or ICU sedation.
