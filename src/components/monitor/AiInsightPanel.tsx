@@ -30,9 +30,11 @@ interface Props {
   epochCount: number;
   onRun: () => void;
   /** Continuous background surveillance while streaming. */
-  watch: boolean;
-  onWatchChange: (next: boolean) => void;
-  lastRunAt: number | null;
+  watch?: boolean;
+  onWatchChange?: (next: boolean) => void;
+  lastRunAt?: number | null;
+  /** Label for the run button, e.g. "Review saved case". */
+  runLabel?: string;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -55,6 +57,7 @@ export function AiInsightPanel({
   watch,
   onWatchChange,
   lastRunAt,
+  runLabel,
 }: Props) {
   const enoughData = epochCount >= 30;
 
@@ -66,14 +69,17 @@ export function AiInsightPanel({
         <span className="text-[11px] text-muted-foreground">
           Quantitative digest only — no raw EEG or identifiers leave the device
         </span>
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <Switch id="ai-watch" checked={watch} onCheckedChange={onWatchChange} />
-          <Label htmlFor="ai-watch" className="text-[11px] text-muted-foreground">
-            Continuous surveillance
-          </Label>
-        </div>
+        {onWatchChange ? (
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <Switch id="ai-watch" checked={Boolean(watch)} onCheckedChange={onWatchChange} />
+            <Label htmlFor="ai-watch" className="text-[11px] text-muted-foreground">
+              Continuous surveillance
+            </Label>
+          </div>
+        ) : null}
         <Button
           size="sm"
+          className={onWatchChange ? undefined : "sm:ml-auto"}
           onClick={onRun}
           disabled={loading || !enoughData}
           title={enoughData ? undefined : "Record at least 30 s of EEG first"}
@@ -84,7 +90,7 @@ export function AiInsightPanel({
             </>
           ) : (
             <>
-              <Sparkles className="h-3.5 w-3.5" /> Analyse session
+              <Sparkles className="h-3.5 w-3.5" /> {runLabel ?? "Analyse session"}
             </>
           )}
         </Button>
