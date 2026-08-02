@@ -135,12 +135,29 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             .slice()
             .reverse()
             .map((r) => (
-              <li key={r.id} className="metric-value">
-                {new Date(r.created_at).toLocaleTimeString()} ·{" "}
-                {r.action === "escalated"
-                  ? `escalated to ${roleLabel(r.escalated_to)}`
-                  : r.action}
-                {r.note ? ` · “${r.note}”` : ""}
+              <li key={r.id} className="space-y-0.5">
+                <div className="metric-value">
+                  {new Date(r.created_at).toLocaleTimeString()} ·{" "}
+                  {r.action === "escalated"
+                    ? `escalated to ${roleLabel(r.escalated_to)}`
+                    : r.action}
+                  {r.override_stance && r.override_stance !== "agree" ? (
+                    <span
+                      className={`ml-1 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${
+                        STANCE_CLASS[r.override_stance] ?? "bg-muted"
+                      }`}
+                    >
+                      {r.override_stance}
+                    </span>
+                  ) : null}
+                  {r.note ? ` · “${r.note}”` : ""}
+                </div>
+                {r.override_rationale ? (
+                  <div className="pl-2 italic">Rationale: “{r.override_rationale}”</div>
+                ) : null}
+                {r.cited_features?.length ? (
+                  <div className="pl-2">Citing: {r.cited_features.join(", ")}</div>
+                ) : null}
               </li>
             ))}
         </ul>
@@ -337,7 +354,8 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
       </h3>
       <ul className="mt-1 space-y-1 text-xs">
         {rows.slice(0, 15).map((r) => (
-          <li key={r.id} className="flex flex-wrap items-baseline gap-x-2">
+          <li key={r.id} className="space-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="metric-value text-[11px] text-muted-foreground">
               {new Date(r.created_at).toLocaleString()}
             </span>
@@ -353,7 +371,25 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
             >
               {r.action === "escalated" ? `→ ${roleLabel(r.escalated_to)}` : r.action}
             </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                STANCE_CLASS[r.override_stance ?? "agree"] ?? "bg-muted"
+              }`}
+            >
+              {r.override_stance ?? "agree"}
+            </span>
             {r.note ? <span className="text-muted-foreground">“{r.note}”</span> : null}
+            </div>
+            {r.override_rationale ? (
+              <p className="pl-1 text-[11px] italic text-muted-foreground">
+                Rationale: “{r.override_rationale}”
+              </p>
+            ) : null}
+            {r.cited_features?.length ? (
+              <p className="pl-1 text-[10px] text-muted-foreground">
+                Linked evidence: {r.cited_features.join(" · ")}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
