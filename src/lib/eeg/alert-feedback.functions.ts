@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type AlertVerdict = "correct" | "incorrect" | "unsure";
+export type AlertVerdict = "correct" | "incorrect" | "unsure" | "missed";
 
 export interface AlertFeedbackInput {
   alertId: string;
@@ -14,6 +14,8 @@ export interface AlertFeedbackInput {
   context?: string | null;
   /** Model that produced the alert, e.g. "openai/gpt-5.6-sol". */
   modelVersion?: string | null;
+  /** Confidence the model stated for the alert. */
+  alertConfidence?: "low" | "moderate" | "high" | null;
 }
 
 export interface AlertFeedbackRow {
@@ -28,7 +30,7 @@ export interface AlertFeedbackRow {
   created_at: string;
 }
 
-const VERDICTS: AlertVerdict[] = ["correct", "incorrect", "unsure"];
+const VERDICTS: AlertVerdict[] = ["correct", "incorrect", "unsure", "missed"];
 
 export const submitAlertFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -52,6 +54,7 @@ export const submitAlertFeedback = createServerFn({ method: "POST" })
       reason: data.reason,
       context: data.context ?? null,
       model_version: (data.modelVersion ?? "unknown").toString().slice(0, 80),
+      alert_confidence: (data.alertConfidence ?? "unknown").toString().slice(0, 20),
       clinician_label: context.claims?.email
         ? String(context.claims.email).slice(0, 120)
         : null,
