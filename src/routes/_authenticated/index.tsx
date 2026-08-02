@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bluetooth,
@@ -242,36 +242,64 @@ function Monitor() {
 
   const runInterpretation = useServerFn(interpretSession);
 
-  async function handleAnalyse() {
-    if (!user) {
-      toast.error("Sign in to use AI interpretation.");
-      return;
-    }
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const digest = buildFeatureDigest(
-        monitor.epochs,
-        allEvents,
-        {
-          ageYears: meta.ageYears,
-          sex: meta.sex,
-          admissionDiagnosis: meta.admissionDiagnosis,
-          clinicalFeatures: meta.clinicalFeatures,
-          context: meta.context,
-          notes: meta.notes,
-        },
-        monitor.elapsed,
-        activeMode.label,
-      );
-      const result = await runInterpretation({ data: { digest } });
-      setAiResult(result);
-    } catch (err) {
-      setAiError(err instanceof Error ? err.message : "AI analysis failed.");
-    } finally {
-      setAiLoading(false);
-    }
-  }
+  const analyse = useCallback(
+    async (silent = false) => {
+      if (!user) {
+        if (!silent) toast.error("Sign in to use AI interpretation.");
+        return;
+      }
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const digest = buildFeatureDigest(
+          monitor.epochs,
+          allEvents,
+          {
+            ageYears: meta.ageYears,
+            sex: meta.sex,
+            admissionDiagnosis: meta.admissionDiagnosis,
+            clinicalFeatures: meta.clinicalFeatures,
+            context: meta.context,
+            notes: meta.notes,
+          },
+          monitor.elapsed,
+          activeMode.label,
+        );
+        const result = await runInterpretation({ data: { digest } });
+        setAiResult(result);
+        setAiLastRunAt(Date.now());
+        // Raise a toast only for problems we have not already surfaced.
+        for (const alert of result.alerts ?? []) {
+          if (seenAlertIds.current.has(alert.id)) continue;
+          seenAlertIds.current.add(alert.id);
+          if (alert.severity === "critical") {
+            toast.error(alert.title, { description: alert.action || alert.detail, duration: 15000 });
+          } else if (alert.severity === "warning") {
+            toast.warning(alert.title, { description: alert.action || alert.detail, duration: 10000 });
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "AI analysis failed.";
+        setAiError(message);
+        if (!silent) toast.error(message);
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [user, monitor.epochs, monitor.elapsed, allEvents, meta, activeMode.label, runInterpretation],
+  );
+
+  const analyseRef = useRef(analyse);
+  analyseRef.current = analyse;
+
+  // Continuous surveillance: re-review the session every 3 minutes while streaming.
+  useEffect(() => {
+    if (!aiWatch || !streaming) return;
+    const id = setInterval(() => {
+      if (monitor.epochs.length >= 30) void analyseRef.current(true);
+    }, 180_000);
+    return () => clearInterval(id);
+  }, [aiWatch, streaming, monitor.epochs.length]);
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
