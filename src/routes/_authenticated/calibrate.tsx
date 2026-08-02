@@ -119,7 +119,7 @@ function Calibrate() {
         .select("id, case_code, started_at, duration_seconds, context")
         .order("started_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      return unseal(data ?? [], ["case_code"]);
     },
   });
 

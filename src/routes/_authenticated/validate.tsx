@@ -98,7 +98,7 @@ function Validate() {
         .select("id, case_code, context, created_at, duration_seconds")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return unseal(data, ["case_code"]);
     },
   });
 
