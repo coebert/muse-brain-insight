@@ -77,7 +77,7 @@ const SEVERITY_COLOR: Record<string, string> = {
   critical: "var(--destructive)",
 };
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="panel px-3 py-2">
       <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
