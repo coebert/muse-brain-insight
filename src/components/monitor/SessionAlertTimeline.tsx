@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, CircleDashed, Clock, Flag, Send, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -60,9 +60,22 @@ function windowOf(evidence: AlertEvidence[]): { start: number | null; end: numbe
 export function SessionAlertTimeline({
   sessionId,
   durationSeconds,
+  selectedAlertId = null,
+  onSelectAlert,
+  onWindowsChange,
+  cursor = null,
 }: {
   sessionId: string | null;
   durationSeconds: number;
+  /** Alert currently focused by the timeline scrubber. */
+  selectedAlertId?: string | null;
+  onSelectAlert?: (alertId: string | null) => void;
+  /** Publishes the derived alert windows so a scrubber can step through them. */
+  onWindowsChange?: (
+    windows: { alertId: string; title: string; severity: string; start: number; end: number }[],
+  ) => void;
+  /** Session-relative scrubber position, drawn on the strip. */
+  cursor?: number | null;
 }) {
   const { data: actions, isLoading: actionsLoading } = useAlertActions(sessionId);
   const listFeedback = useServerFn(listSessionAlertFeedback);
@@ -136,6 +149,21 @@ export function SessionAlertTimeline({
 
   const span = Math.max(durationSeconds, 1);
 
+  useEffect(() => {
+    if (!onWindowsChange) return;
+    onWindowsChange(
+      entries
+        .filter((e) => e.windowStart != null)
+        .map((e) => ({
+          alertId: e.alertId,
+          title: e.title,
+          severity: e.severity,
+          start: e.windowStart as number,
+          end: e.windowEnd ?? (e.windowStart as number),
+        })),
+    );
+  }, [entries, onWindowsChange]);
+
   return (
     <section className="panel px-3 py-3 sm:px-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -159,12 +187,14 @@ export function SessionAlertTimeline({
             <div className="relative h-8 rounded border border-border bg-muted/20">
               {entries.map((e) =>
                 e.windowStart == null ? null : (
-                  <div
+                  <button
                     key={`bar-${e.alertId}`}
+                    type="button"
                     title={`${e.title} · ${formatClock(e.windowStart)}`}
+                    onClick={() => onSelectAlert?.(e.alertId)}
                     className={`absolute top-1 bottom-1 rounded-sm border ${
                       SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
-                    }`}
+                    } ${selectedAlertId === e.alertId ? "ring-2 ring-signal" : ""}`}
                     style={{
                       left: `${Math.min(99, (e.windowStart / span) * 100)}%`,
                       width: `${Math.max(
@@ -174,6 +204,12 @@ export function SessionAlertTimeline({
                     }}
                   />
                 ),
+              )}
+              {cursor == null ? null : (
+                <div
+                  className="pointer-events-none absolute top-0 bottom-0 w-px bg-signal"
+                  style={{ left: `${Math.min(100, Math.max(0, (cursor / span) * 100))}%` }}
+                />
               )}
             </div>
             <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
@@ -190,8 +226,16 @@ export function SessionAlertTimeline({
                     SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
                   }`}
                 />
-                <div className="rounded-md border border-border bg-card/40 px-3 py-2">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <div
+                  className={`rounded-md border bg-card/40 px-3 py-2 ${
+                    selectedAlertId === e.alertId ? "border-signal" : "border-border"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSelectAlert?.(e.alertId)}
+                    className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-1 text-left"
+                  >
                     <span className="metric-value text-[11px] text-muted-foreground">
                       <Clock className="mr-1 inline size-3" />
                       {e.windowStart == null
@@ -209,7 +253,7 @@ export function SessionAlertTimeline({
                     <span className="text-[10px] text-muted-foreground">
                       {e.category.replace(/_/g, " ")}
                     </span>
-                  </div>
+                  </button>
 
                   {e.evidence.length ? (
                     <ul className="mt-2 grid gap-1 sm:grid-cols-2">
