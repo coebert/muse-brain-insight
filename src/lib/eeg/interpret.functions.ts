@@ -27,6 +27,21 @@ export interface AlertEvidence {
   note?: string | null;
 }
 
+export interface AlertFeedbackInfluence {
+  /** How past clinician feedback changed this alert compared with an unmoderated read. */
+  adjustment: "raised_bar" | "reinforced" | "reworded" | "downgraded" | "none";
+  /** One sentence on what changed in the interpretation because of that feedback. */
+  note: string;
+}
+
+export interface AlertPriorFeedback {
+  correct: number;
+  incorrect: number;
+  /** Most recent reasons the clinician gave when marking this alert incorrect. */
+  reasons: string[];
+  lastVerdictAt?: string | null;
+}
+
 export interface ClinicalAlert {
   /** Stable-ish key so repeat analyses don't re-alert for the same problem. */
   id: string;
@@ -48,6 +63,10 @@ export interface ClinicalAlert {
   tSeconds?: number | null;
   /** Top contributing features/metrics that triggered this alert. */
   evidence?: AlertEvidence[];
+  /** How prior clinician feedback shaped this alert (model-reported). */
+  feedbackInfluence?: AlertFeedbackInfluence | null;
+  /** Factual counts of past clinician verdicts for this alert id/category. */
+  priorFeedback?: AlertPriorFeedback | null;
 }
 
 export interface Interpretation {
