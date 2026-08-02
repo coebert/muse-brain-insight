@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PasskeyManager } from "@/components/PasskeyManager";
 import { supabase } from "@/integrations/supabase/client";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 
@@ -91,6 +92,8 @@ function Sessions() {
         <p className="mt-1 text-sm text-muted-foreground">
           Anonymised records only — identified by the case code you entered at save time.
         </p>
+
+        <PasskeyManager />
 
         <div className="mt-5 space-y-3">
           {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
