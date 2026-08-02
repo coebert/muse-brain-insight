@@ -21,7 +21,8 @@ import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
 import { TimelineScrubber, type ScrubWindow } from "@/components/monitor/TimelineScrubber";
-import type { CoverageEpoch } from "@/lib/eeg/coverage";
+import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
+import { SessionCoverageSummary } from "@/components/monitor/SessionCoverageSummary";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -245,6 +246,14 @@ function Trends() {
     () => alertWindows.find((w) => w.alertId === selectedAlertId) ?? null,
     [alertWindows, selectedAlertId],
   );
+
+  const sessionCoverage = useMemo(
+    () => assessSessionCoverage(coverageEpochs, summary.duration),
+    [coverageEpochs, summary.duration],
+  );
+  const incompleteAlerts = alertWindows.filter(
+    (w) => w.dataLevel === "partial" || w.dataLevel === "insufficient",
+  ).length;
 
   const selectAlert = useCallback(
     (id: string | null) => {
@@ -488,6 +497,7 @@ function Trends() {
 
             <div className="mt-4">
               <TimelineScrubber
+
                 durationSeconds={summary.duration}
                 cursor={cursor}
                 onCursorChange={setCursor}
