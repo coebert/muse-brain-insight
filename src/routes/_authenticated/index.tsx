@@ -178,6 +178,9 @@ function Monitor() {
   const [aiResult, setAiResult] = useState<Interpretation | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiWatch, setAiWatch] = useState(false);
+  const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
+  const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState({
     caseCode: "",
     context: "general_anaesthesia",
