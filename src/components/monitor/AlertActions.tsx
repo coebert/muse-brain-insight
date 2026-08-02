@@ -15,10 +15,12 @@ import {
 } from "@/components/ui/select";
 import {
   ESCALATION_ROLES,
+  OVERRIDE_STANCES,
   listAlertActions,
   recordAlertAction,
   type AlertActionKind,
   type AlertActionRow,
+  type OverrideStance,
 } from "@/lib/eeg/alert-actions.functions";
 import type { ClinicalAlert } from "@/lib/eeg/interpret.functions";
 
@@ -39,6 +41,17 @@ export function roleLabel(value: string | null): string {
   return ESCALATION_ROLES.find((r) => r.value === value)?.label ?? value ?? "—";
 }
 
+export function stanceLabel(value: string | null | undefined): string {
+  return OVERRIDE_STANCES.find((s) => s.value === value)?.label ?? "Agree with the AI read";
+}
+
+const STANCE_CLASS: Record<string, string> = {
+  agree: "bg-success/15 text-success",
+  partial: "bg-caution/15 text-caution",
+  override: "bg-critical/15 text-critical",
+  defer: "bg-muted text-muted-foreground",
+};
+
 interface Props {
   alert: ClinicalAlert;
   sessionId?: string | null;
@@ -51,9 +64,23 @@ export function AlertActions({ alert, sessionId, context }: Props) {
   const { data: rows } = useAlertActions(sessionId);
   const [mode, setMode] = useState<AlertActionKind | null>(null);
   const [note, setNote] = useState("");
+  const [stance, setStance] = useState<OverrideStance>("agree");
+  const [rationale, setRationale] = useState("");
+  const [cited, setCited] = useState<string[]>([]);
   const [role, setRole] = useState<string>(
     alert.severity === "critical" ? "consultant_anaesthetist" : "",
   );
+
+  const evidence = alert.evidence ?? [];
+  const needsRationale = stance !== "agree" && mode !== "resolved";
+
+  function resetForm() {
+    setMode(null);
+    setNote("");
+    setRationale("");
+    setStance("agree");
+    setCited([]);
+  }
 
   const key = alert.id || alert.title;
   const history = useMemo(
@@ -77,11 +104,15 @@ export function AlertActions({ alert, sessionId, context }: Props) {
           escalatedTo: action === "escalated" ? role || null : null,
           sessionId: sessionId ?? null,
           context: context ?? null,
+          overrideStance: stance,
+          overrideRationale: rationale.trim() || null,
+          citedFeatures: cited,
+          alertConfidence: alert.confidence ?? "unknown",
+          evidenceSnapshot: evidence,
         },
       }),
     onSuccess: (_row, action) => {
-      setMode(null);
-      setNote("");
+      resetForm();
       void queryClient.invalidateQueries({ queryKey: alertActionsQueryKey(sessionId) });
       toast.success(
         action === "escalated"
