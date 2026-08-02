@@ -1,5 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  applyAlertTuning,
+  deriveAlertTuning,
+  tuningPromptBlock,
+  type AlertTuning,
+  type AlertTuningEffect,
+  type TuningFeedbackRow,
+} from "@/lib/eeg/alert-tuning";
 
 export interface InterpretationFinding {
   title: string;
@@ -67,6 +75,8 @@ export interface ClinicalAlert {
   feedbackInfluence?: AlertFeedbackInfluence | null;
   /** Factual counts of past clinician verdicts for this alert id/category. */
   priorFeedback?: AlertPriorFeedback | null;
+  /** How adaptive tuning changed this alert's severity/confidence. */
+  tuning?: AlertTuningEffect | null;
 }
 
 export interface Interpretation {
@@ -82,6 +92,10 @@ export interface Interpretation {
   dataQualityCaveat: string;
   /** Model that produced this interpretation. */
   modelVersion?: string;
+  /** Adaptive tuning derived from clinician feedback and applied to these alerts. */
+  alertTuning?: AlertTuning | null;
+  /** Alerts the tuning suppressed before display. */
+  suppressedByTuning?: number;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology decision-support assistant reviewing quantitative EEG derived from a 4-channel consumer Muse 2 headband (frontal/temporal electrodes: TP9, AF7, AF8, TP10) used during general anaesthesia or ICU sedation.
@@ -127,6 +141,7 @@ Clinician feedback (learning loop):
 - Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
 - Where an alert was marked correct, keep raising it under similar conditions and reuse the same id.
 - Never mention the feedback mechanism itself in your output.
+- You will also be given "adaptiveTuning": per-category agreement rates and the evidential bar currently in force for this clinician. Respect the stated bar for each category when deciding whether to raise an alert and what confidence to assign.
 - Every alert MUST include "feedbackInfluence": how that past feedback changed this interpretation versus an unmoderated read. adjustment: "raised_bar" (past objections made you demand stronger numbers), "reinforced" (past correct marks support raising it again), "reworded" (same finding, framing/threshold changed to address an objection), "downgraded" (severity or confidence lowered because of past objections), or "none" (no relevant feedback). note: one sentence, at most 20 words, describing what changed, written for the clinician (e.g. "Severity kept at warning: previous rocuronium-related depth alerts were marked incorrect as EMG loss.").
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
@@ -136,13 +151,7 @@ Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrela
 
 const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downgraded", "none"]);
 
-interface FeedbackRow {
-  alert_id: string | null;
-  alert_category: string | null;
-  verdict: string | null;
-  reason: string | null;
-  created_at: string | null;
-}
+type FeedbackRow = TuningFeedbackRow;
 
 /** Factual prior-verdict counts for an alert, matched on id first then category. */
 function priorFeedbackFor(
@@ -257,7 +266,7 @@ async function streamText(body: unknown, apiKey: string): Promise<string> {
 
 export const interpretSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { digest: unknown }) => {
+  .inputValidator((input: { digest: unknown; sessionId?: string | null }) => {
     if (!input || typeof input.digest !== "object" || input.digest === null) {
       throw new Error("A session digest is required.");
     }
@@ -269,9 +278,14 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     const { data: feedback } = await context.supabase
       .from("ai_alert_feedback")
-      .select("alert_id, alert_category, alert_severity, alert_title, verdict, reason, created_at")
+      .select(
+        "alert_id, alert_category, alert_severity, alert_title, verdict, reason, created_at, session_id",
+      )
       .order("created_at", { ascending: false })
       .limit(40);
+
+    const rows = (feedback ?? []) as FeedbackRow[];
+    const tuning = deriveAlertTuning(rows, data.sessionId ?? null);
 
     const text = await streamText(
       {
@@ -281,7 +295,7 @@ export const interpretSession = createServerFn({ method: "POST" })
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(feedback ?? [])}`,
+            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(rows)}\n\nadaptiveTuning (evidential bar in force per category):\n${tuningPromptBlock(tuning)}`,
           },
         ],
         reasoning: { effort: "medium", summary: "auto" },
@@ -293,10 +307,16 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
     const parsed = extractJson(text);
-    const rows = (feedback ?? []) as FeedbackRow[];
+    const withFeedback = parsed.alerts.map((a) => ({
+      ...a,
+      priorFeedback: priorFeedbackFor(a, rows),
+    }));
+    const tuned = applyAlertTuning(withFeedback, tuning);
     return {
       ...parsed,
-      alerts: parsed.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+      alerts: tuned,
+      alertTuning: tuning,
+      suppressedByTuning: Math.max(0, withFeedback.length - tuned.length),
       modelVersion: AI_MODEL_VERSION,
     };
   });

@@ -244,7 +244,7 @@ function Trends() {
           durationSeconds: summary.duration,
         },
       );
-      setAiResult(await runInterpretation({ data: { digest } }));
+      setAiResult(await runInterpretation({ data: { digest, sessionId: selected.id } }));
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "AI analysis failed.");
     } finally {
