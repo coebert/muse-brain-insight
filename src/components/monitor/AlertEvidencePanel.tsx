@@ -30,7 +30,7 @@ function windowLabel(e: AlertEvidence): string {
 }
 
 /** Shows the top contributing EEG features/metrics behind an AI alert. */
-export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] }) {
+export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | undefined }) {
   const [open, setOpen] = useState(false);
   if (!evidence?.length) return null;
 
