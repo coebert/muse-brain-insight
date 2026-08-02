@@ -10,7 +10,13 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { getPasskeyEnvironment, describePasskeyFailure } from "@/lib/webauthn-support";
+import {
+  getPasskeyEnvironment,
+  describePasskeyFailure,
+  summarisePasskeyFailure,
+  type PasskeyFailure,
+} from "@/lib/webauthn-support";
+import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
 import { startPasskeyLogin, finishPasskeyLogin } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -42,6 +48,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<PasskeyFailure | null>(null);
+  const [standaloneUrl, setStandaloneUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (user) void navigate({ to: "/sessions" });
@@ -55,18 +63,31 @@ function AuthPage() {
   }
 
   async function biometricSignIn() {
+    setFailure(null);
     if (!email.trim()) {
       toast.error("Enter your email address first.");
       return;
     }
     const env = getPasskeyEnvironment();
+    setStandaloneUrl(env.standaloneUrl);
     if (!env.supported) {
-      toast.error("This browser doesn't support passkeys — sign in with your password.");
+      setFailure(
+        describePasskeyFailure(
+          new DOMException("WebAuthn API is unavailable in this browser.", "NotSupportedError"),
+          env,
+        ),
+      );
       return;
     }
     if (env.embedded) {
-      toast.error(
-        "Biometric sign-in is blocked inside the preview frame. Open the app in its own browser tab.",
+      setFailure(
+        describePasskeyFailure(
+          new DOMException(
+            "publickey-credentials-get is blocked by the embedding frame's permissions policy.",
+            "NotAllowedError",
+          ),
+          env,
+        ),
       );
       return;
     }
@@ -83,7 +104,9 @@ function AuthPage() {
       });
       if (error) throw new Error(error.message);
     } catch (err) {
-      toast.error(describePasskeyFailure(err));
+      const detail = describePasskeyFailure(err, getPasskeyEnvironment());
+      setFailure(detail);
+      toast.error(summarisePasskeyFailure(detail));
     } finally {
       setBusy(false);
     }
@@ -145,6 +168,13 @@ function AuthPage() {
             <Button variant="outline" className="w-full" onClick={() => void google()}>
               Continue with Google
             </Button>
+            {failure && (
+              <PasskeyErrorNotice
+                failure={failure}
+                standaloneUrl={standaloneUrl}
+                onDismiss={() => setFailure(null)}
+              />
+            )}
             <p className="text-xs text-muted-foreground">
               Biometric sign-in works once you have added a passkey from the Sessions page on
               this device.
