@@ -376,6 +376,8 @@ function Trends() {
                 epochCount={rows.length}
                 onRun={() => void reviewCase()}
                 runLabel="Review this case"
+                sessionId={selected?.id ?? null}
+                feedbackContext={selected?.context ?? null}
               />
             </div>
 
