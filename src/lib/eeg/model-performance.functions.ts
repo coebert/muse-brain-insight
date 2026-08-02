@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { buildModelReliability, type ModelReliability } from "./reliability";
+
+export type { ModelReliability } from "./reliability";
 
 /** Precision/recall for one slice of alerts. */
 export interface PerformanceBucket {
@@ -57,6 +60,8 @@ export interface ModelPerformance {
   expectedCalibrationError: number | null;
   rejectionTrend: RejectionPoint[];
   modelPrecisionTrend: { model: string; points: { period: string; precision: number | null; reviewed: number }[] }[];
+  /** Claimed alert strength vs observed outcomes, per model version. */
+  reliabilityByModel: ModelReliability[];
   topRejectionReasons: { reason: string; count: number }[];
   missedFindings: { title: string; category: string; reason: string | null; created_at: string }[];
 }
@@ -250,6 +255,7 @@ export const getModelPerformance = createServerFn({ method: "GET" })
       calibration: bins,
       expectedCalibrationError,
       rejectionTrend,
+      reliabilityByModel: buildModelReliability(list),
       modelPrecisionTrend: [...modelWeek.entries()]
         .map(([model, m]) => ({
           model,
