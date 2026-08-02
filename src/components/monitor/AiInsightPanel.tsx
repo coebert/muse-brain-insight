@@ -151,7 +151,11 @@ export function AiInsightPanel({
                     {a.action ? (
                       <p className="mt-1 text-xs font-medium">Suggested action: {a.action}</p>
                     ) : null}
-                    <AlertEvidencePanel evidence={a.evidence} />
+                    <AlertEvidencePanel
+                      evidence={a.evidence}
+                      feedbackInfluence={a.feedbackInfluence ?? null}
+                      priorFeedback={a.priorFeedback ?? null}
+                    />
                     <AlertActions
                       alert={a}
                       sessionId={sessionId ?? null}

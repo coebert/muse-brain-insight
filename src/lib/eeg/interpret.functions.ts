@@ -27,6 +27,21 @@ export interface AlertEvidence {
   note?: string | null;
 }
 
+export interface AlertFeedbackInfluence {
+  /** How past clinician feedback changed this alert compared with an unmoderated read. */
+  adjustment: "raised_bar" | "reinforced" | "reworded" | "downgraded" | "none";
+  /** One sentence on what changed in the interpretation because of that feedback. */
+  note: string;
+}
+
+export interface AlertPriorFeedback {
+  correct: number;
+  incorrect: number;
+  /** Most recent reasons the clinician gave when marking this alert incorrect. */
+  reasons: string[];
+  lastVerdictAt?: string | null;
+}
+
 export interface ClinicalAlert {
   /** Stable-ish key so repeat analyses don't re-alert for the same problem. */
   id: string;
@@ -48,6 +63,10 @@ export interface ClinicalAlert {
   tSeconds?: number | null;
   /** Top contributing features/metrics that triggered this alert. */
   evidence?: AlertEvidence[];
+  /** How prior clinician feedback shaped this alert (model-reported). */
+  feedbackInfluence?: AlertFeedbackInfluence | null;
+  /** Factual counts of past clinician verdicts for this alert id/category. */
+  priorFeedback?: AlertPriorFeedback | null;
 }
 
 export interface Interpretation {
@@ -101,17 +120,46 @@ Explainability (required for every alert):
 - weight: your 0–1 estimate of how much that feature drove the alert (they need not sum to 1).
 - windowStartSeconds/windowEndSeconds: the session time window in seconds from session start that the value covers; use the window of the digest field you cite, or null for whole-session values.
 - note: at most 15 words on why that feature supports the alert.
+- Always include signal-quality context in the evidence when it affected the alert: cite "Usable fraction", "Depth index reliability" or "Top gating reason" as an evidence item with direction low/unstable, so the clinician can see how trustworthy the driving numbers were.
 
 Clinician feedback (learning loop):
 - You may be given "clinicianFeedback": past alerts this clinician marked correct or incorrect, with their stated reason. Treat it as calibration for this user and setting.
 - Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
 - Where an alert was marked correct, keep raising it under similar conditions and reuse the same id.
 - Never mention the feedback mechanism itself in your output.
+- Every alert MUST include "feedbackInfluence": how that past feedback changed this interpretation versus an unmoderated read. adjustment: "raised_bar" (past objections made you demand stronger numbers), "reinforced" (past correct marks support raising it again), "reworded" (same finding, framing/threshold changed to address an objection), "downgraded" (severity or confidence lowered because of past objections), or "none" (no relevant feedback). note: one sentence, at most 20 words, describing what changed, written for the clinician (e.g. "Severity kept at warning: previous rocuronium-related depth alerts were marked incorrect as EMG loss.").
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
-{"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}]}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
+{"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}],"feedbackInfluence":{"adjustment":"raised_bar"|"reinforced"|"reworded"|"downgraded"|"none","note":string}}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
 Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrelations (one per notable marker, naming the marker), at most 5 pathology indicators, at most 5 recommended checks and 4 limitations.`;
+
+const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downgraded", "none"]);
+
+interface FeedbackRow {
+  alert_id: string | null;
+  alert_category: string | null;
+  verdict: string | null;
+  reason: string | null;
+  created_at: string | null;
+}
+
+/** Factual prior-verdict counts for an alert, matched on id first then category. */
+function priorFeedbackFor(
+  alert: ClinicalAlert,
+  rows: FeedbackRow[],
+): AlertPriorFeedback | null {
+  const byId = rows.filter((r) => r.alert_id && r.alert_id === alert.id);
+  const matched = byId.length ? byId : rows.filter((r) => r.alert_category === alert.category);
+  if (!matched.length) return null;
+  const correct = matched.filter((r) => r.verdict === "correct").length;
+  const incorrect = matched.filter((r) => r.verdict === "incorrect").length;
+  const reasons = matched
+    .filter((r) => r.verdict === "incorrect" && r.reason)
+    .map((r) => r.reason as string)
+    .slice(0, 3);
+  return { correct, incorrect, reasons, lastVerdictAt: matched[0]?.created_at ?? null };
+}
 
 function extractJson(text: string): Interpretation {
   const cleaned = text
@@ -127,6 +175,12 @@ function extractJson(text: string): Interpretation {
     ...parsed,
     alerts: alerts.map((a) => ({
       ...a,
+      feedbackInfluence:
+        a?.feedbackInfluence &&
+        typeof a.feedbackInfluence.note === "string" &&
+        INFLUENCE_VALUES.has(a.feedbackInfluence.adjustment)
+          ? a.feedbackInfluence
+          : null,
       evidence: Array.isArray(a?.evidence)
         ? a.evidence
             .filter((e) => e && typeof e.feature === "string")
@@ -238,5 +292,11 @@ export const interpretSession = createServerFn({ method: "POST" })
     );
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
-    return { ...extractJson(text), modelVersion: AI_MODEL_VERSION };
+    const parsed = extractJson(text);
+    const rows = (feedback ?? []) as FeedbackRow[];
+    return {
+      ...parsed,
+      alerts: parsed.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+      modelVersion: AI_MODEL_VERSION,
+    };
   });
