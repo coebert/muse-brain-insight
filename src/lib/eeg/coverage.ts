@@ -151,3 +151,94 @@ export function worstLevel(
   const order = { ok: 0, partial: 1, insufficient: 2 } as const;
   return order[a] >= order[b] ? a : b;
 }
+export interface SessionCoverage {
+  /** Stored epochs. */
+  present: number;
+  /** Epochs expected across the session at the observed cadence. */
+  expected: number;
+  /** present / expected, clamped to 0–1. */
+  fraction: number;
+  /** Longest continuous stretch of missing recording, in seconds. */
+  worstGapSeconds: number;
+  /** Start time of the worst gap, in session seconds. */
+  worstGapAtSeconds: number;
+  /** Total missing recording time, in seconds. */
+  missingSeconds: number;
+  /** Metrics absent for more than half the session. */
+  missingMetrics: string[];
+  /** Fraction of stored epochs with no spectrum. */
+  spectrumMissingFraction: number;
+  cadenceSeconds: number;
+  level: "ok" | "partial" | "insufficient";
+}
+
+/**
+ * Whole-session view of data completeness: how much of the recording was
+ * actually stored, where the biggest hole is, and which metrics are missing.
+ */
+export function assessSessionCoverage(
+  epochs: CoverageEpoch[],
+  durationSeconds?: number,
+): SessionCoverage {
+  const cadence = epochCadence(epochs);
+  const sorted = [...epochs].sort((a, b) => a.t - b.t);
+  const present = sorted.length;
+  const start = present ? sorted[0]!.t : 0;
+  const end = Math.max(present ? sorted[present - 1]!.t : 0, durationSeconds ?? 0);
+  const span = Math.max(0, end - start);
+  const expected = Math.max(1, Math.round(span / cadence) + 1);
+  const fraction = Math.max(0, Math.min(1, present / expected));
+
+  let worstGapSeconds = 0;
+  let worstGapAtSeconds = 0;
+  let missingSeconds = 0;
+  let prev = start;
+  for (const e of sorted) {
+    const gap = e.t - prev - cadence;
+    if (gap > 0) {
+      missingSeconds += gap;
+      if (gap > worstGapSeconds) {
+        worstGapSeconds = gap;
+        worstGapAtSeconds = prev + cadence;
+      }
+    }
+    prev = e.t;
+  }
+  const tailGap = end - prev - cadence;
+  if (tailGap > 0) {
+    missingSeconds += tailGap;
+    if (tailGap > worstGapSeconds) {
+      worstGapSeconds = tailGap;
+      worstGapAtSeconds = prev + cadence;
+    }
+  }
+
+  const missingMetrics: string[] = [];
+  for (const [key, label] of METRIC_LABELS) {
+    const have = sorted.filter((e) => typeof e[key] === "number").length;
+    if (!present || have / present < 0.5) missingMetrics.push(label);
+  }
+  const spectrumMissingFraction = present
+    ? sorted.filter((e) => !e.spectrumBins).length / present
+    : 1;
+
+  const level: SessionCoverage["level"] =
+    fraction < 0.75 || spectrumMissingFraction > 0.5
+      ? "insufficient"
+      : fraction < 0.95 || missingMetrics.length > 0 || worstGapSeconds >= cadence * 5
+        ? "partial"
+        : "ok";
+
+  return {
+    present,
+    expected,
+    fraction,
+    worstGapSeconds,
+    worstGapAtSeconds,
+    missingSeconds,
+    missingMetrics,
+    spectrumMissingFraction,
+    cadenceSeconds: cadence,
+    level,
+  };
+}
