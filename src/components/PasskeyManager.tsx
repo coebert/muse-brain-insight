@@ -8,8 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getPasskeyEnvironment,
   describePasskeyFailure,
+  summarisePasskeyFailure,
   type PasskeyEnvironment,
+  type PasskeyFailure,
 } from "@/lib/webauthn-support";
+import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
 import {
   startPasskeyRegistration,
   finishPasskeyRegistration,
@@ -26,6 +29,7 @@ export function PasskeyManager() {
   const [keys, setKeys] = useState<Passkey[]>([]);
   const [busy, setBusy] = useState(false);
   const [env, setEnv] = useState<PasskeyEnvironment | null>(null);
+  const [failure, setFailure] = useState<PasskeyFailure | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -43,13 +47,25 @@ export function PasskeyManager() {
   async function addPasskey() {
     const current = getPasskeyEnvironment();
     setEnv(current);
+    setFailure(null);
     if (!current.supported) {
-      toast.error("This browser doesn't support passkeys.");
+      setFailure(
+        describePasskeyFailure(
+          new DOMException("WebAuthn API is unavailable in this browser.", "NotSupportedError"),
+          current,
+        ),
+      );
       return;
     }
     if (!current.allowedToCreate) {
-      toast.error(
-        "Passkey setup is blocked inside the preview frame. Open the app in its own browser tab and try again.",
+      setFailure(
+        describePasskeyFailure(
+          new DOMException(
+            "publickey-credentials-create is blocked by the embedding frame's permissions policy.",
+            "NotAllowedError",
+          ),
+          current,
+        ),
       );
       return;
     }
@@ -63,10 +79,13 @@ export function PasskeyManager() {
           label: navigator.platform || "This device",
         },
       });
+      setFailure(null);
       toast.success("Passkey added — you can now sign in with Face ID / Touch ID.");
       await load();
     } catch (err) {
-      toast.error(describePasskeyFailure(err));
+      const detail = describePasskeyFailure(err, getPasskeyEnvironment());
+      setFailure(detail);
+      toast.error(summarisePasskeyFailure(detail));
     } finally {
       setBusy(false);
     }
@@ -113,7 +132,15 @@ export function PasskeyManager() {
         </div>
       )}
 
-      {env && !env.supported && (
+      {failure && (
+        <PasskeyErrorNotice
+          failure={failure}
+          standaloneUrl={env?.standaloneUrl}
+          onDismiss={() => setFailure(null)}
+        />
+      )}
+
+      {env && !env.supported && !failure && (
         <p className="mt-3 text-xs text-muted-foreground">
           This browser doesn't support passkeys — use your email and password to sign in.
         </p>

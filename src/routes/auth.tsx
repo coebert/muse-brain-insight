@@ -48,6 +48,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<PasskeyFailure | null>(null);
+  const [standaloneUrl, setStandaloneUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (user) void navigate({ to: "/sessions" });
