@@ -103,6 +103,7 @@ export function SessionAlertTimeline({
   onSelectAlert,
   onWindowsChange,
   cursor = null,
+  epochs = [],
 }: {
   sessionId: string | null;
   durationSeconds: number;
@@ -115,6 +116,8 @@ export function SessionAlertTimeline({
   ) => void;
   /** Session-relative scrubber position, drawn on the strip. */
   cursor?: number | null;
+  /** Stored epochs for the session, used to flag windows with missing EEG data. */
+  epochs?: CoverageEpoch[];
 }) {
   const { data: actions, isLoading: actionsLoading } = useAlertActions(sessionId);
   const listFeedback = useServerFn(listSessionAlertFeedback);
@@ -127,10 +130,11 @@ export function SessionAlertTimeline({
 
   const entries = useMemo<TimelineEntry[]>(() => {
     const map = new Map<string, TimelineEntry>();
+    const cadence = epochCadence(epochs);
     const ensure = (
       id: string,
       seed: { title: string; category: string; severity: string; createdAt: string },
-    ) => {
+    ): TimelineEntry => {
       let e = map.get(id);
       if (!e) {
         e = {
@@ -144,6 +148,9 @@ export function SessionAlertTimeline({
           evidence: [],
           actions: [],
           feedback: [],
+          coverage: null,
+          evidenceQuality: { total: 0, incomplete: 0, reasons: [], level: "insufficient" },
+          dataLevel: "insufficient",
         };
         map.set(id, e);
       }
@@ -177,6 +184,15 @@ export function SessionAlertTimeline({
       e.windowEnd = w.end;
       e.actions.sort((a, b) => a.created_at.localeCompare(b.created_at));
       e.feedback.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      e.evidenceQuality = assessEvidence(e.evidence);
+      e.coverage =
+        e.windowStart == null || !epochs.length
+          ? null
+          : assessWindowCoverage(epochs, e.windowStart, e.windowEnd ?? e.windowStart, cadence);
+      e.dataLevel = worstLevel(
+        e.evidenceQuality.level,
+        e.coverage ? e.coverage.level : epochs.length ? "insufficient" : "partial",
+      );
     }
     return [...map.values()].sort((a, b) => {
       const at = a.windowStart ?? Number.POSITIVE_INFINITY;
@@ -184,7 +200,7 @@ export function SessionAlertTimeline({
       if (at !== bt) return at - bt;
       return a.firstSeen.localeCompare(b.firstSeen);
     });
-  }, [actions, feedback]);
+  }, [actions, feedback, epochs]);
 
   const span = Math.max(durationSeconds, 1);
 
