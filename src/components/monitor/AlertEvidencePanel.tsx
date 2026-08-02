@@ -1,7 +1,23 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Microscope } from "lucide-react";
+import {
+  Activity,
+  BrainCircuit,
+  ChevronDown,
+  ChevronRight,
+  Gauge,
+  Microscope,
+  MessageSquareQuote,
+  SignalLow,
+  Waves,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
+import type {
+  AlertEvidence,
+  AlertFeedbackInfluence,
+  AlertPriorFeedback,
+} from "@/lib/eeg/interpret.functions";
 
 const DIRECTION_LABEL: Record<string, string> = {
   high: "↑ high",
@@ -10,6 +26,49 @@ const DIRECTION_LABEL: Record<string, string> = {
   falling: "↘ falling",
   unstable: "∿ unstable",
   normal: "→ within range",
+};
+
+type FeatureKind = "spectral" | "suppression" | "seizure" | "depth" | "quality" | "other";
+
+const KIND_META: Record<FeatureKind, { icon: LucideIcon; label: string; className: string }> = {
+  spectral: { icon: Waves, label: "Spectral", className: "text-foreground" },
+  suppression: { icon: Activity, label: "Suppression", className: "text-warning" },
+  seizure: { icon: Zap, label: "Ictal", className: "text-critical" },
+  depth: { icon: Gauge, label: "Depth", className: "text-foreground" },
+  quality: { icon: SignalLow, label: "Signal quality", className: "text-muted-foreground" },
+  other: { icon: BrainCircuit, label: "Other", className: "text-foreground" },
+};
+
+/** Classifies an AI-named feature into a clinical metric family. */
+function featureKind(feature: string): FeatureKind {
+  const f = feature.toLowerCase();
+  if (/(usable|quality|artefact|artifact|gating|reliab|emg|electrode|dropout|contact)/.test(f))
+    return "quality";
+  if (/(suppress|bsr|isoelectric|burst)/.test(f)) return "suppression";
+  if (/(seizure|ictal|rhythmic|spike|periodic)/.test(f)) return "seizure";
+  if (/(depth|qcon|qnox|bis)/.test(f)) return "depth";
+  if (/(sef|entropy|alpha|beta|delta|theta|power|spectral|frequency)/.test(f)) return "spectral";
+  return "other";
+}
+
+const INFLUENCE_META: Record<
+  AlertFeedbackInfluence["adjustment"],
+  { label: string; className: string }
+> = {
+  raised_bar: {
+    label: "Evidential bar raised",
+    className: "border-warning/40 bg-warning/10 text-warning",
+  },
+  reinforced: {
+    label: "Reinforced by your feedback",
+    className: "border-success/40 bg-success/10 text-success",
+  },
+  reworded: { label: "Reframed after feedback", className: "border-border bg-muted/40" },
+  downgraded: {
+    label: "Downgraded after feedback",
+    className: "border-warning/40 bg-warning/10 text-warning",
+  },
+  none: { label: "No prior feedback applied", className: "border-border bg-muted/30" },
 };
 
 function clock(t: number): string {
@@ -29,10 +88,24 @@ function windowLabel(e: AlertEvidence): string {
   return `from ${clock((a ?? b) as number)}`;
 }
 
-/** Shows the top contributing EEG features/metrics behind an AI alert. */
-export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | undefined }) {
+/** Shows the exact contributing EEG features behind an AI alert and how feedback shaped it. */
+export function AlertEvidencePanel({
+  evidence,
+  feedbackInfluence,
+  priorFeedback,
+}: {
+  evidence?: AlertEvidence[] | undefined;
+  feedbackInfluence?: AlertFeedbackInfluence | null;
+  priorFeedback?: AlertPriorFeedback | null;
+}) {
   const [open, setOpen] = useState(false);
-  if (!evidence?.length) return null;
+  const hasFeedback = Boolean(feedbackInfluence || priorFeedback);
+  if (!evidence?.length && !hasFeedback) return null;
+
+  const items = evidence ?? [];
+  const qualityFlags = items.filter((e) => featureKind(e.feature) === "quality");
+  const influence = feedbackInfluence ?? null;
+  const influenceMeta = influence ? INFLUENCE_META[influence.adjustment] : null;
 
   return (
     <div className="mt-2 rounded-md border border-border/70 bg-background/50">
@@ -40,7 +113,7 @@ export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | 
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        className="flex w-full flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
       >
         {open ? (
           <ChevronDown className="h-3 w-3" aria-hidden />
@@ -48,14 +121,35 @@ export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | 
           <ChevronRight className="h-3 w-3" aria-hidden />
         )}
         <Microscope className="h-3 w-3" aria-hidden />
-        Why this alert · {evidence.length} contributing feature{evidence.length > 1 ? "s" : ""}
+        Why this alert · {items.length} contributing feature{items.length === 1 ? "" : "s"}
+        {qualityFlags.length ? (
+          <span className="metric-value rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[9px] normal-case tracking-normal">
+            {qualityFlags.length} quality flag{qualityFlags.length > 1 ? "s" : ""}
+          </span>
+        ) : null}
+        {influenceMeta && influence?.adjustment !== "none" ? (
+          <span
+            className={`metric-value rounded-full border px-1.5 py-0.5 text-[9px] normal-case tracking-normal ${influenceMeta.className}`}
+          >
+            {influenceMeta.label}
+          </span>
+        ) : null}
       </button>
 
       {open ? (
-        <ul className="space-y-2 border-t border-border/70 px-2.5 py-2">
-          {evidence.map((e, i) => (
-            <li key={`${e.feature}-${i}`}>
+        <div className="space-y-2 border-t border-border/70 px-2.5 py-2">
+          <ul className="space-y-2">
+          {items.map((e, i) => {
+            const kind = featureKind(e.feature);
+            const meta = KIND_META[kind];
+            const Icon = meta.icon;
+            return (
+            <li
+              key={`${e.feature}-${i}`}
+              className={kind === "quality" ? "rounded-sm bg-muted/40 px-1.5 py-1" : undefined}
+            >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <Icon className={`h-3 w-3 shrink-0 self-center ${meta.className}`} aria-hidden />
                 <span className="text-xs font-medium text-foreground">{e.feature}</span>
                 <span className="metric-value text-xs text-foreground">{e.value}</span>
                 <span className="metric-value text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -76,7 +170,7 @@ export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | 
                 aria-label={`Contribution ${Math.round(e.weight * 100)}%`}
               >
                 <div
-                  className="h-full rounded-full bg-marker"
+                  className={`h-full rounded-full ${kind === "quality" ? "bg-muted-foreground" : "bg-marker"}`}
                   style={{ width: `${Math.round(Math.max(0.04, Math.min(1, e.weight)) * 100)}%` }}
                 />
               </div>
@@ -84,8 +178,31 @@ export function AlertEvidencePanel({ evidence }: { evidence?: AlertEvidence[] | 
                 <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{e.note}</p>
               ) : null}
             </li>
-          ))}
-        </ul>
+            );
+          })}
+          </ul>
+
+          {hasFeedback ? (
+            <div className={`rounded-md border px-2 py-1.5 ${influenceMeta?.className ?? "border-border bg-muted/30"}`}>
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide">
+                <MessageSquareQuote className="h-3 w-3" aria-hidden />
+                {influenceMeta?.label ?? "Your feedback on this alert"}
+              </div>
+              {influence?.note ? (
+                <p className="mt-0.5 text-[11px] leading-snug">{influence.note}</p>
+              ) : null}
+              {priorFeedback ? (
+                <p className="metric-value mt-0.5 text-[10px] opacity-90">
+                  Prior verdicts: {priorFeedback.correct} correct · {priorFeedback.incorrect}{" "}
+                  incorrect
+                  {priorFeedback.reasons.length
+                    ? ` — reasons given: ${priorFeedback.reasons.join("; ")}`
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
