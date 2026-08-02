@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_alert_actions: {
+        Row: {
+          action: string
+          alert_category: string
+          alert_id: string
+          alert_severity: string
+          alert_title: string
+          context: string | null
+          created_at: string
+          escalated_to: string | null
+          id: string
+          note: string | null
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          alert_category?: string
+          alert_id: string
+          alert_severity?: string
+          alert_title?: string
+          context?: string | null
+          created_at?: string
+          escalated_to?: string | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          alert_category?: string
+          alert_id?: string
+          alert_severity?: string
+          alert_title?: string
+          context?: string | null
+          created_at?: string
+          escalated_to?: string | null
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_alert_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_alert_feedback: {
         Row: {
           alert_category: string
