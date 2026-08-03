@@ -124,12 +124,12 @@ export const recordAlertAction = createServerFn({ method: "POST" })
         override_rationale: data.overrideRationale,
         cited_features: data.citedFeatures,
         alert_confidence: data.alertConfidence,
-        evidence_snapshot: data.evidenceSnapshot as unknown as never,
+        evidence_snapshot: JSON.parse(JSON.stringify(data.evidenceSnapshot ?? [])),
       })
       .select(SELECT_COLS)
       .single();
     if (error) throw new Error(error.message);
-    return row as unknown as AlertActionRow;
+    return toAlertActionRow(row);
   });
 
 export const listAlertActions = createServerFn({ method: "POST" })
@@ -144,5 +144,5 @@ export const listAlertActions = createServerFn({ method: "POST" })
     if (data.sessionId) q = q.eq("session_id", data.sessionId);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return (rows ?? []) as unknown as AlertActionRow[];
+    return (rows ?? []).map(toAlertActionRow);
   });
