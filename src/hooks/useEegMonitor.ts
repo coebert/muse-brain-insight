@@ -85,6 +85,9 @@ export interface HemiLatest {
 
 export type HemiSide = "left" | "right";
 
+/** DSA layout: stacked hemispheres, single mean lane, or overlaid traces. */
+export type DsaView = "bilateral" | "combined" | "overlay";
+
 /** A burst-suppression or seizure episode attributed to one hemisphere. */
 export interface HemiEvent {
   side: HemiSide;
@@ -127,6 +130,34 @@ export function combineHemiSpectra(list: HemiSpectra[]): number[][] {
     for (let i = 0; i < n; i++) out[i] = (h.left[i]! + h.right[i]!) / 2;
     return out;
   });
+}
+
+/** Spectral-edge (95 %) frequency of one dB spectrum frame, in Hz. */
+function sef95FromSpectrum(db: number[]): number {
+  if (!db.length) return DSA_MIN_HZ;
+  const power = db.map((v) => Math.pow(10, v / 10));
+  const total = power.reduce((a, b) => a + b, 0);
+  if (total <= 0) return DSA_MIN_HZ;
+  let acc = 0;
+  for (let i = 0; i < power.length; i++) {
+    acc += power[i]!;
+    if (acc >= total * 0.95) {
+      const frac = db.length > 1 ? i / (db.length - 1) : 0;
+      return DSA_MIN_HZ + frac * (DSA_MAX_HZ - DSA_MIN_HZ);
+    }
+  }
+  return DSA_MAX_HZ;
+}
+
+/**
+ * Per-hemisphere spectral-edge traces for the overlay DSA view, so both sides
+ * can be compared on a single chart.
+ */
+export function hemiSefTraces(list: HemiSpectra[]): { left: number[]; right: number[] } {
+  return {
+    left: list.map((h) => sef95FromSpectrum(h.left)),
+    right: list.map((h) => sef95FromSpectrum(h.right)),
+  };
 }
 
 interface ChannelBuffer {

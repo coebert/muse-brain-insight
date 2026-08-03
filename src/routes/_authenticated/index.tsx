@@ -49,7 +49,12 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
-import { combineHemiSpectra, useEegMonitor, worstHemi } from "@/hooks/useEegMonitor";
+import {
+  combineHemiSpectra,
+  hemiSefTraces,
+  useEegMonitor,
+  worstHemi,
+} from "@/hooks/useEegMonitor";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
 import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
@@ -141,7 +146,7 @@ function Monitor() {
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   /** Stacked left/right DSAs, or one combined lane for faster scanning. */
-  const [dsaView, setDsaView] = useState<"bilateral" | "combined">("bilateral");
+  const [dsaView, setDsaView] = useState<"bilateral" | "combined" | "overlay">("bilateral");
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -712,6 +717,7 @@ function Monitor() {
                   [
                     { key: "bilateral", label: "Bilateral" },
                     { key: "combined", label: "Combined" },
+                    { key: "overlay", label: "Overlay" },
                   ] as const
                 ).map((v) => (
                   <button
@@ -742,6 +748,7 @@ function Monitor() {
                       frames: monitor.hemiSpectra.map((h) => h.left),
                       metrics: monitor.hemiLatest?.left ?? null,
                       overlaySide: "left" as const,
+                      traces: undefined,
                     },
                     {
                       side: "Right",
@@ -749,15 +756,26 @@ function Monitor() {
                       frames: monitor.hemiSpectra.map((h) => h.right),
                       metrics: monitor.hemiLatest?.right ?? null,
                       overlaySide: "right" as const,
+                      traces: undefined,
                     },
                   ]
                 : [
                     {
-                      side: "Combined",
-                      montage: "L + R mean",
+                      side: dsaView === "overlay" ? "Overlay" : "Combined",
+                      montage: dsaView === "overlay" ? "L vs R SEF95" : "L + R mean",
                       frames: combineHemiSpectra(monitor.hemiSpectra),
                       metrics: worstHemi(monitor.hemiLatest),
                       overlaySide: "both" as const,
+                      traces:
+                        dsaView === "overlay"
+                          ? (() => {
+                              const t = hemiSefTraces(monitor.hemiSpectra);
+                              return [
+                                { label: "Left SEF95", color: "rgb(96,208,255)", values: t.left },
+                                { label: "Right SEF95", color: "rgb(255,176,64)", values: t.right },
+                              ];
+                            })()
+                          : undefined,
                     },
                   ]
               ).map((h) => (
@@ -769,7 +787,21 @@ function Monitor() {
                     metrics={h.metrics}
                     className="absolute top-1 right-2 z-10"
                   />
-                  <DsaChart frames={h.frames} windowSeconds={windowMinutes * 60} />
+                  <DsaChart
+                    frames={h.frames}
+                    windowSeconds={windowMinutes * 60}
+                    traces={h.traces}
+                  />
+                  {dsaView === "overlay" ? (
+                    <div className="metric-value absolute right-2 bottom-8 z-10 flex gap-3 rounded bg-background/70 px-2 py-1 text-xs">
+                      <span className="flex items-center gap-1 text-[rgb(96,208,255)]">
+                        <span className="h-0.5 w-4 bg-[rgb(96,208,255)]" /> L SEF95
+                      </span>
+                      <span className="flex items-center gap-1 text-[rgb(255,176,64)]">
+                        <span className="h-0.5 w-4 bg-[rgb(255,176,64)]" /> R SEF95
+                      </span>
+                    </div>
+                  ) : null}
                   <HemiEventOverlay
                     events={monitor.hemiEvents}
                     side={h.overlaySide}

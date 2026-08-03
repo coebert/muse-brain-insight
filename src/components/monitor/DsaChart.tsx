@@ -10,6 +10,15 @@ import {
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
 
+/** A line drawn over the heat map, e.g. a per-hemisphere spectral edge. */
+export interface DsaTrace {
+  label: string;
+  /** CSS colour for the line and legend swatch. */
+  color: string;
+  /** Frequency in Hz per second of history, oldest first. */
+  values: number[];
+}
+
 interface Props {
   epochs?: Epoch[];
   /** Pre-computed dB spectra per second, oldest first. Overrides `epochs`. */
@@ -18,9 +27,18 @@ interface Props {
   windowSeconds: number;
   dbMin?: number;
   dbMax?: number;
+  /** Optional frequency traces (Hz) drawn on top of the heat map. */
+  traces?: DsaTrace[] | undefined;
 }
 
-export function DsaChart({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26 }: Props) {
+export function DsaChart({
+  epochs,
+  frames,
+  windowSeconds,
+  dbMin = -6,
+  dbMax = 26,
+  traces,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spectra = frames ?? (epochs ?? []).map((e) => e.spectrum);
 
@@ -82,6 +100,28 @@ export function DsaChart({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26
 
     const yForHz = (f: number) =>
       margin.top + plotH - ((f - DSA_MIN_HZ) / (DSA_MAX_HZ - DSA_MIN_HZ)) * plotH;
+
+    // Hemisphere traces (overlay comparison view).
+    for (const tr of traces ?? []) {
+      const vals = tr.values.slice(-windowSeconds);
+      if (vals.length < 2) continue;
+      const offset = windowSeconds - vals.length;
+      const xFor = (i: number) =>
+        margin.left + ((i + offset) / Math.max(1, windowSeconds - 1)) * plotW;
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        const x = xFor(i);
+        const y = yForHz(Math.min(Math.max(v, DSA_MIN_HZ), DSA_MAX_HZ));
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = tr.color;
+      ctx.lineWidth = 2 * dpr;
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 3 * dpr;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
 
     // Band key lives in the right gutter so the heat map colours read true.
     drawBandGutter(ctx, {
@@ -155,7 +195,7 @@ export function DsaChart({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26
     ctx.textAlign = "right";
     ctx.textBaseline = "top";
     ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
-  }, [spectra, windowSeconds, dbMin, dbMax]);
+  }, [spectra, windowSeconds, dbMin, dbMax, traces]);
 
   return <canvas ref={canvasRef} className="h-full w-full rounded-md" aria-label="Density spectral array" />;
 }
