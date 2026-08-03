@@ -60,6 +60,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
+import { useDepthWindowAlerts } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
@@ -237,6 +238,14 @@ function Monitor() {
   const sqiAlerts = useSqiAlerts({
     history: monitor.sqiHistory,
     view: dsaView,
+    enabled: caseRunning,
+  });
+  // Visual alert when the OpenIBIS depth index leaves the clinician's
+  // notional optimal-anaesthesia window (default 40–60).
+  const depthWindow = useDepthWindowAlerts({
+    index: latest?.depth.index ?? null,
+    t: latest?.t ?? monitor.elapsed,
+    reliable: latest ? latest.depthReliability.reliable && !latest.depth.held : false,
     enabled: caseRunning,
   });
 
@@ -1014,8 +1023,15 @@ function Monitor() {
                           : "OpenIBIS algorithm · ±10 units vs reference"
                       }
                       tone={
-                        latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"
+                        depthWindow.status === "below"
+                          ? "critical"
+                          : depthWindow.status === "above"
+                            ? "caution"
+                            : latest && !latest.depth.held
+                              ? depthTone(latest.depth.state)
+                              : "default"
                       }
+                      pulse={depthWindow.prefs.enabled && depthWindow.status === "below"}
                       confidence={latest?.confidence.depth}
                       unreliable={latest ? !latest.depthReliability.reliable : false}
                       degraded={latest?.depthReliability.level === "degraded"}
@@ -1206,9 +1222,134 @@ function Monitor() {
               })()}
             </section>
 
+            {/* Out-of-window banner + configurable target window */}
+            {depthWindow.prefs.enabled &&
+            (depthWindow.status === "below" || depthWindow.status === "above") ? (
+              <Alert
+                className={cn(
+                  depthWindow.status === "below"
+                    ? "border-critical/50 bg-critical/10"
+                    : "border-caution/50 bg-caution/10",
+                )}
+              >
+                <Info
+                  className={cn(
+                    "size-4",
+                    depthWindow.status === "below" ? "text-critical" : "text-caution",
+                  )}
+                />
+                <AlertTitle className="text-foreground">
+                  Depth index {depthWindow.status === "below" ? "below" : "above"} target window (
+                  {depthWindow.prefs.low}–{depthWindow.prefs.high})
+                </AlertTitle>
+                <AlertDescription className="text-muted-foreground">
+                  OpenIBIS {latest?.depth.index ?? "—"} for{" "}
+                  {formatDuration(Math.round(depthWindow.breachSeconds))} —{" "}
+                  {depthWindow.status === "below"
+                    ? "possible excessive hypnotic depth / burst suppression risk."
+                    : "possible light anaesthesia — consider awareness risk."}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
             <Alert className="border-signal/30 bg-signal/5">
               <Info className="size-4 text-signal" />
-              <AlertTitle className="text-foreground">About the depth index (OpenIBIS)</AlertTitle>
+              <AlertTitle className="flex flex-wrap items-center justify-between gap-2 text-foreground">
+                <span>About the depth index (OpenIBIS)</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Configure depth index alert window"
+                      className="flex min-h-[36px] items-center gap-1.5 rounded-md border border-border px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+                    >
+                      <HeartPulse className="h-4 w-4" />
+                      <span className="metric-value">
+                        {depthWindow.prefs.enabled
+                          ? `Alert outside ${depthWindow.prefs.low}–${depthWindow.prefs.high}`
+                          : "Alerts off"}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <p className="text-sm font-semibold">Depth index alert window</p>
+                    <p className="mt-1 text-xs font-normal text-muted-foreground">
+                      Raises a visual alert when OpenIBIS stays outside the target window. Saved on
+                      this device.
+                    </p>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium">Enable alerts</label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={depthWindow.prefs.enabled ? "default" : "outline"}
+                        onClick={() =>
+                          depthWindow.setPrefs({ enabled: !depthWindow.prefs.enabled })
+                        }
+                      >
+                        {depthWindow.prefs.enabled ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                      <label className="text-xs font-medium">Lower bound</label>
+                      <span className="metric-value text-xs text-muted-foreground">
+                        {depthWindow.prefs.low}
+                      </span>
+                    </div>
+                    <Slider
+                      className="mt-2"
+                      min={10}
+                      max={90}
+                      step={1}
+                      value={[depthWindow.prefs.low]}
+                      onValueChange={([v]) => depthWindow.setPrefs({ low: v ?? 40 })}
+                    />
+                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                      <label className="text-xs font-medium">Upper bound</label>
+                      <span className="metric-value text-xs text-muted-foreground">
+                        {depthWindow.prefs.high}
+                      </span>
+                    </div>
+                    <Slider
+                      className="mt-2"
+                      min={20}
+                      max={100}
+                      step={1}
+                      value={[depthWindow.prefs.high]}
+                      onValueChange={([v]) => depthWindow.setPrefs({ high: v ?? 60 })}
+                    />
+                    <div className="mt-3 flex items-baseline justify-between gap-2">
+                      <label className="text-xs font-medium">Must persist for</label>
+                      <span className="metric-value text-xs text-muted-foreground">
+                        {depthWindow.prefs.dwellSeconds} s
+                      </span>
+                    </div>
+                    <Slider
+                      className="mt-2"
+                      min={0}
+                      max={180}
+                      step={5}
+                      value={[depthWindow.prefs.dwellSeconds]}
+                      onValueChange={([v]) => depthWindow.setPrefs({ dwellSeconds: v ?? 30 })}
+                    />
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium">Only when signal reliable</label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={depthWindow.prefs.requireReliable ? "default" : "outline"}
+                        onClick={() =>
+                          depthWindow.setPrefs({
+                            requireReliable: !depthWindow.prefs.requireReliable,
+                          })
+                        }
+                      >
+                        {depthWindow.prefs.requireReliable ? "On" : "Off"}
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </AlertTitle>
               <AlertDescription className="text-muted-foreground">
                 <p>
                   OpenIBIS is an open, peer-reviewed re-implementation of the BIS-style processed
@@ -1220,7 +1361,8 @@ function Monitor() {
                   <li>
                     <span className="font-medium text-foreground">Optimal general anaesthesia:</span>{" "}
                     roughly 40–60 (light surgical anaesthesia / adequate hypnotic effect for most
-                    procedures).
+                    procedures). Your alert window is currently {depthWindow.prefs.low}–
+                    {depthWindow.prefs.high}.
                   </li>
                   <li>
                     <span className="font-medium text-foreground">Below ~40:</span> increasing
