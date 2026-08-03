@@ -105,6 +105,15 @@ export class AlarmTone {
   blip() {
     this.burst(1, 1200);
   }
+
+  /**
+   * One-shot notification chime for a newly detected marker. Distinct from the
+   * latching alarm tone: it plays once and does not repeat.
+   */
+  notify(kind: "seizure" | "suppression") {
+    if (kind === "seizure") this.burst(3, 1040);
+    else this.burst(2, 720);
+  }
 }
 
 export function highestPriority(alarms: Alarm[]): AlarmPriority | null {
