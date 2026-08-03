@@ -19,6 +19,7 @@ import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
+import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -70,6 +71,11 @@ const AuthenticatedValidateRoute = AuthenticatedValidateRouteImport.update({
   path: '/validate',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
+  id: '/report/$id',
+  path: '/report/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/sessions': typeof AuthenticatedSessionsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
+  '/report/$id': typeof AuthenticatedReportIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
+  '/report/$id': typeof AuthenticatedReportIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/trends'
     | '/validate'
+    | '/report/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/trends'
     | '/validate'
     | '/'
+    | '/report/$id'
   id:
     | '__root__'
     | '/_authenticated'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trends'
     | '/_authenticated/validate'
     | '/_authenticated/'
+    | '/_authenticated/report/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedValidateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/report/$id': {
+      id: '/_authenticated/report/$id'
+      path: '/report/$id'
+      fullPath: '/report/$id'
+      preLoaderRoute: typeof AuthenticatedReportIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -232,6 +251,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -243,6 +263,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedReportIdRoute: AuthenticatedReportIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
