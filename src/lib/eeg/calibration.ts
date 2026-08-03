@@ -293,6 +293,11 @@ export async function deleteLabel(id: string) {
   if (error) throw error;
 }
 
+type CalibrationRow = Pick<
+  Tables<"depth_calibrations">,
+  "id" | "name" | "params" | "metrics" | "is_active" | "created_at"
+>;
+
 export interface StoredCalibration {
   id: string;
   name: string;
@@ -302,13 +307,25 @@ export interface StoredCalibration {
   created_at: string;
 }
 
+/** Narrow the two JSON columns; the rest of the row is already typed. */
+function toStoredCalibration(row: CalibrationRow): StoredCalibration {
+  return {
+    id: row.id,
+    name: row.name,
+    is_active: row.is_active,
+    created_at: row.created_at,
+    params: row.params as unknown as DepthCalibration,
+    metrics: (row.metrics ?? {}) as Record<string, unknown>,
+  };
+}
+
 export async function fetchCalibrations(): Promise<StoredCalibration[]> {
   const { data, error } = await supabase
     .from("depth_calibrations")
     .select("id, name, params, metrics, is_active, created_at")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as StoredCalibration[];
+  return (data ?? []).map(toStoredCalibration);
 }
 
 export async function saveCalibration(
@@ -332,7 +349,7 @@ export async function saveCalibration(
     .select("id, name, params, metrics, is_active, created_at")
     .single();
   if (error) throw error;
-  return data as unknown as StoredCalibration;
+  return toStoredCalibration(data);
 }
 
 export async function setActiveStored(id: string | null) {
