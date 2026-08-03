@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
 import {
   type DsaView,
   type HemiEvent,
@@ -36,66 +37,6 @@ interface Props {
   dsaView: DsaView;
   onDsaViewChange: (view: DsaView) => void;
   onExit: () => void;
-}
-
-const toneText: Record<string, string> = {
-  default: "text-muted-foreground",
-  signal: "text-signal",
-  caution: "text-caution",
-  critical: "text-critical",
-};
-
-const toneBorder: Record<string, string> = {
-  default: "border-border",
-  signal: "border-signal/50",
-  caution: "border-caution/50",
-  critical: "border-critical/60",
-};
-
-function BigNumber({
-  label,
-  value,
-  sub,
-  tone = "default",
-  unit,
-  unreliable,
-}: {
-  label: string;
-  value: string;
-  sub?: string | undefined;
-  tone?: string;
-  unit?: string | undefined;
-  unreliable?: boolean | undefined;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-0 flex-col justify-center rounded-lg border bg-[rgb(8,16,34)] px-3 py-2",
-        toneBorder[tone],
-        unreliable && "border-dashed border-muted-foreground/50",
-      )}
-    >
-      <p className="flex items-center gap-1.5 text-xs tracking-[0.16em] text-muted-foreground uppercase">
-        {label}
-        {unreliable ? (
-          <span className="rounded-sm bg-critical/15 px-1 py-px text-[9px] tracking-normal text-critical">
-            unreliable
-          </span>
-        ) : null}
-      </p>
-      <p
-        className={cn(
-          "metric-value leading-none",
-          toneText[tone],
-          unreliable && "text-muted-foreground opacity-60",
-        )}
-      >
-        <span className="text-[clamp(1.6rem,5.5vmin,3rem)]">{value}</span>
-        {unit ? <span className="ml-1 text-sm text-muted-foreground">{unit}</span> : null}
-      </p>
-      {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
-    </div>
-  );
 }
 
 /** Bedside-monitor layout: one screen, large numerics, trends and DSA. */
@@ -298,10 +239,10 @@ export function FullscreenMonitor({
         {/* Numerics column */}
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:content-start short:grid-cols-1! short:content-start! short:overflow-y-auto!">
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
-            <BigNumber
+            <MetricCard
               label="Depth index"
               value={depth?.index != null ? String(depth.index) : "—"}
-              sub={
+              hint={
                 depth
                   ? depth.held
                     ? `Held ${depth.heldSeconds.toFixed(0)} s`
@@ -312,34 +253,34 @@ export function FullscreenMonitor({
               unreliable={latest ? !latest.depthReliability.reliable : false}
             />
           </div>
-          <BigNumber
+          <MetricCard
             label="Suppression ratio"
             value={latest ? srValue.toFixed(0) : "—"}
             unit="%"
-            sub={`Supp. time ${formatDuration(suppressionSeconds)}`}
+            hint={`Supp. time ${formatDuration(suppressionSeconds)}`}
             tone={srTone}
           />
-          <BigNumber
+          <MetricCard
             label="SEF 95"
             value={latest ? latest.sef95.toFixed(1) : "—"}
             unit="Hz"
-            sub={latest ? `Entropy ${latest.entropy.state.toFixed(2)}` : undefined}
+            hint={latest ? `Entropy ${latest.entropy.state.toFixed(2)}` : undefined}
           />
-          <BigNumber
+          <MetricCard
             label="qCON-like"
             value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
-            sub={latest ? COMPOSITE_BAND_LABEL[latest.composite.cBand] : undefined}
+            hint={latest ? COMPOSITE_BAND_LABEL[latest.composite.cBand] : undefined}
           />
-          <BigNumber
+          <MetricCard
             label="qNOX-like"
             value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
-            sub={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
+            hint={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
           />
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
-            <BigNumber
+            <MetricCard
               label="Seizure score"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
-              sub={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
+              hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
               tone={latest?.seizureAlert ? "critical" : "default"}
             />
           </div>
