@@ -61,6 +61,20 @@ export interface HemiSpectra {
   right: number[];
 }
 
+/** Per-hemisphere clinical metrics, derived from that side's electrode pair. */
+export interface HemiMetrics {
+  suppressionRatio: number;
+  seizureScore: number;
+  seizureAlert: boolean;
+  qualityGrade: SignalQuality["grade"];
+  flat: boolean;
+}
+
+export interface HemiLatest {
+  left: HemiMetrics;
+  right: HemiMetrics;
+}
+
 function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   if (list.length <= MAX_EPOCHS) return list;
   const keepFrom = list.length - FULL_RES_EPOCHS;
