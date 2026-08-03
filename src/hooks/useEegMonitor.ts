@@ -85,6 +85,9 @@ export interface HemiLatest {
 
 export type HemiSide = "left" | "right";
 
+/** DSA layout: stacked hemispheres, single mean lane, or overlaid traces. */
+export type DsaView = "bilateral" | "combined" | "overlay";
+
 /** A burst-suppression or seizure episode attributed to one hemisphere. */
 export interface HemiEvent {
   side: HemiSide;
