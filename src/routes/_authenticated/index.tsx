@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
+import { AppNav } from "@/components/AppNav";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { CaseFields } from "@/components/monitor/CaseFields";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
