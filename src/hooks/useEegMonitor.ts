@@ -239,9 +239,11 @@ export function useEegMonitor() {
     leftAnalyzerRef.current.reset();
     rightAnalyzerRef.current.reset();
     manualEventsRef.current = [];
+    hemiEventsRef.current = [];
     setEpochs([]);
     setHemiSpectra([]);
     setHemiLatest(null);
+    setHemiEvents([]);
     setEvents([]);
     setElapsed(0);
     setDataGapSeconds(0);
