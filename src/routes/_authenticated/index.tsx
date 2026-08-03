@@ -138,6 +138,8 @@ function Monitor() {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
+  /** Stacked left/right DSAs, or one combined lane for faster scanning. */
+  const [dsaView, setDsaView] = useState<"bilateral" | "combined">("bilateral");
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
