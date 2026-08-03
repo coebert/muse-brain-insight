@@ -196,3 +196,31 @@
 @utility alert-pulse {
   animation: pulse-alert 1.6s ease-out infinite;
 }
+
+/* End-of-case report: paper-friendly output. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+}
