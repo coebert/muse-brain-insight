@@ -85,7 +85,7 @@ export function TimelineScrubber({
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">Timeline scrubber</h2>
         <span className="metric-value ml-auto text-sm">{formatClock(cursor)}</span>
-        <span className="text-[11px] text-muted-foreground">/ {formatClock(span)}</span>
+        <span className="text-xs text-muted-foreground">/ {formatClock(span)}</span>
       </div>
 
       {/* Alert window ticks above the slider */}
@@ -151,7 +151,7 @@ export function TimelineScrubber({
             <X className="size-4" /> Clear window
           </Button>
         ) : null}
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {sorted.length
             ? "Click a marker, an alert card, or drag on the DSA to review that moment."
             : "No alert windows recorded — drag on the DSA to review any moment."}
@@ -161,7 +161,7 @@ export function TimelineScrubber({
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {readout.map((r) => (
           <div key={r.label} className="rounded-md border border-border px-2 py-1">
-            <p className="text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+            <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">
               {r.label}
             </p>
             <p className="metric-value text-sm">{r.value}</p>

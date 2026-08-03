@@ -48,20 +48,20 @@ function RecommendationRow({ r }: { r: CalibrationRecommendation }) {
       <div className="flex flex-wrap items-center gap-2">
         <Icon className="h-3.5 w-3.5 text-marker" aria-hidden />
         <span className="text-sm font-medium">{r.title}</span>
-        <Badge variant="outline" className={`text-[10px] ${priorityClass(r.priority)}`}>
+        <Badge variant="outline" className={`text-xs ${priorityClass(r.priority)}`}>
           {r.priority} priority
         </Badge>
-        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+        <Badge variant="outline" className="text-xs text-muted-foreground">
           {SCOPE_LABEL[r.scope]}
         </Badge>
-        <span className="metric-value ml-auto text-[11px] text-muted-foreground">
+        <span className="metric-value ml-auto text-xs text-muted-foreground">
           {r.agreement == null ? "—" : `${Math.round(r.agreement * 100)}% agreement`} · n={r.sample}
         </span>
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{r.rationale}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{r.rationale}</p>
       <p className="mt-1 text-xs">{r.action}</p>
       {r.confidenceWeight != null || r.evidenceBar ? (
-        <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
           {r.confidenceWeight != null ? (
             <span className="metric-value">
               Suggested confidence weight ×{r.confidenceWeight.toFixed(2)}
@@ -109,7 +109,7 @@ export function CalibrationPanel({ performance }: { performance: ModelPerformanc
   return (
     <section className="panel p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <SlidersHorizontal className="h-3.5 w-3.5 text-marker" aria-hidden /> Model calibration
           recommendations
         </h2>
@@ -118,9 +118,9 @@ export function CalibrationPanel({ performance }: { performance: ModelPerformanc
           {copied ? "Copied" : "Copy plan"}
         </Button>
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{advice.summary}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{advice.summary}</p>
       {advice.underpowered ? (
-        <p className="mt-1 text-[11px] text-caution">
+        <p className="mt-1 text-xs text-caution">
           Treat these as provisional until more alerts are graded.
         </p>
       ) : null}

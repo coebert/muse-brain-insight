@@ -70,7 +70,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
 
   if (saved && !pendingVerdict) {
     return (
-      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Check className="h-3 w-3" aria-hidden />
         Marked {verdict === "correct" ? "correct" : verdict === "incorrect" ? "incorrect" : "unsure"}
         {reason ? ` · ${reason}` : ""}
@@ -82,11 +82,11 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
     <div className="mt-2 border-t border-current/15 pt-2">
       {!pendingVerdict ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">Was this alert right?</span>
+          <span className="text-xs text-muted-foreground">Was this alert right?</span>
           <Button
             size="sm"
             variant="outline"
-            className="h-7 px-2 text-[11px]"
+            className="h-7 px-2 text-xs"
             disabled={saving}
             onClick={() => setPendingVerdict("correct")}
           >
@@ -95,7 +95,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
           <Button
             size="sm"
             variant="outline"
-            className="h-7 px-2 text-[11px]"
+            className="h-7 px-2 text-xs"
             disabled={saving}
             onClick={() => setPendingVerdict("incorrect")}
           >
@@ -104,7 +104,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-[11px]"
+            className="h-7 px-2 text-xs"
             disabled={saving}
             onClick={() => setPendingVerdict("unsure")}
           >
@@ -115,7 +115,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <MessageSquare className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="text-[11px] font-medium">
+            <span className="text-xs font-medium">
               Marking {pendingVerdict} — why? (optional)
             </span>
             <Button
@@ -135,7 +135,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
                   key={r}
                   type="button"
                   onClick={() => setReason(r)}
-                  className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                  className={`rounded-full border px-2 py-0.5 text-xs ${
                     reason === r ? "border-transparent bg-foreground/15 font-medium" : "border-border"
                   }`}
                 >
@@ -154,7 +154,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
           <div className="flex justify-end gap-2">
             <Button
               size="sm"
-              className="h-7 px-3 text-[11px]"
+              className="h-7 px-3 text-xs"
               disabled={saving}
               onClick={() => void send(pendingVerdict, reason.trim())}
             >

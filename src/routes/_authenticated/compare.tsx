@@ -218,7 +218,7 @@ function Compare() {
 
         <div className="panel mt-4 flex flex-wrap items-end gap-4 px-3 py-3 sm:px-4">
           <div className="w-full min-w-0 sm:w-auto sm:min-w-64">
-            <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            <label className="text-xs tracking-wide text-muted-foreground uppercase">
               Patient / case
             </label>
             <Select value={selectedId} onValueChange={setSessionId}>
@@ -237,7 +237,7 @@ function Compare() {
           </div>
 
           <div>
-            <span className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            <span className="text-xs tracking-wide text-muted-foreground uppercase">
               Series
             </span>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -263,7 +263,7 @@ function Compare() {
           </div>
 
           <div>
-            <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            <label className="text-xs tracking-wide text-muted-foreground uppercase">
               Rolling window: {windowMinutes} min
             </label>
             <input
@@ -349,7 +349,7 @@ function Compare() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Dashed lines mark the 40–60 depth-index band usually targeted for general
                 anaesthesia. {suppressionSpans.length} epochs recorded a suppression ratio ≥ 20 %.
               </p>
@@ -358,7 +358,7 @@ function Compare() {
             <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {comparisons.map((c) => (
                 <div key={c.label} className="panel px-4 py-3">
-                  <p className="text-[11px] tracking-wide text-muted-foreground uppercase">
+                  <p className="text-xs tracking-wide text-muted-foreground uppercase">
                     {c.label}
                   </p>
                   <p className="metric-value mt-1 text-2xl">
@@ -367,7 +367,7 @@ function Compare() {
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {correlationStrength(c.result.r)}
                   </p>
-                  <dl className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                  <dl className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                     <div className="flex justify-between">
                       <dt>Paired epochs</dt>
                       <dd className="metric-value">{c.result.n}</dd>
@@ -448,7 +448,7 @@ function Compare() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-2 flex gap-4 text-[11px] text-muted-foreground">
+              <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <span className="size-2 rounded-full" style={{ background: "var(--chart-2)" }} />
                   Depth vs SEF95
@@ -460,7 +460,7 @@ function Compare() {
               </div>
             </section>
 
-            <p className="mt-4 text-[11px] text-muted-foreground">
+            <p className="mt-4 text-xs text-muted-foreground">
               Research and decision-support only. The depth index is uncalibrated and derived from a
               frontal consumer montage; do not titrate anaesthesia on these values alone.
             </p>

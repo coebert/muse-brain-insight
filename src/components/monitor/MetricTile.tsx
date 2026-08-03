@@ -53,7 +53,7 @@ export function MetricTile({
       )}
       {...(reasonText ? { title: reasonText } : {})}
     >
-      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.14em]">
+      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
         {label}
       </p>
       <p
@@ -78,16 +78,16 @@ export function MetricTile({
           {unreliable ? "Unreliable" : "Degraded"}
         </p>
       ) : null}
-      {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       {reasonText ? (
-        <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground/80">{reasonText}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">{reasonText}</p>
       ) : null}
       {conf && confidence != null ? (
         <div
           className="mt-2"
           title={`Confidence ${(confidence * 100).toFixed(0)} % — ${conf.word}, based on live signal quality`}
         >
-          <div className="flex items-center justify-between text-[10px] tracking-wide text-muted-foreground uppercase">
+          <div className="flex items-center justify-between text-xs tracking-wide text-muted-foreground uppercase">
             <span>Confidence</span>
             <span className={cn("metric-value", conf.text)}>
               {(confidence * 100).toFixed(0)} %

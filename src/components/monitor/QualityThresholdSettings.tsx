@@ -122,7 +122,7 @@ export function QualityThresholdSettings({
             <RotateCcw className="size-3.5" /> Reset
           </Button>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Sets when alert windows and the session are flagged as partial or insufficient. Saved on
           this device.
         </p>
@@ -145,7 +145,7 @@ export function QualityThresholdSettings({
                   value={[value]}
                   onValueChange={([v]) => onChange({ [f.key]: v ?? value })}
                 />
-                <p className="mt-1 text-[10px] text-muted-foreground">{f.hint}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{f.hint}</p>
               </div>
             );
           })}

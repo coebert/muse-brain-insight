@@ -81,7 +81,7 @@ export function CaseFields({
             value={meta.ageYears}
             onChange={(e) => onChange({ ...meta, ageYears: e.target.value })}
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Ages of 90 and over are stored as a “90+” band only.
           </p>
         </div>

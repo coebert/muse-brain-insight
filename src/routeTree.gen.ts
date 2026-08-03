@@ -13,10 +13,12 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
+import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
@@ -40,6 +42,11 @@ const AuthenticatedCalibrateRoute = AuthenticatedCalibrateRouteImport.update({
   path: '/calibrate',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
+  id: '/cases',
+  path: '/cases',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCompareRoute = AuthenticatedCompareRouteImport.update({
   id: '/compare',
   path: '/compare',
@@ -59,6 +66,11 @@ const AuthenticatedPerformanceRoute =
 const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
@@ -81,10 +93,12 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
+  '/cases': typeof AuthenticatedCasesRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
@@ -92,10 +106,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
+  '/cases': typeof AuthenticatedCasesRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
@@ -106,10 +122,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
+  '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -121,10 +139,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calibrate'
+    | '/cases'
     | '/compare'
     | '/feedback'
     | '/performance'
     | '/sessions'
+    | '/settings'
     | '/trends'
     | '/validate'
     | '/report/$id'
@@ -132,10 +152,12 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/calibrate'
+    | '/cases'
     | '/compare'
     | '/feedback'
     | '/performance'
     | '/sessions'
+    | '/settings'
     | '/trends'
     | '/validate'
     | '/'
@@ -145,10 +167,12 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/calibrate'
+    | '/_authenticated/cases'
     | '/_authenticated/compare'
     | '/_authenticated/feedback'
     | '/_authenticated/performance'
     | '/_authenticated/sessions'
+    | '/_authenticated/settings'
     | '/_authenticated/trends'
     | '/_authenticated/validate'
     | '/_authenticated/'
@@ -190,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalibrateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cases': {
+      id: '/_authenticated/cases'
+      path: '/cases'
+      fullPath: '/cases'
+      preLoaderRoute: typeof AuthenticatedCasesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/compare': {
       id: '/_authenticated/compare'
       path: '/compare'
@@ -218,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSessionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/trends': {
       id: '/_authenticated/trends'
       path: '/trends'
@@ -244,10 +282,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
+  AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -256,10 +296,12 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
+  AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

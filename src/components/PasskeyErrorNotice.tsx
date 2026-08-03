@@ -71,7 +71,7 @@ export function PasskeyErrorNotice({ failure, standaloneUrl, onDismiss }: Props)
           </div>
 
           {showDetail && (
-            <pre className="mt-2 overflow-x-auto rounded border border-border bg-background/60 px-2 py-1.5 font-mono text-[11px] whitespace-pre-wrap">
+            <pre className="mt-2 overflow-x-auto rounded border border-border bg-background/60 px-2 py-1.5 font-mono text-xs whitespace-pre-wrap">
               [{failure.code}] {failure.reason}
             </pre>
           )}

@@ -412,7 +412,7 @@ function Calibrate() {
                     style={{ background: LABEL_COLOUR[s.value] }}
                   />
                   {s.label}
-                  <span className="ml-1 text-[10px] text-muted-foreground">
+                  <span className="ml-1 text-xs text-muted-foreground">
                     {s.target[0]}–{s.target[1]}
                   </span>
                 </Button>
@@ -612,7 +612,7 @@ function Calibrate() {
                       {new Date(c.created_at).toLocaleString()}
                     </span>
                     {c.is_active ? (
-                      <span className="ml-2 rounded-full bg-signal/10 px-2 py-0.5 text-[10px] text-signal">
+                      <span className="ml-2 rounded-full bg-signal/10 px-2 py-0.5 text-xs text-signal">
                         active
                       </span>
                     ) : null}
@@ -645,7 +645,7 @@ function Calibrate() {
               None yet — the published OpenIBIS constants are in use.
             </p>
           )}
-          <p className="pt-2 text-[11px] text-muted-foreground">
+          <p className="pt-2 text-xs text-muted-foreground">
             A fitted index is a research tool calibrated on your own labels, not a validated
             clinical monitor. Never titrate anaesthesia on this number alone.
           </p>

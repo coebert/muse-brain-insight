@@ -34,16 +34,16 @@ function Meter({ predicted, observed }: { predicted: number | null; observed: nu
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span className="w-16 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
           Claimed
         </span>
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-muted-foreground/70" style={{ width: `${p}%` }} />
         </div>
-        <span className="metric-value w-10 text-right text-[11px]">{pct(predicted)}</span>
+        <span className="metric-value w-10 text-right text-xs">{pct(predicted)}</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="w-16 shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span className="w-16 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
           Observed
         </span>
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
@@ -52,7 +52,7 @@ function Meter({ predicted, observed }: { predicted: number | null; observed: nu
             style={{ width: `${o}%` }}
           />
         </div>
-        <span className="metric-value w-10 text-right text-[11px]">{pct(observed)}</span>
+        <span className="metric-value w-10 text-right text-xs">{pct(observed)}</span>
       </div>
     </div>
   );
@@ -65,10 +65,10 @@ function ModelCard({ m }: { m: ModelReliability }) {
       <div className="flex flex-wrap items-center gap-2">
         <Cpu className="h-3.5 w-3.5 text-marker" aria-hidden />
         <span className="text-sm font-medium">{m.model}</span>
-        <Badge variant="outline" className={`text-[10px] ${style.cls}`}>
+        <Badge variant="outline" className={`text-xs ${style.cls}`}>
           {style.label}
         </Badge>
-        <span className="metric-value ml-auto text-[11px] text-muted-foreground">
+        <span className="metric-value ml-auto text-xs text-muted-foreground">
           {m.graded} graded · gap{" "}
           {m.gap == null ? "—" : `${m.gap > 0 ? "+" : ""}${Math.round(m.gap * 100)} pts`}
         </span>
@@ -76,7 +76,7 @@ function ModelCard({ m }: { m: ModelReliability }) {
       <div className="mt-2">
         <Meter predicted={m.meanPredicted} observed={m.observed} />
       </div>
-      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span className="metric-value">ECE {pct(m.expectedCalibrationError)}</span>
         <span className="metric-value">
           Brier {m.brier == null ? "—" : m.brier.toFixed(3)}
@@ -89,7 +89,7 @@ function ModelCard({ m }: { m: ModelReliability }) {
         {m.bins
           .filter((b) => b.count > 0)
           .map((b) => (
-            <li key={b.key} className="flex items-center gap-2 text-[11px]">
+            <li key={b.key} className="flex items-center gap-2 text-xs">
               <span className="w-24 shrink-0 text-muted-foreground">
                 {b.label.replace(" confidence", "")}
               </span>
@@ -130,7 +130,7 @@ export function ConfidenceMeter({ models }: { models: ModelReliability[] }) {
   return (
     <section className="panel p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Target className="h-3.5 w-3.5 text-marker" aria-hidden /> Confidence meter &amp;
           reliability
         </h2>
@@ -141,7 +141,7 @@ export function ConfidenceMeter({ models }: { models: ModelReliability[] }) {
                 key={m.model}
                 size="sm"
                 variant={active?.model === m.model ? "secondary" : "ghost"}
-                className="h-7 text-[11px]"
+                className="h-7 text-xs"
                 onClick={() => setSelected(m.model)}
               >
                 {m.model}
@@ -150,7 +150,7 @@ export function ConfidenceMeter({ models }: { models: ModelReliability[] }) {
           </div>
         ) : null}
       </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         How strongly each model version claimed its alerts were right, against how often you
         confirmed them.
       </p>
@@ -169,7 +169,7 @@ export function ConfidenceMeter({ models }: { models: ModelReliability[] }) {
 
           {active && trendRows.length > 1 ? (
             <div className="mt-4">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Claimed vs observed over time — {active.model}
               </h3>
               <div className="mt-2 h-56">

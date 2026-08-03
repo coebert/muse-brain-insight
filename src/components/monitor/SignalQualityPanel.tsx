@@ -31,7 +31,7 @@ function Bar({ label, value, display }: { label: string; value: number; display:
   const tone = value < 0.34 ? "bg-signal" : value < 0.67 ? "bg-caution" : "bg-critical";
   return (
     <div>
-      <div className="flex justify-between text-[11px] text-muted-foreground">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{label}</span>
         <span className="metric-value">{display}</span>
       </div>
@@ -95,7 +95,7 @@ export function SignalQualityPanel({
                 <span
                   key={c}
                   title={q ? q.reasons.join(" · ") || "Clean signal" : "No data"}
-                  className="metric-value flex items-center gap-1.5 rounded bg-muted/50 px-1.5 py-1 text-[10px]"
+                  className="metric-value flex items-center gap-1.5 rounded bg-muted/50 px-1.5 py-1 text-xs"
                 >
                   <span
                     className={cn(
@@ -112,7 +112,7 @@ export function SignalQualityPanel({
             })}
           </div>
 
-          <p className="mt-3 text-[11px] text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground">
             {quality.reasons.length
               ? quality.reasons.join(" · ")
               : "Clean epoch — metrics reported at full confidence."}{" "}
@@ -120,7 +120,7 @@ export function SignalQualityPanel({
           </p>
 
           {depthArtifact ? (
-            <p className="mt-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 border-t border-border/60 pt-2 text-xs text-muted-foreground">
               <span className="text-foreground/80">Depth index input: </span>
               {depthArtifact.usable ? (
                 <span className="text-signal">accepted</span>
@@ -139,7 +139,7 @@ export function SignalQualityPanel({
           ) : null}
         </>
       ) : (
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           Quality checks run once streaming starts.
         </p>
       )}
