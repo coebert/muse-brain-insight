@@ -68,6 +68,14 @@ export interface HemiMetrics {
   seizureAlert: boolean;
   qualityGrade: SignalQuality["grade"];
   flat: boolean;
+  /** 0–1 usability of this side's electrode pair. */
+  qualityScore: number;
+  /** 0–1 confidence in this side's spectral metrics (DSA, SEF95, bands). */
+  spectralConfidence: number;
+  /** Muscle/diathermy contamination share for this side (0–1). */
+  emgIndex: number;
+  /** Human-readable causes of quality loss on this side. */
+  reasons: string[];
 }
 
 export interface HemiLatest {
