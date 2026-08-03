@@ -503,7 +503,13 @@ export function useEegMonitor() {
         emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
       };
       setSqiHistory((prev) => compactSqi([...prev, point]));
-      setHemiEvents([...hemiEventsRef.current.map((e) => ({ ...e }))]);
+      // Only republish the episode list when something visible changed: new
+      // episode, or an open episode whose duration/peaks are still growing.
+      const list = hemiEventsRef.current;
+      const hasOpen = list.some((e) => e.ongoing);
+      setHemiEvents((prev) =>
+        hasOpen || prev.length !== list.length ? list.map((e) => ({ ...e })) : prev,
+      );
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
