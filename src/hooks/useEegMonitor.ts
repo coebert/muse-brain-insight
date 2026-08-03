@@ -473,10 +473,22 @@ export function useEegMonitor() {
           reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),
         };
       };
-      setHemiLatest({
-        left: sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current),
-        right: sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current),
-      });
+      const leftMetrics = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current);
+      const rightMetrics = sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current);
+      setHemiLatest({ left: leftMetrics, right: rightMetrics });
+
+      // BIS-style Signal Quality Index trend: one point per epoch, thinned
+      // with the same rule as the DSA so long cases keep their full history.
+      const leftSqi = (leftMetrics.flat ? 0 : leftMetrics.qualityScore) * 100;
+      const rightSqi = (rightMetrics.flat ? 0 : rightMetrics.qualityScore) * 100;
+      const point: SqiPoint = {
+        t,
+        left: leftSqi,
+        right: rightSqi,
+        sqi: Math.min(leftSqi, rightSqi),
+        emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
+      };
+      setSqiHistory((prev) => compactSqi([...prev, point]));
       setHemiEvents([...hemiEventsRef.current.map((e) => ({ ...e }))]);
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
