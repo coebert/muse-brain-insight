@@ -453,6 +453,7 @@ function Monitor() {
         <FullscreenMonitor
           epochs={monitor.epochs}
           hemiSpectra={monitor.hemiSpectra}
+          hemiLatest={monitor.hemiLatest}
           latest={latest}
           waveform={monitor.waveform}
           elapsed={monitor.elapsed}
