@@ -7,6 +7,8 @@ import {
   TrendingDown,
   TrendingUp,
   Waves,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 
 import type { DetectedEvent } from "@/lib/eeg/analysis";
@@ -21,6 +23,8 @@ const meta = {
   signal_quality: { icon: WifiOff, label: "Signal quality degraded" },
   depth_drop: { icon: TrendingDown, label: "Depth index drop" },
   depth_rise: { icon: TrendingUp, label: "Depth index rise" },
+  depth_window_exit: { icon: LogOut, label: "Left optimal depth window" },
+  depth_window_return: { icon: LogIn, label: "Back in optimal depth window" },
   suppression_burden: { icon: Waves, label: "Burst-suppression burden" },
 } as const;
 
