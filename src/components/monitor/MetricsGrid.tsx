@@ -175,9 +175,7 @@ export function MetricsGrid({
             <MetricTile
               key="cindex"
               label="Consciousness index (qCON-like)"
-              value={
-                latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"
-              }
+              value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
               hint={
                 latest
                   ? latest.composite.held
@@ -201,9 +199,7 @@ export function MetricsGrid({
             <MetricTile
               key="nindex"
               label="Nociception index (qNOX-like)"
-              value={
-                latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"
-              }
+              value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
               hint={
                 latest
                   ? latest.composite.held

@@ -45,8 +45,8 @@ export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelPr
             {depthWindow.prefs.low}–{depthWindow.prefs.high})
           </AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            OpenIBIS {depthIndex ?? "—"} for{" "}
-            {formatDuration(Math.round(depthWindow.breachSeconds))} —{" "}
+            OpenIBIS {depthIndex ?? "—"} for {formatDuration(Math.round(depthWindow.breachSeconds))}{" "}
+            —{" "}
             {depthWindow.status === "below"
               ? "possible excessive hypnotic depth / burst suppression risk."
               : "possible light anaesthesia — consider awareness risk."}
@@ -76,8 +76,8 @@ export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelPr
             <PopoverContent align="end" className="w-80">
               <p className="text-sm font-semibold">Depth index alert window</p>
               <p className="mt-1 text-xs font-normal text-muted-foreground">
-                Raises a visual alert when OpenIBIS stays outside the target window. Saved on
-                this device.
+                Raises a visual alert when OpenIBIS stays outside the target window. Saved on this
+                device.
               </p>
               <div className="mt-3 flex items-center justify-between gap-2">
                 <label className="text-xs font-medium">Enable alerts</label>
@@ -85,9 +85,7 @@ export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelPr
                   type="button"
                   size="sm"
                   variant={depthWindow.prefs.enabled ? "default" : "outline"}
-                  onClick={() =>
-                    depthWindow.setPrefs({ enabled: !depthWindow.prefs.enabled })
-                  }
+                  onClick={() => depthWindow.setPrefs({ enabled: !depthWindow.prefs.enabled })}
                 >
                   {depthWindow.prefs.enabled ? "On" : "Off"}
                 </Button>
@@ -154,10 +152,9 @@ export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelPr
         </AlertTitle>
         <AlertDescription className="text-muted-foreground">
           <p>
-            OpenIBIS is an open, peer-reviewed re-implementation of the BIS-style processed
-            EEG depth-of-anaesthesia index. It combines beta/alpha ratio, spectral edge
-            frequency, burst-suppression burden and relative slow-wave power into a single
-            0–100 score.
+            OpenIBIS is an open, peer-reviewed re-implementation of the BIS-style processed EEG
+            depth-of-anaesthesia index. It combines beta/alpha ratio, spectral edge frequency,
+            burst-suppression burden and relative slow-wave power into a single 0–100 score.
           </p>
           <ul className="mt-2 list-disc space-y-0.5 pl-5">
             <li>
@@ -167,12 +164,12 @@ export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelPr
               {depthWindow.prefs.high}.
             </li>
             <li>
-              <span className="font-medium text-foreground">Below ~40:</span> increasing
-              probability of deep hypnosis / burst suppression.
+              <span className="font-medium text-foreground">Below ~40:</span> increasing probability
+              of deep hypnosis / burst suppression.
             </li>
             <li>
-              <span className="font-medium text-foreground">Above ~60:</span> lighter
-              anaesthesia with higher probability of awareness or movement response.
+              <span className="font-medium text-foreground">Above ~60:</span> lighter anaesthesia
+              with higher probability of awareness or movement response.
             </li>
             <li>
               Values are gated by signal quality; during artefact or EMG the tile is marked
