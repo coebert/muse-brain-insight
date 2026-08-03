@@ -19,11 +19,21 @@ const EEG_CHARS: Record<MuseChannel, string> = {
 
 export type SampleHandler = (channel: MuseChannel, samples: Float64Array) => void;
 
+/** Connection lifecycle reported to the UI so a dropout is never silent. */
+export type SourceState =
+  | { kind: "connected" }
+  | { kind: "reconnecting"; attempt: number; attempts: number }
+  | { kind: "lost"; reason: string };
+
+export type SourceStateHandler = (state: SourceState) => void;
+
 export interface EegSource {
   readonly name: string;
   start(onSamples: SampleHandler): Promise<void>;
   stop(): Promise<void>;
   onDisconnect(cb: () => void): void;
+  /** Optional: reports reconnection attempts while the case continues. */
+  onState?(cb: SourceStateHandler): void;
 }
 
 export function isWebBluetoothAvailable(): boolean {
@@ -53,9 +63,19 @@ export class MuseClient implements EegSource {
   private device: BluetoothDevice | null = null;
   private control: BluetoothRemoteGATTCharacteristic | null = null;
   private disconnectCb: (() => void) | null = null;
+  private stateCb: SourceStateHandler | null = null;
+  private samplesCb: SampleHandler | null = null;
+  private stopping = false;
+  private reconnecting = false;
+  /** Exponential backoff, seconds, between reconnection attempts. */
+  private static readonly RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
 
   onDisconnect(cb: () => void) {
     this.disconnectCb = cb;
+  }
+
+  onState(cb: SourceStateHandler) {
+    this.stateCb = cb;
   }
 
   private async send(command: string) {
@@ -73,14 +93,27 @@ export class MuseClient implements EegSource {
         "Web Bluetooth is unavailable in this browser. Use Chrome or Edge on desktop or Android.",
       );
     }
+    this.stopping = false;
+    this.samplesCb = onSamples;
     const device = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: "Muse" }],
       optionalServices: [MUSE_SERVICE],
     });
     this.device = device;
     this.name = device.name ?? "Muse";
-    device.addEventListener("gattserverdisconnected", () => this.disconnectCb?.());
+    device.addEventListener("gattserverdisconnected", () => {
+      if (this.stopping) return;
+      void this.attemptReconnect();
+    });
 
+    await this.attach();
+  }
+
+  /** (Re)opens GATT and re-subscribes to the four electrode characteristics. */
+  private async attach() {
+    const device = this.device;
+    const onSamples = this.samplesCb;
+    if (!device || !onSamples) throw new Error("The headband is no longer available.");
     const server = await device.gatt!.connect();
     const service = await server.getPrimaryService(MUSE_SERVICE);
     this.control = await service.getCharacteristic(CONTROL_CHAR);
@@ -101,7 +134,40 @@ export class MuseClient implements EegSource {
     await this.send("d"); // start data
   }
 
+  /**
+   * Headbands slip and Bluetooth drops mid-case. Retry with backoff and keep
+   * the case running; only give up — and tell the clinician — after five tries.
+   */
+  private async attemptReconnect() {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+    const attempts = MuseClient.RETRY_DELAYS.length;
+    for (let i = 0; i < attempts; i++) {
+      if (this.stopping) break;
+      this.stateCb?.({ kind: "reconnecting", attempt: i + 1, attempts });
+      await new Promise((r) => setTimeout(r, MuseClient.RETRY_DELAYS[i]!));
+      if (this.stopping) break;
+      try {
+        await this.attach();
+        this.reconnecting = false;
+        this.stateCb?.({ kind: "connected" });
+        return;
+      } catch {
+        /* try again */
+      }
+    }
+    this.reconnecting = false;
+    if (!this.stopping) {
+      this.stateCb?.({
+        kind: "lost",
+        reason: "The headband did not come back after five reconnection attempts.",
+      });
+      this.disconnectCb?.();
+    }
+  }
+
   async stop() {
+    this.stopping = true;
     try {
       await this.send("h");
     } catch {
@@ -110,6 +176,7 @@ export class MuseClient implements EegSource {
     this.device?.gatt?.disconnect();
     this.device = null;
     this.control = null;
+    this.samplesCb = null;
   }
 }
 
