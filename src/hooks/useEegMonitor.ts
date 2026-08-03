@@ -201,19 +201,6 @@ function makeBuffer(): ChannelBuffer {
   return { data: new Float64Array(BUFFER_LEN), write: 0, count: 0, filter: makeEegFilter() };
 }
 
-/** dB spectrum over the DSA frequency range, matching Epoch.spectrum. */
-function dsaSpectrum(signal: Float64Array): number[] {
-  const psd = computePsd(signal, MUSE_SAMPLE_RATE);
-  const out: number[] = [];
-  for (let k = 0; k < psd.freqs.length; k++) {
-    const f = psd.freqs[k]!;
-    if (f < DSA_MIN_HZ) continue;
-    if (f > DSA_MAX_HZ) break;
-    out.push(10 * Math.log10(Math.max(psd.power[k]!, 1e-6)));
-  }
-  return out;
-}
-
 function readLast(buffer: ChannelBuffer, n: number): Float64Array {
   const out = new Float64Array(n);
   for (let i = 0; i < n; i++) {
