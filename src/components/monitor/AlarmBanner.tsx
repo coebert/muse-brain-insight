@@ -2,7 +2,7 @@ import { Bell, BellOff, Check, TriangleAlert, Volume2, VolumeX } from "lucide-re
 
 import { Button } from "@/components/ui/button";
 import type { ActiveAlarm } from "@/hooks/useAlarms";
-import { PRIORITY_LABEL } from "@/lib/eeg/alarms";
+import { PRIORITY_LABEL, SIDE_LABEL, SIDE_SHORT, type AlarmSide } from "@/lib/eeg/alarms";
 import { formatClock } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export function AlarmBanner({
   muteRemaining,
   onAcknowledge,
   onAcknowledgeAll,
+  onAcknowledgeSide,
   onPauseAudio,
   onResumeAudio,
   onToggleAudio,
@@ -33,11 +34,15 @@ export function AlarmBanner({
   muteRemaining: number;
   onAcknowledge: (id: string) => void;
   onAcknowledgeAll: () => void;
+  onAcknowledgeSide: (side: AlarmSide) => void;
   onPauseAudio: () => void;
   onResumeAudio: () => void;
   onToggleAudio: () => void;
 }) {
   const unacked = alarms.filter((a) => a.acknowledgedAt == null);
+  const sidesAffected = (["left", "right"] as const).filter((side) =>
+    unacked.some((a) => a.side === side || a.side === "bilateral"),
+  );
 
   return (
     <section
@@ -89,6 +94,17 @@ export function AlarmBanner({
         </div>
       </div>
 
+      {sidesAffected.length ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/20 px-3 py-2 sm:px-4">
+          <span className="text-xs text-muted-foreground">Acknowledge by side:</span>
+          {sidesAffected.map((side) => (
+            <Button key={side} size="sm" variant="outline" onClick={() => onAcknowledgeSide(side)}>
+              <Check className="size-4" /> {SIDE_LABEL[side]}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+
       {alarms.length ? (
         <ul className="divide-y divide-border">
           {alarms.map((a) => (
@@ -103,6 +119,14 @@ export function AlarmBanner({
               <span className="metric-value text-xs uppercase">
                 {PRIORITY_LABEL[a.priority]}
               </span>
+              {a.side ? (
+                <span
+                  className="metric-value rounded border border-current px-1.5 py-0.5 text-xs"
+                  title={SIDE_LABEL[a.side]}
+                >
+                  {SIDE_SHORT[a.side]}
+                </span>
+              ) : null}
               <span className="text-sm font-semibold text-foreground">{a.title}</span>
               <span className="text-xs text-muted-foreground">{a.detail}</span>
               <span className="metric-value text-xs text-muted-foreground">
