@@ -52,6 +52,7 @@ import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
+import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
@@ -613,6 +614,10 @@ function Monitor() {
             onAcknowledgeAll={() => {
               alarms.acknowledgeAll();
               audit("All alarms acknowledged");
+            }}
+            onAcknowledgeSide={(side) => {
+              alarms.acknowledgeSide(side);
+              audit(`${SIDE_LABEL[side]} alarms acknowledged`);
             }}
             onPauseAudio={() => {
               alarms.pauseAudio();
