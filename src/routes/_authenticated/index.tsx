@@ -8,6 +8,7 @@ import {
   CircleStop,
   FlaskConical,
   HeartPulse,
+  Info,
   Maximize2,
   SignalLow,
   Stethoscope,
