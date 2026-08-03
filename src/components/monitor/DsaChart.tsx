@@ -11,15 +11,18 @@ import {
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
 
 interface Props {
-  epochs: Epoch[];
+  epochs?: Epoch[];
+  /** Pre-computed dB spectra per second, oldest first. Overrides `epochs`. */
+  frames?: number[][];
   /** Number of seconds of history to display. */
   windowSeconds: number;
   dbMin?: number;
   dbMax?: number;
 }
 
-export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Props) {
+export function DsaChart({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const spectra = frames ?? (epochs ?? []).map((e) => e.spectrum);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -47,8 +50,8 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
     ctx.fillStyle = "rgb(8,16,34)";
     ctx.fillRect(0, 0, w, h);
 
-    const visible = epochs.slice(-windowSeconds);
-    const bins = visible[visible.length - 1]?.spectrum.length ?? 0;
+    const visible = spectra.slice(-windowSeconds);
+    const bins = visible[visible.length - 1]?.length ?? 0;
 
     // Continuous heat map: interpolated in time and frequency so the display
     // reads as a smooth bedside-monitor spectrogram rather than 1 s stripes.
@@ -62,8 +65,8 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
           const pos = (px / Math.max(1, plotW - 1)) * (windowSeconds - 1) - offset;
           const i = Math.floor(pos);
           return {
-            lo: i >= 0 && i < visible.length ? visible[i]!.spectrum : undefined,
-            hi: i + 1 >= 0 && i + 1 < visible.length ? visible[i + 1]!.spectrum : undefined,
+            lo: i >= 0 && i < visible.length ? visible[i]! : undefined,
+            hi: i + 1 >= 0 && i + 1 < visible.length ? visible[i + 1]! : undefined,
             f: pos - i,
           };
         },
@@ -152,7 +155,7 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
     ctx.textAlign = "right";
     ctx.textBaseline = "top";
     ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
-  }, [epochs, windowSeconds, dbMin, dbMax]);
+  }, [spectra, windowSeconds, dbMin, dbMax]);
 
   return <canvas ref={canvasRef} className="h-full w-full rounded-md" aria-label="Density spectral array" />;
 }
