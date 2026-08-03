@@ -361,7 +361,47 @@ export function useEegMonitor() {
       setChannelQuality(quality);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
-      const sideMetrics = (group: MuseChannel[], analyzer: EegAnalyzer): HemiMetrics => {
+      const MAX_HEMI_EVENTS = 400;
+      /** Opens, extends or closes a hemisphere episode marker. */
+      const trackHemiEvent = (
+        side: HemiSide,
+        kind: HemiEvent["kind"],
+        active: boolean,
+        sr: number,
+        score: number,
+        grade: SignalQuality["grade"],
+      ) => {
+        const list = hemiEventsRef.current;
+        const open = list.find((e) => e.side === side && e.kind === kind && e.ongoing);
+        if (active) {
+          if (open) {
+            open.duration = Math.max(HOP_SECONDS, t - open.t);
+            open.peakSr = Math.max(open.peakSr, sr);
+            open.peakScore = Math.max(open.peakScore, score);
+          } else {
+            list.push({
+              side,
+              kind,
+              t,
+              duration: HOP_SECONDS,
+              ongoing: true,
+              peakSr: sr,
+              peakScore: score,
+              quality: grade,
+            });
+          }
+        } else if (open) {
+          open.ongoing = false;
+          open.duration = Math.max(HOP_SECONDS, t - open.t);
+        }
+        if (list.length > MAX_HEMI_EVENTS) list.splice(0, list.length - MAX_HEMI_EVENTS);
+      };
+
+      const sideMetrics = (
+        side: HemiSide,
+        group: MuseChannel[],
+        analyzer: EegAnalyzer,
+      ): HemiMetrics => {
         const e = analyzer.analyze(groupSignal(group, EPOCH_LEN), t);
         const grades = group.map((c) => quality[c]);
         const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
@@ -369,6 +409,8 @@ export function useEegMonitor() {
           : grades.some((q) => q?.grade === "fair")
             ? "fair"
             : "good";
+        trackHemiEvent(side, "suppression", e.isSuppressed, e.suppressionRatio, e.seizureScore, worst);
+        trackHemiEvent(side, "seizure", e.seizureAlert, e.suppressionRatio, e.seizureScore, worst);
         return {
           suppressionRatio: e.suppressionRatio,
           seizureScore: e.seizureScore,
@@ -384,9 +426,10 @@ export function useEegMonitor() {
         };
       };
       setHemiLatest({
-        left: sideMetrics(LEFT_CHANNELS, leftAnalyzerRef.current),
-        right: sideMetrics(RIGHT_CHANNELS, rightAnalyzerRef.current),
+        left: sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current),
+        right: sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current),
       });
+      setHemiEvents([...hemiEventsRef.current.map((e) => ({ ...e }))]);
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
