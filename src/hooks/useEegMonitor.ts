@@ -50,6 +50,22 @@ function compactEpochs(list: Epoch[]): Epoch[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
+/** Muse 2 electrode groupings by hemisphere. */
+export const LEFT_CHANNELS: MuseChannel[] = ["TP9", "AF7"];
+export const RIGHT_CHANNELS: MuseChannel[] = ["AF8", "TP10"];
+
+export interface HemiSpectra {
+  left: number[];
+  right: number[];
+}
+
+function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
+  if (list.length <= MAX_EPOCHS) return list;
+  const keepFrom = list.length - FULL_RES_EPOCHS;
+  const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
+  return [...older, ...list.slice(keepFrom)];
+}
+
 interface ChannelBuffer {
   data: Float64Array;
   write: number;
@@ -77,6 +93,7 @@ export function useEegMonitor() {
   const [channel, setChannel] = useState<MuseChannel | "average">("average");
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
   const [epochs, setEpochs] = useState<Epoch[]>([]);
+  const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
@@ -117,6 +134,16 @@ export function useEegMonitor() {
     return out;
   }, []);
 
+  /** Mean of the given electrodes, used for the per-hemisphere DSAs. */
+  const groupSignal = useCallback((group: MuseChannel[], length: number): Float64Array => {
+    const out = new Float64Array(length);
+    for (const c of group) {
+      const seg = readLast(buffersRef.current[c]!, length);
+      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / group.length;
+    }
+    return out;
+  }, []);
+
   const stop = useCallback(async () => {
     await sourceRef.current?.stop();
     sourceRef.current = null;
@@ -128,6 +155,7 @@ export function useEegMonitor() {
     analyzerRef.current.reset();
     manualEventsRef.current = [];
     setEpochs([]);
+    setHemiSpectra([]);
     setEvents([]);
     setElapsed(0);
     setDataGapSeconds(0);
