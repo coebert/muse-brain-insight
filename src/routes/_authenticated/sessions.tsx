@@ -161,6 +161,11 @@ function Sessions() {
               </dl>
               {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}
               <div className="mt-3">
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/report/$id" params={{ id: s.id }}>
+                    End-of-case report
+                  </Link>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
