@@ -517,39 +517,13 @@ function Monitor() {
                 ) : null}
               </>
             )}
-            <Button asChild variant="ghost" size="sm">
-              <Link to={user ? "/sessions" : "/auth"}>{user ? "Sessions" : "Sign in"}</Link>
-            </Button>
             {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/trends">Trends</Link>
+              <AppNav showBrand={false} compact />
+            ) : (
+              <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
+                <Link to="/auth">Sign in</Link>
               </Button>
-            ) : null}
-            {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/compare">Compare</Link>
-              </Button>
-            ) : null}
-            {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/calibrate">Calibrate</Link>
-              </Button>
-            ) : null}
-            {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/validate">Validate</Link>
-              </Button>
-            ) : null}
-            {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/feedback">Feedback</Link>
-              </Button>
-            ) : null}
-            {user ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/performance">Performance</Link>
-              </Button>
-            ) : null}
+            )}
           </div>
         </div>
       </header>
