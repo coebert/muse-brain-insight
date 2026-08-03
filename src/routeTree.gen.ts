@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
+import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
@@ -38,6 +39,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedCalibrateRoute = AuthenticatedCalibrateRouteImport.update({
   id: '/calibrate',
   path: '/calibrate',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
+  id: '/cases',
+  path: '/cases',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCompareRoute = AuthenticatedCompareRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
+  '/cases': typeof AuthenticatedCasesRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
+  '/cases': typeof AuthenticatedCasesRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
+  '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calibrate'
+    | '/cases'
     | '/compare'
     | '/feedback'
     | '/performance'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/calibrate'
+    | '/cases'
     | '/compare'
     | '/feedback'
     | '/performance'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/calibrate'
+    | '/_authenticated/cases'
     | '/_authenticated/compare'
     | '/_authenticated/feedback'
     | '/_authenticated/performance'
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/calibrate'
       fullPath: '/calibrate'
       preLoaderRoute: typeof AuthenticatedCalibrateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cases': {
+      id: '/_authenticated/cases'
+      path: '/cases'
+      fullPath: '/cases'
+      preLoaderRoute: typeof AuthenticatedCasesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/compare': {
@@ -244,6 +263,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
+  AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
@@ -256,6 +276,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
+  AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
