@@ -60,6 +60,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
+import { useDepthWindowAlerts } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
@@ -237,6 +238,14 @@ function Monitor() {
   const sqiAlerts = useSqiAlerts({
     history: monitor.sqiHistory,
     view: dsaView,
+    enabled: caseRunning,
+  });
+  // Visual alert when the OpenIBIS depth index leaves the clinician's
+  // notional optimal-anaesthesia window (default 40–60).
+  const depthWindow = useDepthWindowAlerts({
+    index: latest?.depth.index ?? null,
+    t: latest?.t ?? monitor.elapsed,
+    reliable: latest ? latest.depthReliability.reliable && !latest.depth.held : false,
     enabled: caseRunning,
   });
 
