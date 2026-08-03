@@ -1,11 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AlertEvidence } from "@/lib/eeg/interpret.functions";
+import {
+  ALERT_ACTION_COLUMNS,
+  toAlertActionRow,
+  type AlertActionKind,
+  type AlertActionRow,
+  type OverrideStance,
+} from "@/lib/eeg/alert-action-row";
 
-export type AlertActionKind = "acknowledged" | "escalated" | "resolved";
-
-/** Where the clinician stands relative to the AI's read of the alert. */
-export type OverrideStance = "agree" | "partial" | "override" | "defer";
+export type { AlertActionKind, AlertActionRow, OverrideStance };
 
 export const OVERRIDE_STANCES = [
   {
@@ -63,30 +67,10 @@ export interface AlertActionInput {
   evidenceSnapshot?: AlertEvidence[] | null;
 }
 
-export interface AlertActionRow {
-  id: string;
-  session_id: string | null;
-  alert_id: string;
-  alert_title: string;
-  alert_category: string;
-  alert_severity: string;
-  action: AlertActionKind;
-  note: string | null;
-  escalated_to: string | null;
-  context: string | null;
-  created_at: string;
-  override_stance: OverrideStance;
-  override_rationale: string | null;
-  cited_features: string[];
-  alert_confidence: string;
-  evidence_snapshot: AlertEvidence[];
-}
-
 const ACTIONS: AlertActionKind[] = ["acknowledged", "escalated", "resolved"];
 const ROLE_VALUES = ESCALATION_ROLES.map((r) => r.value as string);
 const STANCE_VALUES = OVERRIDE_STANCES.map((s) => s.value as string);
-const SELECT_COLS =
-  "id, session_id, alert_id, alert_title, alert_category, alert_severity, action, note, escalated_to, context, created_at, override_stance, override_rationale, cited_features, alert_confidence, evidence_snapshot";
+const SELECT_COLS = ALERT_ACTION_COLUMNS;
 
 export const recordAlertAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
