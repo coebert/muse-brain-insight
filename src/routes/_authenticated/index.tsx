@@ -1023,8 +1023,15 @@ function Monitor() {
                           : "OpenIBIS algorithm · ±10 units vs reference"
                       }
                       tone={
-                        latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"
+                        depthWindow.status === "below"
+                          ? "critical"
+                          : depthWindow.status === "above"
+                            ? "caution"
+                            : latest && !latest.depth.held
+                              ? depthTone(latest.depth.state)
+                              : "default"
                       }
+                      pulse={depthWindow.prefs.enabled && depthWindow.status === "below"}
                       confidence={latest?.confidence.depth}
                       unreliable={latest ? !latest.depthReliability.reliable : false}
                       degraded={latest?.depthReliability.level === "degraded"}
