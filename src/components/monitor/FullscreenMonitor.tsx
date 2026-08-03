@@ -146,6 +146,10 @@ export function FullscreenMonitor({
 
   const windowSeconds = windowMinutes * 60;
   const visible = useMemo(() => epochs.slice(-windowSeconds), [epochs, windowSeconds]);
+  const markerRail = useMemo(
+    () => markers.map((m) => ({ t: m.t, label: m.detail, tone: "marker" as const })),
+    [markers],
+  );
   const depthTrend = useMemo(() => visible.map((e) => e.depth.index), [visible]);
   const srTrend = useMemo(() => visible.map((e) => e.suppressionRatio), [visible]);
   const sefTrend = useMemo(() => visible.map((e) => e.sef95), [visible]);
