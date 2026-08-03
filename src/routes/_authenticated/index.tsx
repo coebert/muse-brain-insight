@@ -12,6 +12,8 @@ import {
   Stethoscope,
   Save,
   Undo2,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -50,6 +52,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
+import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import {
   combineHemiSpectra,
   hemiSefTraces,
@@ -197,6 +200,13 @@ function Monitor() {
   );
 
   const alarms = useAlarms({ enabled: caseRunning });
+  // Toast + optional chime for new burst-suppression / seizure markers,
+  // grouped the same way the active DSA view groups the hemispheres.
+  const markerAlerts = useMarkerAlerts({
+    events: monitor.hemiEvents,
+    view: dsaView,
+    enabled: caseRunning,
+  });
 
   function selectMode(next: MonitorMode) {
     setMode(next);
