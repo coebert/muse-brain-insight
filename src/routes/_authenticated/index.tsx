@@ -210,6 +210,13 @@ function Monitor() {
     view: dsaView,
     enabled: caseRunning,
   });
+  // Visual alert when the signal quality index falls below the clinician's
+  // threshold, grouped the same way the active DSA view groups hemispheres.
+  const sqiAlerts = useSqiAlerts({
+    history: monitor.sqiHistory,
+    view: dsaView,
+    enabled: caseRunning,
+  });
 
   function selectMode(next: MonitorMode) {
     setMode(next);
