@@ -41,7 +41,7 @@ export function isWebBluetoothAvailable(): boolean {
 }
 
 /** Muse packets carry 12 samples packed as 12-bit unsigned integers. */
-function decodeMusePacket(data: DataView): Float64Array {
+export function decodeMusePacket(data: DataView): Float64Array {
   const out = new Float64Array(12);
   let bitOffset = 16; // first 16 bits are the packet index
   for (let i = 0; i < 12; i++) {
