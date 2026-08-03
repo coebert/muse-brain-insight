@@ -10,7 +10,9 @@ import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
 import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import {
   combineHemiSpectra,
+  hemiSefTraces,
   worstHemi,
+  type DsaView,
   type HemiEvent,
   type HemiLatest,
   type HemiSpectra,
@@ -35,8 +37,8 @@ interface Props {
   markers: DetectedEvent[];
   suppressionSeconds: number;
   suppressionThresholdUv: number;
-  dsaView: "bilateral" | "combined";
-  onDsaViewChange: (view: "bilateral" | "combined") => void;
+  dsaView: DsaView;
+  onDsaViewChange: (view: DsaView) => void;
   onExit: () => void;
 }
 
