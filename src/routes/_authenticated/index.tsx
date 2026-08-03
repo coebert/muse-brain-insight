@@ -30,6 +30,7 @@ import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
+import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
 import {
@@ -1234,14 +1235,17 @@ function Monitor() {
         ) : null}
 
         {tab === "signal" ? (
-        <SignalQualityPanel
-          quality={latest?.quality ?? null}
-          channels={MUSE_CHANNELS}
-          channelQuality={monitor.channelQuality}
-          usableFraction={summary.usableFraction}
-          depthArtifact={latest?.depthArtifact ?? null}
-          depthGatedFraction={latest?.depth.gatedFraction}
-        />
+        <div className="space-y-4">
+          <SignalQualityPanel
+            quality={latest?.quality ?? null}
+            channels={MUSE_CHANNELS}
+            channelQuality={monitor.channelQuality}
+            usableFraction={summary.usableFraction}
+            depthArtifact={latest?.depthArtifact ?? null}
+            depthGatedFraction={latest?.depth.gatedFraction}
+          />
+          <SqiTrend history={monitor.sqiHistory} bilateral={dsaView !== "combined"} />
+        </div>
         ) : null}
 
         {tab === "review" ? (

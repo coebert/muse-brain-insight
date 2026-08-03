@@ -85,6 +85,21 @@ export interface HemiLatest {
 
 export type HemiSide = "left" | "right";
 
+/**
+ * One point of the Signal Quality Index trend (BIS-style SQI history).
+ * Values are 0–100 %.
+ */
+export interface SqiPoint {
+  /** Seconds since session start. */
+  t: number;
+  /** Combined (worst-side) signal quality index. */
+  sqi: number;
+  left: number;
+  right: number;
+  /** Muscle contamination index for the epoch, 0–100 %. */
+  emg: number;
+}
+
 /** DSA layout: stacked hemispheres, single mean lane, or overlaid traces. */
 export type DsaView = "bilateral" | "combined" | "overlay";
 
@@ -113,6 +128,13 @@ export function worstHemi(latest: HemiLatest | null): HemiMetrics | null {
 }
 
 function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
+  if (list.length <= MAX_EPOCHS) return list;
+  const keepFrom = list.length - FULL_RES_EPOCHS;
+  const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
+  return [...older, ...list.slice(keepFrom)];
+}
+
+function compactSqi(list: SqiPoint[]): SqiPoint[] {
   if (list.length <= MAX_EPOCHS) return list;
   const keepFrom = list.length - FULL_RES_EPOCHS;
   const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
@@ -203,6 +225,7 @@ export function useEegMonitor() {
   const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
   const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
   const [hemiEvents, setHemiEvents] = useState<HemiEvent[]>([]);
+  const [sqiHistory, setSqiHistory] = useState<SqiPoint[]>([]);
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
@@ -275,6 +298,7 @@ export function useEegMonitor() {
     setHemiSpectra([]);
     setHemiLatest(null);
     setHemiEvents([]);
+    setSqiHistory([]);
     setEvents([]);
     setElapsed(0);
     setDataGapSeconds(0);
@@ -456,10 +480,22 @@ export function useEegMonitor() {
           reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),
         };
       };
-      setHemiLatest({
-        left: sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current),
-        right: sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current),
-      });
+      const leftMetrics = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current);
+      const rightMetrics = sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current);
+      setHemiLatest({ left: leftMetrics, right: rightMetrics });
+
+      // BIS-style Signal Quality Index trend: one point per epoch, thinned
+      // with the same rule as the DSA so long cases keep their full history.
+      const leftSqi = (leftMetrics.flat ? 0 : leftMetrics.qualityScore) * 100;
+      const rightSqi = (rightMetrics.flat ? 0 : rightMetrics.qualityScore) * 100;
+      const point: SqiPoint = {
+        t,
+        left: leftSqi,
+        right: rightSqi,
+        sqi: Math.min(leftSqi, rightSqi),
+        emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
+      };
+      setSqiHistory((prev) => compactSqi([...prev, point]));
       setHemiEvents([...hemiEventsRef.current.map((e) => ({ ...e }))]);
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
@@ -518,6 +554,7 @@ export function useEegMonitor() {
     hemiSpectra,
     hemiLatest,
     hemiEvents,
+    sqiHistory,
     events,
     latest,
     waveform,
