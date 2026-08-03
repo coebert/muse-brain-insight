@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { EPOCH_COLUMNS, EVENT_COLUMNS } from "@/lib/eeg/db-rows";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -61,26 +62,6 @@ export const Route = createFileRoute("/_authenticated/trends")({
   }),
   component: Trends,
 });
-
-interface EpochRow {
-  t_offset_seconds: number;
-  depth_index: number | null;
-  spectral_edge_95: number | null;
-  suppression_ratio: number | null;
-  seizure_score: number | null;
-  is_suppressed: boolean | null;
-  consciousness_index: number | null;
-  nociception_index: number | null;
-  entropy: unknown;
-  spectrum: unknown;
-}
-
-interface EventRow {
-  t_offset_seconds: number;
-  kind: string;
-  severity: string | null;
-  detail: string | null;
-}
 
 const SEVERITY_COLOR: Record<string, string> = {
   info: "var(--chart-4)",
@@ -151,13 +132,11 @@ function Trends() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eeg_epochs")
-        .select(
-          "t_offset_seconds, depth_index, spectral_edge_95, suppression_ratio, seizure_score, is_suppressed, consciousness_index, nociception_index, entropy, spectrum",
-        )
+        .select(EPOCH_COLUMNS)
         .eq("session_id", selectedId)
         .order("t_offset_seconds", { ascending: true });
       if (error) throw error;
-      return data as unknown as EpochRow[];
+      return data ?? [];
     },
   });
 
@@ -167,11 +146,11 @@ function Trends() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eeg_events")
-        .select("t_offset_seconds, kind, severity, detail")
+        .select(EVENT_COLUMNS)
         .eq("session_id", selectedId)
         .order("t_offset_seconds", { ascending: true });
       if (error) throw error;
-      return data as unknown as EventRow[];
+      return data ?? [];
     },
   });
 
