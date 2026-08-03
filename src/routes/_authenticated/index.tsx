@@ -54,6 +54,7 @@ import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
+import { useSqiAlerts } from "@/hooks/useSqiAlerts";
 import {
   combineHemiSpectra,
   hemiSefTraces,
