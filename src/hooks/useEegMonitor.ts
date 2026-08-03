@@ -5,6 +5,8 @@ import {
   EPOCH_SECONDS,
   EegAnalyzer,
   HOP_SECONDS,
+  DSA_MAX_HZ,
+  DSA_MIN_HZ,
   type AnalysisSettings,
   type DetectedEvent,
   type Epoch,
@@ -75,6 +77,19 @@ interface ChannelBuffer {
 
 function makeBuffer(): ChannelBuffer {
   return { data: new Float64Array(BUFFER_LEN), write: 0, count: 0, filter: makeEegFilter() };
+}
+
+/** dB spectrum over the DSA frequency range, matching Epoch.spectrum. */
+function dsaSpectrum(signal: Float64Array): number[] {
+  const psd = computePsd(signal, MUSE_SAMPLE_RATE);
+  const out: number[] = [];
+  for (let k = 0; k < psd.freqs.length; k++) {
+    const f = psd.freqs[k]!;
+    if (f < DSA_MIN_HZ) continue;
+    if (f > DSA_MAX_HZ) break;
+    out.push(10 * Math.log10(Math.max(psd.power[k]!, 1e-6)));
+  }
+  return out;
 }
 
 function readLast(buffer: ChannelBuffer, n: number): Float64Array {
@@ -254,6 +269,11 @@ export function useEegMonitor() {
       const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
       setElapsed(t);
       setEpochs((prev) => compactEpochs([...prev, epoch]));
+      const hemi: HemiSpectra = {
+        left: dsaSpectrum(groupSignal(LEFT_CHANNELS, EPOCH_LEN)),
+        right: dsaSpectrum(groupSignal(RIGHT_CHANNELS, EPOCH_LEN)),
+      };
+      setHemiSpectra((prev) => compactHemi([...prev, hemi]));
       setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
 
       const contact: Record<string, boolean> = {};
@@ -268,7 +288,7 @@ export function useEegMonitor() {
       setChannelQuality(quality);
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
-  }, [status, activeSignal]);
+  }, [status, activeSignal, groupSignal]);
 
   // Waveform refresh.
   useEffect(() => {
@@ -320,6 +340,7 @@ export function useEegMonitor() {
     settings,
     setSettings,
     epochs,
+    hemiSpectra,
     events,
     latest,
     waveform,
