@@ -1205,6 +1205,38 @@ function Monitor() {
                 return order.map((k) => tiles[k]);
               })()}
             </section>
+
+            <Alert className="border-signal/30 bg-signal/5">
+              <Info className="size-4 text-signal" />
+              <AlertTitle className="text-foreground">About the depth index (OpenIBIS)</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                <p>
+                  OpenIBIS is an open, peer-reviewed re-implementation of the BIS-style processed
+                  EEG depth-of-anaesthesia index. It combines beta/alpha ratio, spectral edge
+                  frequency, burst-suppression burden and relative slow-wave power into a single
+                  0–100 score.
+                </p>
+                <ul className="mt-2 list-disc space-y-0.5 pl-5">
+                  <li>
+                    <span className="font-medium text-foreground">Optimal general anaesthesia:</span>{" "}
+                    roughly 40–60 (light surgical anaesthesia / adequate hypnotic effect for most
+                    procedures).
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Below ~40:</span> increasing
+                    probability of deep hypnosis / burst suppression.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Above ~60:</span> lighter
+                    anaesthesia with higher probability of awareness or movement response.
+                  </li>
+                  <li>
+                    Values are gated by signal quality; during artefact or EMG the tile is marked
+                    unreliable rather than reported.
+                  </li>
+                </ul>
+              </AlertDescription>
+            </Alert>
           </>
         ) : null}
 
