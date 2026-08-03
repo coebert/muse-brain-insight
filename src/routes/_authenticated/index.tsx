@@ -145,8 +145,6 @@ function Monitor() {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
-  /** Stacked left/right DSAs, or one combined lane for faster scanning. */
-  const [dsaView, setDsaView] = useState<"bilateral" | "combined" | "overlay">("bilateral");
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -164,6 +162,11 @@ function Monitor() {
   const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
   const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
+  /**
+   * Stacked left/right DSAs, or one combined lane for faster scanning.
+   * Remembered per device and per anonymised case code.
+   */
+  const [dsaView, setDsaView] = useDsaViewPreference(meta.caseCode);
 
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
