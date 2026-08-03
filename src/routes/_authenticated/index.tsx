@@ -748,6 +748,7 @@ function Monitor() {
                       frames: monitor.hemiSpectra.map((h) => h.left),
                       metrics: monitor.hemiLatest?.left ?? null,
                       overlaySide: "left" as const,
+                      traces: undefined,
                     },
                     {
                       side: "Right",
@@ -755,15 +756,26 @@ function Monitor() {
                       frames: monitor.hemiSpectra.map((h) => h.right),
                       metrics: monitor.hemiLatest?.right ?? null,
                       overlaySide: "right" as const,
+                      traces: undefined,
                     },
                   ]
                 : [
                     {
-                      side: "Combined",
-                      montage: "L + R mean",
+                      side: dsaView === "overlay" ? "Overlay" : "Combined",
+                      montage: dsaView === "overlay" ? "L vs R SEF95" : "L + R mean",
                       frames: combineHemiSpectra(monitor.hemiSpectra),
                       metrics: worstHemi(monitor.hemiLatest),
                       overlaySide: "both" as const,
+                      traces:
+                        dsaView === "overlay"
+                          ? (() => {
+                              const t = hemiSefTraces(monitor.hemiSpectra);
+                              return [
+                                { label: "Left SEF95", color: "rgb(96,208,255)", values: t.left },
+                                { label: "Right SEF95", color: "rgb(255,176,64)", values: t.right },
+                              ];
+                            })()
+                          : undefined,
                     },
                   ]
               ).map((h) => (
@@ -775,7 +787,11 @@ function Monitor() {
                     metrics={h.metrics}
                     className="absolute top-1 right-2 z-10"
                   />
-                  <DsaChart frames={h.frames} windowSeconds={windowMinutes * 60} />
+                  <DsaChart
+                    frames={h.frames}
+                    windowSeconds={windowMinutes * 60}
+                    traces={h.traces}
+                  />
                   {dsaView === "overlay" ? (
                     <div className="metric-value absolute right-2 bottom-8 z-10 flex gap-3 rounded bg-background/70 px-2 py-1 text-xs">
                       <span className="flex items-center gap-1 text-[rgb(96,208,255)]">
