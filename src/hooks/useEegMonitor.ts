@@ -82,6 +82,19 @@ function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
+/**
+ * Mean of the two hemispheres per frequency bin — the single combined DSA lane
+ * used for fast bedside scanning.
+ */
+export function combineHemiSpectra(list: HemiSpectra[]): number[][] {
+  return list.map((h) => {
+    const n = Math.min(h.left.length, h.right.length);
+    const out = new Array<number>(n);
+    for (let i = 0; i < n; i++) out[i] = (h.left[i]! + h.right[i]!) / 2;
+    return out;
+  });
+}
+
 interface ChannelBuffer {
   data: Float64Array;
   write: number;
