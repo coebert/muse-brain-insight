@@ -51,6 +51,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { combineHemiSpectra, useEegMonitor, worstHemi } from "@/hooks/useEegMonitor";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
+import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
@@ -739,12 +740,14 @@ function Monitor() {
                       montage: "TP9 + AF7",
                       frames: monitor.hemiSpectra.map((h) => h.left),
                       metrics: monitor.hemiLatest?.left ?? null,
+                      overlaySide: "left" as const,
                     },
                     {
                       side: "Right",
                       montage: "AF8 + TP10",
                       frames: monitor.hemiSpectra.map((h) => h.right),
                       metrics: monitor.hemiLatest?.right ?? null,
+                      overlaySide: "right" as const,
                     },
                   ]
                 : [
@@ -753,6 +756,7 @@ function Monitor() {
                       montage: "L + R mean",
                       frames: combineHemiSpectra(monitor.hemiSpectra),
                       metrics: worstHemi(monitor.hemiLatest),
+                      overlaySide: "both" as const,
                     },
                   ]
               ).map((h) => (
@@ -765,6 +769,12 @@ function Monitor() {
                     className="absolute top-1 right-2 z-10"
                   />
                   <DsaChart frames={h.frames} windowSeconds={windowMinutes * 60} />
+                  <HemiEventOverlay
+                    events={monitor.hemiEvents}
+                    side={h.overlaySide}
+                    elapsed={monitor.elapsed}
+                    windowSeconds={windowMinutes * 60}
+                  />
                 </div>
               ))}
             </div>
