@@ -227,38 +227,87 @@ function Monitor() {
   useEffect(() => {
     if (!caseRunning) return;
     const conditions: AlarmCondition[] = [];
-    if (latest?.seizureAlert) {
-      conditions.push({
-        id: "seizure",
-        priority: icuMode ? "high" : "medium",
-        title: "Possible seizure activity",
-        detail: `Rhythmic discharges, score ${latest.seizureScore.toFixed(2)} — review the raw trace.`,
-      });
+    const hemi = monitor.hemiLatest;
+
+    // Seizure: attribute to the hemisphere whose electrode pair is ictal.
+    if (latest?.seizureAlert || hemi?.left.seizureAlert || hemi?.right.seizureAlert) {
+      const sides: AlarmSide[] =
+        hemi && (hemi.left.seizureAlert || hemi.right.seizureAlert)
+          ? hemi.left.seizureAlert && hemi.right.seizureAlert
+            ? ["bilateral"]
+            : hemi.left.seizureAlert
+              ? ["left"]
+              : ["right"]
+          : ["bilateral"];
+      for (const side of sides) {
+        const score =
+          side === "left"
+            ? (hemi?.left.seizureScore ?? 0)
+            : side === "right"
+              ? (hemi?.right.seizureScore ?? 0)
+              : (latest?.seizureScore ?? 0);
+        conditions.push({
+          id: `seizure:${side}`,
+          side,
+          priority: icuMode ? "high" : "medium",
+          title: `Possible seizure activity — ${SIDE_LABEL[side]}`,
+          detail: `Rhythmic discharges, score ${score.toFixed(2)} — review the raw trace.`,
+        });
+      }
     }
-    if (latest && latest.suppressionRatio >= 40) {
-      conditions.push({
-        id: "deep-suppression",
-        priority: "high",
-        title: "Deep burst suppression",
-        detail: `Suppression ratio ${latest.suppressionRatio.toFixed(0)} % — consider lightening.`,
-      });
-    } else if (latest && latest.suppressionRatio >= monitor.settings.bsrAlertPercent) {
-      conditions.push({
-        id: "suppression",
-        priority: "medium",
-        title: "Burst suppression",
-        detail: `Suppression ratio ${latest.suppressionRatio.toFixed(0)} %.`,
-      });
+
+    // Suppression: raise one alarm per side that crosses the threshold.
+    const srBySide: { side: AlarmSide; sr: number }[] = hemi
+      ? [
+          { side: "left", sr: hemi.left.suppressionRatio },
+          { side: "right", sr: hemi.right.suppressionRatio },
+        ]
+      : latest
+        ? [{ side: "bilateral", sr: latest.suppressionRatio }]
+        : [];
+    for (const { side, sr } of srBySide) {
+      if (sr >= 40) {
+        conditions.push({
+          id: `deep-suppression:${side}`,
+          side,
+          priority: "high",
+          title: `Deep burst suppression — ${SIDE_LABEL[side]}`,
+          detail: `Suppression ratio ${sr.toFixed(0)} % — consider lightening.`,
+        });
+      } else if (sr >= monitor.settings.bsrAlertPercent) {
+        conditions.push({
+          id: `suppression:${side}`,
+          side,
+          priority: "medium",
+          title: `Burst suppression — ${SIDE_LABEL[side]}`,
+          detail: `Suppression ratio ${sr.toFixed(0)} %.`,
+        });
+      }
     }
+
+    // Signal loss: a whole-headband gap is bilateral, a flat pair is one side.
     if (monitor.dataGapSeconds >= 5 || reconnecting) {
       conditions.push({
-        id: "signal-loss",
+        id: "signal-loss:bilateral",
+        side: "bilateral",
         priority: "medium",
-        title: "EEG signal lost",
+        title: "EEG signal lost — both hemispheres",
         detail: reconnecting
           ? `Reconnecting to the headband (attempt ${monitor.reconnectAttempt?.attempt ?? 1} of ${monitor.reconnectAttempt?.attempts ?? 5}).`
           : `No data for ${Math.round(monitor.dataGapSeconds)} s — check the headband.`,
       });
+    } else if (hemi) {
+      for (const side of ["left", "right"] as const) {
+        if (hemi[side].flat) {
+          conditions.push({
+            id: `signal-loss:${side}`,
+            side,
+            priority: "medium",
+            title: `EEG signal lost — ${SIDE_LABEL[side]}`,
+            detail: "Both electrodes on this side are flat — reseat the headband.",
+          });
+        }
+      }
     }
     if (latest && !latest.depthReliability.reliable && latest.quality.grade === "poor") {
       conditions.push({
@@ -270,7 +319,15 @@ function Monitor() {
     }
     alarms.sync(conditions, monitor.elapsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latest, caseRunning, icuMode, monitor.dataGapSeconds, reconnecting, monitor.elapsed]);
+  }, [
+    latest,
+    monitor.hemiLatest,
+    caseRunning,
+    icuMode,
+    monitor.dataGapSeconds,
+    reconnecting,
+    monitor.elapsed,
+  ]);
 
   function addMarker(label: string) {
     const text = label.trim();
