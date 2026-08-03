@@ -144,7 +144,16 @@ function emptyBucket(key: string, label: string): FeedbackBucket {
   return { key, label, correct: 0, incorrect: 0, unsure: 0, total: 0, accuracy: null };
 }
 
-function tally(bucket: FeedbackBucket, verdict: string) {
+/** The counter fields shared by feedback buckets and trend points. */
+interface FeedbackCounts {
+  correct: number;
+  incorrect: number;
+  unsure: number;
+  total: number;
+  accuracy: number | null;
+}
+
+function tally(bucket: FeedbackCounts, verdict: string) {
   if (verdict === "correct") bucket.correct += 1;
   else if (verdict === "incorrect") bucket.incorrect += 1;
   else bucket.unsure += 1;
@@ -219,7 +228,7 @@ export const getFeedbackAnalytics = createServerFn({ method: "GET" })
         total: 0,
         accuracy: null,
       };
-      tally(point as unknown as FeedbackBucket, r.verdict ?? "unsure");
+      tally(point, r.verdict ?? "unsure");
       trendMap.set(d, point);
 
       const model = r.model_version || "unknown";
@@ -232,7 +241,7 @@ export const getFeedbackAnalytics = createServerFn({ method: "GET" })
         total: 0,
         accuracy: null,
       };
-      tally(mp as unknown as FeedbackBucket, r.verdict ?? "unsure");
+      tally(mp, r.verdict ?? "unsure");
       perModel.set(d, mp);
       modelTrendMap.set(model, perModel);
     }
