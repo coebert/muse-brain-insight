@@ -228,7 +228,7 @@ export const getFeedbackAnalytics = createServerFn({ method: "GET" })
         total: 0,
         accuracy: null,
       };
-      tally(point as unknown as FeedbackBucket, r.verdict ?? "unsure");
+      tally(point, r.verdict ?? "unsure");
       trendMap.set(d, point);
 
       const model = r.model_version || "unknown";
@@ -241,7 +241,7 @@ export const getFeedbackAnalytics = createServerFn({ method: "GET" })
         total: 0,
         accuracy: null,
       };
-      tally(mp as unknown as FeedbackBucket, r.verdict ?? "unsure");
+      tally(mp, r.verdict ?? "unsure");
       perModel.set(d, mp);
       modelTrendMap.set(model, perModel);
     }
