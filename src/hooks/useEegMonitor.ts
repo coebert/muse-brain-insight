@@ -85,6 +85,21 @@ export interface HemiLatest {
 
 export type HemiSide = "left" | "right";
 
+/**
+ * One point of the Signal Quality Index trend (BIS-style SQI history).
+ * Values are 0–100 %.
+ */
+export interface SqiPoint {
+  /** Seconds since session start. */
+  t: number;
+  /** Combined (worst-side) signal quality index. */
+  sqi: number;
+  left: number;
+  right: number;
+  /** Muscle contamination index for the epoch, 0–100 %. */
+  emg: number;
+}
+
 /** DSA layout: stacked hemispheres, single mean lane, or overlaid traces. */
 export type DsaView = "bilateral" | "combined" | "overlay";
 
@@ -203,6 +218,7 @@ export function useEegMonitor() {
   const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
   const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
   const [hemiEvents, setHemiEvents] = useState<HemiEvent[]>([]);
+  const [sqiHistory, setSqiHistory] = useState<SqiPoint[]>([]);
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
@@ -275,6 +291,7 @@ export function useEegMonitor() {
     setHemiSpectra([]);
     setHemiLatest(null);
     setHemiEvents([]);
+    setSqiHistory([]);
     setEvents([]);
     setElapsed(0);
     setDataGapSeconds(0);
