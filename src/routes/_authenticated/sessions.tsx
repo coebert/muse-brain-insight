@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowLeft } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 
 import { Button } from "@/components/ui/button";
-import { PasskeyManager } from "@/components/PasskeyManager";
-import { DataPrivacyPanel } from "@/components/DataPrivacyPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { unseal, downloadJson } from "@/lib/privacy";
@@ -61,40 +59,11 @@ function Sessions() {
     downloadJson(`cortextrace-${caseCode.replace(/\W+/g, "-").toLowerCase()}.json`, bundle);
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4">
-          <Activity className="size-5 shrink-0 text-signal" />
-          <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
-            CortexTrace
-          </span>
-          <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/trends">Session trends</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/compare">Compare metrics</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/calibrate">Calibrate depth</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/validate">Agreement report</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/">
-                <ArrowLeft className="size-4" /> Monitor
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-              Sign out
-            </Button>
-          </div>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
+          <AppNav />
         </div>
       </header>
 
@@ -103,9 +72,6 @@ function Sessions() {
         <p className="mt-1 text-sm text-muted-foreground">
           Anonymised records only — identified by the case code you entered at save time.
         </p>
-
-        <PasskeyManager />
-        <DataPrivacyPanel onChanged={() => void refetch()} />
 
         <div className="mt-5 space-y-3">
           {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
@@ -160,8 +126,8 @@ function Sessions() {
                 <Stat label="Seizure events" value={String(s.seizure_alerts ?? 0)} />
               </dl>
               {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}
-              <div className="mt-3">
-                <Button asChild variant="outline" size="sm">
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-9">
                   <Link to="/report/$id" params={{ id: s.id }}>
                     End-of-case report
                   </Link>
@@ -169,11 +135,17 @@ function Sessions() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="min-h-11 sm:min-h-9"
                   onClick={() => void exportOne(s.id, s.case_code)}
                 >
                   Export
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => void remove(s.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 sm:min-h-9"
+                  onClick={() => void remove(s.id)}
+                >
                   Delete
                 </Button>
               </div>

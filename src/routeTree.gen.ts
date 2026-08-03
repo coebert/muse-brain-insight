@@ -18,6 +18,7 @@ import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
@@ -67,6 +68,11 @@ const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
   id: '/trends',
   path: '/trends',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/sessions': typeof AuthenticatedSessionsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/performance'
     | '/sessions'
+    | '/settings'
     | '/trends'
     | '/validate'
     | '/report/$id'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/performance'
     | '/sessions'
+    | '/settings'
     | '/trends'
     | '/validate'
     | '/'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/_authenticated/feedback'
     | '/_authenticated/performance'
     | '/_authenticated/sessions'
+    | '/_authenticated/settings'
     | '/_authenticated/trends'
     | '/_authenticated/validate'
     | '/_authenticated/'
@@ -237,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSessionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/trends': {
       id: '/_authenticated/trends'
       path: '/trends'
@@ -268,6 +287,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -281,6 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
