@@ -119,6 +119,14 @@ export interface HemiEvent {
   peakScore: number;
   /** Signal quality grade at onset — how much to trust the marker. */
   quality: SignalQuality["grade"];
+  /** Signal Quality Index (%) for that side at onset. */
+  sqiAtOnset: number;
+  /** Worst (lowest) SQI seen during the episode, %. */
+  minSqi: number;
+  /** EMG contamination (%) at onset. */
+  emgAtOnset: number;
+  /** Peak EMG contamination (%) during the episode. */
+  peakEmg: number;
 }
 
 /** The less trustworthy of the two sides — used to label the combined DSA lane. */
@@ -425,6 +433,8 @@ export function useEegMonitor() {
         sr: number,
         score: number,
         grade: SignalQuality["grade"],
+        sqi: number,
+        emg: number,
       ) => {
         const list = hemiEventsRef.current;
         const open = list.find((e) => e.side === side && e.kind === kind && e.ongoing);
@@ -433,6 +443,8 @@ export function useEegMonitor() {
             open.duration = Math.max(HOP_SECONDS, t - open.t);
             open.peakSr = Math.max(open.peakSr, sr);
             open.peakScore = Math.max(open.peakScore, score);
+            open.minSqi = Math.min(open.minSqi, sqi);
+            open.peakEmg = Math.max(open.peakEmg, emg);
           } else {
             list.push({
               side,
@@ -443,6 +455,10 @@ export function useEegMonitor() {
               peakSr: sr,
               peakScore: score,
               quality: grade,
+              sqiAtOnset: sqi,
+              minSqi: sqi,
+              emgAtOnset: emg,
+              peakEmg: emg,
             });
           }
         } else if (open) {
@@ -464,17 +480,19 @@ export function useEegMonitor() {
           : grades.some((q) => q?.grade === "fair")
             ? "fair"
             : "good";
-        trackHemiEvent(side, "suppression", e.isSuppressed, e.suppressionRatio, e.seizureScore, worst);
-        trackHemiEvent(side, "seizure", e.seizureAlert, e.suppressionRatio, e.seizureScore, worst);
+        const flatSide = group.every((c) => quality[c]?.flat ?? false);
+        const sideScore = grades.length ? Math.min(...grades.map((q) => q?.score ?? 0)) : 0;
+        const sideSqi = (flatSide ? 0 : sideScore) * 100;
+        const sideEmg = Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0) * 100;
+        trackHemiEvent(side, "suppression", e.isSuppressed, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
+        trackHemiEvent(side, "seizure", e.seizureAlert, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
         return {
           suppressionRatio: e.suppressionRatio,
           seizureScore: e.seizureScore,
           seizureAlert: e.seizureAlert,
           qualityGrade: worst,
-          flat: group.every((c) => quality[c]?.flat ?? false),
-          qualityScore: grades.length
-            ? Math.min(...grades.map((q) => q?.score ?? 0))
-            : 0,
+          flat: flatSide,
+          qualityScore: sideScore,
           spectralConfidence: e.confidence.spectral,
           emgIndex: Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0),
           reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),

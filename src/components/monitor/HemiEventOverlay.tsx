@@ -14,6 +14,10 @@ interface Props {
 
 const SIDE_LABEL: Record<HemiSide, string> = { left: "L", right: "R" };
 
+/** Markers detected on weak signal deserve a visual caveat. */
+const LOW_SQI = 40;
+const HIGH_EMG = 50;
+
 /**
  * Burst-suppression and seizure episodes drawn over one hemisphere's DSA lane,
  * time-aligned with the heat map and hoverable for detail.
@@ -35,6 +39,7 @@ export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact
         const width = Math.max(right - left, 0.6);
         const seizure = e.kind === "seizure";
         const label = seizure ? "Seizure" : "Burst supp.";
+        const suspect = e.minSqi < LOW_SQI || e.peakEmg > HIGH_EMG;
         return (
           <div
             key={`${e.side}-${e.kind}-${e.t}-${i}`}
@@ -47,6 +52,7 @@ export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact
                 seizure
                   ? "border-critical/80 bg-critical/20"
                   : "border-caution/80 bg-caution/15",
+                suspect && "border-dashed opacity-70",
                 e.ongoing && "animate-pulse",
               )}
             />
@@ -59,6 +65,8 @@ export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact
             >
               {side === "both" ? `${SIDE_LABEL[e.side]} · ` : ""}
               {compact ? (seizure ? "SZ" : "BS") : label}
+              {` · SQI ${Math.round(e.sqiAtOnset)}%`}
+              {suspect ? " ⚠" : ""}
             </span>
             <div
               className={cn(
@@ -80,6 +88,17 @@ export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact
                   : `Peak SR ${e.peakSr.toFixed(0)}%`}
               </p>
               <p className="text-muted-foreground">Signal quality at onset: {e.quality}</p>
+              <p className="text-muted-foreground">
+                SQI {Math.round(e.sqiAtOnset)}% at onset · min {Math.round(e.minSqi)}%
+              </p>
+              <p className="text-muted-foreground">
+                EMG {Math.round(e.emgAtOnset)}% at onset · peak {Math.round(e.peakEmg)}%
+              </p>
+              {suspect && (
+                <p className="mt-1 text-caution">
+                  ⚠ Detected during poor signal — interpret with caution.
+                </p>
+              )}
             </div>
           </div>
         );
