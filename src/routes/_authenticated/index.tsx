@@ -638,8 +638,22 @@ function Monitor() {
               </Select>
             </div>
           </div>
-          <div className="relative h-[240px] bg-[rgb(8,16,34)] sm:h-[320px] md:h-[380px] short:h-[200px]!">
-            <DsaChart epochs={monitor.epochs} windowSeconds={windowMinutes * 60} />
+          <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
+            <div className="grid h-full grid-rows-2">
+              {(
+                [
+                  { side: "Left", montage: "TP9 + AF7", frames: monitor.hemiSpectra.map((h) => h.left) },
+                  { side: "Right", montage: "AF8 + TP10", frames: monitor.hemiSpectra.map((h) => h.right) },
+                ] as const
+              ).map((h) => (
+                <div key={h.side} className="relative min-h-0 border-b border-border/60 last:border-b-0">
+                  <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1.5 py-0.5 text-xs tracking-[0.12em] text-foreground uppercase">
+                    {h.side} · {h.montage}
+                  </span>
+                  <DsaChart frames={h.frames} windowSeconds={windowMinutes * 60} />
+                </div>
+              ))}
+            </div>
             {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
             {monitor.events
               .filter(
