@@ -28,7 +28,7 @@ interface Props {
   dbMin?: number;
   dbMax?: number;
   /** Optional frequency traces (Hz) drawn on top of the heat map. */
-  traces?: DsaTrace[];
+  traces?: DsaTrace[] | undefined;
 }
 
 export function DsaChart({
