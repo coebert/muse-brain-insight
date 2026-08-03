@@ -750,6 +750,33 @@ function Monitor() {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                aria-pressed={markerAlerts.soundEnabled}
+                aria-label={
+                  markerAlerts.soundEnabled
+                    ? "Mute marker alert sound"
+                    : "Unmute marker alert sound"
+                }
+                title={
+                  markerAlerts.soundEnabled
+                    ? "Marker alert sound on"
+                    : "Marker alert sound off"
+                }
+                onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
+                className={cn(
+                  "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md border border-border",
+                  markerAlerts.soundEnabled
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {markerAlerts.soundEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <VolumeX className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
