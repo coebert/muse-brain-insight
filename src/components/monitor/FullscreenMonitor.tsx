@@ -6,7 +6,13 @@ import { TrendLine } from "@/components/monitor/TrendLine";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
-import { combineHemiSpectra, type HemiSpectra } from "@/hooks/useEegMonitor";
+import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
+import {
+  combineHemiSpectra,
+  worstHemi,
+  type HemiLatest,
+  type HemiSpectra,
+} from "@/hooks/useEegMonitor";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -15,6 +21,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   epochs: Epoch[];
   hemiSpectra: HemiSpectra[];
+  hemiLatest: HemiLatest | null;
   latest: Epoch | null;
   waveform: Float64Array;
   elapsed: number;
@@ -94,6 +101,7 @@ function BigNumber({
 export function FullscreenMonitor({
   epochs,
   hemiSpectra,
+  hemiLatest,
   latest,
   waveform,
   elapsed,
@@ -221,14 +229,25 @@ export function FullscreenMonitor({
             <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
               {(dsaView === "bilateral"
                 ? [
-                    { side: "L", montage: "TP9+AF7", frames: hemiSpectra.map((h) => h.left) },
-                    { side: "R", montage: "AF8+TP10", frames: hemiSpectra.map((h) => h.right) },
+                    {
+                      side: "L",
+                      montage: "TP9+AF7",
+                      frames: hemiSpectra.map((h) => h.left),
+                      metrics: hemiLatest?.left ?? null,
+                    },
+                    {
+                      side: "R",
+                      montage: "AF8+TP10",
+                      frames: hemiSpectra.map((h) => h.right),
+                      metrics: hemiLatest?.right ?? null,
+                    },
                   ]
                 : [
                     {
                       side: "L+R",
                       montage: "mean",
                       frames: combineHemiSpectra(hemiSpectra),
+                      metrics: worstHemi(hemiLatest),
                     },
                   ]
               ).map((h) => (
@@ -236,6 +255,11 @@ export function FullscreenMonitor({
                   <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1 text-xs text-foreground">
                     {h.side} · {h.montage}
                   </span>
+                  <HemiQualityBadge
+                    metrics={h.metrics}
+                    compact
+                    className="absolute top-8 right-2 z-10"
+                  />
                   <DsaChart frames={h.frames} windowSeconds={windowSeconds} />
                 </div>
               ))}
