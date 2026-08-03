@@ -35,6 +35,7 @@ import { MetricTile } from "@/components/monitor/MetricTile";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
