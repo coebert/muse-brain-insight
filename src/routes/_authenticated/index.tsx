@@ -49,7 +49,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
-import { useEegMonitor } from "@/hooks/useEegMonitor";
+import { combineHemiSpectra, useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
