@@ -8,6 +8,8 @@ interface Props {
   history: SqiPoint[];
   /** Show the per-hemisphere traces as well as the combined SQI. */
   bilateral?: boolean;
+  /** Alert threshold, 0–100 %, drawn as a dashed reference line. */
+  threshold?: number;
   className?: string;
 }
 
@@ -35,7 +37,7 @@ function tone(v: number): string {
  * BIS-style Signal Quality Index trend — how trustworthy the EEG has been
  * across the whole case, not just right now.
  */
-export function SqiTrend({ history, bilateral = true, className }: Props) {
+export function SqiTrend({ history, bilateral = true, threshold, className }: Props) {
   const stats = useMemo(() => {
     if (!history.length) return null;
     const mean = history.reduce((a, p) => a + p.sqi, 0) / history.length;
@@ -118,6 +120,18 @@ export function SqiTrend({ history, bilateral = true, className }: Props) {
                 strokeWidth="1.75"
                 vectorEffect="non-scaling-stroke"
               />
+              {threshold != null ? (
+                <line
+                  x1="0"
+                  x2={W}
+                  y1={H - (threshold / 100) * H}
+                  y2={H - (threshold / 100) * H}
+                  className="stroke-critical"
+                  strokeWidth="1"
+                  strokeDasharray="5 4"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
             </svg>
             <span className="pointer-events-none absolute top-0 left-1 text-[10px] text-muted-foreground">
               100 %
@@ -152,6 +166,12 @@ export function SqiTrend({ history, bilateral = true, className }: Props) {
             <span className="flex items-center gap-1.5">
               <span className="h-0.5 w-4 border-t border-dashed border-muted-foreground" /> EMG
             </span>
+            {threshold != null ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 border-t border-dashed border-critical" /> Alert{" "}
+                {threshold} %
+              </span>
+            ) : null}
           </div>
 
           <p className="mt-2 text-xs text-muted-foreground">

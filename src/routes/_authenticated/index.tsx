@@ -9,6 +9,7 @@ import {
   FlaskConical,
   HeartPulse,
   Maximize2,
+  SignalLow,
   Stethoscope,
   Save,
   Undo2,
@@ -51,9 +52,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
+import { useSqiAlerts } from "@/hooks/useSqiAlerts";
 import {
   combineHemiSpectra,
   hemiSefTraces,
@@ -205,6 +208,13 @@ function Monitor() {
   // grouped the same way the active DSA view groups the hemispheres.
   const markerAlerts = useMarkerAlerts({
     events: monitor.hemiEvents,
+    view: dsaView,
+    enabled: caseRunning,
+  });
+  // Visual alert when the signal quality index falls below the clinician's
+  // threshold, grouped the same way the active DSA view groups hemispheres.
+  const sqiAlerts = useSqiAlerts({
+    history: monitor.sqiHistory,
     view: dsaView,
     enabled: caseRunning,
   });
@@ -778,6 +788,43 @@ function Monitor() {
                   <VolumeX className="h-4 w-4" />
                 )}
               </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Signal quality alert threshold"
+                    title={`Alert below SQI ${sqiAlerts.threshold} %`}
+                    className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <SignalLow className="h-4 w-4" />
+                    <span className="metric-value">{sqiAlerts.threshold} %</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72">
+                  <p className="text-sm font-semibold">Signal quality alert</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Raises a visual alert when SQI falls below this level —{" "}
+                    {dsaView === "bilateral"
+                      ? "per hemisphere in Bilateral view"
+                      : "on the merged lane in this view"}
+                    . Saved on this device.
+                  </p>
+                  <div className="mt-3 flex items-baseline justify-between gap-2">
+                    <label className="text-xs font-medium">Alert below</label>
+                    <span className="metric-value text-xs text-muted-foreground">
+                      {sqiAlerts.threshold} %
+                    </span>
+                  </div>
+                  <Slider
+                    className="mt-2"
+                    min={5}
+                    max={90}
+                    step={5}
+                    value={[sqiAlerts.threshold]}
+                    onValueChange={([v]) => sqiAlerts.setThreshold(v ?? sqiAlerts.threshold)}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
@@ -1244,7 +1291,11 @@ function Monitor() {
             depthArtifact={latest?.depthArtifact ?? null}
             depthGatedFraction={latest?.depth.gatedFraction}
           />
-          <SqiTrend history={monitor.sqiHistory} bilateral={dsaView !== "combined"} />
+          <SqiTrend
+            history={monitor.sqiHistory}
+            bilateral={dsaView !== "combined"}
+            threshold={sqiAlerts.threshold}
+          />
         </div>
         ) : null}
 
