@@ -49,7 +49,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
-import { useEegMonitor } from "@/hooks/useEegMonitor";
+import { combineHemiSpectra, useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
@@ -138,6 +138,8 @@ function Monitor() {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
+  /** Stacked left/right DSAs, or one combined lane for faster scanning. */
+  const [dsaView, setDsaView] = useState<"bilateral" | "combined">("bilateral");
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -458,6 +460,8 @@ function Monitor() {
           modeLabel={activeMode.label}
           windowMinutes={windowMinutes}
           markers={markers}
+          dsaView={dsaView}
+          onDsaViewChange={setDsaView}
           suppressionSeconds={summary.suppressionSeconds}
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
           onExit={() => setFullscreen(false)}
@@ -699,15 +703,45 @@ function Monitor() {
                   <SelectItem value="60">60 min</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex shrink-0 rounded-md border border-border p-0.5">
+                {(
+                  [
+                    { key: "bilateral", label: "Bilateral" },
+                    { key: "combined", label: "Combined" },
+                  ] as const
+                ).map((v) => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    aria-pressed={dsaView === v.key}
+                    onClick={() => setDsaView(v.key)}
+                    className={cn(
+                      "min-h-[36px] rounded px-3 text-xs font-medium",
+                      dsaView === v.key
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
-            <div className="grid h-full grid-rows-2">
-              {(
-                [
-                  { side: "Left", montage: "TP9 + AF7", frames: monitor.hemiSpectra.map((h) => h.left) },
-                  { side: "Right", montage: "AF8 + TP10", frames: monitor.hemiSpectra.map((h) => h.right) },
-                ] as const
+            <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
+              {(dsaView === "bilateral"
+                ? [
+                    { side: "Left", montage: "TP9 + AF7", frames: monitor.hemiSpectra.map((h) => h.left) },
+                    { side: "Right", montage: "AF8 + TP10", frames: monitor.hemiSpectra.map((h) => h.right) },
+                  ]
+                : [
+                    {
+                      side: "Combined",
+                      montage: "L + R mean",
+                      frames: combineHemiSpectra(monitor.hemiSpectra),
+                    },
+                  ]
               ).map((h) => (
                 <div key={h.side} className="relative min-h-0 border-b border-border/60 last:border-b-0">
                   <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1.5 py-0.5 text-xs tracking-[0.12em] text-foreground uppercase">
