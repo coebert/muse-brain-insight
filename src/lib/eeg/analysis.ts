@@ -221,6 +221,8 @@ export interface DetectedEvent {
     | "signal_quality"
     | "depth_drop"
     | "depth_rise"
+    | "depth_window_exit"
+    | "depth_window_return"
     | "suppression_burden";
   severity: "info" | "warning" | "critical";
   t: number;

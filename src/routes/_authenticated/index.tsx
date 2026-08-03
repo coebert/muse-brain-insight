@@ -62,7 +62,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
-import { useDepthWindowAlerts } from "@/hooks/useDepthWindowAlerts";
+import {
+  useDepthWindowAlerts,
+  type DepthWindowTransition,
+} from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
@@ -204,13 +207,30 @@ function Monitor() {
         } ${formatClock(e.t)}`,
         tone: e.severity === "critical" ? "critical" : "caution",
       }));
+    // Depth-window crossings: when OpenIBIS left or re-entered the target band.
+    const windowCrossings = monitor.events
+      .filter((e) => e.kind === "depth_window_exit" || e.kind === "depth_window_return")
+      .map<DsaMarker>((e) => ({
+        t: e.t,
+        label:
+          e.kind === "depth_window_return"
+            ? `In window ${formatClock(e.t)}`
+            : `${e.detail.startsWith("Below") ? "Below" : "Above"} window ${formatClock(e.t)}`,
+        tone:
+          e.kind === "depth_window_return"
+            ? "marker"
+            : e.severity === "critical"
+              ? "critical"
+              : "caution",
+        top: true,
+      }));
     const annotations = markers.map<DsaMarker>((m) => ({
       t: m.t,
       label: m.detail,
       tone: "marker",
       top: true,
     }));
-    return [...alerts, ...annotations];
+    return [...alerts, ...windowCrossings, ...annotations];
   }, [monitor.events, markers]);
 
   /** Timestamped audit entry in the session event log. */
@@ -249,6 +269,28 @@ function Monitor() {
     t: latest?.t ?? monitor.elapsed,
     reliable: latest ? latest.depthReliability.reliable && !latest.depth.held : false,
     enabled: caseRunning,
+    // Record every confirmed crossing in the session timeline so the case can
+    // be reviewed later: when the depth index left the window and why.
+    onTransition: useCallback(
+      (tr: DepthWindowTransition) => {
+        monitor.addEvent({
+          kind: tr.kind === "exit" ? "depth_window_exit" : "depth_window_return",
+          severity:
+            tr.kind === "return" ? "info" : tr.direction === "below" ? "critical" : "warning",
+          t: tr.t,
+          duration: tr.kind === "return" ? Math.round(tr.heldSeconds) : 0,
+          detail:
+            tr.kind === "return"
+              ? `Back within ${tr.low}–${tr.high} at OpenIBIS ${tr.index.toFixed(0)} after ${Math.round(tr.heldSeconds)} s ${tr.direction} window`
+              : `${tr.direction === "below" ? "Below" : "Above"} target window ${tr.low}–${tr.high} — OpenIBIS ${tr.index.toFixed(0)} for ${Math.round(tr.heldSeconds)} s (${
+                  tr.direction === "below"
+                    ? "possible excessive hypnotic depth"
+                    : "possible light anaesthesia"
+                }${tr.reliable ? "" : ", signal flagged unreliable"})`,
+        });
+      },
+      [monitor],
+    ),
   });
 
   function selectMode(next: MonitorMode) {

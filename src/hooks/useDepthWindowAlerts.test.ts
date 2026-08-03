@@ -17,6 +17,7 @@ import {
   DEFAULT_DEPTH_WINDOW,
   useDepthWindowAlerts,
   type DepthWindowPrefs,
+  type DepthWindowTransition,
 } from "./useDepthWindowAlerts";
 
 const PREFS_KEY = "cortextrace.depthWindowAlert";
@@ -28,6 +29,8 @@ interface Step {
   enabled?: boolean;
 }
 
+const transitions: DepthWindowTransition[] = [];
+
 /** Render the hook and feed it a sequence of epochs, as the monitor does. */
 function runSteps(steps: Step[], prefs?: Partial<DepthWindowPrefs>) {
   if (prefs) {
@@ -36,7 +39,13 @@ function runSteps(steps: Step[], prefs?: Partial<DepthWindowPrefs>) {
   const first = steps[0]!;
   const hook = renderHook(
     ({ index, t, reliable, enabled }: Required<Step>) =>
-      useDepthWindowAlerts({ index, t, reliable, enabled }),
+      useDepthWindowAlerts({
+        index,
+        t,
+        reliable,
+        enabled,
+        onTransition: (tr) => transitions.push(tr),
+      }),
     {
       initialProps: {
         index: first.index,
@@ -62,6 +71,7 @@ beforeEach(() => {
   toastError.mockClear();
   toastWarning.mockClear();
   toastSuccess.mockClear();
+  transitions.length = 0;
 });
 
 describe("useDepthWindowAlerts — preferences", () => {
@@ -365,5 +375,70 @@ describe("useDepthWindowAlerts — on/off behaviour", () => {
     // Next epoch after re-enabling: the excursion has already outlasted dwell.
     act(() => undefined);
     expect(result.current.prefs.enabled).toBe(true);
+  });
+});
+
+describe("useDepthWindowAlerts — timeline transitions", () => {
+  it("reports an exit transition once the dwell time is satisfied", () => {
+    runSteps(
+      [
+        { index: 50, t: 0 },
+        { index: 30, t: 10 },
+        { index: 28, t: 50 },
+      ],
+      { dwellSeconds: 30 },
+    );
+    expect(transitions).toHaveLength(1);
+    expect(transitions[0]).toMatchObject({
+      kind: "exit",
+      direction: "below",
+      t: 50,
+      index: 28,
+      heldSeconds: 40,
+      low: 40,
+      high: 60,
+      reliable: true,
+    });
+  });
+
+  it("reports a return transition with the total time spent outside the window", () => {
+    runSteps(
+      [
+        { index: 50, t: 0 },
+        { index: 80, t: 10 },
+        { index: 82, t: 50 },
+        { index: 55, t: 70 },
+      ],
+      { dwellSeconds: 30 },
+    );
+    expect(transitions.map((tr) => tr.kind)).toEqual(["exit", "return"]);
+    expect(transitions[1]).toMatchObject({ direction: "above", t: 70, heldSeconds: 60 });
+  });
+
+  it("still records crossings for review when toasts are switched off", () => {
+    runSteps(
+      [
+        { index: 50, t: 0 },
+        { index: 30, t: 10 },
+        { index: 30, t: 60 },
+        { index: 50, t: 70 },
+      ],
+      { enabled: false, dwellSeconds: 30 },
+    );
+    expect(transitions.map((tr) => tr.kind)).toEqual(["exit", "return"]);
+    expect(toastError).not.toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("does not report a crossing for a brief excursion", () => {
+    runSteps(
+      [
+        { index: 50, t: 0 },
+        { index: 30, t: 10 },
+        { index: 50, t: 20 },
+      ],
+      { dwellSeconds: 30 },
+    );
+    expect(transitions).toHaveLength(0);
   });
 });
