@@ -134,6 +134,13 @@ function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
+function compactSqi(list: SqiPoint[]): SqiPoint[] {
+  if (list.length <= MAX_EPOCHS) return list;
+  const keepFrom = list.length - FULL_RES_EPOCHS;
+  const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
+  return [...older, ...list.slice(keepFrom)];
+}
+
 /**
  * Mean of the two hemispheres per frequency bin — the single combined DSA lane
  * used for fast bedside scanning.
