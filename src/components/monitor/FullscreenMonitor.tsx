@@ -291,7 +291,13 @@ export function FullscreenMonitor({
                     compact
                     className="absolute top-8 right-2 z-10"
                   />
-                  <DsaChart frames={h.frames} windowSeconds={windowSeconds} />
+                  <DsaChart frames={h.frames} windowSeconds={windowSeconds} traces={h.traces} />
+                  {dsaView === "overlay" ? (
+                    <div className="metric-value absolute right-2 bottom-7 z-10 flex gap-2 rounded bg-background/70 px-1.5 py-0.5 text-xs">
+                      <span className="text-[rgb(96,208,255)]">— L SEF95</span>
+                      <span className="text-[rgb(255,176,64)]">— R SEF95</span>
+                    </div>
+                  ) : null}
                   <HemiEventOverlay
                     events={hemiEvents}
                     side={h.overlaySide}
