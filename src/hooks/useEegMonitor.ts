@@ -83,6 +83,12 @@ export interface HemiLatest {
   right: HemiMetrics;
 }
 
+/** The less trustworthy of the two sides — used to label the combined DSA lane. */
+export function worstHemi(latest: HemiLatest | null): HemiMetrics | null {
+  if (!latest) return null;
+  return latest.left.qualityScore <= latest.right.qualityScore ? latest.left : latest.right;
+}
+
 function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   if (list.length <= MAX_EPOCHS) return list;
   const keepFrom = list.length - FULL_RES_EPOCHS;
