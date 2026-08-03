@@ -83,6 +83,26 @@ export interface HemiLatest {
   right: HemiMetrics;
 }
 
+export type HemiSide = "left" | "right";
+
+/** A burst-suppression or seizure episode attributed to one hemisphere. */
+export interface HemiEvent {
+  side: HemiSide;
+  kind: "suppression" | "seizure";
+  /** Onset, seconds since session start. */
+  t: number;
+  /** Episode length in seconds (grows while the episode is running). */
+  duration: number;
+  /** True while the episode is still active. */
+  ongoing: boolean;
+  /** Peak suppression ratio (%) seen during the episode. */
+  peakSr: number;
+  /** Peak seizure score (0–1) seen during the episode. */
+  peakScore: number;
+  /** Signal quality grade at onset — how much to trust the marker. */
+  quality: SignalQuality["grade"];
+}
+
 /** The less trustworthy of the two sides — used to label the combined DSA lane. */
 export function worstHemi(latest: HemiLatest | null): HemiMetrics | null {
   if (!latest) return null;
