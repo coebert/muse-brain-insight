@@ -55,9 +55,7 @@ export const submitAlertFeedback = createServerFn({ method: "POST" })
       context: data.context ?? null,
       model_version: (data.modelVersion ?? "unknown").toString().slice(0, 80),
       alert_confidence: (data.alertConfidence ?? "unknown").toString().slice(0, 20),
-      clinician_label: context.claims?.email
-        ? String(context.claims.email).slice(0, 120)
-        : null,
+      clinician_label: context.claims?.email ? String(context.claims.email).slice(0, 120) : null,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -68,7 +66,9 @@ export const listAlertFeedback = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<AlertFeedbackRow[]> => {
     const { data, error } = await context.supabase
       .from("ai_alert_feedback")
-      .select("id, alert_id, alert_category, alert_severity, alert_title, verdict, reason, context, created_at")
+      .select(
+        "id, alert_id, alert_category, alert_severity, alert_title, verdict, reason, context, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
@@ -211,15 +211,27 @@ export const getFeedbackAnalytics = createServerFn({ method: "GET" })
 
     for (const r of list) {
       const d = dayKey(r.created_at);
-      const point =
-        trendMap.get(d) ?? { date: d, correct: 0, incorrect: 0, unsure: 0, total: 0, accuracy: null };
+      const point = trendMap.get(d) ?? {
+        date: d,
+        correct: 0,
+        incorrect: 0,
+        unsure: 0,
+        total: 0,
+        accuracy: null,
+      };
       tally(point as unknown as FeedbackBucket, r.verdict ?? "unsure");
       trendMap.set(d, point);
 
       const model = r.model_version || "unknown";
       const perModel = modelTrendMap.get(model) ?? new Map<string, FeedbackTrendPoint>();
-      const mp =
-        perModel.get(d) ?? { date: d, correct: 0, incorrect: 0, unsure: 0, total: 0, accuracy: null };
+      const mp = perModel.get(d) ?? {
+        date: d,
+        correct: 0,
+        incorrect: 0,
+        unsure: 0,
+        total: 0,
+        accuracy: null,
+      };
       tally(mp as unknown as FeedbackBucket, r.verdict ?? "unsure");
       perModel.set(d, mp);
       modelTrendMap.set(model, perModel);

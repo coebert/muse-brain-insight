@@ -197,18 +197,21 @@ export class SimulatedSource implements EegSource {
   async start(onSamples: SampleHandler) {
     const fs = 256;
     const chunk = 12;
-    this.timer = setInterval(() => {
-      for (const channel of MUSE_CHANNELS) {
-        const out = new Float64Array(chunk);
-        for (let i = 0; i < chunk; i++) {
-          // Time is shared across channels: the phase must depend on the
-          // sample index, not on how many channels have been rendered.
-          out[i] = this.sample(channel, this.t + i / fs);
+    this.timer = setInterval(
+      () => {
+        for (const channel of MUSE_CHANNELS) {
+          const out = new Float64Array(chunk);
+          for (let i = 0; i < chunk; i++) {
+            // Time is shared across channels: the phase must depend on the
+            // sample index, not on how many channels have been rendered.
+            out[i] = this.sample(channel, this.t + i / fs);
+          }
+          onSamples(channel, out);
         }
-        onSamples(channel, out);
-      }
-      this.t += chunk / fs;
-    }, (chunk / fs) * 1000);
+        this.t += chunk / fs;
+      },
+      (chunk / fs) * 1000,
+    );
   }
 
   private sample(channel: MuseChannel, time: number): number {

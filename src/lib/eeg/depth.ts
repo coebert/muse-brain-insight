@@ -50,12 +50,7 @@ export interface DepthReading {
 }
 
 export type DepthState =
-  | "unreliable"
-  | "awake"
-  | "sedated"
-  | "general_anaesthesia"
-  | "deep"
-  | "burst_suppression";
+  "unreliable" | "awake" | "sedated" | "general_anaesthesia" | "deep" | "burst_suppression";
 
 export const DEPTH_STATE_LABEL: Record<DepthState, string> = {
   unreliable: "Signal too poor",
@@ -115,10 +110,19 @@ export function isDefaultCalibration(cal: DepthCalibration): boolean {
   const same = (a: Record<string, number>, b: Record<string, number>) =>
     Object.keys(b).every((p) => Math.abs((a?.[p] ?? NaN) - b[p]!) < 1e-9);
   return (
-    same(cal.sedation as unknown as Record<string, number>, DEFAULT_DEPTH_CALIBRATION.sedation as unknown as Record<string, number>) &&
-    same(cal.general as unknown as Record<string, number>, DEFAULT_DEPTH_CALIBRATION.general as unknown as Record<string, number>) &&
     same(
-      (cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear) as unknown as Record<string, number>,
+      cal.sedation as unknown as Record<string, number>,
+      DEFAULT_DEPTH_CALIBRATION.sedation as unknown as Record<string, number>,
+    ) &&
+    same(
+      cal.general as unknown as Record<string, number>,
+      DEFAULT_DEPTH_CALIBRATION.general as unknown as Record<string, number>,
+    ) &&
+    same(
+      (cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear) as unknown as Record<
+        string,
+        number
+      >,
       DEFAULT_DEPTH_CALIBRATION.generalLinear as unknown as Record<string, number>,
     )
   );
@@ -408,7 +412,12 @@ export class DepthIndexEstimator {
     const valid = Number.isFinite(c1) && Number.isFinite(c2) && Number.isFinite(c3);
     const mixed = valid
       ? depthMixer(c1, c2, c3, bsr)
-      : { index: NaN, sedationScore: NaN, generalScore: NaN, bsrScore: piecewise(bsr, [0, 100], [50, 0]) };
+      : {
+          index: NaN,
+          sedationScore: NaN,
+          generalScore: NaN,
+          bsrScore: piecewise(bsr, [0, 100], [50, 0]),
+        };
 
     // Deeply suppressed records have no usable spectrum: fall back to the
     // pure suppression branch rather than reporting nothing.

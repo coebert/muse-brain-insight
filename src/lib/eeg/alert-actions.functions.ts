@@ -107,7 +107,9 @@ export const recordAlertAction = createServerFn({ method: "POST" })
       throw new Error("Add a short rationale when you differ from the AI read.");
     }
     const cited = Array.from(
-      new Set((input.citedFeatures ?? []).map((f) => String(f).trim().slice(0, 120)).filter(Boolean)),
+      new Set(
+        (input.citedFeatures ?? []).map((f) => String(f).trim().slice(0, 120)).filter(Boolean),
+      ),
     ).slice(0, 12);
     return {
       ...input,

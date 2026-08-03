@@ -95,7 +95,9 @@ export function buildStoredDigest(
 ) {
   const markers = events.filter((e) => e.kind === "annotation").sort((a, b) => a.t - b.t);
   const cadence =
-    rows.length > 1 ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1)) : 1;
+    rows.length > 1
+      ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1))
+      : 1;
   const third = Math.max(1, Math.floor(rows.length / 3));
 
   const markerResponses = markers.map((m) => {

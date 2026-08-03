@@ -273,8 +273,7 @@ function Monitor() {
     void monitor.stop();
     setCaseState("ended");
     if (fileNow) setSaveOpen(true);
-    else
-      toast.warning("Case ended without filing — the recording is still here until you reload.");
+    else toast.warning("Case ended without filing — the recording is still here until you reload.");
   }
 
   // Derive bedside alarm conditions from the live epoch and detected events.
@@ -444,9 +443,15 @@ function Monitor() {
           if (seenAlertIds.current.has(alert.id)) continue;
           seenAlertIds.current.add(alert.id);
           if (alert.severity === "critical") {
-            toast.error(alert.title, { description: alert.action || alert.detail, duration: 15000 });
+            toast.error(alert.title, {
+              description: alert.action || alert.detail,
+              duration: 15000,
+            });
           } else if (alert.severity === "warning") {
-            toast.warning(alert.title, { description: alert.action || alert.detail, duration: 10000 });
+            toast.warning(alert.title, {
+              description: alert.action || alert.detail,
+              duration: 10000,
+            });
           }
         }
       } catch (err) {
@@ -615,11 +620,7 @@ function Monitor() {
               </>
             ) : (
               <>
-                <Button
-                  size="sm"
-                  className="flex-1 sm:flex-none"
-                  onClick={() => setCaseOpen(true)}
-                >
+                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setCaseOpen(true)}>
                   <Bluetooth className="size-4" /> Start case
                 </Button>
                 {caseState === "ended" && monitor.epochs.length ? (
@@ -719,746 +720,785 @@ function Monitor() {
         </div>
 
         {tab === "monitor" ? (
-        <>
-        {/* Density spectral array */}
-        <section className="panel overflow-hidden">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
-            <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
-            <DsaLegend />
-            <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-              <Select
-                value={monitor.channel}
-                onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
-              >
-                <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="average">All channels (mean)</SelectItem>
-                  {MUSE_CHANNELS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={String(windowMinutes)}
-                onValueChange={(v) => setWindowMinutes(Number(v))}
-              >
-                <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 min</SelectItem>
-                  <SelectItem value="10">10 min</SelectItem>
-                  <SelectItem value="30">30 min</SelectItem>
-                  <SelectItem value="60">60 min</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex shrink-0 rounded-md border border-border p-0.5">
-                {(
-                  [
-                    { key: "bilateral", label: "Bilateral" },
-                    { key: "combined", label: "Combined" },
-                    { key: "overlay", label: "Overlay" },
-                  ] as const
-                ).map((v) => (
+          <>
+            {/* Density spectral array */}
+            <section className="panel overflow-hidden">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
+                <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
+                <DsaLegend />
+                <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+                  <Select
+                    value={monitor.channel}
+                    onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
+                  >
+                    <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="average">All channels (mean)</SelectItem>
+                      {MUSE_CHANNELS.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(windowMinutes)}
+                    onValueChange={(v) => setWindowMinutes(Number(v))}
+                  >
+                    <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 min</SelectItem>
+                      <SelectItem value="10">10 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="60">60 min</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex shrink-0 rounded-md border border-border p-0.5">
+                    {(
+                      [
+                        { key: "bilateral", label: "Bilateral" },
+                        { key: "combined", label: "Combined" },
+                        { key: "overlay", label: "Overlay" },
+                      ] as const
+                    ).map((v) => (
+                      <button
+                        key={v.key}
+                        type="button"
+                        aria-pressed={dsaView === v.key}
+                        onClick={() => setDsaView(v.key)}
+                        className={cn(
+                          "min-h-[36px] rounded px-3 text-xs font-medium",
+                          dsaView === v.key
+                            ? "bg-secondary text-secondary-foreground"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
                   <button
-                    key={v.key}
                     type="button"
-                    aria-pressed={dsaView === v.key}
-                    onClick={() => setDsaView(v.key)}
+                    aria-pressed={markerAlerts.soundEnabled}
+                    aria-label={
+                      markerAlerts.soundEnabled
+                        ? "Mute marker alert sound"
+                        : "Unmute marker alert sound"
+                    }
+                    title={
+                      markerAlerts.soundEnabled ? "Marker alert sound on" : "Marker alert sound off"
+                    }
+                    onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
                     className={cn(
-                      "min-h-[36px] rounded px-3 text-xs font-medium",
-                      dsaView === v.key
-                        ? "bg-secondary text-secondary-foreground"
+                      "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md border border-border",
+                      markerAlerts.soundEnabled
+                        ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {v.label}
+                    {markerAlerts.soundEnabled ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <VolumeX className="h-4 w-4" />
+                    )}
                   </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                aria-pressed={markerAlerts.soundEnabled}
-                aria-label={
-                  markerAlerts.soundEnabled
-                    ? "Mute marker alert sound"
-                    : "Unmute marker alert sound"
-                }
-                title={
-                  markerAlerts.soundEnabled
-                    ? "Marker alert sound on"
-                    : "Marker alert sound off"
-                }
-                onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
-                className={cn(
-                  "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md border border-border",
-                  markerAlerts.soundEnabled
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {markerAlerts.soundEnabled ? (
-                  <Volume2 className="h-4 w-4" />
-                ) : (
-                  <VolumeX className="h-4 w-4" />
-                )}
-              </button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Signal quality alert threshold"
-                    title={`Alert below SQI ${sqiAlerts.threshold} %`}
-                    className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <SignalLow className="h-4 w-4" />
-                    <span className="metric-value">{sqiAlerts.threshold} %</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72">
-                  <p className="text-sm font-semibold">Signal quality alert</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Raises a visual alert when SQI falls below this level —{" "}
-                    {dsaView === "bilateral"
-                      ? "per hemisphere in Bilateral view"
-                      : "on the merged lane in this view"}
-                    . Saved on this device.
-                  </p>
-                  <div className="mt-3 flex items-baseline justify-between gap-2">
-                    <label className="text-xs font-medium">Alert below</label>
-                    <span className="metric-value text-xs text-muted-foreground">
-                      {sqiAlerts.threshold} %
-                    </span>
-                  </div>
-                  <Slider
-                    className="mt-2"
-                    min={5}
-                    max={90}
-                    step={5}
-                    value={[sqiAlerts.threshold]}
-                    onValueChange={([v]) => sqiAlerts.setThreshold(v ?? sqiAlerts.threshold)}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
-            <MonitorErrorBoundary label="Density spectral array">
-              <HemiDsaPanel
-              hemiSpectra={monitor.hemiSpectra}
-              hemiLatest={monitor.hemiLatest}
-              hemiEvents={monitor.hemiEvents}
-              dsaView={dsaView}
-              windowSeconds={windowMinutes * 60}
-                elapsed={monitor.elapsed}
-              />
-            </MonitorErrorBoundary>
-            {/* Trend alerts (depth swings, BSR burden) and clinician markers */}
-            <DsaMarkerRail
-              markers={dsaMarkerRail}
-              elapsed={monitor.elapsed}
-              windowSeconds={windowMinutes * 60}
-            />
-            {!monitor.epochs.length ? (
-              <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                Connect a Muse 2 headband to start building the spectrogram — or run the demo signal
-                to see anaesthesia, burst suppression and ictal patterns.
-              </div>
-            ) : null}
-          </div>
-          {/* Suppression / seizure ribbon */}
-          <div className="flex h-6 w-full">
-            {(() => {
-              const visible = monitor.epochs.slice(-windowMinutes * 60);
-              const pad = windowMinutes * 60 - visible.length;
-              return (
-                <>
-                  <div style={{ flexGrow: Math.max(0, pad) }} className="bg-muted/30" />
-                  {visible.map((e, i) => (
-                    <div
-                      key={i}
-                      style={{ flexGrow: 1 }}
-                      title={`${formatClock(e.t)} · SR ${e.suppressionRatio.toFixed(0)}%`}
-                      className={cn(
-                        "h-full",
-                        e.seizureAlert
-                          ? "bg-critical"
-                          : e.isSuppressed
-                            ? "bg-caution"
-                            : e.artifact
-                              ? "bg-muted"
-                              : "bg-signal/50",
-                      )}
-                    />
-                  ))}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Contemporaneous event marking */}
-          <div className="border-t border-border px-3 py-3 sm:px-4">
-            <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:hidden">
-              Mark event
-            </p>
-            <div className="-mx-3 flex snap-x items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-              <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:inline">
-                Mark event
-              </span>
-              {MARKER_PRESETS.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => addMarker(preset)}
-                  disabled={!caseRunning}
-                  className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Input
-                value={markerText}
-                disabled={!caseRunning}
-                placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
-                className="h-9 w-full sm:w-auto sm:max-w-sm sm:flex-1"
-                onChange={(e) => setMarkerText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    addMarker(markerText);
-                    setMarkerText("");
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!caseRunning || !markerText.trim()}
-                onClick={() => {
-                  addMarker(markerText);
-                  setMarkerText("");
-                }}
-              >
-                Mark now
-              </Button>
-              {markers.length ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setMarkers((prev) => prev.slice(0, -1))}
-                  >
-                    <Undo2 className="size-4" /> Undo last
-                  </Button>
-                  <span className="metric-value text-xs text-muted-foreground">
-                    {markers.length} marker{markers.length === 1 ? "" : "s"} this session
-                  </span>
-                </>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  Markers are timestamped against the running clock and saved with the session.
-                </span>
-              )}
-            </div>
-            {markers.length ? (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {[...markers]
-                  .reverse()
-                  .slice(0, 8)
-                  .map((m, i) => (
-                    <span
-                      key={`${m.t}-${i}`}
-                      className="flex items-center gap-1.5 rounded-full bg-marker/15 px-2 py-1 text-xs text-marker"
-                    >
-                      <span className="metric-value text-xs opacity-80">
-                        {formatClock(m.t)}
-                      </span>
-                      {m.detail}
+                  <Popover>
+                    <PopoverTrigger asChild>
                       <button
                         type="button"
-                        aria-label={`Remove marker ${m.detail}`}
-                        onClick={() => setMarkers((prev) => prev.filter((x) => x !== m))}
-                        className="opacity-70 hover:opacity-100"
+                        aria-label="Signal quality alert threshold"
+                        title={`Alert below SQI ${sqiAlerts.threshold} %`}
+                        className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-muted-foreground hover:text-foreground"
                       >
-                        <X className="size-3" />
+                        <SignalLow className="h-4 w-4" />
+                        <span className="metric-value">{sqiAlerts.threshold} %</span>
                       </button>
-                    </span>
-                  ))}
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-72">
+                      <p className="text-sm font-semibold">Signal quality alert</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Raises a visual alert when SQI falls below this level —{" "}
+                        {dsaView === "bilateral"
+                          ? "per hemisphere in Bilateral view"
+                          : "on the merged lane in this view"}
+                        . Saved on this device.
+                      </p>
+                      <div className="mt-3 flex items-baseline justify-between gap-2">
+                        <label className="text-xs font-medium">Alert below</label>
+                        <span className="metric-value text-xs text-muted-foreground">
+                          {sqiAlerts.threshold} %
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-2"
+                        min={5}
+                        max={90}
+                        step={5}
+                        value={[sqiAlerts.threshold]}
+                        onValueChange={([v]) => sqiAlerts.setThreshold(v ?? sqiAlerts.threshold)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-            ) : null}
-          </div>
-        </section>
+              <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
+                <MonitorErrorBoundary label="Density spectral array">
+                  <HemiDsaPanel
+                    hemiSpectra={monitor.hemiSpectra}
+                    hemiLatest={monitor.hemiLatest}
+                    hemiEvents={monitor.hemiEvents}
+                    dsaView={dsaView}
+                    windowSeconds={windowMinutes * 60}
+                    elapsed={monitor.elapsed}
+                  />
+                </MonitorErrorBoundary>
+                {/* Trend alerts (depth swings, BSR burden) and clinician markers */}
+                <DsaMarkerRail
+                  markers={dsaMarkerRail}
+                  elapsed={monitor.elapsed}
+                  windowSeconds={windowMinutes * 60}
+                />
+                {!monitor.epochs.length ? (
+                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                    Connect a Muse 2 headband to start building the spectrogram — or run the demo
+                    signal to see anaesthesia, burst suppression and ictal patterns.
+                  </div>
+                ) : null}
+              </div>
+              {/* Suppression / seizure ribbon */}
+              <div className="flex h-6 w-full">
+                {(() => {
+                  const visible = monitor.epochs.slice(-windowMinutes * 60);
+                  const pad = windowMinutes * 60 - visible.length;
+                  return (
+                    <>
+                      <div style={{ flexGrow: Math.max(0, pad) }} className="bg-muted/30" />
+                      {visible.map((e, i) => (
+                        <div
+                          key={i}
+                          style={{ flexGrow: 1 }}
+                          title={`${formatClock(e.t)} · SR ${e.suppressionRatio.toFixed(0)}%`}
+                          className={cn(
+                            "h-full",
+                            e.seizureAlert
+                              ? "bg-critical"
+                              : e.isSuppressed
+                                ? "bg-caution"
+                                : e.artifact
+                                  ? "bg-muted"
+                                  : "bg-signal/50",
+                          )}
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
+              </div>
 
-        {/* Metrics */}
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {(() => {
-            const tiles: Record<string, React.ReactNode> = {
-              depth: (
-                <MetricTile
-                  key="depth"
-                  label="Depth index (OpenIBIS)"
-                  value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
-                  hint={
-                    latest
-                      ? latest.depth.held
-                        ? `Held ${latest.depth.heldSeconds.toFixed(0)}s — ${
-                            latest.depth.gateReasons[0] ?? "artefact"
-                          }`
-                        : DEPTH_STATE_LABEL[latest.depth.state]
-                      : "OpenIBIS algorithm · ±10 units vs reference"
-                  }
-                  tone={latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"}
-                  confidence={latest?.confidence.depth}
-                  unreliable={latest ? !latest.depthReliability.reliable : false}
-                  degraded={latest?.depthReliability.level === "degraded"}
-                  reliabilityReasons={latest?.depthReliability.reasons}
-                />
-              ),
-              sr: (
-                <MetricTile
-                  key="sr"
-                  label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
-                  value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
-                  unit="%"
-                  tone={srTone as never}
-                  hint={`Peak ${summary.maxSr.toFixed(0)} %`}
-                  confidence={latest?.confidence.suppression}
-                />
-              ),
-              time: (
-                <MetricTile
-                  key="time"
-                  label="Suppression time"
-                  value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
-                  unit={summary.suppressionSeconds < 60 ? "s" : "min"}
-                  hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
-                  tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
-                  confidence={latest?.confidence.suppression}
-                />
-              ),
-              seizure: (
-                <MetricTile
-                  key="seizure"
-                  label="Seizure score"
-                  value={latest ? latest.seizureScore.toFixed(2) : "—"}
-                  tone={
-                    seizureAlert
-                      ? icuMode
-                        ? "critical"
-                        : "caution"
-                      : latest && latest.seizureScore > 0.4 && icuMode
-                        ? "caution"
-                        : "default"
-                  }
-                  hint={
-                    icuMode
-                      ? `${summary.seizureAlerts} event(s) — high sensitivity`
-                      : `${summary.seizureAlerts} event(s) — background watch`
-                  }
-                  pulse={seizureAlert && icuMode}
-                  confidence={latest?.confidence.seizure}
-                />
-              ),
-              sef: (
-                <MetricTile
-                  key="sef"
-                  label="Spectral edge 95"
-                  value={latest ? latest.sef95.toFixed(1) : "—"}
-                  unit="Hz"
-                  hint="Frequency below which 95 % of power sits"
-                  confidence={latest?.confidence.spectral}
-                />
-              ),
-              amp: (
-                <MetricTile
-                  key="amp"
-                  label="Amplitude (p-p)"
-                  value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
-                  unit="µV"
-                  hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
-                  tone={latest?.artifact ? "caution" : "default"}
-                  confidence={latest?.confidence.spectral}
-                />
-              ),
-              entropy: (
-                <MetricTile
-                  key="entropy"
-                  label="Spectral entropy (state)"
-                  value={latest ? latest.entropy.state.toFixed(2) : "—"}
-                  hint={
-                    latest
-                      ? `Response ${latest.entropy.response.toFixed(2)} · SE95 ${latest.entropy.se95.toFixed(2)} · Shannon ${latest.entropy.shannon.toFixed(2)}`
-                      : "Normalised Shannon entropy of the PSD"
-                  }
-                  tone={latest && latest.entropy.state > 0.9 ? "caution" : "default"}
-                  confidence={latest?.confidence.spectral}
-                />
-              ),
-              dar: (
-                <MetricTile
-                  key="dar"
-                  label="Delta / alpha ratio"
-                  value={latest ? latest.ratios.deltaAlpha.toFixed(2) : "—"}
-                  hint={
-                    latest
-                      ? `Theta/alpha ${latest.ratios.thetaAlpha.toFixed(2)} — rises with slowing`
-                      : "Rises with deepening anaesthesia and encephalopathy"
-                  }
-                  confidence={latest?.confidence.spectral}
-                />
-              ),
-              bar: (
-                <MetricTile
-                  key="bar"
-                  label="Beta / alpha ratio"
-                  value={latest ? latest.ratios.betaAlpha.toFixed(2) : "—"}
-                  hint="Rises with light anaesthesia and benzodiazepine beta"
-                  confidence={latest?.confidence.spectral}
-                />
-              ),
-              cindex: (
-                <MetricTile
-                  key="cindex"
-                  label="Consciousness index (qCON-like)"
-                  value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
-                  hint={
-                    latest
-                      ? latest.composite.held
-                        ? "Held — artefact"
-                        : COMPOSITE_BAND_LABEL[latest.composite.cBand]
-                      : "Composite of fast/slow balance, entropy and suppression"
-                  }
-                  tone={
-                    latest?.composite.cIndex == null || latest.composite.held
-                      ? "default"
-                      : latest.composite.cIndex >= 80
-                        ? "caution"
-                        : latest.composite.cIndex < 40
-                          ? "critical"
-                          : "signal"
-                  }
-                  confidence={latest?.confidence.depth}
-                />
-              ),
-              nindex: (
-                <MetricTile
-                  key="nindex"
-                  label="Nociception index (qNOX-like)"
-                  value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
-                  hint={
-                    latest
-                      ? latest.composite.held
-                        ? "Held — artefact"
-                        : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
-                      : "High-frequency drive, reactivity and entropy gap"
-                  }
-                  tone={
-                    latest?.composite.nIndex == null || latest.composite.held
-                      ? "default"
-                      : latest.composite.nIndex >= 60
-                        ? "caution"
-                        : "signal"
-                  }
-                  confidence={latest?.confidence.depth}
-                />
-              ),
-            };
-            const order = icuMode
-              ? ["seizure", "sr", "time", "depth", "cindex", "sef", "entropy", "dar", "bar", "amp", "nindex"]
-              : ["depth", "cindex", "nindex", "sef", "entropy", "sr", "time", "dar", "bar", "amp", "seizure"];
-            return order.map((k) => tiles[k]);
-          })()}
-        </section>
-        </>
+              {/* Contemporaneous event marking */}
+              <div className="border-t border-border px-3 py-3 sm:px-4">
+                <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:hidden">
+                  Mark event
+                </p>
+                <div className="-mx-3 flex snap-x items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+                  <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:inline">
+                    Mark event
+                  </span>
+                  {MARKER_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => addMarker(preset)}
+                      disabled={!caseRunning}
+                      className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Input
+                    value={markerText}
+                    disabled={!caseRunning}
+                    placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
+                    className="h-9 w-full sm:w-auto sm:max-w-sm sm:flex-1"
+                    onChange={(e) => setMarkerText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        addMarker(markerText);
+                        setMarkerText("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!caseRunning || !markerText.trim()}
+                    onClick={() => {
+                      addMarker(markerText);
+                      setMarkerText("");
+                    }}
+                  >
+                    Mark now
+                  </Button>
+                  {markers.length ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setMarkers((prev) => prev.slice(0, -1))}
+                      >
+                        <Undo2 className="size-4" /> Undo last
+                      </Button>
+                      <span className="metric-value text-xs text-muted-foreground">
+                        {markers.length} marker{markers.length === 1 ? "" : "s"} this session
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Markers are timestamped against the running clock and saved with the session.
+                    </span>
+                  )}
+                </div>
+                {markers.length ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {[...markers]
+                      .reverse()
+                      .slice(0, 8)
+                      .map((m, i) => (
+                        <span
+                          key={`${m.t}-${i}`}
+                          className="flex items-center gap-1.5 rounded-full bg-marker/15 px-2 py-1 text-xs text-marker"
+                        >
+                          <span className="metric-value text-xs opacity-80">
+                            {formatClock(m.t)}
+                          </span>
+                          {m.detail}
+                          <button
+                            type="button"
+                            aria-label={`Remove marker ${m.detail}`}
+                            onClick={() => setMarkers((prev) => prev.filter((x) => x !== m))}
+                            className="opacity-70 hover:opacity-100"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            {/* Metrics */}
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {(() => {
+                const tiles: Record<string, React.ReactNode> = {
+                  depth: (
+                    <MetricTile
+                      key="depth"
+                      label="Depth index (OpenIBIS)"
+                      value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
+                      hint={
+                        latest
+                          ? latest.depth.held
+                            ? `Held ${latest.depth.heldSeconds.toFixed(0)}s — ${
+                                latest.depth.gateReasons[0] ?? "artefact"
+                              }`
+                            : DEPTH_STATE_LABEL[latest.depth.state]
+                          : "OpenIBIS algorithm · ±10 units vs reference"
+                      }
+                      tone={
+                        latest && !latest.depth.held ? depthTone(latest.depth.state) : "default"
+                      }
+                      confidence={latest?.confidence.depth}
+                      unreliable={latest ? !latest.depthReliability.reliable : false}
+                      degraded={latest?.depthReliability.level === "degraded"}
+                      reliabilityReasons={latest?.depthReliability.reasons}
+                    />
+                  ),
+                  sr: (
+                    <MetricTile
+                      key="sr"
+                      label={`Suppression ratio (${monitor.settings.srWindowSeconds}s)`}
+                      value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
+                      unit="%"
+                      tone={srTone as never}
+                      hint={`Peak ${summary.maxSr.toFixed(0)} %`}
+                      confidence={latest?.confidence.suppression}
+                    />
+                  ),
+                  time: (
+                    <MetricTile
+                      key="time"
+                      label="Suppression time"
+                      value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
+                      unit={summary.suppressionSeconds < 60 ? "s" : "min"}
+                      hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
+                      tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
+                      confidence={latest?.confidence.suppression}
+                    />
+                  ),
+                  seizure: (
+                    <MetricTile
+                      key="seizure"
+                      label="Seizure score"
+                      value={latest ? latest.seizureScore.toFixed(2) : "—"}
+                      tone={
+                        seizureAlert
+                          ? icuMode
+                            ? "critical"
+                            : "caution"
+                          : latest && latest.seizureScore > 0.4 && icuMode
+                            ? "caution"
+                            : "default"
+                      }
+                      hint={
+                        icuMode
+                          ? `${summary.seizureAlerts} event(s) — high sensitivity`
+                          : `${summary.seizureAlerts} event(s) — background watch`
+                      }
+                      pulse={seizureAlert && icuMode}
+                      confidence={latest?.confidence.seizure}
+                    />
+                  ),
+                  sef: (
+                    <MetricTile
+                      key="sef"
+                      label="Spectral edge 95"
+                      value={latest ? latest.sef95.toFixed(1) : "—"}
+                      unit="Hz"
+                      hint="Frequency below which 95 % of power sits"
+                      confidence={latest?.confidence.spectral}
+                    />
+                  ),
+                  amp: (
+                    <MetricTile
+                      key="amp"
+                      label="Amplitude (p-p)"
+                      value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
+                      unit="µV"
+                      hint={latest?.artifact ? "Artefact suspected" : "Peak in current epoch"}
+                      tone={latest?.artifact ? "caution" : "default"}
+                      confidence={latest?.confidence.spectral}
+                    />
+                  ),
+                  entropy: (
+                    <MetricTile
+                      key="entropy"
+                      label="Spectral entropy (state)"
+                      value={latest ? latest.entropy.state.toFixed(2) : "—"}
+                      hint={
+                        latest
+                          ? `Response ${latest.entropy.response.toFixed(2)} · SE95 ${latest.entropy.se95.toFixed(2)} · Shannon ${latest.entropy.shannon.toFixed(2)}`
+                          : "Normalised Shannon entropy of the PSD"
+                      }
+                      tone={latest && latest.entropy.state > 0.9 ? "caution" : "default"}
+                      confidence={latest?.confidence.spectral}
+                    />
+                  ),
+                  dar: (
+                    <MetricTile
+                      key="dar"
+                      label="Delta / alpha ratio"
+                      value={latest ? latest.ratios.deltaAlpha.toFixed(2) : "—"}
+                      hint={
+                        latest
+                          ? `Theta/alpha ${latest.ratios.thetaAlpha.toFixed(2)} — rises with slowing`
+                          : "Rises with deepening anaesthesia and encephalopathy"
+                      }
+                      confidence={latest?.confidence.spectral}
+                    />
+                  ),
+                  bar: (
+                    <MetricTile
+                      key="bar"
+                      label="Beta / alpha ratio"
+                      value={latest ? latest.ratios.betaAlpha.toFixed(2) : "—"}
+                      hint="Rises with light anaesthesia and benzodiazepine beta"
+                      confidence={latest?.confidence.spectral}
+                    />
+                  ),
+                  cindex: (
+                    <MetricTile
+                      key="cindex"
+                      label="Consciousness index (qCON-like)"
+                      value={
+                        latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"
+                      }
+                      hint={
+                        latest
+                          ? latest.composite.held
+                            ? "Held — artefact"
+                            : COMPOSITE_BAND_LABEL[latest.composite.cBand]
+                          : "Composite of fast/slow balance, entropy and suppression"
+                      }
+                      tone={
+                        latest?.composite.cIndex == null || latest.composite.held
+                          ? "default"
+                          : latest.composite.cIndex >= 80
+                            ? "caution"
+                            : latest.composite.cIndex < 40
+                              ? "critical"
+                              : "signal"
+                      }
+                      confidence={latest?.confidence.depth}
+                    />
+                  ),
+                  nindex: (
+                    <MetricTile
+                      key="nindex"
+                      label="Nociception index (qNOX-like)"
+                      value={
+                        latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"
+                      }
+                      hint={
+                        latest
+                          ? latest.composite.held
+                            ? "Held — artefact"
+                            : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
+                          : "High-frequency drive, reactivity and entropy gap"
+                      }
+                      tone={
+                        latest?.composite.nIndex == null || latest.composite.held
+                          ? "default"
+                          : latest.composite.nIndex >= 60
+                            ? "caution"
+                            : "signal"
+                      }
+                      confidence={latest?.confidence.depth}
+                    />
+                  ),
+                };
+                const order = icuMode
+                  ? [
+                      "seizure",
+                      "sr",
+                      "time",
+                      "depth",
+                      "cindex",
+                      "sef",
+                      "entropy",
+                      "dar",
+                      "bar",
+                      "amp",
+                      "nindex",
+                    ]
+                  : [
+                      "depth",
+                      "cindex",
+                      "nindex",
+                      "sef",
+                      "entropy",
+                      "sr",
+                      "time",
+                      "dar",
+                      "bar",
+                      "amp",
+                      "seizure",
+                    ];
+                return order.map((k) => tiles[k]);
+              })()}
+            </section>
+          </>
         ) : null}
 
         {tab === "signal" ? (
-        <div className="space-y-4">
-          <SignalQualityPanel
-            quality={latest?.quality ?? null}
-            channels={MUSE_CHANNELS}
-            channelQuality={monitor.channelQuality}
-            usableFraction={summary.usableFraction}
-            depthArtifact={latest?.depthArtifact ?? null}
-            depthGatedFraction={latest?.depth.gatedFraction}
-          />
-          <SqiTrend
-            history={monitor.sqiHistory}
-            bilateral={dsaView !== "combined"}
-            threshold={sqiAlerts.threshold}
-          />
-        </div>
+          <div className="space-y-4">
+            <SignalQualityPanel
+              quality={latest?.quality ?? null}
+              channels={MUSE_CHANNELS}
+              channelQuality={monitor.channelQuality}
+              usableFraction={summary.usableFraction}
+              depthArtifact={latest?.depthArtifact ?? null}
+              depthGatedFraction={latest?.depth.gatedFraction}
+            />
+            <SqiTrend
+              history={monitor.sqiHistory}
+              bilateral={dsaView !== "combined"}
+              threshold={sqiAlerts.threshold}
+            />
+          </div>
         ) : null}
 
         {tab === "review" ? (
-        <AiInsightPanel
-          result={aiResult}
-          loading={aiLoading}
-          error={aiError}
-          epochCount={monitor.epochs.length}
-          onRun={() => void analyse(false)}
-          watch={aiWatch}
-          onWatchChange={(next) => {
-            setAiWatch(next);
-            if (next) {
-              toast.info("Continuous AI surveillance on — reviewing every 3 minutes.");
-              if (monitor.epochs.length >= 30) void analyse(true);
-            }
-          }}
-          lastRunAt={aiLastRunAt}
-          feedbackContext={mode}
-        />
+          <AiInsightPanel
+            result={aiResult}
+            loading={aiLoading}
+            error={aiError}
+            epochCount={monitor.epochs.length}
+            onRun={() => void analyse(false)}
+            watch={aiWatch}
+            onWatchChange={(next) => {
+              setAiWatch(next);
+              if (next) {
+                toast.info("Continuous AI surveillance on — reviewing every 3 minutes.");
+                if (monitor.epochs.length >= 30) void analyse(true);
+              }
+            }}
+            lastRunAt={aiLastRunAt}
+            feedbackContext={mode}
+          />
         ) : null}
 
         {tab !== "monitor" ? (
-        <section className={cn("grid gap-4", tab === "signal" && "lg:grid-cols-[2fr_1fr]")}>
-          {tab === "signal" ? (
-          <div className="space-y-4">
-            <div className="panel overflow-hidden">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
-                <h2 className="text-sm font-semibold">Filtered EEG · last 4 s</h2>
-                <span className="metric-value text-xs text-muted-foreground">
-                  0.5–45 Hz, 50 Hz notch · ±80 µV
-                </span>
-                <div className="flex gap-1.5 sm:ml-auto">
-                  {MUSE_CHANNELS.map((c) => (
-                    <span
-                      key={c}
-                      className={cn(
-                        "metric-value rounded px-1.5 py-0.5 text-xs",
-                        monitor.contactOk[c]
-                          ? "bg-signal/15 text-signal"
-                          : "bg-muted text-muted-foreground",
+          <section className={cn("grid gap-4", tab === "signal" && "lg:grid-cols-[2fr_1fr]")}>
+            {tab === "signal" ? (
+              <div className="space-y-4">
+                <div className="panel overflow-hidden">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
+                    <h2 className="text-sm font-semibold">Filtered EEG · last 4 s</h2>
+                    <span className="metric-value text-xs text-muted-foreground">
+                      0.5–45 Hz, 50 Hz notch · ±80 µV
+                    </span>
+                    <div className="flex gap-1.5 sm:ml-auto">
+                      {MUSE_CHANNELS.map((c) => (
+                        <span
+                          key={c}
+                          className={cn(
+                            "metric-value rounded px-1.5 py-0.5 text-xs",
+                            monitor.contactOk[c]
+                              ? "bg-signal/15 text-signal"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-[150px] px-2">
+                    <WaveformStrip
+                      data={monitor.waveform}
+                      suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+                      suppressed={latest?.isSuppressed ?? false}
+                    />
+                  </div>
+                </div>
+
+                <div className="panel px-3 py-4 sm:px-4">
+                  <h2 className="text-sm font-semibold">Detection thresholds</h2>
+                  <div className="mt-3">
+                    <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {DETECTION_PRESETS.map((p) => {
+                        const active = matchPreset(monitor.settings) === p.key;
+                        return (
+                          <Button
+                            key={p.key}
+                            size="sm"
+                            variant={active ? "default" : "outline"}
+                            title={p.description}
+                            onClick={() =>
+                              applySettings(p.settings, `Sensitivity preset set to ${p.label}`)
+                            }
+                          >
+                            {p.label}
+                          </Button>
+                        );
+                      })}
+                      {matchPreset(monitor.settings) === "custom" && (
+                        <span className="self-center text-xs text-muted-foreground">Custom</span>
                       )}
-                    >
-                      {c}
-                    </span>
-                  ))}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {DETECTION_PRESETS.find((p) => p.key === matchPreset(monitor.settings))
+                        ?.description ?? "Manually tuned thresholds."}
+                    </p>
+                  </div>
+                  <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Suppression amplitude</Label>
+                        <span className="metric-value">
+                          {monitor.settings.suppressionThresholdUv} µV
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={3}
+                        max={20}
+                        step={1}
+                        value={[monitor.settings.suppressionThresholdUv]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({
+                            ...monitor.settings,
+                            suppressionThresholdUv: v ?? 8,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Suppression ratio window</Label>
+                        <span className="metric-value">{monitor.settings.srWindowSeconds} s</span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={30}
+                        max={300}
+                        step={30}
+                        value={[monitor.settings.srWindowSeconds]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, srWindowSeconds: v ?? 60 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Seizure alert threshold</Label>
+                        <span className="metric-value">
+                          {monitor.settings.seizureThreshold.toFixed(2)}
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={0.3}
+                        max={0.9}
+                        step={0.01}
+                        value={[monitor.settings.seizureThreshold]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, seizureThreshold: v ?? 0.62 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Alert persistence</Label>
+                        <span className="metric-value">{monitor.settings.seizureEpochs} s</span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={[monitor.settings.seizureEpochs]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, seizureEpochs: v ?? 3 })
+                        }
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Consecutive 1 s epochs above threshold before an alert is raised.
+                      </p>
+                    </div>
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-xs font-semibold">Trend alerts</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Depth-index swings and new or worsening burst suppression are timestamped in
+                        the event log and marked on the DSA timeline.
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Depth drop alert</Label>
+                        <span className="metric-value">
+                          −{monitor.settings.depthDropUnits} units
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={5}
+                        max={40}
+                        step={1}
+                        value={[monitor.settings.depthDropUnits]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, depthDropUnits: v ?? 15 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Depth rise alert</Label>
+                        <span className="metric-value">
+                          +{monitor.settings.depthRiseUnits} units
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={5}
+                        max={40}
+                        step={1}
+                        value={[monitor.settings.depthRiseUnits]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, depthRiseUnits: v ?? 15 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Depth trend window</Label>
+                        <span className="metric-value">{monitor.settings.depthTrendSeconds} s</span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={30}
+                        max={300}
+                        step={15}
+                        value={[monitor.settings.depthTrendSeconds]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, depthTrendSeconds: v ?? 60 })
+                        }
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Change is measured across this window; one alert per window at most.
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">New burst suppression at</Label>
+                        <span className="metric-value">
+                          {monitor.settings.bsrAlertPercent} % SR
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={1}
+                        max={50}
+                        step={1}
+                        value={[monitor.settings.bsrAlertPercent]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, bsrAlertPercent: v ?? 10 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <Label className="text-xs">Worsening step</Label>
+                        <span className="metric-value">
+                          +{monitor.settings.bsrWorseningPercent} % SR
+                        </span>
+                      </div>
+                      <Slider
+                        className="mt-3"
+                        min={2}
+                        max={30}
+                        step={1}
+                        value={[monitor.settings.bsrWorseningPercent]}
+                        onValueChange={([v]) =>
+                          monitor.setSettings({ ...monitor.settings, bsrWorseningPercent: v ?? 10 })
+                        }
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Re-alerts each time the suppression ratio climbs a further step.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="h-[150px] px-2">
-                <WaveformStrip
-                  data={monitor.waveform}
-                  suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
-                  suppressed={latest?.isSuppressed ?? false}
-                />
-              </div>
-            </div>
+            ) : null}
 
-            <div className="panel px-3 py-4 sm:px-4">
-              <h2 className="text-sm font-semibold">Detection thresholds</h2>
-              <div className="mt-3">
-                <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {DETECTION_PRESETS.map((p) => {
-                    const active = matchPreset(monitor.settings) === p.key;
-                    return (
-                      <Button
-                        key={p.key}
-                        size="sm"
-                        variant={active ? "default" : "outline"}
-                        title={p.description}
-                        onClick={() => applySettings(p.settings, `Sensitivity preset set to ${p.label}`)}
-                      >
-                        {p.label}
-                      </Button>
-                    );
-                  })}
-                  {matchPreset(monitor.settings) === "custom" && (
-                    <span className="self-center text-xs text-muted-foreground">Custom</span>
-                  )}
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {DETECTION_PRESETS.find((p) => p.key === matchPreset(monitor.settings))
-                    ?.description ?? "Manually tuned thresholds."}
-                </p>
+            <div className="panel overflow-hidden">
+              <div className="border-b border-border px-4 py-2.5">
+                <h2 className="text-sm font-semibold">Event log</h2>
               </div>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Suppression amplitude</Label>
-                    <span className="metric-value">
-                      {monitor.settings.suppressionThresholdUv} µV
-                    </span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={3}
-                    max={20}
-                    step={1}
-                    value={[monitor.settings.suppressionThresholdUv]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, suppressionThresholdUv: v ?? 8 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Suppression ratio window</Label>
-                    <span className="metric-value">{monitor.settings.srWindowSeconds} s</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={30}
-                    max={300}
-                    step={30}
-                    value={[monitor.settings.srWindowSeconds]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, srWindowSeconds: v ?? 60 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Seizure alert threshold</Label>
-                    <span className="metric-value">
-                      {monitor.settings.seizureThreshold.toFixed(2)}
-                    </span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={0.3}
-                    max={0.9}
-                    step={0.01}
-                    value={[monitor.settings.seizureThreshold]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, seizureThreshold: v ?? 0.62 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Alert persistence</Label>
-                    <span className="metric-value">{monitor.settings.seizureEpochs} s</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={[monitor.settings.seizureEpochs]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, seizureEpochs: v ?? 3 })
-                    }
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Consecutive 1 s epochs above threshold before an alert is raised.
-                  </p>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <h3 className="text-xs font-semibold">Trend alerts</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Depth-index swings and new or worsening burst suppression are timestamped in
-                    the event log and marked on the DSA timeline.
-                  </p>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Depth drop alert</Label>
-                    <span className="metric-value">−{monitor.settings.depthDropUnits} units</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={5}
-                    max={40}
-                    step={1}
-                    value={[monitor.settings.depthDropUnits]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, depthDropUnits: v ?? 15 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Depth rise alert</Label>
-                    <span className="metric-value">+{monitor.settings.depthRiseUnits} units</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={5}
-                    max={40}
-                    step={1}
-                    value={[monitor.settings.depthRiseUnits]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, depthRiseUnits: v ?? 15 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Depth trend window</Label>
-                    <span className="metric-value">{monitor.settings.depthTrendSeconds} s</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={30}
-                    max={300}
-                    step={15}
-                    value={[monitor.settings.depthTrendSeconds]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, depthTrendSeconds: v ?? 60 })
-                    }
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Change is measured across this window; one alert per window at most.
-                  </p>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">New burst suppression at</Label>
-                    <span className="metric-value">{monitor.settings.bsrAlertPercent} % SR</span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={1}
-                    max={50}
-                    step={1}
-                    value={[monitor.settings.bsrAlertPercent]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, bsrAlertPercent: v ?? 10 })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <Label className="text-xs">Worsening step</Label>
-                    <span className="metric-value">
-                      +{monitor.settings.bsrWorseningPercent} % SR
-                    </span>
-                  </div>
-                  <Slider
-                    className="mt-3"
-                    min={2}
-                    max={30}
-                    step={1}
-                    value={[monitor.settings.bsrWorseningPercent]}
-                    onValueChange={([v]) =>
-                      monitor.setSettings({ ...monitor.settings, bsrWorseningPercent: v ?? 10 })
-                    }
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Re-alerts each time the suppression ratio climbs a further step.
-                  </p>
-                </div>
+              <div className="max-h-[430px] overflow-y-auto">
+                <EventLog events={allEvents} />
               </div>
             </div>
-          </div>
-          ) : null}
-
-          <div className="panel overflow-hidden">
-            <div className="border-b border-border px-4 py-2.5">
-              <h2 className="text-sm font-semibold">Event log</h2>
-            </div>
-            <div className="max-h-[430px] overflow-y-auto">
-              <EventLog events={allEvents} />
-            </div>
-          </div>
-        </section>
+          </section>
         ) : null}
 
         <p className="pb-6 text-xs text-muted-foreground">
@@ -1481,8 +1521,8 @@ function Monitor() {
             <>
               <CaseFields meta={meta} onChange={setMeta} idPrefix="save" />
               <p className="metric-value text-xs text-muted-foreground">
-                {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} ·{" "}
-                {allEvents.length} events ({markers.length} clinician markers)
+                {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} · {allEvents.length}{" "}
+                events ({markers.length} clinician markers)
               </p>
             </>
           ) : (
@@ -1530,8 +1570,8 @@ function Monitor() {
           <DialogHeader>
             <DialogTitle>End case {meta.caseCode ? `“${meta.caseCode}”` : ""}?</DialogTitle>
             <DialogDescription>
-              Streaming stops and the recording is closed. File it now to keep the trend, events
-              and alarm history — nothing is stored until you do.
+              Streaming stops and the recording is closed. File it now to keep the trend, events and
+              alarm history — nothing is stored until you do.
             </DialogDescription>
           </DialogHeader>
           <p className="metric-value text-xs text-muted-foreground">

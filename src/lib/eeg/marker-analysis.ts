@@ -90,7 +90,10 @@ function describe(deltas: MarkerMetricDelta[]): string {
   };
   const notable = deltas
     .filter((d) => d.change != null && Math.abs(d.change) >= (scale[d.metric] ?? 1))
-    .sort((a, b) => Math.abs(b.change! / (scale[b.metric] ?? 1)) - Math.abs(a.change! / (scale[a.metric] ?? 1)))
+    .sort(
+      (a, b) =>
+        Math.abs(b.change! / (scale[b.metric] ?? 1)) - Math.abs(a.change! / (scale[a.metric] ?? 1)),
+    )
     .slice(0, 3);
   if (!notable.length) return "No clear change in the tracked indices around this marker.";
   return notable
@@ -117,21 +120,28 @@ export function analyseMarkers(
 ): MarkerResponse[] {
   const before = options.beforeSeconds ?? 60;
   const after = options.afterSeconds ?? 120;
-  const markers = events
-    .filter((e) => e.kind === "annotation")
-    .sort((a, b) => a.t - b.t);
+  const markers = events.filter((e) => e.kind === "annotation").sort((a, b) => a.t - b.t);
 
   return markers.map((m) => {
     const pre = epochs.filter((e) => e.t >= m.t - before && e.t < m.t);
     const post = epochs.filter((e) => e.t > m.t && e.t <= m.t + after);
     const deltas: MarkerMetricDelta[] = METRICS.map((metric) => {
-      const b = round(mean(pick(pre, metric)), metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1);
-      const a = round(mean(pick(post, metric)), metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1);
+      const b = round(
+        mean(pick(pre, metric)),
+        metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1,
+      );
+      const a = round(
+        mean(pick(post, metric)),
+        metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1,
+      );
       return {
         metric,
         before: b,
         after: a,
-        change: b != null && a != null ? round(a - b, metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1) : null,
+        change:
+          b != null && a != null
+            ? round(a - b, metric === "seizureScore" || metric === "stateEntropy" ? 2 : 1)
+            : null,
       };
     });
     const followedBy = events

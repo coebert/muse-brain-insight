@@ -45,10 +45,10 @@ export function EventLog({ events }: { events: DetectedEvent[] }) {
                 isMarker
                   ? "text-marker"
                   : event.severity === "critical"
-                  ? "text-critical"
-                  : event.severity === "warning"
-                    ? "text-caution"
-                    : "text-muted-foreground",
+                    ? "text-critical"
+                    : event.severity === "warning"
+                      ? "text-caution"
+                      : "text-muted-foreground",
               )}
             />
             <div className="min-w-0">

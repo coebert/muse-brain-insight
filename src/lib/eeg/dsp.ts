@@ -189,9 +189,9 @@ export function highpass(fc: number, fs: number, q = 0.7071): BiquadCoeffs {
   const alpha = Math.sin(w0) / (2 * q);
   const a0 = 1 + alpha;
   return {
-    b0: ((1 + c) / 2) / a0,
-    b1: (-(1 + c)) / a0,
-    b2: ((1 + c) / 2) / a0,
+    b0: (1 + c) / 2 / a0,
+    b1: -(1 + c) / a0,
+    b2: (1 + c) / 2 / a0,
     a1: (-2 * c) / a0,
     a2: (1 - alpha) / a0,
   };
@@ -203,9 +203,9 @@ export function lowpass(fc: number, fs: number, q = 0.7071): BiquadCoeffs {
   const alpha = Math.sin(w0) / (2 * q);
   const a0 = 1 + alpha;
   return {
-    b0: ((1 - c) / 2) / a0,
+    b0: (1 - c) / 2 / a0,
     b1: (1 - c) / a0,
-    b2: ((1 - c) / 2) / a0,
+    b2: (1 - c) / 2 / a0,
     a1: (-2 * c) / a0,
     a2: (1 - alpha) / a0,
   };
@@ -366,7 +366,12 @@ export function signalQuality(data: Float64Array, psd: Psd, fs = MUSE_SAMPLE_RAT
  * Strength of the dominant autocorrelation peak between minHz and maxHz.
  * Rhythmic (seizure-like) discharges give a value near 1; noise gives ~0.
  */
-export function rhythmicity(data: Float64Array, fs = MUSE_SAMPLE_RATE, minHz = 1.5, maxHz = 12): number {
+export function rhythmicity(
+  data: Float64Array,
+  fs = MUSE_SAMPLE_RATE,
+  minHz = 1.5,
+  maxHz = 12,
+): number {
   const n = data.length;
   let mean = 0;
   for (let i = 0; i < n; i++) mean += data[i]!;

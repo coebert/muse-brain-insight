@@ -1,11 +1,7 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ, type Epoch } from "@/lib/eeg/analysis";
-import {
-  DSA_STOPS,
-  drawBandGutter,
-  paintDsaHeatmap,
-} from "@/lib/eeg/dsa-render";
+import { DSA_STOPS, drawBandGutter, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
 
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
@@ -31,20 +27,10 @@ interface Props {
   traces?: DsaTrace[] | undefined;
 }
 
-function DsaChartInner({
-  epochs,
-  frames,
-  windowSeconds,
-  dbMin = -6,
-  dbMax = 26,
-  traces,
-}: Props) {
+function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, traces }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Stable identity so the canvas only redraws when the data really changed.
-  const spectra = useMemo(
-    () => frames ?? (epochs ?? []).map((e) => e.spectrum),
-    [frames, epochs],
-  );
+  const spectra = useMemo(() => frames ?? (epochs ?? []).map((e) => e.spectrum), [frames, epochs]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -201,7 +187,13 @@ function DsaChartInner({
     ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
   }, [spectra, windowSeconds, dbMin, dbMax, traces]);
 
-  return <canvas ref={canvasRef} className="h-full w-full rounded-md" aria-label="Density spectral array" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="h-full w-full rounded-md"
+      aria-label="Density spectral array"
+    />
+  );
 }
 
 export const DsaChart = memo(DsaChartInner);

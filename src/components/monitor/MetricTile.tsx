@@ -65,15 +65,15 @@ function MetricTileInner({
         )}
       >
         {value}
-        {unit ? <span className="ml-1 text-sm text-muted-foreground sm:text-base">{unit}</span> : null}
+        {unit ? (
+          <span className="ml-1 text-sm text-muted-foreground sm:text-base">{unit}</span>
+        ) : null}
       </p>
       {unreliable || degraded ? (
         <p
           className={cn(
             "mt-1 inline-flex rounded-sm px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.14em] uppercase",
-            unreliable
-              ? "bg-critical/15 text-critical"
-              : "bg-caution/15 text-caution",
+            unreliable ? "bg-critical/15 text-critical" : "bg-caution/15 text-caution",
           )}
         >
           {unreliable ? "Unreliable" : "Degraded"}
@@ -90,9 +90,7 @@ function MetricTileInner({
         >
           <div className="flex items-center justify-between text-xs tracking-wide text-muted-foreground uppercase">
             <span>Confidence</span>
-            <span className={cn("metric-value", conf.text)}>
-              {(confidence * 100).toFixed(0)} %
-            </span>
+            <span className={cn("metric-value", conf.text)}>{(confidence * 100).toFixed(0)} %</span>
           </div>
           <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
             <div

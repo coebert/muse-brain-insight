@@ -35,7 +35,6 @@ describe("EegAnalyzer", () => {
     for (let t = 1; t <= 40; t++) last = a.analyze(suppressed(), t);
     expect(last.isSuppressed).toBe(true);
     expect(last.suppressionRatio).toBeGreaterThan(90);
-
   });
 
   it("keeps the suppression ratio at zero for continuous activity", () => {

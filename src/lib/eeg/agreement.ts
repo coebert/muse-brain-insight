@@ -95,7 +95,20 @@ export function parseTime(raw: string): number | null {
 
 const TIME_HINTS = ["time", "t_", "timestamp", "seconds", "sec", "elapsed", "clock", "offset"];
 const INDEX_HINTS = ["bis", "openibis", "depth", "index", "doa", "reference", "ref"];
-const EEG_HINTS = ["eeg", "raw", "uv", "µv", "microvolt", "signal", "amplitude", "ch", "af7", "af8", "tp9", "tp10"];
+const EEG_HINTS = [
+  "eeg",
+  "raw",
+  "uv",
+  "µv",
+  "microvolt",
+  "signal",
+  "amplitude",
+  "ch",
+  "af7",
+  "af8",
+  "tp9",
+  "tp10",
+];
 
 function score(header: string, hints: string[]): number {
   const h = header.toLowerCase();
@@ -227,7 +240,10 @@ export function alignSeries(
   const out: AlignedPair[] = [];
   let j = 0;
   for (const ref of reference) {
-    while (j + 1 < shifted.length && Math.abs(shifted[j + 1]!.t - ref.t) <= Math.abs(shifted[j]!.t - ref.t)) {
+    while (
+      j + 1 < shifted.length &&
+      Math.abs(shifted[j + 1]!.t - ref.t) <= Math.abs(shifted[j]!.t - ref.t)
+    ) {
       j++;
     }
     const cand = shifted[j]!;
@@ -288,7 +304,8 @@ export function agreementMetrics(pairs: AlignedPair[]): AgreementMetrics {
   const sd = Math.sqrt(variance(diffs, bias));
   const vr = variance(refs, mr);
   const vt = variance(tests, mt);
-  const cov = pairs.reduce((a, p) => a + (p.reference - mr) * (p.test - mt), 0) / Math.max(1, n - 1);
+  const cov =
+    pairs.reduce((a, p) => a + (p.reference - mr) * (p.test - mt), 0) / Math.max(1, n - 1);
   const r = pearson(refs, tests);
   const cccDenom = vr + vt + (mr - mt) * (mr - mt);
   const ccc = cccDenom > 1e-9 ? (2 * cov) / cccDenom : null;
@@ -326,7 +343,10 @@ export function bestLagSeconds(
   for (let lag = -maxLag; lag <= maxLag; lag += step) {
     const pairs = alignSeries(reference, test, tolerance, lag);
     if (pairs.length < 5) continue;
-    const r = pearson(pairs.map((p) => p.reference), pairs.map((p) => p.test));
+    const r = pearson(
+      pairs.map((p) => p.reference),
+      pairs.map((p) => p.test),
+    );
     if (r !== null && (best.r === null || r > best.r)) best = { lag, r };
   }
   return best;
@@ -396,7 +416,8 @@ export function buildReportMarkdown(
 export function buildPairedCsv(pairs: AlignedPair[]): string {
   const head = "t_seconds,reference,test,difference";
   const body = pairs.map(
-    (p) => `${p.t.toFixed(2)},${p.reference.toFixed(3)},${p.test.toFixed(3)},${(p.test - p.reference).toFixed(3)}`,
+    (p) =>
+      `${p.t.toFixed(2)},${p.reference.toFixed(3)},${p.test.toFixed(3)},${(p.test - p.reference).toFixed(3)}`,
   );
   return [head, ...body].join("\n");
 }

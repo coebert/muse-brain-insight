@@ -77,8 +77,7 @@ const DATA_LABEL: Record<string, string> = {
 };
 
 /** Hatched overlay marking windows whose EEG or evidence is incomplete. */
-const HATCH =
-  "repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 2px, transparent 2px 5px)";
+const HATCH = "repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 2px, transparent 2px 5px)";
 
 function windowOf(evidence: AlertEvidence[]): { start: number | null; end: number | null } {
   const starts = evidence
@@ -244,9 +243,7 @@ export function SessionAlertTimeline({
             <>
               {" · "}
               <span className={incompleteCount ? "text-caution" : "text-success"}>
-                {incompleteCount
-                  ? `${incompleteCount} with missing data`
-                  : "all fully evidenced"}
+                {incompleteCount ? `${incompleteCount} with missing data` : "all fully evidenced"}
               </span>
             </>
           ) : null}

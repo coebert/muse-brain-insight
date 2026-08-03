@@ -119,7 +119,8 @@ function categoryAdvice(b: PerformanceBucket): CalibrationRecommendation | null 
       rationale: `Agreement is high (${pct(a)}) but ${b.falseNegatives} finding${
         b.falseNegatives === 1 ? " was" : "s were"
       } logged as missed (recall ${pct(b.recall)}).`,
-      action: "Relax the evidence bar so borderline cases are surfaced, and keep confidence unweighted.",
+      action:
+        "Relax the evidence bar so borderline cases are surfaced, and keep confidence unweighted.",
       confidenceWeight: 1.1,
       evidenceBar: "relaxed",
       priority: "high",

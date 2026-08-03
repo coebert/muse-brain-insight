@@ -50,9 +50,7 @@ function HemiEventOverlayInner({ events, side, elapsed, windowSeconds, compact }
             <div
               className={cn(
                 "h-full border-x",
-                seizure
-                  ? "border-critical/80 bg-critical/20"
-                  : "border-caution/80 bg-caution/15",
+                seizure ? "border-critical/80 bg-critical/20" : "border-caution/80 bg-caution/15",
                 suspect && "border-dashed opacity-70",
                 e.ongoing && "animate-pulse",
               )}

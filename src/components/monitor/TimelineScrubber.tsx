@@ -161,9 +161,7 @@ export function TimelineScrubber({
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {readout.map((r) => (
           <div key={r.label} className="rounded-md border border-border px-2 py-1">
-            <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">
-              {r.label}
-            </p>
+            <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">{r.label}</p>
             <p className="metric-value text-sm">{r.value}</p>
           </div>
         ))}

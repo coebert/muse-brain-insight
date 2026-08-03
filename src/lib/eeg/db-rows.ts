@@ -31,8 +31,7 @@ export type EpochRow = Pick<
   | "depth_components"
 >;
 
-export const EVENT_COLUMNS =
-  "t_offset_seconds, duration_seconds, kind, severity, detail" as const;
+export const EVENT_COLUMNS = "t_offset_seconds, duration_seconds, kind, severity, detail" as const;
 
 export type EventRow = Pick<
   EegEvent,

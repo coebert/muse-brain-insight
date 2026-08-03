@@ -4,11 +4,7 @@
 // sedated, anaesthesia or burst suppression land in the expected index range.
 
 import { supabase } from "@/integrations/supabase/client";
-import {
-  DEFAULT_DEPTH_CALIBRATION,
-  depthMixer,
-  type DepthCalibration,
-} from "@/lib/eeg/depth";
+import { DEFAULT_DEPTH_CALIBRATION, depthMixer, type DepthCalibration } from "@/lib/eeg/depth";
 
 export type StateLabel = "awake" | "sedated" | "anaesthesia" | "burst_suppression";
 
@@ -23,8 +19,7 @@ export const TARGETS: Record<StateLabel, [number, number]> = Object.fromEntries(
   STATE_LABELS.map((s) => [s.value, s.target]),
 ) as Record<StateLabel, [number, number]>;
 
-export const stateLabelName = (v: string) =>
-  STATE_LABELS.find((s) => s.value === v)?.label ?? v;
+export const stateLabelName = (v: string) => STATE_LABELS.find((s) => s.value === v)?.label ?? v;
 
 export interface LabelledPeriod {
   id: string;
@@ -219,10 +214,7 @@ function nelderMead(
   return simplex[0]!.x;
 }
 
-export function fitCalibration(
-  samples: CalibrationSample[],
-  regularisation = 0.5,
-): FitResult {
+export function fitCalibration(samples: CalibrationSample[], regularisation = 0.5): FitResult {
   const start = toVector(DEFAULT_DEPTH_CALIBRATION);
   const steps = [8, 8, 3, 1.5, 8, 8, 3, 1.5, 8, 8, 4, 2];
   const best = nelderMead((v) => loss(v, samples, regularisation), start, steps);

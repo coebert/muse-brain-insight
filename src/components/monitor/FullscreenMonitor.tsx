@@ -202,9 +202,7 @@ export function FullscreenMonitor({
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1.6fr)_minmax(0,1fr)] gap-2 short:grid-rows-[auto_minmax(0,1fr)]!">
           <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
             <div className="flex items-center justify-between px-2 pt-1">
-              <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-                EEG
-              </span>
+              <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">EEG</span>
               <span className="metric-value text-xs text-muted-foreground">
                 {latest ? `${latest.amplitudeUv.toFixed(0)} µV p-p` : "—"}
               </span>
@@ -251,11 +249,7 @@ export function FullscreenMonitor({
               elapsed={elapsed}
               compact
             />
-            <DsaMarkerRail
-              markers={markerRail}
-              elapsed={elapsed}
-              windowSeconds={windowSeconds}
-            />
+            <DsaMarkerRail markers={markerRail} elapsed={elapsed} windowSeconds={windowSeconds} />
           </div>
 
           <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
@@ -264,9 +258,7 @@ export function FullscreenMonitor({
                 <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                   Depth trend (0–100)
                 </span>
-                <span className="metric-value text-xs text-signal">
-                  {depth?.index ?? "—"}
-                </span>
+                <span className="metric-value text-xs text-signal">{depth?.index ?? "—"}</span>
               </div>
               <div className="h-[calc(100%-18px)] min-h-[70px]">
                 <TrendLine
@@ -290,7 +282,13 @@ export function FullscreenMonitor({
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">
                 <TrendLine values={sefTrend} min={0} max={30} color="rgb(120,200,90)" />
                 <div className="pointer-events-none absolute inset-0">
-                  <TrendLine values={srTrend} min={0} max={100} color="rgb(245,190,40)" transparent />
+                  <TrendLine
+                    values={srTrend}
+                    min={0}
+                    max={100}
+                    color="rgb(245,190,40)"
+                    transparent
+                  />
                 </div>
               </div>
             </div>

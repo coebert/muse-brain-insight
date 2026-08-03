@@ -88,7 +88,13 @@ function HemiDsaPanelInner({
       {
         key: "combined",
         side: compact ? "L+R" : overlay ? "Overlay" : "Combined",
-        montage: overlay ? (compact ? "SEF95 overlay" : "L vs R SEF95") : compact ? "mean" : "L + R mean",
+        montage: overlay
+          ? compact
+            ? "SEF95 overlay"
+            : "L vs R SEF95"
+          : compact
+            ? "mean"
+            : "L + R mean",
         frames: combineHemiSpectra(hemiSpectra),
         metrics: worstHemi(hemiLatest),
         overlaySide: "both",
