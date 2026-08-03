@@ -63,7 +63,7 @@ function BigNumber({
         unreliable && "border-dashed border-muted-foreground/50",
       )}
     >
-      <p className="flex items-center gap-1.5 text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+      <p className="flex items-center gap-1.5 text-xs tracking-[0.16em] text-muted-foreground uppercase">
         {label}
         {unreliable ? (
           <span className="rounded-sm bg-critical/15 px-1 py-px text-[9px] tracking-normal text-critical">
@@ -81,7 +81,7 @@ function BigNumber({
         <span className="text-[clamp(1.6rem,5.5vmin,3rem)]">{value}</span>
         {unit ? <span className="ml-1 text-sm text-muted-foreground">{unit}</span> : null}
       </p>
-      {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
+      {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -147,7 +147,7 @@ export function FullscreenMonitor({
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
         <span
           className={cn(
-            "metric-value rounded-full border px-2 py-0.5 text-[10px]",
+            "metric-value rounded-full border px-2 py-0.5 text-xs",
             streaming ? "border-signal/50 text-signal" : "border-border text-muted-foreground",
           )}
         >
@@ -156,7 +156,7 @@ export function FullscreenMonitor({
         <span className="metric-value text-sm">{formatClock(elapsed)}</span>
         <span className="hidden text-xs text-muted-foreground sm:inline">{modeLabel} mode</span>
         <span
-          className={cn("metric-value ml-auto text-[11px]", toneText[qualityTone])}
+          className={cn("metric-value ml-auto text-xs", toneText[qualityTone])}
           title={quality?.reasons.join(", ")}
         >
           Signal {quality ? `${Math.round(quality.score * 100)} %` : "—"}
@@ -181,10 +181,10 @@ export function FullscreenMonitor({
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1.6fr)_minmax(0,1fr)] gap-2 short:grid-rows-[auto_minmax(0,1fr)]!">
           <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
             <div className="flex items-center justify-between px-2 pt-1">
-              <span className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+              <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                 EEG
               </span>
-              <span className="metric-value text-[10px] text-muted-foreground">
+              <span className="metric-value text-xs text-muted-foreground">
                 {latest ? `${latest.amplitudeUv.toFixed(0)} µV p-p` : "—"}
               </span>
             </div>
@@ -198,7 +198,7 @@ export function FullscreenMonitor({
           </div>
 
           <div className="relative min-h-[140px] overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
-            <span className="absolute top-1 left-2 z-10 text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+            <span className="absolute top-1 left-2 z-10 text-xs tracking-[0.16em] text-muted-foreground uppercase">
               DSA · {windowMinutes} min
             </span>
             <DsaChart epochs={epochs} windowSeconds={windowSeconds} />
@@ -215,7 +215,7 @@ export function FullscreenMonitor({
                   <div className="h-full w-px bg-marker/80" />
                   <span
                     className={cn(
-                      "metric-value absolute bottom-1 max-w-[130px] truncate rounded bg-marker/20 px-1 text-[10px] text-marker",
+                      "metric-value absolute bottom-1 max-w-[130px] truncate rounded bg-marker/20 px-1 text-xs text-marker",
                       left > 65 ? "right-1" : "left-1",
                     )}
                   >
@@ -229,10 +229,10 @@ export function FullscreenMonitor({
           <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
-                <span className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                   Depth trend (0–100)
                 </span>
-                <span className="metric-value text-[10px] text-signal">
+                <span className="metric-value text-xs text-signal">
                   {depth?.index ?? "—"}
                 </span>
               </div>
@@ -248,10 +248,10 @@ export function FullscreenMonitor({
             </div>
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
-                <span className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                   SEF95 / SR
                 </span>
-                <span className="metric-value text-[10px] text-muted-foreground">
+                <span className="metric-value text-xs text-muted-foreground">
                   {latest ? `${latest.sef95.toFixed(1)} Hz · ${srValue.toFixed(0)} %` : "—"}
                 </span>
               </div>

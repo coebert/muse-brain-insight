@@ -56,7 +56,7 @@ export function AlarmBanner({
           )}
           Alarms
         </h2>
-        <span className="metric-value text-[11px] text-muted-foreground">
+        <span className="metric-value text-xs text-muted-foreground">
           {unacked.length
             ? `${unacked.length} unacknowledged`
             : alarms.length
@@ -100,12 +100,12 @@ export function AlarmBanner({
                 a.acknowledgedAt != null && "opacity-60",
               )}
             >
-              <span className="metric-value text-[11px] uppercase">
+              <span className="metric-value text-xs uppercase">
                 {PRIORITY_LABEL[a.priority]}
               </span>
               <span className="text-sm font-semibold text-foreground">{a.title}</span>
               <span className="text-xs text-muted-foreground">{a.detail}</span>
-              <span className="metric-value text-[11px] text-muted-foreground">
+              <span className="metric-value text-xs text-muted-foreground">
                 {formatClock(a.t)}
                 {a.resolved ? " · resolved" : ""}
               </span>
@@ -119,7 +119,7 @@ export function AlarmBanner({
                   <Check className="size-4" /> Acknowledge
                 </Button>
               ) : (
-                <span className="metric-value ml-auto text-[11px] text-muted-foreground">
+                <span className="metric-value ml-auto text-xs text-muted-foreground">
                   acknowledged
                 </span>
               )}

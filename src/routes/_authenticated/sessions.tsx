@@ -142,7 +142,7 @@ function Sessions() {
                   {s.clinical_features.map((f: string) => (
                     <span
                       key={f}
-                      className="rounded-full bg-signal/15 px-2 py-0.5 text-[11px] text-signal"
+                      className="rounded-full bg-signal/15 px-2 py-0.5 text-xs text-signal"
                     >
                       {f}
                     </span>
@@ -188,7 +188,7 @@ function Sessions() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="metric-value mt-0.5 text-sm">{value}</dd>
     </div>
   );

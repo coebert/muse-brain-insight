@@ -91,9 +91,9 @@ const SEVERITY_COLOR: Record<string, string> = {
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="panel px-3 py-2">
-      <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
+      <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
       <p className="metric-value text-lg leading-tight">{value}</p>
-      {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
+      {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -111,7 +111,7 @@ function TrendPanel({
     <section className="panel px-3 py-3 sm:px-4">
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold">{title}</h2>
-        {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
+        {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
       </div>
       <div className="mt-2 h-44">{children}</div>
     </section>
@@ -399,7 +399,7 @@ function Trends() {
 
         <div className="panel mt-4 flex flex-wrap items-end gap-4 px-3 py-3 sm:px-4">
           <div className="w-full min-w-0 sm:w-auto sm:min-w-72">
-            <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            <label className="text-xs tracking-wide text-muted-foreground uppercase">
               Patient / case
             </label>
             <Select value={selectedId} onValueChange={setSessionId}>
@@ -499,7 +499,7 @@ function Trends() {
             <section className="panel mt-4 px-3 py-3 sm:px-4">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-sm font-semibold">Whole-session density spectral array</h2>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {spectra.length} epochs compressed to screen width
                 </span>
               </div>

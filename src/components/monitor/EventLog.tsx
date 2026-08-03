@@ -54,7 +54,7 @@ export function EventLog({ events }: { events: DetectedEvent[] }) {
             <div className="min-w-0">
               <p className="text-sm font-medium">{isMarker ? event.detail : label}</p>
               {isMarker ? null : <p className="text-xs text-muted-foreground">{event.detail}</p>}
-              <p className="metric-value mt-0.5 text-[11px] text-muted-foreground">
+              <p className="metric-value mt-0.5 text-xs text-muted-foreground">
                 {formatClock(event.t)}
                 {isMarker ? " · marked by clinician" : ` · ${event.duration.toFixed(0)} s`}
               </p>

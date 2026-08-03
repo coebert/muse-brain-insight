@@ -413,7 +413,7 @@ function Monitor() {
           </div>
           <span
             className={cn(
-              "metric-value rounded-full border px-2.5 py-0.5 text-[11px] short:hidden md:short:inline",
+              "metric-value rounded-full border px-2.5 py-0.5 text-xs short:hidden md:short:inline",
               reconnecting
                 ? "border-caution/60 text-caution"
                 : streaming
@@ -435,7 +435,7 @@ function Monitor() {
             </span>
           ) : null}
           {meta.caseCode && caseState !== "idle" ? (
-            <span className="metric-value truncate rounded bg-muted px-2 py-0.5 text-[11px]">
+            <span className="metric-value truncate rounded bg-muted px-2 py-0.5 text-xs">
               {meta.caseCode}
             </span>
           ) : null}
@@ -556,7 +556,7 @@ function Monitor() {
 
       <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 sm:px-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground short:hidden">
-          <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-[11px] text-signal">
+          <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-xs text-signal">
             {activeMode.label} mode
           </span>
           <span>{activeMode.blurb}</span>
@@ -692,7 +692,7 @@ function Monitor() {
                     />
                     <span
                       className={cn(
-                        "metric-value absolute bottom-1 max-w-[150px] truncate rounded px-1 py-0.5 text-[10px] whitespace-nowrap",
+                        "metric-value absolute bottom-1 max-w-[150px] truncate rounded px-1 py-0.5 text-xs whitespace-nowrap",
                         tone === "critical"
                           ? "bg-critical/20 text-critical"
                           : "bg-caution/20 text-caution",
@@ -723,7 +723,7 @@ function Monitor() {
                   <div className="h-full w-px bg-marker/80" />
                   <span
                     className={cn(
-                      "metric-value absolute top-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-[10px] whitespace-nowrap text-marker",
+                      "metric-value absolute top-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-xs whitespace-nowrap text-marker",
                       left > 65 ? "right-1" : "left-1",
                     )}
                   >
@@ -824,12 +824,12 @@ function Monitor() {
                   >
                     <Undo2 className="size-4" /> Undo last
                   </Button>
-                  <span className="metric-value text-[11px] text-muted-foreground">
+                  <span className="metric-value text-xs text-muted-foreground">
                     {markers.length} marker{markers.length === 1 ? "" : "s"} this session
                   </span>
                 </>
               ) : (
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Markers are timestamped against the running clock and saved with the session.
                 </span>
               )}
@@ -844,7 +844,7 @@ function Monitor() {
                       key={`${m.t}-${i}`}
                       className="flex items-center gap-1.5 rounded-full bg-marker/15 px-2 py-1 text-xs text-marker"
                     >
-                      <span className="metric-value text-[11px] opacity-80">
+                      <span className="metric-value text-xs opacity-80">
                         {formatClock(m.t)}
                       </span>
                       {m.detail}
@@ -1084,7 +1084,7 @@ function Monitor() {
             <div className="panel overflow-hidden">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
                 <h2 className="text-sm font-semibold">Filtered EEG · last 4 s</h2>
-                <span className="metric-value text-[11px] text-muted-foreground">
+                <span className="metric-value text-xs text-muted-foreground">
                   0.5–45 Hz, 50 Hz notch · ±80 µV
                 </span>
                 <div className="flex gap-1.5 sm:ml-auto">
@@ -1092,7 +1092,7 @@ function Monitor() {
                     <span
                       key={c}
                       className={cn(
-                        "metric-value rounded px-1.5 py-0.5 text-[10px]",
+                        "metric-value rounded px-1.5 py-0.5 text-xs",
                         monitor.contactOk[c]
                           ? "bg-signal/15 text-signal"
                           : "bg-muted text-muted-foreground",
@@ -1342,7 +1342,7 @@ function Monitor() {
           {user ? (
             <>
               <CaseFields meta={meta} onChange={setMeta} idPrefix="save" />
-              <p className="metric-value text-[11px] text-muted-foreground">
+              <p className="metric-value text-xs text-muted-foreground">
                 {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} ·{" "}
                 {allEvents.length} events ({markers.length} clinician markers)
               </p>

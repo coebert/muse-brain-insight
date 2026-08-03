@@ -74,9 +74,9 @@ function pct(v: number | null | undefined): string {
 function Tile({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="panel p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="metric-value text-2xl font-semibold">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -88,7 +88,7 @@ function BucketRow({ b }: { b: PerformanceBucket }) {
     <li className="space-y-1">
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="text-sm font-medium">{b.label}</span>
-        <span className="metric-value text-[11px] text-muted-foreground">
+        <span className="metric-value text-xs text-muted-foreground">
           {b.truePositives} confirmed · {b.falsePositives} rejected · {b.falseNegatives} missed
         </span>
         <span className="metric-value ml-auto text-xs font-semibold">
@@ -224,7 +224,7 @@ function ModelPerformancePage() {
             </section>
 
             <section className="panel p-4">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Precision, recall and rejection over time (weekly)
               </h2>
               <div className="mt-3 h-64">
@@ -255,10 +255,10 @@ function ModelPerformancePage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Confidence calibration
                 </h2>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Claimed hit rate for each stated confidence level versus what you actually confirmed.
                 </p>
                 <div className="mt-3 h-56">
@@ -280,7 +280,7 @@ function ModelPerformancePage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <ul className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                   {data.calibration
                     .filter((b) => b.count > 0)
                     .map((b) => (
@@ -297,7 +297,7 @@ function ModelPerformancePage() {
               </section>
 
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Precision by model version (weekly)
                 </h2>
                 <div className="mt-3 h-56">
@@ -332,7 +332,7 @@ function ModelPerformancePage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Precision / recall by category
                 </h2>
                 <ul className="mt-3 space-y-3">
@@ -342,7 +342,7 @@ function ModelPerformancePage() {
                 </ul>
               </section>
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Precision / recall by severity
                 </h2>
                 <ul className="mt-3 space-y-3">
@@ -355,7 +355,7 @@ function ModelPerformancePage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Why alerts were rejected
                 </h2>
                 {data.topRejectionReasons.length ? (
@@ -372,7 +372,7 @@ function ModelPerformancePage() {
                 )}
               </section>
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Findings the reviewer missed
                 </h2>
                 {data.missedFindings.length ? (
@@ -380,11 +380,11 @@ function ModelPerformancePage() {
                     {data.missedFindings.map((m) => (
                       <li key={`${m.created_at}-${m.title}`}>
                         <span className="font-medium">{m.title}</span>{" "}
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {m.category} · {new Date(m.created_at).toLocaleDateString()}
                         </span>
                         {m.reason ? (
-                          <p className="text-[11px] text-muted-foreground">{m.reason}</p>
+                          <p className="text-xs text-muted-foreground">{m.reason}</p>
                         ) : null}
                       </li>
                     ))}

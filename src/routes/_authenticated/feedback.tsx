@@ -106,7 +106,7 @@ function BucketPanel({
 }) {
   return (
     <section className="panel p-4">
-      <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h2>
       {buckets.length ? (
@@ -216,7 +216,7 @@ function FeedbackAnalyticsPage() {
                 { label: "Agreement rate", value: pct(data.totals.accuracy) },
               ].map((t) => (
                 <div key={t.label} className="panel p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t.label}
                   </p>
                   <p className="metric-value mt-1 text-2xl font-semibold">{t.value}</p>
@@ -225,7 +225,7 @@ function FeedbackAnalyticsPage() {
             </section>
 
             <section className="panel p-4">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Agreement rate over time (%)
               </h2>
               <div className="mt-3 h-56">
@@ -255,7 +255,7 @@ function FeedbackAnalyticsPage() {
             </section>
 
             <section className="panel p-4">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Agreement by model version over time (%)
               </h2>
               <div className="mt-3 h-56">
@@ -312,7 +312,7 @@ function FeedbackAnalyticsPage() {
 
             {data.topIncorrectReasons.length ? (
               <section className="panel p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Most common reasons an alert was marked incorrect
                 </h2>
                 <ul className="mt-2 space-y-1 text-sm">

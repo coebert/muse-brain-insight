@@ -116,7 +116,7 @@ export function AlertEvidencePanel({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        className="flex w-full flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
       >
         {open ? (
           <ChevronDown className="h-3 w-3" aria-hidden />
@@ -160,15 +160,15 @@ export function AlertEvidencePanel({
                 <Icon className={`h-3 w-3 shrink-0 self-center ${meta.className}`} aria-hidden />
                 <span className="text-xs font-medium text-foreground">{e.feature}</span>
                 <span className="metric-value text-xs text-foreground">{e.value}</span>
-                <span className="metric-value text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span className="metric-value text-xs uppercase tracking-wide text-muted-foreground">
                   {DIRECTION_LABEL[e.direction] ?? e.direction}
                 </span>
                 {e.expected ? (
-                  <span className="metric-value text-[10px] text-muted-foreground">
+                  <span className="metric-value text-xs text-muted-foreground">
                     vs {e.expected}
                   </span>
                 ) : null}
-                <span className="metric-value ml-auto text-[10px] text-muted-foreground">
+                <span className="metric-value ml-auto text-xs text-muted-foreground">
                   {windowLabel(e)}
                 </span>
               </div>
@@ -183,7 +183,7 @@ export function AlertEvidencePanel({
                 />
               </div>
               {e.note ? (
-                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{e.note}</p>
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{e.note}</p>
               ) : null}
             </li>
             );
@@ -192,15 +192,15 @@ export function AlertEvidencePanel({
 
           {hasFeedback ? (
             <div className={`rounded-md border px-2 py-1.5 ${influenceMeta?.className ?? "border-border bg-muted/30"}`}>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
                 <MessageSquareQuote className="h-3 w-3" aria-hidden />
                 {influenceMeta?.label ?? "Your feedback on this alert"}
               </div>
               {influence?.note ? (
-                <p className="mt-0.5 text-[11px] leading-snug">{influence.note}</p>
+                <p className="mt-0.5 text-xs leading-snug">{influence.note}</p>
               ) : null}
               {priorFeedback ? (
-                <p className="metric-value mt-0.5 text-[10px] opacity-90">
+                <p className="metric-value mt-0.5 text-xs opacity-90">
                   Prior verdicts: {priorFeedback.correct} correct · {priorFeedback.incorrect}{" "}
                   incorrect
                   {priorFeedback.reasons.length
@@ -209,7 +209,7 @@ export function AlertEvidencePanel({
                 </p>
               ) : null}
               {tuning ? (
-                <p className="metric-value mt-0.5 text-[10px] opacity-90">
+                <p className="metric-value mt-0.5 text-xs opacity-90">
                   Adaptive tuning: {tuning.note} Confidence weight ×
                   {tuning.confidenceWeight.toFixed(2)}, evidence bar {tuning.evidenceBar}.
                 </p>

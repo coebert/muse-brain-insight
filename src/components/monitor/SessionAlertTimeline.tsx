@@ -237,7 +237,7 @@ export function SessionAlertTimeline({
     <section className="panel px-3 py-3 sm:px-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold">Alert &amp; decision timeline</h2>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {entries.length} alert{entries.length === 1 ? "" : "s"} with captured evidence and
           decisions
           {entries.length ? (
@@ -296,11 +296,11 @@ export function SessionAlertTimeline({
                 />
               )}
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+            <div className="mt-1 flex justify-between text-xs text-muted-foreground">
               <span>00:00</span>
               <span>{formatClock(span)}</span>
             </div>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Hatched bars mark windows with incomplete EEG coverage or evidence.
             </p>
           </div>
@@ -323,7 +323,7 @@ export function SessionAlertTimeline({
                     onClick={() => onSelectAlert?.(e.alertId)}
                     className="flex w-full flex-wrap items-baseline gap-x-2 gap-y-1 text-left"
                   >
-                    <span className="metric-value text-[11px] text-muted-foreground">
+                    <span className="metric-value text-xs text-muted-foreground">
                       <Clock className="mr-1 inline size-3" />
                       {e.windowStart == null
                         ? new Date(e.firstSeen).toLocaleTimeString()
@@ -331,17 +331,17 @@ export function SessionAlertTimeline({
                     </span>
                     <span className="text-sm font-medium">{e.title}</span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                      className={`rounded-full border px-2 py-0.5 text-xs uppercase tracking-wide ${
                         SEVERITY_CLASS[e.severity] ?? SEVERITY_CLASS["advisory"]
                       }`}
                     >
                       {e.severity}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {e.category.replace(/_/g, " ")}
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs uppercase tracking-wide ${
                         DATA_CLASS[e.dataLevel]
                       }`}
                     >
@@ -357,7 +357,7 @@ export function SessionAlertTimeline({
                   </button>
 
                   {e.dataLevel === "ok" ? null : (
-                    <ul className="mt-2 space-y-0.5 rounded-md border border-dashed border-border bg-muted/20 px-2 py-1 text-[11px] text-muted-foreground">
+                    <ul className="mt-2 space-y-0.5 rounded-md border border-dashed border-border bg-muted/20 px-2 py-1 text-xs text-muted-foreground">
                       {e.coverage ? (
                         <>
                           <li>
@@ -393,7 +393,7 @@ export function SessionAlertTimeline({
                   {e.evidence.length ? (
                     <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                       {e.evidence.slice(0, 6).map((ev, i) => (
-                        <li key={`${e.alertId}-ev-${i}`} className="text-[11px]">
+                        <li key={`${e.alertId}-ev-${i}`} className="text-xs">
                           <div className="flex items-baseline justify-between gap-2">
                             <span className="truncate">
                               {ev.feature}
@@ -405,7 +405,7 @@ export function SessionAlertTimeline({
                                 )}
                               </span>
                             </span>
-                            <span className="shrink-0 text-[10px] text-muted-foreground">
+                            <span className="shrink-0 text-xs text-muted-foreground">
                               {typeof ev.windowStartSeconds === "number"
                                 ? ev.direction
                                 : `${ev.direction} · no window`}
@@ -423,12 +423,12 @@ export function SessionAlertTimeline({
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       No evidence snapshot was captured for this alert.
                     </p>
                   )}
 
-                  <ul className="mt-2 space-y-1 text-[11px]">
+                  <ul className="mt-2 space-y-1 text-xs">
                     {e.actions.map((a) => (
                       <li key={a.id} className="flex flex-wrap items-baseline gap-x-2">
                         {a.action === "escalated" ? (
@@ -461,7 +461,7 @@ export function SessionAlertTimeline({
                           </span>
                         ) : null}
                         {a.cited_features?.length ? (
-                          <span className="w-full text-[10px] text-muted-foreground">
+                          <span className="w-full text-xs text-muted-foreground">
                             Linked evidence: {a.cited_features.join(" · ")}
                           </span>
                         ) : null}

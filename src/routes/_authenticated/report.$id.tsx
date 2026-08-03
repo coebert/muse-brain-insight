@@ -76,7 +76,7 @@ interface EventRow {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</dt>
+      <dt className="text-xs tracking-[0.14em] text-muted-foreground uppercase">{label}</dt>
       <dd className="metric-value mt-0.5 text-sm">{value || "—"}</dd>
     </div>
   );
@@ -85,9 +85,9 @@ function Field({ label, value }: { label: string; value: string }) {
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="panel px-3 py-2">
-      <p className="text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
+      <p className="text-xs tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
       <p className="metric-value text-base leading-tight">{value}</p>
-      {sub ? <p className="text-[11px] text-muted-foreground">{sub}</p> : null}
+      {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -360,7 +360,7 @@ function CaseReport() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Depth index (0–100) with the 40–60 surgical band marked; SEF95 in Hz on the same
                 axis.
               </p>
@@ -400,7 +400,7 @@ function CaseReport() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Suppression ratio in percent; seizure score plotted on the same axis (0–1 scale,
                 low values expected).
               </p>
@@ -413,7 +413,7 @@ function CaseReport() {
               ) : (
                 <table className="mt-2 w-full border-collapse text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-[11px] tracking-wide text-muted-foreground uppercase">
+                    <tr className="border-b border-border text-left text-xs tracking-wide text-muted-foreground uppercase">
                       <th className="py-1.5 pr-2">Time</th>
                       <th className="py-1.5 pr-2">Kind</th>
                       <th className="py-1.5 pr-2">Severity</th>
@@ -454,14 +454,14 @@ function CaseReport() {
             <section className="print-block mt-5">
               <h2 className="text-sm font-semibold">Handover</h2>
               <div className="mt-2 grid gap-6 sm:grid-cols-2">
-                <div className="border-b border-border pt-8 text-[11px] text-muted-foreground">
+                <div className="border-b border-border pt-8 text-xs text-muted-foreground">
                   Clinician (name and grade)
                 </div>
-                <div className="border-b border-border pt-8 text-[11px] text-muted-foreground">
+                <div className="border-b border-border pt-8 text-xs text-muted-foreground">
                   Signature / date
                 </div>
               </div>
-              <p className="mt-4 text-[11px] text-muted-foreground">
+              <p className="mt-4 text-xs text-muted-foreground">
                 CortexTrace processes frontal EEG from a consumer Muse 2 headband. Indices are
                 research-grade decision support and must be interpreted alongside clinical
                 assessment and standard monitoring.

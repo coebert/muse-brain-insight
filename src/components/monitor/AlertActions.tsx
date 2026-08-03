@@ -130,7 +130,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
   return (
     <div className="mt-2 border-t border-current/15 pt-2">
       {history.length ? (
-        <ul className="mb-2 space-y-0.5 text-[11px] text-muted-foreground">
+        <ul className="mb-2 space-y-0.5 text-xs text-muted-foreground">
           {history
             .slice()
             .reverse()
@@ -166,7 +166,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
       {mode ? (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-medium capitalize">
+            <span className="text-xs font-medium capitalize">
               {mode === "escalated" ? "Escalate alert" : mode === "resolved" ? "Resolve alert" : "Acknowledge alert"}
             </span>
             <Button
@@ -180,7 +180,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             </Button>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Your position on the AI read
             </span>
             <Select value={stance} onValueChange={(v) => setStance(v as OverrideStance)}>
@@ -195,12 +195,12 @@ export function AlertActions({ alert, sessionId, context }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {OVERRIDE_STANCES.find((s) => s.value === stance)?.hint}
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Clinician rationale{needsRationale ? " (required)" : " (optional)"}
             </span>
             <Textarea
@@ -217,7 +217,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
           </div>
           {evidence.length ? (
             <div className="space-y-1">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
                 Evidence features your rationale refers to
               </span>
               <div className="flex flex-wrap gap-1">
@@ -235,7 +235,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
                             : [...prev, e.feature],
                         )
                       }
-                      className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
+                      className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
                         on
                           ? "border-primary bg-primary/15 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted/50"
@@ -276,7 +276,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
           <div className="flex justify-end">
             <Button
               size="sm"
-              className="h-7 px-3 text-[11px]"
+              className="h-7 px-3 text-xs"
               disabled={
                 busy ||
                 (mode === "escalated" && !role) ||
@@ -291,7 +291,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {resolved
               ? "Resolved"
               : escalation
@@ -304,7 +304,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-[11px]"
+              className="h-7 px-2 text-xs"
               disabled={busy}
               onClick={() => setMode("acknowledged")}
             >
@@ -315,7 +315,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             <Button
               size="sm"
               variant={alert.severity === "critical" && !escalation ? "default" : "outline"}
-              className="h-7 px-2 text-[11px]"
+              className="h-7 px-2 text-xs"
               disabled={busy}
               onClick={() => setMode("escalated")}
             >
@@ -331,7 +331,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 px-2 text-[11px]"
+              className="h-7 px-2 text-xs"
               disabled={busy}
               onClick={() => setMode("resolved")}
             >
@@ -349,19 +349,19 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
   if (!rows?.length) return null;
   return (
     <div>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Acknowledgement &amp; escalation log
       </h3>
       <ul className="mt-1 space-y-1 text-xs">
         {rows.slice(0, 15).map((r) => (
           <li key={r.id} className="space-y-0.5">
             <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="metric-value text-[11px] text-muted-foreground">
+            <span className="metric-value text-xs text-muted-foreground">
               {new Date(r.created_at).toLocaleString()}
             </span>
             <span className="font-medium">{r.alert_title || r.alert_id}</span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+              className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
                 r.action === "escalated"
                   ? "bg-critical/15 text-critical"
                   : r.action === "resolved"
@@ -372,7 +372,7 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
               {r.action === "escalated" ? `→ ${roleLabel(r.escalated_to)}` : r.action}
             </span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+              className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
                 STANCE_CLASS[r.override_stance ?? "agree"] ?? "bg-muted"
               }`}
             >
@@ -381,12 +381,12 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
             {r.note ? <span className="text-muted-foreground">“{r.note}”</span> : null}
             </div>
             {r.override_rationale ? (
-              <p className="pl-1 text-[11px] italic text-muted-foreground">
+              <p className="pl-1 text-xs italic text-muted-foreground">
                 Rationale: “{r.override_rationale}”
               </p>
             ) : null}
             {r.cited_features?.length ? (
-              <p className="pl-1 text-[10px] text-muted-foreground">
+              <p className="pl-1 text-xs text-muted-foreground">
                 Linked evidence: {r.cited_features.join(" · ")}
               </p>
             ) : null}

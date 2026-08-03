@@ -27,9 +27,9 @@ const LEVEL_STYLE: Record<
 function Cell({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-md border border-border/60 px-3 py-2">
-      <p className="text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
+      <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
       <p className="metric-value text-base leading-tight">{value}</p>
-      {sub ? <p className="truncate text-[11px] text-muted-foreground">{sub}</p> : null}
+      {sub ? <p className="truncate text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function SessionCoverageSummary({
         <h2 className="text-sm font-semibold">Data completeness</h2>
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${style.className}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${style.className}`}
           >
             <Icon className="size-3.5" />
             {style.label}
@@ -113,7 +113,7 @@ export function SessionCoverageSummary({
       </div>
 
       {coverage.missingMetrics.length ? (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           Metrics missing for most of the session: {coverage.missingMetrics.join(", ")}.
         </p>
       ) : null}

@@ -49,7 +49,7 @@ interface Props {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
       <p className="mt-1 text-sm leading-relaxed">{children}</p>
@@ -77,13 +77,13 @@ export function AiInsightPanel({
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2.5">
         <Brain className="h-4 w-4 text-marker" aria-hidden />
         <h2 className="text-sm font-semibold">AI interpretation &amp; alerts</h2>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Quantitative digest only — no raw EEG or identifiers leave the device
         </span>
         {onWatchChange ? (
           <div className="flex items-center gap-2 sm:ml-auto">
             <Switch id="ai-watch" checked={Boolean(watch)} onCheckedChange={onWatchChange} />
-            <Label htmlFor="ai-watch" className="text-[11px] text-muted-foreground">
+            <Label htmlFor="ai-watch" className="text-xs text-muted-foreground">
               Continuous surveillance
             </Label>
           </div>
@@ -106,7 +106,7 @@ export function AiInsightPanel({
           )}
         </Button>
         {lastRunAt ? (
-          <span className="metric-value w-full text-[10px] text-muted-foreground sm:w-auto">
+          <span className="metric-value w-full text-xs text-muted-foreground sm:w-auto">
             Last reviewed {new Date(lastRunAt).toLocaleTimeString()}
           </span>
         ) : null}
@@ -131,7 +131,7 @@ export function AiInsightPanel({
 
             {result.alertTuning && tuningSummary(result.alertTuning) ? (
               <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <SlidersHorizontal className="h-3 w-3" aria-hidden />
                   Adaptive tuning
                 </div>
@@ -146,7 +146,7 @@ export function AiInsightPanel({
                     {result.alertTuning.categories.map((c) => (
                       <li
                         key={c.category}
-                        className="metric-value rounded-full border border-border bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        className="metric-value rounded-full border border-border bg-background/60 px-1.5 py-0.5 text-xs text-muted-foreground"
                       >
                         {c.category.replace(/_/g, " ")} · {Math.round(c.precision * 100)}% agree ·
                         bar {c.evidenceBar} · ×{c.confidenceWeight.toFixed(2)}
@@ -168,11 +168,11 @@ export function AiInsightPanel({
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       )}
                       <span className="text-sm font-semibold">{a.title}</span>
-                      <span className="metric-value rounded-full bg-background/60 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="metric-value rounded-full bg-background/60 px-2 py-0.5 text-xs uppercase tracking-wide">
                         {a.severity} · {a.confidence} confidence
                       </span>
                       {a.tSeconds != null ? (
-                        <span className="metric-value text-[10px] opacity-80">
+                        <span className="metric-value text-xs opacity-80">
                           @ {formatClockSeconds(a.tSeconds)}
                         </span>
                       ) : null}
@@ -222,7 +222,7 @@ export function AiInsightPanel({
 
             {result.markerCorrelations?.length ? (
               <div>
-                <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <Tag className="h-3 w-3" aria-hidden /> Response to your markers
                 </h3>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
@@ -235,7 +235,7 @@ export function AiInsightPanel({
 
             {result.pathologyIndicators?.length ? (
               <div>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Possible cerebral pathology indicators
                 </h3>
                 <ul className="mt-2 space-y-2">
@@ -244,7 +244,7 @@ export function AiInsightPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium">{f.title}</span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                          className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
                             CONFIDENCE_TONE[f.confidence] ?? CONFIDENCE_TONE["low"]
                           }`}
                         >
@@ -253,7 +253,7 @@ export function AiInsightPanel({
                       </div>
                       <p className="mt-1 text-sm leading-relaxed">{f.detail}</p>
                       {f.supporting?.length ? (
-                        <p className="metric-value mt-1.5 text-[11px] text-muted-foreground">
+                        <p className="metric-value mt-1.5 text-xs text-muted-foreground">
                           {f.supporting.join(" · ")}
                         </p>
                       ) : null}
@@ -266,7 +266,7 @@ export function AiInsightPanel({
             <div className="grid gap-4 md:grid-cols-2">
               {result.recommendedChecks?.length ? (
                 <div>
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Suggested next checks
                   </h3>
                   <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
@@ -278,7 +278,7 @@ export function AiInsightPanel({
               ) : null}
               {result.limitations?.length ? (
                 <div>
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Montage limitations
                   </h3>
                   <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-muted-foreground">

@@ -328,7 +328,7 @@ function Validate() {
                 allowNone="Not in this file"
               />
               <div>
-                <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+                <label className="text-xs tracking-wide text-muted-foreground uppercase">
                   EEG sample rate (Hz)
                 </label>
                 <input
@@ -347,7 +347,7 @@ function Validate() {
         {table ? (
           <section className="panel mt-4 flex flex-wrap items-end gap-4 px-3 py-3 sm:px-4">
             <div className="w-full min-w-0 sm:w-auto sm:min-w-72">
-              <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+              <label className="text-xs tracking-wide text-muted-foreground uppercase">
                 Compare against
               </label>
               <Select value={target} onValueChange={setTarget}>
@@ -371,7 +371,7 @@ function Validate() {
             </div>
 
             <div>
-              <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+              <label className="text-xs tracking-wide text-muted-foreground uppercase">
                 Match tolerance: ±{tolerance} s
               </label>
               <input
@@ -386,7 +386,7 @@ function Validate() {
             </div>
 
             <div>
-              <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
+              <label className="text-xs tracking-wide text-muted-foreground uppercase">
                 Time shift: {lag} s
               </label>
               <input
@@ -559,7 +559,7 @@ function ColumnSelect({
 }) {
   return (
     <div>
-      <label className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</label>
+      <label className="text-xs tracking-wide text-muted-foreground uppercase">{label}</label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="mt-1 w-full">
           <SelectValue />
@@ -580,7 +580,7 @@ function ColumnSelect({
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div className="panel px-3 py-3">
-      <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="text-xs tracking-wide text-muted-foreground uppercase">{label}</p>
       <p className="metric-value mt-1 text-2xl">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>

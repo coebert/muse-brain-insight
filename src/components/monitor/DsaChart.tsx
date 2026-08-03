@@ -160,7 +160,7 @@ export function DsaChart({ epochs, windowSeconds, dbMin = -6, dbMax = 26 }: Prop
 export function DsaLegend({ dbMin = -6, dbMax = 26 }: { dbMin?: number; dbMax?: number }) {
   const gradient = DSA_STOPS.map((s) => `rgb(${s[0]},${s[1]},${s[2]})`).join(",");
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className="metric-value">{dbMin} dB</span>
       <div
         className="h-2 w-28 rounded-full"
