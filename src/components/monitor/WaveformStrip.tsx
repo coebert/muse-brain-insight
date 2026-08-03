@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface Props {
   data: Float64Array;
@@ -6,7 +6,7 @@ interface Props {
   suppressed: boolean;
 }
 
-export function WaveformStrip({ data, suppressionThresholdUv, suppressed }: Props) {
+function WaveformStripInner({ data, suppressionThresholdUv, suppressed }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -49,3 +49,5 @@ export function WaveformStrip({ data, suppressionThresholdUv, suppressed }: Prop
 
   return <canvas ref={canvasRef} className="h-full w-full" aria-label="Filtered EEG waveform" />;
 }
+
+export const WaveformStrip = memo(WaveformStripInner);

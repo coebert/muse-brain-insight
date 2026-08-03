@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Activity } from "lucide-react";
 
 import type { SqiPoint } from "@/hooks/useEegMonitor";
@@ -37,7 +37,7 @@ function tone(v: number): string {
  * BIS-style Signal Quality Index trend — how trustworthy the EEG has been
  * across the whole case, not just right now.
  */
-export function SqiTrend({ history, bilateral = true, threshold, className }: Props) {
+function SqiTrendInner({ history, bilateral = true, threshold, className }: Props) {
   const stats = useMemo(() => {
     if (!history.length) return null;
     const mean = history.reduce((a, p) => a + p.sqi, 0) / history.length;
@@ -187,3 +187,5 @@ export function SqiTrend({ history, bilateral = true, threshold, className }: Pr
     </div>
   );
 }
+
+export const SqiTrend = memo(SqiTrendInner);

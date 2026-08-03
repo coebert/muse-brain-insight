@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface Props {
   /** Values in plot order (oldest first). Null gaps are skipped. */
@@ -14,7 +14,7 @@ interface Props {
 }
 
 /** Compact canvas trend line used by the fullscreen monitor. */
-export function TrendLine({
+function TrendLineInner({
   values,
   min,
   max,
@@ -87,3 +87,5 @@ export function TrendLine({
 
   return <canvas ref={canvasRef} className="block h-full w-full" style={{ height }} />;
 }
+
+export const TrendLine = memo(TrendLineInner);

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -30,7 +31,7 @@ function confidenceTone(c: number): { bar: string; text: string; word: string } 
   return { bar: "bg-critical", text: "text-critical", word: "low" };
 }
 
-export function MetricTile({
+function MetricTileInner({
   label,
   value,
   unit,
@@ -104,3 +105,5 @@ export function MetricTile({
     </div>
   );
 }
+
+export const MetricTile = memo(MetricTileInner);

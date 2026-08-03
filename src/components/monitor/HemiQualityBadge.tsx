@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { HemiMetrics } from "@/hooks/useEegMonitor";
 
@@ -17,7 +18,7 @@ const GRADE_TONE: Record<HemiMetrics["qualityGrade"], string> = {
  * Per-hemisphere trust indicator: electrode-pair signal quality plus the
  * confidence attached to that side's spectral metrics.
  */
-export function HemiQualityBadge({ metrics, compact = false, className }: Props) {
+function HemiQualityBadgeInner({ metrics, compact = false, className }: Props) {
   if (!metrics) return null;
   const flat = metrics.flat;
   const grade = flat ? "poor" : metrics.qualityGrade;
@@ -50,3 +51,5 @@ export function HemiQualityBadge({ metrics, compact = false, className }: Props)
     </div>
   );
 }
+
+export const HemiQualityBadge = memo(HemiQualityBadgeInner);

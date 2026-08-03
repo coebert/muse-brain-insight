@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { HemiEvent, HemiSide } from "@/hooks/useEegMonitor";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ const HIGH_EMG = 50;
  * Burst-suppression and seizure episodes drawn over one hemisphere's DSA lane,
  * time-aligned with the heat map and hoverable for detail.
  */
-export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact }: Props) {
+function HemiEventOverlayInner({ events, side, elapsed, windowSeconds, compact }: Props) {
   const visible = events.filter((e) => {
     if (side !== "both" && e.side !== side) return false;
     return elapsed - (e.t + e.duration) < windowSeconds;
@@ -106,3 +107,5 @@ export function HemiEventOverlay({ events, side, elapsed, windowSeconds, compact
     </div>
   );
 }
+
+export const HemiEventOverlay = memo(HemiEventOverlayInner);
