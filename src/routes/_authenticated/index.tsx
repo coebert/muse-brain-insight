@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
+import { MonitorErrorBoundary } from "@/components/monitor/MonitorErrorBoundary";
 import { AppNav } from "@/components/AppNav";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { CaseFields } from "@/components/monitor/CaseFields";
@@ -846,14 +847,16 @@ function Monitor() {
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
-            <HemiDsaPanel
+            <MonitorErrorBoundary label="Density spectral array">
+              <HemiDsaPanel
               hemiSpectra={monitor.hemiSpectra}
               hemiLatest={monitor.hemiLatest}
               hemiEvents={monitor.hemiEvents}
               dsaView={dsaView}
               windowSeconds={windowMinutes * 60}
-              elapsed={monitor.elapsed}
-            />
+                elapsed={monitor.elapsed}
+              />
+            </MonitorErrorBoundary>
             {/* Trend alerts (depth swings, BSR burden) and clinician markers */}
             <DsaMarkerRail
               markers={dsaMarkerRail}
