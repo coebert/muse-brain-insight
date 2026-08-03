@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AlarmTone, highestPriority, type Alarm, type AlarmPriority } from "@/lib/eeg/alarms";
+import {
+  AlarmTone,
+  highestPriority,
+  type Alarm,
+  type AlarmPriority,
+  type AlarmSide,
+} from "@/lib/eeg/alarms";
 
 /** A condition the monitor believes is currently true. */
 export interface AlarmCondition {
@@ -8,6 +14,7 @@ export interface AlarmCondition {
   priority: AlarmPriority;
   title: string;
   detail: string;
+  side?: AlarmSide;
 }
 
 export interface ActiveAlarm extends Alarm {
