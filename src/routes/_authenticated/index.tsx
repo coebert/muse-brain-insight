@@ -9,6 +9,7 @@ import {
   FlaskConical,
   HeartPulse,
   Maximize2,
+  SignalLow,
   Stethoscope,
   Save,
   Undo2,
