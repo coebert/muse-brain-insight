@@ -82,7 +82,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string | undefined }) {
   return (
     <div className="panel px-3 py-2">
       <p className="text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
@@ -100,7 +100,8 @@ function CaseReport() {
     queryFn: async () => {
       const { data, error } = await supabase.from("eeg_sessions").select("*").eq("id", id).single();
       if (error) throw error;
-      return unseal([data], ["case_code", "location", "notes", "admission_diagnosis"])[0];
+      const rows = await unseal([data], ["case_code", "location", "notes", "admission_diagnosis"]);
+      return rows[0];
     },
   });
 
@@ -281,11 +282,11 @@ function CaseReport() {
                 <Stat
                   label="Time depth < 40"
                   value={formatDuration(summary.deepSeconds)}
-                  sub={
-                    summary.duration
-                      ? `${((summary.deepSeconds / summary.duration) * 100).toFixed(0)} % of case`
-                      : undefined
-                  }
+                  {...(summary.duration
+                    ? {
+                        sub: `${((summary.deepSeconds / summary.duration) * 100).toFixed(0)} % of case`,
+                      }
+                    : {})}
                 />
                 <Stat
                   label="Mean SEF95"
