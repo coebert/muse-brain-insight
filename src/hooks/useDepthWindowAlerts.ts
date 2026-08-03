@@ -149,7 +149,8 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled, onTransition
     if (next === "in") {
       const previous = announcedRef.current;
       if (previous === "below" || previous === "above") {
-        const heldSeconds = Math.max(0, t - (announcedAtRef.current ?? t));
+        // Total time spent outside the window for this excursion.
+        const heldSeconds = Math.max(0, t - (sinceRef.current ?? announcedAtRef.current ?? t));
         onTransitionRef.current?.({
           kind: "return",
           direction: previous,
