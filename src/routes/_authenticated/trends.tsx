@@ -370,6 +370,11 @@ function Trends() {
             CortexTrace
           </span>
           <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
+            <Button asChild variant="outline" size="sm" disabled={!selectedId}>
+              <Link to="/report/$id" params={{ id: selectedId }}>
+                Case report
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/compare">Compare</Link>
             </Button>
