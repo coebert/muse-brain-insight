@@ -345,6 +345,12 @@ export function useEegMonitor() {
           seizureAlert: e.seizureAlert,
           qualityGrade: worst,
           flat: group.every((c) => quality[c]?.flat ?? false),
+          qualityScore: grades.length
+            ? Math.min(...grades.map((q) => q?.score ?? 0))
+            : 0,
+          spectralConfidence: e.confidence.spectral,
+          emgIndex: Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0),
+          reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),
         };
       };
       setHemiLatest({
