@@ -57,14 +57,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
-import {
-  combineHemiSpectra,
-  hemiSefTraces,
-  useEegMonitor,
-  worstHemi,
-} from "@/hooks/useEegMonitor";
-import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
-import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
+import { useEegMonitor } from "@/hooks/useEegMonitor";
+import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
+import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
@@ -188,6 +183,29 @@ function Monitor() {
     () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
     [monitor.events, markers],
   );
+
+  /** Trend alerts and clinician annotations drawn over the DSA lanes. */
+  const dsaMarkerRail = useMemo<DsaMarker[]>(() => {
+    const alerts = monitor.events
+      .filter(
+        (e) =>
+          e.kind === "depth_drop" || e.kind === "depth_rise" || e.kind === "suppression_burden",
+      )
+      .map<DsaMarker>((e) => ({
+        t: e.t,
+        label: `${
+          e.kind === "depth_drop" ? "Depth ↓" : e.kind === "depth_rise" ? "Depth ↑" : "BSR"
+        } ${formatClock(e.t)}`,
+        tone: e.severity === "critical" ? "critical" : "caution",
+      }));
+    const annotations = markers.map<DsaMarker>((m) => ({
+      t: m.t,
+      label: m.detail,
+      tone: "marker",
+      top: true,
+    }));
+    return [...alerts, ...annotations];
+  }, [monitor.events, markers]);
 
   /** Timestamped audit entry in the session event log. */
   const audit = useCallback(
