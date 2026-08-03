@@ -460,6 +460,8 @@ function Monitor() {
           modeLabel={activeMode.label}
           windowMinutes={windowMinutes}
           markers={markers}
+          dsaView={dsaView}
+          onDsaViewChange={setDsaView}
           suppressionSeconds={summary.suppressionSeconds}
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
           onExit={() => setFullscreen(false)}
