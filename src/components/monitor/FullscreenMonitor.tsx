@@ -227,10 +227,20 @@ export function FullscreenMonitor({
               variant="outline"
               className="absolute top-1 right-2 z-10 h-7 px-2 text-xs"
               onClick={() =>
-                onDsaViewChange(dsaView === "bilateral" ? "combined" : "bilateral")
+                onDsaViewChange(
+                  dsaView === "bilateral"
+                    ? "combined"
+                    : dsaView === "combined"
+                      ? "overlay"
+                      : "bilateral",
+                )
               }
             >
-              {dsaView === "bilateral" ? "Combined view" : "Bilateral view"}
+              {dsaView === "bilateral"
+                ? "Combined view"
+                : dsaView === "combined"
+                  ? "Overlay view"
+                  : "Bilateral view"}
             </Button>
             <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
               {(dsaView === "bilateral"
@@ -241,6 +251,7 @@ export function FullscreenMonitor({
                       frames: hemiSpectra.map((h) => h.left),
                       metrics: hemiLatest?.left ?? null,
                       overlaySide: "left" as const,
+                      traces: undefined,
                     },
                     {
                       side: "R",
@@ -248,15 +259,26 @@ export function FullscreenMonitor({
                       frames: hemiSpectra.map((h) => h.right),
                       metrics: hemiLatest?.right ?? null,
                       overlaySide: "right" as const,
+                      traces: undefined,
                     },
                   ]
                 : [
                     {
                       side: "L+R",
-                      montage: "mean",
+                      montage: dsaView === "overlay" ? "SEF95 overlay" : "mean",
                       frames: combineHemiSpectra(hemiSpectra),
                       metrics: worstHemi(hemiLatest),
                       overlaySide: "both" as const,
+                      traces:
+                        dsaView === "overlay"
+                          ? (() => {
+                              const tr = hemiSefTraces(hemiSpectra);
+                              return [
+                                { label: "Left SEF95", color: "rgb(96,208,255)", values: tr.left },
+                                { label: "Right SEF95", color: "rgb(255,176,64)", values: tr.right },
+                              ];
+                            })()
+                          : undefined,
                     },
                   ]
               ).map((h) => (
