@@ -96,11 +96,11 @@ export function FullscreenMonitor({
   const sefTrend = useMemo(() => visible.map((e) => e.sef95), [visible]);
 
   const depth = latest?.depth;
-  const dTone = depth ? depthTone(depth.state) : "default";
+  const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";
   const srValue = latest?.suppressionRatio ?? 0;
-  const srTone = srValue >= 40 ? "critical" : srValue >= 10 ? "caution" : "signal";
+  const srTone: MetricTone = srValue >= 40 ? "critical" : srValue >= 10 ? "caution" : "signal";
   const quality = latest?.quality;
-  const qualityTone =
+  const qualityTone: MetricTone =
     quality?.grade === "poor" ? "critical" : quality?.grade === "fair" ? "caution" : "signal";
 
   return (
@@ -118,7 +118,7 @@ export function FullscreenMonitor({
         <span className="metric-value text-sm">{formatClock(elapsed)}</span>
         <span className="hidden text-xs text-muted-foreground sm:inline">{modeLabel} mode</span>
         <span
-          className={cn("metric-value ml-auto text-xs", toneText[qualityTone])}
+          className={cn("metric-value ml-auto text-xs", metricToneText[qualityTone])}
           title={quality?.reasons.join(", ")}
         >
           Signal {quality ? `${Math.round(quality.score * 100)} %` : "—"}
@@ -240,6 +240,7 @@ export function FullscreenMonitor({
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:content-start short:grid-cols-1! short:content-start! short:overflow-y-auto!">
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <MetricCard
+              size="bedside"
               label="Depth index"
               value={depth?.index != null ? String(depth.index) : "—"}
               hint={
@@ -254,6 +255,7 @@ export function FullscreenMonitor({
             />
           </div>
           <MetricCard
+              size="bedside"
             label="Suppression ratio"
             value={latest ? srValue.toFixed(0) : "—"}
             unit="%"
@@ -261,23 +263,27 @@ export function FullscreenMonitor({
             tone={srTone}
           />
           <MetricCard
+              size="bedside"
             label="SEF 95"
             value={latest ? latest.sef95.toFixed(1) : "—"}
             unit="Hz"
             hint={latest ? `Entropy ${latest.entropy.state.toFixed(2)}` : undefined}
           />
           <MetricCard
+              size="bedside"
             label="qCON-like"
             value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
             hint={latest ? COMPOSITE_BAND_LABEL[latest.composite.cBand] : undefined}
           />
           <MetricCard
+              size="bedside"
             label="qNOX-like"
             value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
             hint={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
           />
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <MetricCard
+              size="bedside"
               label="Seizure score"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
               hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
