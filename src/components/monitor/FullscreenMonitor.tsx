@@ -7,9 +7,11 @@ import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
+import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import {
   combineHemiSpectra,
   worstHemi,
+  type HemiEvent,
   type HemiLatest,
   type HemiSpectra,
 } from "@/hooks/useEegMonitor";
@@ -22,6 +24,7 @@ interface Props {
   epochs: Epoch[];
   hemiSpectra: HemiSpectra[];
   hemiLatest: HemiLatest | null;
+  hemiEvents: HemiEvent[];
   latest: Epoch | null;
   waveform: Float64Array;
   elapsed: number;
@@ -102,6 +105,7 @@ export function FullscreenMonitor({
   epochs,
   hemiSpectra,
   hemiLatest,
+  hemiEvents,
   latest,
   waveform,
   elapsed,
@@ -234,12 +238,14 @@ export function FullscreenMonitor({
                       montage: "TP9+AF7",
                       frames: hemiSpectra.map((h) => h.left),
                       metrics: hemiLatest?.left ?? null,
+                      overlaySide: "left" as const,
                     },
                     {
                       side: "R",
                       montage: "AF8+TP10",
                       frames: hemiSpectra.map((h) => h.right),
                       metrics: hemiLatest?.right ?? null,
+                      overlaySide: "right" as const,
                     },
                   ]
                 : [
@@ -248,6 +254,7 @@ export function FullscreenMonitor({
                       montage: "mean",
                       frames: combineHemiSpectra(hemiSpectra),
                       metrics: worstHemi(hemiLatest),
+                      overlaySide: "both" as const,
                     },
                   ]
               ).map((h) => (
@@ -261,6 +268,13 @@ export function FullscreenMonitor({
                     className="absolute top-8 right-2 z-10"
                   />
                   <DsaChart frames={h.frames} windowSeconds={windowSeconds} />
+                  <HemiEventOverlay
+                    events={hemiEvents}
+                    side={h.overlaySide}
+                    elapsed={elapsed}
+                    windowSeconds={windowSeconds}
+                    compact
+                  />
                 </div>
               ))}
             </div>
