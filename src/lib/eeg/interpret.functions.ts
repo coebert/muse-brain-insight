@@ -154,10 +154,7 @@ const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downg
 type FeedbackRow = TuningFeedbackRow;
 
 /** Factual prior-verdict counts for an alert, matched on id first then category. */
-function priorFeedbackFor(
-  alert: ClinicalAlert,
-  rows: FeedbackRow[],
-): AlertPriorFeedback | null {
+function priorFeedbackFor(alert: ClinicalAlert, rows: FeedbackRow[]): AlertPriorFeedback | null {
   const byId = rows.filter((r) => r.alert_id && r.alert_id === alert.id);
   const matched = byId.length ? byId : rows.filter((r) => r.alert_category === alert.category);
   if (!matched.length) return null;
@@ -205,7 +202,9 @@ function extractJson(text: string): Interpretation {
         : [],
     })),
     markerCorrelations: Array.isArray(parsed.markerCorrelations) ? parsed.markerCorrelations : [],
-    pathologyIndicators: Array.isArray(parsed.pathologyIndicators) ? parsed.pathologyIndicators : [],
+    pathologyIndicators: Array.isArray(parsed.pathologyIndicators)
+      ? parsed.pathologyIndicators
+      : [],
     recommendedChecks: Array.isArray(parsed.recommendedChecks) ? parsed.recommendedChecks : [],
     limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
   };

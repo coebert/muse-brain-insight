@@ -1,17 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { Minimize2, TriangleAlert } from "lucide-react";
 
-import { DsaChart } from "@/components/monitor/DsaChart";
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
-import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
-import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
+import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
+import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
 import {
-  combineHemiSpectra,
-  hemiSefTraces,
-  worstHemi,
   type DsaView,
   type HemiEvent,
   type HemiLatest,
@@ -150,6 +146,10 @@ export function FullscreenMonitor({
 
   const windowSeconds = windowMinutes * 60;
   const visible = useMemo(() => epochs.slice(-windowSeconds), [epochs, windowSeconds]);
+  const markerRail = useMemo(
+    () => markers.map((m) => ({ t: m.t, label: m.detail, tone: "marker" as const })),
+    [markers],
+  );
   const depthTrend = useMemo(() => visible.map((e) => e.depth.index), [visible]);
   const srTrend = useMemo(() => visible.map((e) => e.suppressionRatio), [visible]);
   const sefTrend = useMemo(() => visible.map((e) => e.sef95), [visible]);
@@ -202,9 +202,7 @@ export function FullscreenMonitor({
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1.6fr)_minmax(0,1fr)] gap-2 short:grid-rows-[auto_minmax(0,1fr)]!">
           <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
             <div className="flex items-center justify-between px-2 pt-1">
-              <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-                EEG
-              </span>
+              <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">EEG</span>
               <span className="metric-value text-xs text-muted-foreground">
                 {latest ? `${latest.amplitudeUv.toFixed(0)} µV p-p` : "—"}
               </span>
@@ -242,94 +240,16 @@ export function FullscreenMonitor({
                   ? "Overlay view"
                   : "Bilateral view"}
             </Button>
-            <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
-              {(dsaView === "bilateral"
-                ? [
-                    {
-                      side: "L",
-                      montage: "TP9+AF7",
-                      frames: hemiSpectra.map((h) => h.left),
-                      metrics: hemiLatest?.left ?? null,
-                      overlaySide: "left" as const,
-                      traces: undefined,
-                    },
-                    {
-                      side: "R",
-                      montage: "AF8+TP10",
-                      frames: hemiSpectra.map((h) => h.right),
-                      metrics: hemiLatest?.right ?? null,
-                      overlaySide: "right" as const,
-                      traces: undefined,
-                    },
-                  ]
-                : [
-                    {
-                      side: "L+R",
-                      montage: dsaView === "overlay" ? "SEF95 overlay" : "mean",
-                      frames: combineHemiSpectra(hemiSpectra),
-                      metrics: worstHemi(hemiLatest),
-                      overlaySide: "both" as const,
-                      traces:
-                        dsaView === "overlay"
-                          ? (() => {
-                              const tr = hemiSefTraces(hemiSpectra);
-                              return [
-                                { label: "Left SEF95", color: "rgb(96,208,255)", values: tr.left },
-                                { label: "Right SEF95", color: "rgb(255,176,64)", values: tr.right },
-                              ];
-                            })()
-                          : undefined,
-                    },
-                  ]
-              ).map((h) => (
-                <div key={h.side} className="relative min-h-0 border-b border-border/60 last:border-b-0">
-                  <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1 text-xs text-foreground">
-                    {h.side} · {h.montage}
-                  </span>
-                  <HemiQualityBadge
-                    metrics={h.metrics}
-                    compact
-                    className="absolute top-8 right-2 z-10"
-                  />
-                  <DsaChart frames={h.frames} windowSeconds={windowSeconds} traces={h.traces} />
-                  {dsaView === "overlay" ? (
-                    <div className="metric-value absolute right-2 bottom-7 z-10 flex gap-2 rounded bg-background/70 px-1.5 py-0.5 text-xs">
-                      <span className="text-[rgb(96,208,255)]">— L SEF95</span>
-                      <span className="text-[rgb(255,176,64)]">— R SEF95</span>
-                    </div>
-                  ) : null}
-                  <HemiEventOverlay
-                    events={hemiEvents}
-                    side={h.overlaySide}
-                    elapsed={elapsed}
-                    windowSeconds={windowSeconds}
-                    compact
-                  />
-                </div>
-              ))}
-            </div>
-            {markers.map((m, i) => {
-              const age = elapsed - m.t;
-              if (age > windowSeconds) return null;
-              const left = (1 - age / windowSeconds) * 100;
-              return (
-                <div
-                  key={`${m.t}-${i}`}
-                  className="pointer-events-none absolute top-0 bottom-0 z-10"
-                  style={{ left: `${left}%` }}
-                >
-                  <div className="h-full w-px bg-marker/80" />
-                  <span
-                    className={cn(
-                      "metric-value absolute bottom-1 max-w-[130px] truncate rounded bg-marker/20 px-1 text-xs text-marker",
-                      left > 65 ? "right-1" : "left-1",
-                    )}
-                  >
-                    {m.detail}
-                  </span>
-                </div>
-              );
-            })}
+            <HemiDsaPanel
+              hemiSpectra={hemiSpectra}
+              hemiLatest={hemiLatest}
+              hemiEvents={hemiEvents}
+              dsaView={dsaView}
+              windowSeconds={windowSeconds}
+              elapsed={elapsed}
+              compact
+            />
+            <DsaMarkerRail markers={markerRail} elapsed={elapsed} windowSeconds={windowSeconds} />
           </div>
 
           <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
@@ -338,9 +258,7 @@ export function FullscreenMonitor({
                 <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
                   Depth trend (0–100)
                 </span>
-                <span className="metric-value text-xs text-signal">
-                  {depth?.index ?? "—"}
-                </span>
+                <span className="metric-value text-xs text-signal">{depth?.index ?? "—"}</span>
               </div>
               <div className="h-[calc(100%-18px)] min-h-[70px]">
                 <TrendLine
@@ -364,7 +282,13 @@ export function FullscreenMonitor({
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">
                 <TrendLine values={sefTrend} min={0} max={30} color="rgb(120,200,90)" />
                 <div className="pointer-events-none absolute inset-0">
-                  <TrendLine values={srTrend} min={0} max={100} color="rgb(245,190,40)" transparent />
+                  <TrendLine
+                    values={srTrend}
+                    min={0}
+                    max={100}
+                    color="rgb(245,190,40)"
+                    transparent
+                  />
                 </div>
               </div>
             </div>

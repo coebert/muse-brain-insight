@@ -80,11 +80,18 @@ export function MissedFindingReport({ sessionId, context, modelVersion }: Props)
   if (!open) {
     return (
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          onClick={() => setOpen(true)}
+        >
           <EyeOff className="h-3 w-3" /> Report a finding the reviewer missed
         </Button>
         {saved ? (
-          <span className="text-xs text-muted-foreground">Logged — visible in model performance.</span>
+          <span className="text-xs text-muted-foreground">
+            Logged — visible in model performance.
+          </span>
         ) : null}
       </div>
     );
@@ -145,7 +152,12 @@ export function MissedFindingReport({ sessionId, context, modelVersion }: Props)
         className="text-xs"
       />
       <div className="flex justify-end">
-        <Button size="sm" className="h-7 px-3 text-xs" disabled={saving} onClick={() => void save()}>
+        <Button
+          size="sm"
+          className="h-7 px-3 text-xs"
+          disabled={saving}
+          onClick={() => void save()}
+        >
           {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : null} Log missed finding
         </Button>
       </div>

@@ -213,12 +213,12 @@ export function buildFeatureDigest(
       meanRelativeBandPower: rel,
       bandPowerFirstThird: relativeBands(first),
       bandPowerLastThird: relativeBands(last),
-      meanTotalPowerDb: round(mean(epochs.map((e) => 10 * Math.log10(Math.max(e.totalPower, 1e-6)))), 1),
-      alphaDeltaRatio: round((rel["alpha"] ?? 0) / Math.max(rel["delta"] ?? 0, 0.01)),
-      spectralVariability: round(
-        Math.sqrt(mean(sefs.map((v) => (v - mean(sefs)) ** 2))),
-        2,
+      meanTotalPowerDb: round(
+        mean(epochs.map((e) => 10 * Math.log10(Math.max(e.totalPower, 1e-6)))),
+        1,
       ),
+      alphaDeltaRatio: round((rel["alpha"] ?? 0) / Math.max(rel["delta"] ?? 0, 0.01)),
+      spectralVariability: round(Math.sqrt(mean(sefs.map((v) => (v - mean(sefs)) ** 2))), 2),
       meanStateEntropy: round(mean(epochs.map((e) => e.entropy.state))),
       meanResponseEntropy: round(mean(epochs.map((e) => e.entropy.response))),
       meanSe95Entropy: round(mean(epochs.map((e) => e.entropy.se95))),
@@ -238,9 +238,7 @@ export function buildFeatureDigest(
       poorEpochs: epochs.filter((e) => e.quality.grade === "poor").length,
     },
     depthIndex: (() => {
-      const vals = epochs
-        .map((e) => e.depth.index)
-        .filter((v): v is number => v != null);
+      const vals = epochs.map((e) => e.depth.index).filter((v): v is number => v != null);
       const reliableEpochs = epochs.filter((e) => e.depthReliability.reliable);
       const reliableVals = reliableEpochs
         .map((e) => e.depth.index)
@@ -269,7 +267,14 @@ export function buildFeatureDigest(
         topGatingReasons,
       };
       if (!vals.length) {
-        return { mean: null, min: null, max: null, latest: null, fractionBelow40: 0, ...reliability };
+        return {
+          mean: null,
+          min: null,
+          max: null,
+          latest: null,
+          fractionBelow40: 0,
+          ...reliability,
+        };
       }
       return {
         mean: round(mean(vals), 0),

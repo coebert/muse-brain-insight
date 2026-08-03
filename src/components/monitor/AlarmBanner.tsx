@@ -116,9 +116,7 @@ export function AlarmBanner({
                 a.acknowledgedAt != null && "opacity-60",
               )}
             >
-              <span className="metric-value text-xs uppercase">
-                {PRIORITY_LABEL[a.priority]}
-              </span>
+              <span className="metric-value text-xs uppercase">{PRIORITY_LABEL[a.priority]}</span>
               {a.side ? (
                 <span
                   className="metric-value rounded border border-current px-1.5 py-0.5 text-xs"

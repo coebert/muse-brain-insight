@@ -35,12 +35,7 @@ export interface CompositeReading {
 }
 
 export type CompositeBand =
-  | "awake"
-  | "light_sedation"
-  | "surgical"
-  | "deep"
-  | "burst_suppression"
-  | "unreliable";
+  "awake" | "light_sedation" | "surgical" | "deep" | "burst_suppression" | "unreliable";
 
 export type NociceptionBand = "well_controlled" | "adequate" | "likely_response" | "unreliable";
 
@@ -133,8 +128,7 @@ export class CompositeIndexEstimator {
 
   update(input: CompositeInput): CompositeReading {
     const { bands, entropy, suppressionRatio } = input;
-    const total =
-      bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma || 1e-9;
+    const total = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma || 1e-9;
     const slow = (bands.delta + bands.theta) / total;
     const fast = (bands.beta + bands.gamma) / total;
     // Log fast/slow balance keeps the scale sane when one side collapses.
@@ -181,7 +175,11 @@ export class CompositeIndexEstimator {
     // --- consciousness index ------------------------------------------------
     // Spectral branch: fast/slow balance and entropy carry most of the signal;
     // a delta/alpha penalty pulls the index down as slowing consolidates.
-    const slowingPenalty = clamp(sigmoid(Math.log10(input.ratios.deltaAlpha + 1e-3), 0.7, 0.4), 0, 1);
+    const slowingPenalty = clamp(
+      sigmoid(Math.log10(input.ratios.deltaAlpha + 1e-3), 0.7, 0.4),
+      0,
+      1,
+    );
     const spectral = clamp(
       100 * (0.5 * fastSlow + 0.38 * stateEntropy + 0.12 * (1 - slowingPenalty)),
       0,
@@ -198,17 +196,15 @@ export class CompositeIndexEstimator {
     // response-minus-state entropy gap and preserved fast cortical activity.
     const nRaw = clamp(
       100 *
-        (0.34 * emgDrive +
-          0.26 * reactivity +
-          0.22 * entropyGap +
-          0.18 * fastSlow) *
+        (0.34 * emgDrive + 0.26 * reactivity + 0.22 * entropyGap + 0.18 * fastSlow) *
         // Deep suppression makes the nociception estimate meaningless; damp it.
         (1 - clamp(suppressionRatio / 40, 0, 0.85)),
       0,
       99,
     );
 
-    this.cSmoothed = this.cSmoothed == null ? cRaw : this.cSmoothed + this.alpha * (cRaw - this.cSmoothed);
+    this.cSmoothed =
+      this.cSmoothed == null ? cRaw : this.cSmoothed + this.alpha * (cRaw - this.cSmoothed);
     this.nSmoothed =
       this.nSmoothed == null ? nRaw : this.nSmoothed + this.nAlpha * (nRaw - this.nSmoothed);
 

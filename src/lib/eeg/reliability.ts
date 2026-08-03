@@ -131,7 +131,10 @@ export function buildModelReliability(rows: ReliabilityRow[]): ModelReliability[
     let correct = 0;
     let unlabelled = 0;
 
-    const weeks = new Map<string, { predSum: number; predCount: number; correct: number; count: number }>();
+    const weeks = new Map<
+      string,
+      { predSum: number; predCount: number; correct: number; count: number }
+    >();
 
     for (const r of list) {
       const key = confidenceKey(r.alert_confidence);

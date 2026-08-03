@@ -201,19 +201,6 @@ function makeBuffer(): ChannelBuffer {
   return { data: new Float64Array(BUFFER_LEN), write: 0, count: 0, filter: makeEegFilter() };
 }
 
-/** dB spectrum over the DSA frequency range, matching Epoch.spectrum. */
-function dsaSpectrum(signal: Float64Array): number[] {
-  const psd = computePsd(signal, MUSE_SAMPLE_RATE);
-  const out: number[] = [];
-  for (let k = 0; k < psd.freqs.length; k++) {
-    const f = psd.freqs[k]!;
-    if (f < DSA_MIN_HZ) continue;
-    if (f > DSA_MAX_HZ) break;
-    out.push(10 * Math.log10(Math.max(psd.power[k]!, 1e-6)));
-  }
-  return out;
-}
-
 function readLast(buffer: ChannelBuffer, n: number): Float64Array {
   const out = new Float64Array(n);
   for (let i = 0; i < n; i++) {
@@ -405,11 +392,6 @@ export function useEegMonitor() {
       const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
       setElapsed(t);
       setEpochs((prev) => compactEpochs([...prev, epoch]));
-      const hemi: HemiSpectra = {
-        left: dsaSpectrum(groupSignal(LEFT_CHANNELS, EPOCH_LEN)),
-        right: dsaSpectrum(groupSignal(RIGHT_CHANNELS, EPOCH_LEN)),
-      };
-      setHemiSpectra((prev) => compactHemi([...prev, hemi]));
       setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
 
       const contact: Record<string, boolean> = {};
@@ -425,6 +407,8 @@ export function useEegMonitor() {
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
+      // Only republish the episode list when something visible changed.
+      let hemiDirty = false;
       /** Opens, extends or closes a hemisphere episode marker. */
       const trackHemiEvent = (
         side: HemiSide,
@@ -439,6 +423,7 @@ export function useEegMonitor() {
         const list = hemiEventsRef.current;
         const open = list.find((e) => e.side === side && e.kind === kind && e.ongoing);
         if (active) {
+          hemiDirty = true;
           if (open) {
             open.duration = Math.max(HOP_SECONDS, t - open.t);
             open.peakSr = Math.max(open.peakSr, sr);
@@ -462,6 +447,7 @@ export function useEegMonitor() {
             });
           }
         } else if (open) {
+          hemiDirty = true;
           open.ongoing = false;
           open.duration = Math.max(HOP_SECONDS, t - open.t);
         }
@@ -472,7 +458,7 @@ export function useEegMonitor() {
         side: HemiSide,
         group: MuseChannel[],
         analyzer: EegAnalyzer,
-      ): HemiMetrics => {
+      ): { metrics: HemiMetrics; spectrum: number[] } => {
         const e = analyzer.analyze(groupSignal(group, EPOCH_LEN), t);
         const grades = group.map((c) => quality[c]);
         const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
@@ -486,7 +472,7 @@ export function useEegMonitor() {
         const sideEmg = Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0) * 100;
         trackHemiEvent(side, "suppression", e.isSuppressed, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
         trackHemiEvent(side, "seizure", e.seizureAlert, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
-        return {
+        const metrics: HemiMetrics = {
           suppressionRatio: e.suppressionRatio,
           seizureScore: e.seizureScore,
           seizureAlert: e.seizureAlert,
@@ -497,9 +483,16 @@ export function useEegMonitor() {
           emgIndex: Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0),
           reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),
         };
+        // The analyser already produced this side's dB spectrum over the DSA
+        // range, so the hemisphere lane reuses it instead of re-running an FFT.
+        return { metrics, spectrum: e.spectrum };
       };
-      const leftMetrics = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current);
-      const rightMetrics = sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current);
+      const left = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current);
+      const right = sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current);
+      const leftMetrics = left.metrics;
+      const rightMetrics = right.metrics;
+      const hemi: HemiSpectra = { left: left.spectrum, right: right.spectrum };
+      setHemiSpectra((prev) => compactHemi([...prev, hemi]));
       setHemiLatest({ left: leftMetrics, right: rightMetrics });
 
       // BIS-style Signal Quality Index trend: one point per epoch, thinned
@@ -514,7 +507,7 @@ export function useEegMonitor() {
         emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
       };
       setSqiHistory((prev) => compactSqi([...prev, point]));
-      setHemiEvents([...hemiEventsRef.current.map((e) => ({ ...e }))]);
+      if (hemiDirty) setHemiEvents(hemiEventsRef.current.map((e) => ({ ...e })));
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);

@@ -147,51 +147,58 @@ export function AlertEvidencePanel({
       {open ? (
         <div className="space-y-2 border-t border-border/70 px-2.5 py-2">
           <ul className="space-y-2">
-          {items.map((e, i) => {
-            const kind = featureKind(e.feature);
-            const meta = KIND_META[kind];
-            const Icon = meta.icon;
-            return (
-            <li
-              key={`${e.feature}-${i}`}
-              className={kind === "quality" ? "rounded-sm bg-muted/40 px-1.5 py-1" : undefined}
-            >
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <Icon className={`h-3 w-3 shrink-0 self-center ${meta.className}`} aria-hidden />
-                <span className="text-xs font-medium text-foreground">{e.feature}</span>
-                <span className="metric-value text-xs text-foreground">{e.value}</span>
-                <span className="metric-value text-xs uppercase tracking-wide text-muted-foreground">
-                  {DIRECTION_LABEL[e.direction] ?? e.direction}
-                </span>
-                {e.expected ? (
-                  <span className="metric-value text-xs text-muted-foreground">
-                    vs {e.expected}
-                  </span>
-                ) : null}
-                <span className="metric-value ml-auto text-xs text-muted-foreground">
-                  {windowLabel(e)}
-                </span>
-              </div>
-              <div
-                className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted"
-                role="img"
-                aria-label={`Contribution ${Math.round(e.weight * 100)}%`}
-              >
-                <div
-                  className={`h-full rounded-full ${kind === "quality" ? "bg-muted-foreground" : "bg-marker"}`}
-                  style={{ width: `${Math.round(Math.max(0.04, Math.min(1, e.weight)) * 100)}%` }}
-                />
-              </div>
-              {e.note ? (
-                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{e.note}</p>
-              ) : null}
-            </li>
-            );
-          })}
+            {items.map((e, i) => {
+              const kind = featureKind(e.feature);
+              const meta = KIND_META[kind];
+              const Icon = meta.icon;
+              return (
+                <li
+                  key={`${e.feature}-${i}`}
+                  className={kind === "quality" ? "rounded-sm bg-muted/40 px-1.5 py-1" : undefined}
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <Icon
+                      className={`h-3 w-3 shrink-0 self-center ${meta.className}`}
+                      aria-hidden
+                    />
+                    <span className="text-xs font-medium text-foreground">{e.feature}</span>
+                    <span className="metric-value text-xs text-foreground">{e.value}</span>
+                    <span className="metric-value text-xs uppercase tracking-wide text-muted-foreground">
+                      {DIRECTION_LABEL[e.direction] ?? e.direction}
+                    </span>
+                    {e.expected ? (
+                      <span className="metric-value text-xs text-muted-foreground">
+                        vs {e.expected}
+                      </span>
+                    ) : null}
+                    <span className="metric-value ml-auto text-xs text-muted-foreground">
+                      {windowLabel(e)}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted"
+                    role="img"
+                    aria-label={`Contribution ${Math.round(e.weight * 100)}%`}
+                  >
+                    <div
+                      className={`h-full rounded-full ${kind === "quality" ? "bg-muted-foreground" : "bg-marker"}`}
+                      style={{
+                        width: `${Math.round(Math.max(0.04, Math.min(1, e.weight)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  {e.note ? (
+                    <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{e.note}</p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
 
           {hasFeedback ? (
-            <div className={`rounded-md border px-2 py-1.5 ${influenceMeta?.className ?? "border-border bg-muted/30"}`}>
+            <div
+              className={`rounded-md border px-2 py-1.5 ${influenceMeta?.className ?? "border-border bg-muted/30"}`}
+            >
               <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
                 <MessageSquareQuote className="h-3 w-3" aria-hidden />
                 {influenceMeta?.label ?? "Your feedback on this alert"}

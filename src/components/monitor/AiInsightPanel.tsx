@@ -1,4 +1,13 @@
-import { AlertTriangle, Brain, Info, Loader2, ShieldAlert, SlidersHorizontal, Sparkles, Tag } from "lucide-react";
+import {
+  AlertTriangle,
+  Brain,
+  Info,
+  Loader2,
+  ShieldAlert,
+  SlidersHorizontal,
+  Sparkles,
+  Tag,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -120,8 +129,8 @@ export function AiInsightPanel({
             Reviews depth of anaesthesia, burst suppression, ictal risk and possible indicators of
             cerebral pathology from the session&apos;s spectral, suppression and quality metrics
             together with your timeline markers and the demographics and admission details you
-            enter. Turn on continuous surveillance to re-review automatically and raise alerts
-            while you monitor.
+            enter. Turn on continuous surveillance to re-review automatically and raise alerts while
+            you monitor.
           </p>
         ) : null}
 
@@ -160,7 +169,10 @@ export function AiInsightPanel({
             {result.alerts?.length ? (
               <ul className="space-y-2">
                 {result.alerts.map((a) => (
-                  <li key={a.id} className={`rounded-md border p-3 ${ALERT_TONE[a.severity] ?? ALERT_TONE.advisory}`}>
+                  <li
+                    key={a.id}
+                    className={`rounded-md border p-3 ${ALERT_TONE[a.severity] ?? ALERT_TONE.advisory}`}
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       {a.severity === "advisory" ? (
                         <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />

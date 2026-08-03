@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { EPOCH_COLUMNS } from "@/lib/eeg/db-rows";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -48,16 +49,6 @@ export const Route = createFileRoute("/_authenticated/compare")({
   component: Compare,
 });
 
-interface EpochRow {
-  t_offset_seconds: number;
-  depth_index: number | null;
-  spectral_edge_95: number | null;
-  suppression_ratio: number | null;
-  seizure_score: number | null;
-  is_suppressed: boolean | null;
-  entropy: unknown;
-}
-
 const SERIES = [
   { key: "depth", label: "Depth index (OpenIBIS)", color: "var(--chart-1)", axis: "left" },
   { key: "sef95", label: "SEF95 (Hz)", color: "var(--chart-2)", axis: "left" },
@@ -98,13 +89,11 @@ function Compare() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eeg_epochs")
-        .select(
-          "t_offset_seconds, depth_index, spectral_edge_95, suppression_ratio, seizure_score, is_suppressed, entropy",
-        )
+        .select(EPOCH_COLUMNS)
         .eq("session_id", selectedId)
         .order("t_offset_seconds", { ascending: true });
       if (error) throw error;
-      return data as unknown as EpochRow[];
+      return data ?? [];
     },
   });
 

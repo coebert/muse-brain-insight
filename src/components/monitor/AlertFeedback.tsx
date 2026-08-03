@@ -5,10 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  submitAlertFeedback,
-  type AlertVerdict,
-} from "@/lib/eeg/alert-feedback.functions";
+import { submitAlertFeedback, type AlertVerdict } from "@/lib/eeg/alert-feedback.functions";
 import type { ClinicalAlert } from "@/lib/eeg/interpret.functions";
 
 const INCORRECT_REASONS = [
@@ -72,7 +69,8 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
     return (
       <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Check className="h-3 w-3" aria-hidden />
-        Marked {verdict === "correct" ? "correct" : verdict === "incorrect" ? "incorrect" : "unsure"}
+        Marked{" "}
+        {verdict === "correct" ? "correct" : verdict === "incorrect" ? "incorrect" : "unsure"}
         {reason ? ` · ${reason}` : ""}
       </p>
     );
@@ -115,9 +113,7 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <MessageSquare className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="text-xs font-medium">
-              Marking {pendingVerdict} — why? (optional)
-            </span>
+            <span className="text-xs font-medium">Marking {pendingVerdict} — why? (optional)</span>
             <Button
               size="sm"
               variant="ghost"
@@ -136,7 +132,9 @@ export function AlertFeedback({ alert, sessionId, context, modelVersion }: Props
                   type="button"
                   onClick={() => setReason(r)}
                   className={`rounded-full border px-2 py-0.5 text-xs ${
-                    reason === r ? "border-transparent bg-foreground/15 font-medium" : "border-border"
+                    reason === r
+                      ? "border-transparent bg-foreground/15 font-medium"
+                      : "border-border"
                   }`}
                 >
                   {r}

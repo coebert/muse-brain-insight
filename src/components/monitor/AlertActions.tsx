@@ -167,7 +167,11 @@ export function AlertActions({ alert, sessionId, context }: Props) {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium capitalize">
-              {mode === "escalated" ? "Escalate alert" : mode === "resolved" ? "Resolve alert" : "Acknowledge alert"}
+              {mode === "escalated"
+                ? "Escalate alert"
+                : mode === "resolved"
+                  ? "Resolve alert"
+                  : "Acknowledge alert"}
             </span>
             <Button
               size="sm"
@@ -278,9 +282,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
               size="sm"
               className="h-7 px-3 text-xs"
               disabled={
-                busy ||
-                (mode === "escalated" && !role) ||
-                (needsRationale && !rationale.trim())
+                busy || (mode === "escalated" && !role) || (needsRationale && !rationale.trim())
               }
               onClick={() => mutation.mutate(mode)}
             >
@@ -356,29 +358,29 @@ export function AlertActionLog({ sessionId }: { sessionId?: string | null }) {
         {rows.slice(0, 15).map((r) => (
           <li key={r.id} className="space-y-0.5">
             <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="metric-value text-xs text-muted-foreground">
-              {new Date(r.created_at).toLocaleString()}
-            </span>
-            <span className="font-medium">{r.alert_title || r.alert_id}</span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
-                r.action === "escalated"
-                  ? "bg-critical/15 text-critical"
-                  : r.action === "resolved"
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-caution/15 text-caution"
-              }`}
-            >
-              {r.action === "escalated" ? `→ ${roleLabel(r.escalated_to)}` : r.action}
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
-                STANCE_CLASS[r.override_stance ?? "agree"] ?? "bg-muted"
-              }`}
-            >
-              {r.override_stance ?? "agree"}
-            </span>
-            {r.note ? <span className="text-muted-foreground">“{r.note}”</span> : null}
+              <span className="metric-value text-xs text-muted-foreground">
+                {new Date(r.created_at).toLocaleString()}
+              </span>
+              <span className="font-medium">{r.alert_title || r.alert_id}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
+                  r.action === "escalated"
+                    ? "bg-critical/15 text-critical"
+                    : r.action === "resolved"
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-caution/15 text-caution"
+                }`}
+              >
+                {r.action === "escalated" ? `→ ${roleLabel(r.escalated_to)}` : r.action}
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wide ${
+                  STANCE_CLASS[r.override_stance ?? "agree"] ?? "bg-muted"
+                }`}
+              >
+                {r.override_stance ?? "agree"}
+              </span>
+              {r.note ? <span className="text-muted-foreground">“{r.note}”</span> : null}
             </div>
             {r.override_rationale ? (
               <p className="pl-1 text-xs italic text-muted-foreground">

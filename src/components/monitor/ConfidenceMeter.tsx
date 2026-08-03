@@ -78,9 +78,7 @@ function ModelCard({ m }: { m: ModelReliability }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
         <span className="metric-value">ECE {pct(m.expectedCalibrationError)}</span>
-        <span className="metric-value">
-          Brier {m.brier == null ? "—" : m.brier.toFixed(3)}
-        </span>
+        <span className="metric-value">Brier {m.brier == null ? "—" : m.brier.toFixed(3)}</span>
         {m.unlabelledShare > 0 ? (
           <span>{pct(m.unlabelledShare)} without recorded confidence</span>
         ) : null}

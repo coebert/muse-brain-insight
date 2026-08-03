@@ -56,7 +56,9 @@ export function SignalQualityPanel({
   return (
     <div className="panel px-4 py-4">
       <div className="flex items-center gap-2">
-        <Radio className={cn("size-4", quality ? gradeClass[quality.grade] : "text-muted-foreground")} />
+        <Radio
+          className={cn("size-4", quality ? gradeClass[quality.grade] : "text-muted-foreground")}
+        />
         <h2 className="text-sm font-semibold">Signal quality</h2>
         <span
           className={cn(
@@ -125,9 +127,7 @@ export function SignalQualityPanel({
               {depthArtifact.usable ? (
                 <span className="text-signal">accepted</span>
               ) : (
-                <span className="text-caution">
-                  rejected — {depthArtifact.reasons.join(" · ")}
-                </span>
+                <span className="text-caution">rejected — {depthArtifact.reasons.join(" · ")}</span>
               )}
               {typeof depthGatedFraction === "number"
                 ? ` · ${(depthGatedFraction * 100).toFixed(0)} % of the 30 s window gated`

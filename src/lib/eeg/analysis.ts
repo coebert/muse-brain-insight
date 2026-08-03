@@ -481,7 +481,10 @@ export class EegAnalyzer {
     while (this.depthHistory.length && this.depthHistory[0]!.t < depthCutoff) {
       this.depthHistory.shift();
     }
-    if (this.depthHistory.length >= 2 && t - this.lastDepthAlertT >= this.settings.depthTrendSeconds) {
+    if (
+      this.depthHistory.length >= 2 &&
+      t - this.lastDepthAlertT >= this.settings.depthTrendSeconds
+    ) {
       const first = this.depthHistory[0]!;
       const last = this.depthHistory[this.depthHistory.length - 1]!;
       const change = last.value - first.value;
@@ -511,7 +514,9 @@ export class EegAnalyzer {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
       seizure: clamp01(
-        quality.score * (0.3 + 0.7 * baselineMaturity) * (1 - 0.6 * emgPenalty) *
+        quality.score *
+          (0.3 + 0.7 * baselineMaturity) *
+          (1 - 0.6 * emgPenalty) *
           (isSuppressed ? 0.6 : 1),
       ),
       // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it

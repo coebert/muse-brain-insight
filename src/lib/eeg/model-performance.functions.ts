@@ -59,7 +59,10 @@ export interface ModelPerformance {
   /** Weighted mean |observed − predicted| across confidence bins, 0–1. */
   expectedCalibrationError: number | null;
   rejectionTrend: RejectionPoint[];
-  modelPrecisionTrend: { model: string; points: { period: string; precision: number | null; reviewed: number }[] }[];
+  modelPrecisionTrend: {
+    model: string;
+    points: { period: string; precision: number | null; reviewed: number }[];
+  }[];
   /** Claimed alert strength vs observed outcomes, per model version. */
   reliabilityByModel: ModelReliability[];
   topRejectionReasons: { reason: string; count: number }[];
@@ -174,7 +177,8 @@ export const getModelPerformance = createServerFn({ method: "GET" })
     // Calibration: stated confidence vs observed precision.
     const bins: CalibrationBin[] = (["high", "moderate", "low", "unknown"] as const).map((key) => ({
       key,
-      label: key === "unknown" ? "Not recorded" : `${key[0]!.toUpperCase()}${key.slice(1)} confidence`,
+      label:
+        key === "unknown" ? "Not recorded" : `${key[0]!.toUpperCase()}${key.slice(1)} confidence`,
       predicted: CONFIDENCE_PRIOR[key] ?? null,
       observed: null,
       correct: 0,
@@ -278,7 +282,7 @@ export const getModelPerformance = createServerFn({ method: "GET" })
         .reverse()
         .map((r) => ({
           title: r.alert_title || "Missed finding",
-          category: CATEGORY_LABEL[r.alert_category ?? "other"] ?? (r.alert_category ?? "other"),
+          category: CATEGORY_LABEL[r.alert_category ?? "other"] ?? r.alert_category ?? "other",
           reason: r.reason,
           created_at: r.created_at,
         })),

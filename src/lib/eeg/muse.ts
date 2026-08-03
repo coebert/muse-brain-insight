@@ -41,16 +41,16 @@ export function isWebBluetoothAvailable(): boolean {
 }
 
 /** Muse packets carry 12 samples packed as 12-bit unsigned integers. */
-function decodeMusePacket(data: DataView): Float64Array {
+export function decodeMusePacket(data: DataView): Float64Array {
   const out = new Float64Array(12);
   let bitOffset = 16; // first 16 bits are the packet index
+  // The 12 packed samples end exactly on the 20th byte, so the third byte of
+  // the final read is past the buffer: treat missing bytes as zero.
+  const at = (i: number) => (i < data.byteLength ? data.getUint8(i) : 0);
   for (let i = 0; i < 12; i++) {
     const byte = bitOffset >> 3;
     const shift = bitOffset & 7;
-    const raw =
-      (((data.getUint8(byte) << 16) | (data.getUint8(byte + 1) << 8) | data.getUint8(byte + 2)) >>
-        (12 - shift)) &
-      0xfff;
+    const raw = (((at(byte) << 16) | (at(byte + 1) << 8) | at(byte + 2)) >> (12 - shift)) & 0xfff;
     // 0.48828125 µV per LSB, centred on 2048.
     out[i] = 0.48828125 * (raw - 2048);
     bitOffset += 12;
@@ -197,18 +197,21 @@ export class SimulatedSource implements EegSource {
   async start(onSamples: SampleHandler) {
     const fs = 256;
     const chunk = 12;
-    this.timer = setInterval(() => {
-      for (const channel of MUSE_CHANNELS) {
-        const out = new Float64Array(chunk);
-        for (let i = 0; i < chunk; i++) {
-          // Time is shared across channels: the phase must depend on the
-          // sample index, not on how many channels have been rendered.
-          out[i] = this.sample(channel, this.t + i / fs);
+    this.timer = setInterval(
+      () => {
+        for (const channel of MUSE_CHANNELS) {
+          const out = new Float64Array(chunk);
+          for (let i = 0; i < chunk; i++) {
+            // Time is shared across channels: the phase must depend on the
+            // sample index, not on how many channels have been rendered.
+            out[i] = this.sample(channel, this.t + i / fs);
+          }
+          onSamples(channel, out);
         }
-        onSamples(channel, out);
-      }
-      this.t += chunk / fs;
-    }, (chunk / fs) * 1000);
+        this.t += chunk / fs;
+      },
+      (chunk / fs) * 1000,
+    );
   }
 
   private sample(channel: MuseChannel, time: number): number {
