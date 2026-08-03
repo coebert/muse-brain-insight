@@ -28,6 +28,24 @@ export const DEFAULT_DEPTH_WINDOW: DepthWindowPrefs = {
 
 export type DepthWindowStatus = "unknown" | "in" | "below" | "above";
 
+/** A confirmed crossing of the notional optimal-anaesthesia window. */
+export interface DepthWindowTransition {
+  /** "exit" once the excursion outlasts the dwell time, "return" on recovery. */
+  kind: "exit" | "return";
+  /** Direction of the excursion ("below"/"above"); for a return, the direction left behind. */
+  direction: "below" | "above";
+  /** Session seconds at which the transition was confirmed. */
+  t: number;
+  /** Depth index at the transition. */
+  index: number;
+  /** Seconds spent outside the window at the moment of the transition. */
+  heldSeconds: number;
+  low: number;
+  high: number;
+  /** Whether the index was flagged reliable at the transition. */
+  reliable: boolean;
+}
+
 function loadPrefs(): DepthWindowPrefs {
   if (typeof window === "undefined") return DEFAULT_DEPTH_WINDOW;
   try {
@@ -59,6 +77,8 @@ interface Options {
   /** Whether the depth index is currently trustworthy. */
   reliable: boolean;
   enabled: boolean;
+  /** Called when an excursion is confirmed or resolved, for timeline marking. */
+  onTransition?: (transition: DepthWindowTransition) => void;
 }
 
 /**
@@ -66,7 +86,7 @@ interface Options {
  * notional optimal-anaesthesia window (default 40–60). Bounds, dwell time and
  * reliability gating are configurable and persisted on this device.
  */
-export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
+export function useDepthWindowAlerts({ index, t, reliable, enabled, onTransition }: Options) {
   const [prefs, setPrefsState] = useState<DepthWindowPrefs>(DEFAULT_DEPTH_WINDOW);
   const [hydrated, setHydrated] = useState(false);
   const [status, setStatus] = useState<DepthWindowStatus>("unknown");
@@ -74,10 +94,14 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
 
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
+  const onTransitionRef = useRef(onTransition);
+  onTransitionRef.current = onTransition;
   /** Session time at which the current out-of-window excursion began. */
   const sinceRef = useRef<number | null>(null);
   /** Direction already announced for the ongoing excursion. */
   const announcedRef = useRef<DepthWindowStatus | null>(null);
+  /** Seconds held outside the window when the excursion was announced. */
+  const announcedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     setPrefsState(loadPrefs());
@@ -104,6 +128,7 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
     if (!enabled) {
       sinceRef.current = null;
       announcedRef.current = null;
+      announcedAtRef.current = null;
       setStatus("unknown");
       setBreachSeconds(0);
       return;
@@ -112,6 +137,7 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
     if (index == null || (p.requireReliable && !reliable)) {
       sinceRef.current = null;
       announcedRef.current = null;
+      announcedAtRef.current = null;
       setStatus("unknown");
       setBreachSeconds(0);
       return;
@@ -121,14 +147,29 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
     setStatus(next);
 
     if (next === "in") {
-      if (announcedRef.current) {
-        toast.success("Depth index back in window", {
-          description: `OpenIBIS ${index.toFixed(0)} — within ${p.low}–${p.high} · ${formatClock(t)}`,
-          duration: 5000,
+      const previous = announcedRef.current;
+      if (previous === "below" || previous === "above") {
+        const heldSeconds = Math.max(0, t - (announcedAtRef.current ?? t));
+        onTransitionRef.current?.({
+          kind: "return",
+          direction: previous,
+          t,
+          index,
+          heldSeconds,
+          low: p.low,
+          high: p.high,
+          reliable,
         });
+        if (p.enabled) {
+          toast.success("Depth index back in window", {
+            description: `OpenIBIS ${index.toFixed(0)} — within ${p.low}–${p.high} · ${formatClock(t)}`,
+            duration: 5000,
+          });
+        }
       }
       sinceRef.current = null;
       announcedRef.current = null;
+      announcedAtRef.current = null;
       setBreachSeconds(0);
       return;
     }
@@ -140,15 +181,27 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
       // New excursion, or the excursion flipped direction.
       sinceRef.current = t;
       announcedRef.current = null;
+      announcedAtRef.current = null;
     }
     const held = Math.max(0, t - (sinceRef.current ?? t));
     setBreachSeconds(held);
 
-    if (!p.enabled) return;
     if (announcedRef.current === next) return;
     if (held < p.dwellSeconds) return;
 
     announcedRef.current = next;
+    announcedAtRef.current = sinceRef.current ?? t;
+    onTransitionRef.current?.({
+      kind: "exit",
+      direction: next,
+      t,
+      index,
+      heldSeconds: held,
+      low: p.low,
+      high: p.high,
+      reliable,
+    });
+    if (!p.enabled) return;
     const deep = next === "below";
     toast[deep ? "error" : "warning"](
       deep ? "Depth index below target window" : "Depth index above target window",
