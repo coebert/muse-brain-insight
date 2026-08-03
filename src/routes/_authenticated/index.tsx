@@ -12,6 +12,8 @@ import {
   Stethoscope,
   Save,
   Undo2,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -50,6 +52,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
+import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import {
   combineHemiSpectra,
   hemiSefTraces,
@@ -197,6 +200,13 @@ function Monitor() {
   );
 
   const alarms = useAlarms({ enabled: caseRunning });
+  // Toast + optional chime for new burst-suppression / seizure markers,
+  // grouped the same way the active DSA view groups the hemispheres.
+  const markerAlerts = useMarkerAlerts({
+    events: monitor.hemiEvents,
+    view: dsaView,
+    enabled: caseRunning,
+  });
 
   function selectMode(next: MonitorMode) {
     setMode(next);
@@ -740,6 +750,33 @@ function Monitor() {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                aria-pressed={markerAlerts.soundEnabled}
+                aria-label={
+                  markerAlerts.soundEnabled
+                    ? "Mute marker alert sound"
+                    : "Unmute marker alert sound"
+                }
+                title={
+                  markerAlerts.soundEnabled
+                    ? "Marker alert sound on"
+                    : "Marker alert sound off"
+                }
+                onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
+                className={cn(
+                  "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md border border-border",
+                  markerAlerts.soundEnabled
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {markerAlerts.soundEnabled ? (
+                  <Volume2 className="h-4 w-4" />
+                ) : (
+                  <VolumeX className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
