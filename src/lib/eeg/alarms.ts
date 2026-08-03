@@ -6,12 +6,29 @@
 
 export type AlarmPriority = "high" | "medium" | "low";
 
+/** Which hemisphere a condition affects, when it can be attributed. */
+export type AlarmSide = "left" | "right" | "bilateral";
+
+export const SIDE_LABEL: Record<AlarmSide, string> = {
+  left: "Left · TP9 + AF7",
+  right: "Right · AF8 + TP10",
+  bilateral: "Bilateral",
+};
+
+export const SIDE_SHORT: Record<AlarmSide, string> = {
+  left: "L",
+  right: "R",
+  bilateral: "L+R",
+};
+
 export interface Alarm {
   /** Stable key: one alarm per condition, re-armed after acknowledgement. */
   id: string;
   priority: AlarmPriority;
   title: string;
   detail: string;
+  /** Omitted when the condition is not hemisphere-specific. */
+  side?: AlarmSide;
   /** Session clock, seconds, when the condition was first met. */
   t: number;
   acknowledgedAt: number | null;
