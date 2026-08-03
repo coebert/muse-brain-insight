@@ -455,6 +455,7 @@ function Monitor() {
           epochs={monitor.epochs}
           hemiSpectra={monitor.hemiSpectra}
           hemiLatest={monitor.hemiLatest}
+          hemiEvents={monitor.hemiEvents}
           latest={latest}
           waveform={monitor.waveform}
           elapsed={monitor.elapsed}
