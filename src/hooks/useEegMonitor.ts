@@ -61,6 +61,20 @@ export interface HemiSpectra {
   right: number[];
 }
 
+/** Per-hemisphere clinical metrics, derived from that side's electrode pair. */
+export interface HemiMetrics {
+  suppressionRatio: number;
+  seizureScore: number;
+  seizureAlert: boolean;
+  qualityGrade: SignalQuality["grade"];
+  flat: boolean;
+}
+
+export interface HemiLatest {
+  left: HemiMetrics;
+  right: HemiMetrics;
+}
+
 function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   if (list.length <= MAX_EPOCHS) return list;
   const keepFrom = list.length - FULL_RES_EPOCHS;
@@ -109,6 +123,7 @@ export function useEegMonitor() {
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
   const [epochs, setEpochs] = useState<Epoch[]>([]);
   const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
+  const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
@@ -123,6 +138,8 @@ export function useEegMonitor() {
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
+  const leftAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
+  const rightAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const startedAtRef = useRef<number>(0);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
@@ -136,6 +153,8 @@ export function useEegMonitor() {
 
   useEffect(() => {
     analyzerRef.current.updateSettings(settings);
+    leftAnalyzerRef.current.updateSettings(settings);
+    rightAnalyzerRef.current.updateSettings(settings);
   }, [settings]);
 
   const activeSignal = useCallback((length: number): Float64Array => {
@@ -168,9 +187,12 @@ export function useEegMonitor() {
 
   const reset = useCallback(() => {
     analyzerRef.current.reset();
+    leftAnalyzerRef.current.reset();
+    rightAnalyzerRef.current.reset();
     manualEventsRef.current = [];
     setEpochs([]);
     setHemiSpectra([]);
+    setHemiLatest(null);
     setEvents([]);
     setElapsed(0);
     setDataGapSeconds(0);
@@ -286,6 +308,28 @@ export function useEegMonitor() {
       }
       setContactOk(contact);
       setChannelQuality(quality);
+
+      // Side-specific metrics so alarms can name the affected hemisphere.
+      const sideMetrics = (group: MuseChannel[], analyzer: EegAnalyzer): HemiMetrics => {
+        const e = analyzer.analyze(groupSignal(group, EPOCH_LEN), t);
+        const grades = group.map((c) => quality[c]);
+        const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
+          ? "poor"
+          : grades.some((q) => q?.grade === "fair")
+            ? "fair"
+            : "good";
+        return {
+          suppressionRatio: e.suppressionRatio,
+          seizureScore: e.seizureScore,
+          seizureAlert: e.seizureAlert,
+          qualityGrade: worst,
+          flat: group.every((c) => quality[c]?.flat ?? false),
+        };
+      };
+      setHemiLatest({
+        left: sideMetrics(LEFT_CHANNELS, leftAnalyzerRef.current),
+        right: sideMetrics(RIGHT_CHANNELS, rightAnalyzerRef.current),
+      });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
@@ -341,6 +385,7 @@ export function useEegMonitor() {
     setSettings,
     epochs,
     hemiSpectra,
+    hemiLatest,
     events,
     latest,
     waveform,

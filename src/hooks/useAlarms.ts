@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AlarmTone, highestPriority, type Alarm, type AlarmPriority } from "@/lib/eeg/alarms";
+import {
+  AlarmTone,
+  highestPriority,
+  type Alarm,
+  type AlarmPriority,
+  type AlarmSide,
+} from "@/lib/eeg/alarms";
 
 /** A condition the monitor believes is currently true. */
 export interface AlarmCondition {
@@ -8,6 +14,7 @@ export interface AlarmCondition {
   priority: AlarmPriority;
   title: string;
   detail: string;
+  side?: AlarmSide;
 }
 
 export interface ActiveAlarm extends Alarm {
@@ -75,6 +82,20 @@ export function useAlarms(options: { enabled: boolean; onLog?: (alarm: Alarm) =>
     );
   }, []);
 
+  /** Acknowledge every unacknowledged alarm attributed to one hemisphere. */
+  const acknowledgeSide = useCallback((side: AlarmSide) => {
+    toneRef.current?.blip();
+    setAlarms((prev) =>
+      prev
+        .map((a) =>
+          a.acknowledgedAt == null && (a.side === side || a.side === "bilateral")
+            ? { ...a, acknowledgedAt: Date.now() }
+            : a,
+        )
+        .filter((a) => !(a.resolved && a.acknowledgedAt != null)),
+    );
+  }, []);
+
   const clearAll = useCallback(() => setAlarms([]), []);
 
   /** Two-minute audio pause, the standard bedside behaviour. */
@@ -113,6 +134,7 @@ export function useAlarms(options: { enabled: boolean; onLog?: (alarm: Alarm) =>
     sync,
     acknowledge,
     acknowledgeAll,
+    acknowledgeSide,
     clearAll,
     audioEnabled,
     setAudioEnabled,
