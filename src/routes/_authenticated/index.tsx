@@ -11,13 +11,14 @@ import {
   Maximize2,
   Stethoscope,
   Save,
-  TriangleAlert,
   Undo2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
+import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { CaseFields } from "@/components/monitor/CaseFields";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
@@ -45,11 +46,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
+import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
+import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
@@ -80,13 +82,6 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Monitor,
 });
 
-const CONTEXTS = [
-  { value: "general_anaesthesia", label: "General anaesthesia" },
-  { value: "icu_sedation", label: "ICU sedation" },
-  { value: "procedural_sedation", label: "Procedural sedation" },
-  { value: "other", label: "Other" },
-];
-
 const MARKER_PRESETS = [
   "Induction",
   "Propofol bolus",
@@ -100,34 +95,6 @@ const MARKER_PRESETS = [
   "Movement / artefact",
   "Sedation hold",
   "Emergence",
-];
-
-const SEX_OPTIONS = [
-  { value: "female", label: "Female" },
-  { value: "male", label: "Male" },
-  { value: "other", label: "Other" },
-  { value: "unknown", label: "Not recorded" },
-];
-
-const CLINICAL_FEATURES = [
-  "Sepsis",
-  "Septic shock",
-  "Delirium",
-  "OOHCA",
-  "IHCA",
-  "Hypoxic brain injury",
-  "Dementia",
-  "Traumatic brain injury",
-  "Intracranial haemorrhage",
-  "Stroke",
-  "Known epilepsy",
-  "Status epilepticus",
-  "Liver failure",
-  "Renal failure",
-  "Alcohol / drug withdrawal",
-  "Post-cardiac surgery",
-  "Neuromuscular blockade",
-  "Therapeutic hypothermia",
 ];
 
 type MonitorMode = "anaesthesia" | "icu";
@@ -171,6 +138,10 @@ function Monitor() {
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
+  const [caseOpen, setCaseOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
+  const [caseState, setCaseState] = useState<"idle" | "running" | "ended">("idle");
+  const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
   const [fullscreen, setFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
@@ -181,22 +152,36 @@ function Monitor() {
   const [aiWatch, setAiWatch] = useState(false);
   const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
   const seenAlertIds = useRef<Set<string>>(new Set());
-  const [meta, setMeta] = useState({
-    caseCode: "",
-    context: "general_anaesthesia",
-    location: "",
-    notes: "",
-    ageYears: "",
-    sex: "",
-    admissionDiagnosis: "",
-    clinicalFeatures: [] as string[],
-  });
+  const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
 
   const { latest, summary, status } = monitor;
   const streaming = status === "streaming";
+  const reconnecting = status === "reconnecting";
+  const caseRunning = caseState === "running";
   const seizureAlert = latest?.seizureAlert ?? false;
   const icuMode = mode === "icu";
   const activeMode = MODES.find((m) => m.key === mode)!;
+
+  const allEvents = useMemo(
+    () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
+    [monitor.events, markers],
+  );
+
+  /** Timestamped audit entry in the session event log. */
+  const audit = useCallback(
+    (detail: string) => {
+      monitor.addEvent({
+        kind: "annotation",
+        severity: "info",
+        t: monitor.elapsed,
+        duration: 0,
+        detail: `Audit — ${detail}`,
+      });
+    },
+    [monitor],
+  );
+
+  const alarms = useAlarms({ enabled: caseRunning });
 
   function selectMode(next: MonitorMode) {
     setMode(next);
@@ -205,18 +190,92 @@ function Monitor() {
     if (preset) monitor.setSettings({ ...preset.settings });
     setMeta((prev) => ({ ...prev, context: cfg.context }));
     setWindowMinutes(next === "icu" ? 30 : 10);
+    if (caseRunning) audit(`Mode changed to ${cfg.label}`);
   }
 
-  const allEvents = useMemo(
-    () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
-    [monitor.events, markers],
-  );
+  /** Applies a settings change and records it in the case audit trail. */
+  function applySettings(patch: Partial<typeof monitor.settings>, description: string) {
+    monitor.setSettings({ ...monitor.settings, ...patch });
+    if (caseRunning) audit(description);
+  }
+
+  async function startCase(kind: "muse" | "simulated") {
+    if (!meta.caseCode.trim()) {
+      toast.error("Give the case an anonymised code first.");
+      return;
+    }
+    setCaseOpen(false);
+    setMarkers([]);
+    alarms.clearAll();
+    setAiResult(null);
+    seenAlertIds.current.clear();
+    setCaseState("running");
+    await monitor.connect(kind);
+  }
+
+  function endCase(fileNow: boolean) {
+    setEndOpen(false);
+    void monitor.stop();
+    setCaseState("ended");
+    if (fileNow) setSaveOpen(true);
+    else
+      toast.warning("Case ended without filing — the recording is still here until you reload.");
+  }
+
+  // Derive bedside alarm conditions from the live epoch and detected events.
+  useEffect(() => {
+    if (!caseRunning) return;
+    const conditions: AlarmCondition[] = [];
+    if (latest?.seizureAlert) {
+      conditions.push({
+        id: "seizure",
+        priority: icuMode ? "high" : "medium",
+        title: "Possible seizure activity",
+        detail: `Rhythmic discharges, score ${latest.seizureScore.toFixed(2)} — review the raw trace.`,
+      });
+    }
+    if (latest && latest.suppressionRatio >= 40) {
+      conditions.push({
+        id: "deep-suppression",
+        priority: "high",
+        title: "Deep burst suppression",
+        detail: `Suppression ratio ${latest.suppressionRatio.toFixed(0)} % — consider lightening.`,
+      });
+    } else if (latest && latest.suppressionRatio >= monitor.settings.bsrAlertPercent) {
+      conditions.push({
+        id: "suppression",
+        priority: "medium",
+        title: "Burst suppression",
+        detail: `Suppression ratio ${latest.suppressionRatio.toFixed(0)} %.`,
+      });
+    }
+    if (monitor.dataGapSeconds >= 5 || reconnecting) {
+      conditions.push({
+        id: "signal-loss",
+        priority: "medium",
+        title: "EEG signal lost",
+        detail: reconnecting
+          ? `Reconnecting to the headband (attempt ${monitor.reconnectAttempt?.attempt ?? 1} of ${monitor.reconnectAttempt?.attempts ?? 5}).`
+          : `No data for ${Math.round(monitor.dataGapSeconds)} s — check the headband.`,
+      });
+    }
+    if (latest && !latest.depthReliability.reliable && latest.quality.grade === "poor") {
+      conditions.push({
+        id: "quality",
+        priority: "low",
+        title: "Poor signal quality",
+        detail: latest.depthReliability.reasons[0] ?? "Indices are unreliable in this segment.",
+      });
+    }
+    alarms.sync(conditions, monitor.elapsed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest, caseRunning, icuMode, monitor.dataGapSeconds, reconnecting, monitor.elapsed]);
 
   function addMarker(label: string) {
     const text = label.trim();
     if (!text) return;
-    if (!streaming) {
-      toast.error("Start monitoring before marking events.");
+    if (!caseRunning) {
+      toast.error("Start a case before marking events.");
       return;
     }
     setMarkers((prev) => [
@@ -317,6 +376,8 @@ function Monitor() {
       );
       toast.success("Session saved to your records.");
       setSaveOpen(false);
+      setCaseState("idle");
+      alarms.clearAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save the session.");
     } finally {
@@ -353,16 +414,29 @@ function Monitor() {
           <span
             className={cn(
               "metric-value rounded-full border px-2.5 py-0.5 text-[11px] short:hidden md:short:inline",
-              streaming
-                ? "border-signal/50 text-signal"
-                : "border-border text-muted-foreground",
+              reconnecting
+                ? "border-caution/60 text-caution"
+                : streaming
+                  ? "border-signal/50 text-signal"
+                  : "border-border text-muted-foreground",
             )}
           >
-            {streaming ? `${monitor.sourceName} · live` : "not streaming"}
+            {reconnecting
+              ? `reconnecting ${monitor.reconnectAttempt?.attempt ?? 1}/${monitor.reconnectAttempt?.attempts ?? 5}`
+              : streaming
+                ? `${monitor.sourceName} · live`
+                : caseState === "ended"
+                  ? "case ended"
+                  : "no case running"}
           </span>
-          {streaming ? (
+          {caseState !== "idle" ? (
             <span className="metric-value text-sm text-muted-foreground">
               {formatClock(monitor.elapsed)}
+            </span>
+          ) : null}
+          {meta.caseCode && caseState !== "idle" ? (
+            <span className="metric-value truncate rounded bg-muted px-2 py-0.5 text-[11px]">
+              {meta.caseCode}
             </span>
           ) : null}
 
@@ -395,7 +469,7 @@ function Monitor() {
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:justify-end">
-            {streaming ? (
+            {caseRunning ? (
               <>
                 <Button
                   variant="outline"
@@ -403,15 +477,15 @@ function Monitor() {
                   className="flex-1 sm:flex-none"
                   onClick={() => setSaveOpen(true)}
                 >
-                  <Save className="size-4" /> Save session
+                  <Save className="size-4" /> File now
                 </Button>
                 <Button
                   variant="destructive"
                   size="sm"
                   className="flex-1 sm:flex-none"
-                  onClick={() => void monitor.stop()}
+                  onClick={() => setEndOpen(true)}
                 >
-                  <CircleStop className="size-4" /> Stop
+                  <CircleStop className="size-4" /> End case
                 </Button>
                 <Button
                   variant="outline"
@@ -427,24 +501,20 @@ function Monitor() {
                 <Button
                   size="sm"
                   className="flex-1 sm:flex-none"
-                  onClick={() => {
-                    setMarkers([]);
-                    void monitor.connect("muse");
-                  }}
+                  onClick={() => setCaseOpen(true)}
                 >
-                  <Bluetooth className="size-4" /> Connect Muse 2
+                  <Bluetooth className="size-4" /> Start case
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="flex-1 sm:flex-none"
-                  onClick={() => {
-                    setMarkers([]);
-                    void monitor.connect("simulated");
-                  }}
-                >
-                  <FlaskConical className="size-4" /> Demo signal
-                </Button>
+                {caseState === "ended" && monitor.epochs.length ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setSaveOpen(true)}
+                  >
+                    <Save className="size-4" /> File case
+                  </Button>
+                ) : null}
               </>
             )}
             <Button asChild variant="ghost" size="sm">
@@ -497,32 +567,64 @@ function Monitor() {
           </div>
         ) : null}
 
-        {seizureAlert ? (
-          <div
-            className={cn(
-              "panel flex items-center gap-3 px-4 py-3",
-              icuMode ? "alert-pulse border-critical" : "border-caution/60",
-            )}
-          >
-            <TriangleAlert className={cn("size-5", icuMode ? "text-critical" : "text-caution")} />
-            <div>
-              <p
-                className={cn(
-                  "text-sm font-semibold",
-                  icuMode ? "text-critical" : "text-caution",
-                )}
-              >
-                {icuMode
-                  ? "Possible seizure activity — review the raw trace"
-                  : "Rhythmic activity flagged — review when convenient"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Sustained rhythmic discharges detected. Score {latest?.seizureScore.toFixed(2)}.
-              </p>
-            </div>
-          </div>
+        {caseState !== "idle" ? (
+          <AlarmBanner
+            alarms={alarms.alarms}
+            audioEnabled={alarms.audioEnabled}
+            muted={alarms.muted}
+            muteRemaining={alarms.muteRemaining}
+            onAcknowledge={(id) => {
+              alarms.acknowledge(id);
+              audit(`Alarm acknowledged (${id})`);
+            }}
+            onAcknowledgeAll={() => {
+              alarms.acknowledgeAll();
+              audit("All alarms acknowledged");
+            }}
+            onPauseAudio={() => {
+              alarms.pauseAudio();
+              audit("Alarm audio paused for 2 minutes");
+            }}
+            onResumeAudio={alarms.resumeAudio}
+            onToggleAudio={() => {
+              alarms.setAudioEnabled(!alarms.audioEnabled);
+              audit(`Alarm audio turned ${alarms.audioEnabled ? "off" : "on"}`);
+            }}
+          />
         ) : null}
 
+        <div
+          role="tablist"
+          aria-label="Monitor sections"
+          className="flex w-full gap-1 rounded-lg border border-border p-1"
+        >
+          {(
+            [
+              { key: "monitor", label: "Monitor" },
+              { key: "signal", label: "Signal & settings" },
+              { key: "review", label: "Review" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                tab === t.key
+                  ? "bg-signal/15 text-signal"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "monitor" ? (
+        <>
         {/* Density spectral array */}
         <section className="panel overflow-hidden">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
@@ -681,7 +783,7 @@ function Monitor() {
                   key={preset}
                   type="button"
                   onClick={() => addMarker(preset)}
-                  disabled={!streaming}
+                  disabled={!caseRunning}
                   className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
                 >
                   {preset}
@@ -691,7 +793,7 @@ function Monitor() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Input
                 value={markerText}
-                disabled={!streaming}
+                disabled={!caseRunning}
                 placeholder="Custom marker — e.g. “ketamine 30 mg”, “facial twitching noted”"
                 className="h-9 w-full sm:w-auto sm:max-w-sm sm:flex-1"
                 onChange={(e) => setMarkerText(e.target.value)}
@@ -705,7 +807,7 @@ function Monitor() {
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={!streaming || !markerText.trim()}
+                disabled={!caseRunning || !markerText.trim()}
                 onClick={() => {
                   addMarker(markerText);
                   setMarkerText("");
@@ -941,7 +1043,10 @@ function Monitor() {
             return order.map((k) => tiles[k]);
           })()}
         </section>
+        </>
+        ) : null}
 
+        {tab === "signal" ? (
         <SignalQualityPanel
           quality={latest?.quality ?? null}
           channels={MUSE_CHANNELS}
@@ -950,7 +1055,9 @@ function Monitor() {
           depthArtifact={latest?.depthArtifact ?? null}
           depthGatedFraction={latest?.depth.gatedFraction}
         />
+        ) : null}
 
+        {tab === "review" ? (
         <AiInsightPanel
           result={aiResult}
           loading={aiLoading}
@@ -968,8 +1075,11 @@ function Monitor() {
           lastRunAt={aiLastRunAt}
           feedbackContext={mode}
         />
+        ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        {tab !== "monitor" ? (
+        <section className={cn("grid gap-4", tab === "signal" && "lg:grid-cols-[2fr_1fr]")}>
+          {tab === "signal" ? (
           <div className="space-y-4">
             <div className="panel overflow-hidden">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3 py-2.5 sm:px-4">
@@ -1015,7 +1125,7 @@ function Monitor() {
                         size="sm"
                         variant={active ? "default" : "outline"}
                         title={p.description}
-                        onClick={() => monitor.setSettings({ ...p.settings })}
+                        onClick={() => applySettings(p.settings, `Sensitivity preset set to ${p.label}`)}
                       >
                         {p.label}
                       </Button>
@@ -1200,6 +1310,7 @@ function Monitor() {
               </div>
             </div>
           </div>
+          ) : null}
 
           <div className="panel overflow-hidden">
             <div className="border-b border-border px-4 py-2.5">
@@ -1210,6 +1321,7 @@ function Monitor() {
             </div>
           </div>
         </section>
+        ) : null}
 
         <p className="pb-6 text-xs text-muted-foreground">
           Research and education tool. The Muse 2 is a consumer device and CortexTrace is not a
@@ -1219,145 +1331,22 @@ function Monitor() {
       </main>
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Save anonymised session</DialogTitle>
+            <DialogTitle>File this case</DialogTitle>
             <DialogDescription>
               Only the case code you type here is stored — no names, dates of birth or hospital
               numbers. Use a code that cannot identify the patient outside your own records.
             </DialogDescription>
           </DialogHeader>
           {user ? (
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="case">Anonymised case code</Label>
-                <Input
-                  id="case"
-                  className="mt-1.5"
-                  placeholder="e.g. GA-2026-014"
-                  value={meta.caseCode}
-                  onChange={(e) => setMeta({ ...meta, caseCode: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Context</Label>
-                  <Select
-                    value={meta.context}
-                    onValueChange={(v) => setMeta({ ...meta, context: v })}
-                  >
-                    <SelectTrigger className="mt-1.5 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONTEXTS.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="loc">Location</Label>
-                  <Input
-                    id="loc"
-                    className="mt-1.5"
-                    placeholder="Theatre 4 / ICU bed 7"
-                    value={meta.location}
-                    onChange={(e) => setMeta({ ...meta, location: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="age">Age (years)</Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    min={0}
-                    max={120}
-                    className="mt-1.5"
-                    placeholder="e.g. 68"
-                    value={meta.ageYears}
-                    onChange={(e) => setMeta({ ...meta, ageYears: e.target.value })}
-                  />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Ages of 90 and over are stored as a “90+” band only.
-                  </p>
-                </div>
-                <div>
-                  <Label>Sex</Label>
-                  <Select value={meta.sex} onValueChange={(v) => setMeta({ ...meta, sex: v })}>
-                    <SelectTrigger className="mt-1.5 w-full">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SEX_OPTIONS.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="dx">Admission diagnosis</Label>
-                <Input
-                  id="dx"
-                  className="mt-1.5"
-                  placeholder="e.g. community-acquired pneumonia"
-                  value={meta.admissionDiagnosis}
-                  onChange={(e) => setMeta({ ...meta, admissionDiagnosis: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Admission / clinical features</Label>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {CLINICAL_FEATURES.map((f) => {
-                    const on = meta.clinicalFeatures.includes(f);
-                    return (
-                      <button
-                        key={f}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() =>
-                          setMeta({
-                            ...meta,
-                            clinicalFeatures: on
-                              ? meta.clinicalFeatures.filter((x) => x !== f)
-                              : [...meta.clinicalFeatures, f],
-                          })
-                        }
-                        className={cn(
-                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                          on
-                            ? "border-signal bg-signal/15 text-signal"
-                            : "border-border text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {f}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  className="mt-1.5"
-                  placeholder="Agent, infusion rates, clinical events…"
-                  value={meta.notes}
-                  onChange={(e) => setMeta({ ...meta, notes: e.target.value })}
-                />
-              </div>
+            <>
+              <CaseFields meta={meta} onChange={setMeta} idPrefix="save" />
               <p className="metric-value text-[11px] text-muted-foreground">
                 {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} ·{" "}
                 {allEvents.length} events ({markers.length} clinician markers)
               </p>
-            </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Sign in to store sessions securely against your own account.
@@ -1373,6 +1362,51 @@ function Monitor() {
                 <Link to="/auth">Sign in</Link>
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={caseOpen} onOpenChange={setCaseOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Start a case</DialogTitle>
+            <DialogDescription>
+              Record the case details before streaming. The case then survives a headband dropout
+              and can be filed at the end without retyping anything.
+            </DialogDescription>
+          </DialogHeader>
+          <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
+          <DialogFooter className="gap-2">
+            <Button variant="secondary" onClick={() => void startCase("simulated")}>
+              <FlaskConical className="size-4" /> Demo signal
+            </Button>
+            <Button onClick={() => void startCase("muse")}>
+              <Bluetooth className="size-4" /> Connect Muse 2
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={endOpen} onOpenChange={setEndOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>End case {meta.caseCode ? `“${meta.caseCode}”` : ""}?</DialogTitle>
+            <DialogDescription>
+              Streaming stops and the recording is closed. File it now to keep the trend, events
+              and alarm history — nothing is stored until you do.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="metric-value text-xs text-muted-foreground">
+            {formatClock(monitor.elapsed)} · {monitor.epochs.length} epochs · {allEvents.length}{" "}
+            events · mean SR {summary.meanSr.toFixed(0)} %
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => endCase(false)}>
+              End without filing
+            </Button>
+            <Button onClick={() => endCase(true)}>
+              <Save className="size-4" /> End and file case
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -25,13 +25,30 @@ import {
   type MuseChannel,
 } from "@/lib/eeg/muse";
 
-export type MonitorStatus = "idle" | "connecting" | "streaming" | "error";
+export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
 
 const BUFFER_SECONDS = 8;
 const BUFFER_LEN = MUSE_SAMPLE_RATE * BUFFER_SECONDS;
 const EPOCH_LEN = MUSE_SAMPLE_RATE * EPOCH_SECONDS;
-const MAX_EPOCHS = 3600; // one hour of DSA at 1 Hz
+/**
+ * Long cases must never lose their earlier trend. Instead of dropping the
+ * oldest hour we thin it: once the buffer is full, every second epoch older
+ * than the most recent 30 minutes is discarded, halving the resolution of
+ * history while keeping the whole case on screen.
+ */
+const MAX_EPOCHS = 7200;
+const FULL_RES_EPOCHS = 1800;
+
+/** Samples must arrive at least this recently for an epoch to be trustworthy. */
+const STALE_SAMPLE_MS = 2500;
+
+function compactEpochs(list: Epoch[]): Epoch[] {
+  if (list.length <= MAX_EPOCHS) return list;
+  const keepFrom = list.length - FULL_RES_EPOCHS;
+  const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
+  return [...older, ...list.slice(keepFrom)];
+}
 
 interface ChannelBuffer {
   data: Float64Array;
@@ -65,11 +82,19 @@ export function useEegMonitor() {
   const [elapsed, setElapsed] = useState(0);
   const [contactOk, setContactOk] = useState<Record<string, boolean>>({});
   const [channelQuality, setChannelQuality] = useState<Record<string, SignalQuality>>({});
+  const [reconnectAttempt, setReconnectAttempt] = useState<{
+    attempt: number;
+    attempts: number;
+  } | null>(null);
+  const [dataGapSeconds, setDataGapSeconds] = useState(0);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const startedAtRef = useRef<number>(0);
+  const lastSampleAtRef = useRef<number>(0);
+  const gapStartRef = useRef<number | null>(null);
+  const manualEventsRef = useRef<DetectedEvent[]>([]);
   const channelRef = useRef(channel);
   channelRef.current = channel;
 
@@ -95,31 +120,56 @@ export function useEegMonitor() {
   const stop = useCallback(async () => {
     await sourceRef.current?.stop();
     sourceRef.current = null;
+    setReconnectAttempt(null);
     setStatus("idle");
   }, []);
 
   const reset = useCallback(() => {
     analyzerRef.current.reset();
+    manualEventsRef.current = [];
     setEpochs([]);
     setEvents([]);
     setElapsed(0);
+    setDataGapSeconds(0);
+    gapStartRef.current = null;
     startedAtRef.current = Date.now();
     for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
   }, []);
 
+  /** Appends a clinician annotation or audit entry to the session event log. */
+  const addEvent = useCallback((event: DetectedEvent) => {
+    manualEventsRef.current = [...manualEventsRef.current, event];
+    setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
+  }, []);
+
   const connect = useCallback(
-    async (kind: SourceKind) => {
+    async (kind: SourceKind, options?: { preserveTimeline?: boolean }) => {
       setError(null);
       setStatus("connecting");
       try {
         const source: EegSource = kind === "muse" ? new MuseClient() : new SimulatedSource();
         source.onDisconnect(() => {
           setStatus("idle");
-          setError("The headband disconnected.");
+          setReconnectAttempt(null);
+          setError("The headband disconnected and could not be recovered.");
+        });
+        source.onState?.((state) => {
+          if (state.kind === "reconnecting") {
+            setStatus("reconnecting");
+            setReconnectAttempt({ attempt: state.attempt, attempts: state.attempts });
+            setError(null);
+          } else if (state.kind === "connected") {
+            setStatus("streaming");
+            setReconnectAttempt(null);
+          } else {
+            setReconnectAttempt(null);
+            setError(state.reason);
+          }
         });
         await source.start((ch, samples) => {
           const buf = buffersRef.current[ch];
           if (!buf) return;
+          lastSampleAtRef.current = Date.now();
           for (let i = 0; i < samples.length; i++) {
             buf.data[buf.write] = buf.filter.process(samples[i]!);
             buf.write = (buf.write + 1) % BUFFER_LEN;
@@ -128,7 +178,8 @@ export function useEegMonitor() {
         });
         sourceRef.current = source;
         setSourceName(source.name);
-        reset();
+        if (!options?.preserveTimeline) reset();
+        lastSampleAtRef.current = Date.now();
         setStatus("streaming");
       } catch (e) {
         setStatus("error");
@@ -140,18 +191,42 @@ export function useEegMonitor() {
 
   // Epoch analysis loop.
   useEffect(() => {
-    if (status !== "streaming") return;
+    if (status !== "streaming" && status !== "reconnecting") return;
     const id = setInterval(() => {
       const anyBuffer = buffersRef.current[MUSE_CHANNELS[0]]!;
       if (anyBuffer.count < EPOCH_LEN) return;
       const t = (Date.now() - startedAtRef.current) / 1000;
+
+      // No fresh samples: leave a real gap in the trend rather than
+      // re-analysing stale buffer contents.
+      if (Date.now() - lastSampleAtRef.current > STALE_SAMPLE_MS) {
+        if (gapStartRef.current == null) gapStartRef.current = t;
+        setDataGapSeconds(t - gapStartRef.current);
+        setElapsed(t);
+        return;
+      }
+      if (gapStartRef.current != null) {
+        const gap = t - gapStartRef.current;
+        gapStartRef.current = null;
+        setDataGapSeconds(0);
+        if (gap >= 3) {
+          manualEventsRef.current = [
+            ...manualEventsRef.current,
+            {
+              kind: "signal_quality",
+              severity: "warning",
+              t: t - gap,
+              duration: gap,
+              detail: `No EEG received for ${Math.round(gap)} s — trend gap.`,
+            },
+          ];
+        }
+      }
+
       const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
       setElapsed(t);
-      setEpochs((prev) => {
-        const next = [...prev, epoch];
-        return next.length > MAX_EPOCHS ? next.slice(next.length - MAX_EPOCHS) : next;
-      });
-      setEvents([...analyzerRef.current.events]);
+      setEpochs((prev) => compactEpochs([...prev, epoch]));
+      setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
 
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
@@ -169,7 +244,7 @@ export function useEegMonitor() {
 
   // Waveform refresh.
   useEffect(() => {
-    if (status !== "streaming") return;
+    if (status !== "streaming" && status !== "reconnecting") return;
     const id = setInterval(() => {
       setWaveform(activeSignal(MUSE_SAMPLE_RATE * 4));
     }, 200);
@@ -224,6 +299,9 @@ export function useEegMonitor() {
     contactOk,
     channelQuality,
     summary,
+    reconnectAttempt,
+    dataGapSeconds,
+    addEvent,
     connect,
     stop,
     reset,
