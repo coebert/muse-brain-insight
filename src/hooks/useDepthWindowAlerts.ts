@@ -133,7 +133,10 @@ export function useDepthWindowAlerts({ index, t, reliable, enabled }: Options) {
       return;
     }
 
-    if (sinceRef.current == null || announcedRef.current !== null && announcedRef.current !== next) {
+    if (
+      sinceRef.current == null ||
+      (announcedRef.current !== null && announcedRef.current !== next)
+    ) {
       // New excursion, or the excursion flipped direction.
       sinceRef.current = t;
       announcedRef.current = null;
