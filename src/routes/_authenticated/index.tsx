@@ -828,145 +828,20 @@ function Monitor() {
             </div>
           </div>
           <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
-            <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
-              {(dsaView === "bilateral"
-                ? [
-                    {
-                      side: "Left",
-                      montage: "TP9 + AF7",
-                      frames: monitor.hemiSpectra.map((h) => h.left),
-                      metrics: monitor.hemiLatest?.left ?? null,
-                      overlaySide: "left" as const,
-                      traces: undefined,
-                    },
-                    {
-                      side: "Right",
-                      montage: "AF8 + TP10",
-                      frames: monitor.hemiSpectra.map((h) => h.right),
-                      metrics: monitor.hemiLatest?.right ?? null,
-                      overlaySide: "right" as const,
-                      traces: undefined,
-                    },
-                  ]
-                : [
-                    {
-                      side: dsaView === "overlay" ? "Overlay" : "Combined",
-                      montage: dsaView === "overlay" ? "L vs R SEF95" : "L + R mean",
-                      frames: combineHemiSpectra(monitor.hemiSpectra),
-                      metrics: worstHemi(monitor.hemiLatest),
-                      overlaySide: "both" as const,
-                      traces:
-                        dsaView === "overlay"
-                          ? (() => {
-                              const t = hemiSefTraces(monitor.hemiSpectra);
-                              return [
-                                { label: "Left SEF95", color: "rgb(96,208,255)", values: t.left },
-                                { label: "Right SEF95", color: "rgb(255,176,64)", values: t.right },
-                              ];
-                            })()
-                          : undefined,
-                    },
-                  ]
-              ).map((h) => (
-                <div key={h.side} className="relative min-h-0 border-b border-border/60 last:border-b-0">
-                  <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1.5 py-0.5 text-xs tracking-[0.12em] text-foreground uppercase">
-                    {h.side} · {h.montage}
-                  </span>
-                  <HemiQualityBadge
-                    metrics={h.metrics}
-                    className="absolute top-1 right-2 z-10"
-                  />
-                  <DsaChart
-                    frames={h.frames}
-                    windowSeconds={windowMinutes * 60}
-                    traces={h.traces}
-                  />
-                  {dsaView === "overlay" ? (
-                    <div className="metric-value absolute right-2 bottom-8 z-10 flex gap-3 rounded bg-background/70 px-2 py-1 text-xs">
-                      <span className="flex items-center gap-1 text-[rgb(96,208,255)]">
-                        <span className="h-0.5 w-4 bg-[rgb(96,208,255)]" /> L SEF95
-                      </span>
-                      <span className="flex items-center gap-1 text-[rgb(255,176,64)]">
-                        <span className="h-0.5 w-4 bg-[rgb(255,176,64)]" /> R SEF95
-                      </span>
-                    </div>
-                  ) : null}
-                  <HemiEventOverlay
-                    events={monitor.hemiEvents}
-                    side={h.overlaySide}
-                    elapsed={monitor.elapsed}
-                    windowSeconds={windowMinutes * 60}
-                  />
-                </div>
-              ))}
-            </div>
-            {/* Automatic trend alerts (depth swings, burst-suppression burden) */}
-            {monitor.events
-              .filter(
-                (e) =>
-                  e.kind === "depth_drop" ||
-                  e.kind === "depth_rise" ||
-                  e.kind === "suppression_burden",
-              )
-              .map((e, i) => {
-                const age = monitor.elapsed - e.t;
-                if (age > windowMinutes * 60) return null;
-                const left = (1 - age / (windowMinutes * 60)) * 100;
-                const tone = e.severity === "critical" ? "critical" : "caution";
-                return (
-                  <div
-                    key={`alert-${e.kind}-${e.t}-${i}`}
-                    className="pointer-events-none absolute top-0 bottom-0 z-10"
-                    style={{ left: `${left}%` }}
-                  >
-                    <div
-                      className={cn(
-                        "h-full w-px",
-                        tone === "critical" ? "bg-critical/80" : "bg-caution/80",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "metric-value absolute bottom-1 max-w-[150px] truncate rounded px-1 py-0.5 text-xs whitespace-nowrap",
-                        tone === "critical"
-                          ? "bg-critical/20 text-critical"
-                          : "bg-caution/20 text-caution",
-                        left > 65 ? "right-1" : "left-1",
-                      )}
-                    >
-                      {e.kind === "depth_drop"
-                        ? "Depth ↓"
-                        : e.kind === "depth_rise"
-                          ? "Depth ↑"
-                          : "BSR"}{" "}
-                      {formatClock(e.t)}
-                    </span>
-                  </div>
-                );
-              })}
-            {/* Clinician markers, positioned by time across the visible window */}
-            {markers.map((m, i) => {
-              const age = monitor.elapsed - m.t;
-              if (age > windowMinutes * 60) return null;
-              const left = (1 - age / (windowMinutes * 60)) * 100;
-              return (
-                <div
-                  key={`${m.t}-${i}`}
-                  className="pointer-events-none absolute top-0 bottom-0 z-10"
-                  style={{ left: `${left}%` }}
-                >
-                  <div className="h-full w-px bg-marker/80" />
-                  <span
-                    className={cn(
-                      "metric-value absolute top-1 max-w-[150px] truncate rounded bg-marker/20 px-1 py-0.5 text-xs whitespace-nowrap text-marker",
-                      left > 65 ? "right-1" : "left-1",
-                    )}
-                  >
-                    {m.detail}
-                  </span>
-                </div>
-              );
-            })}
+            <HemiDsaPanel
+              hemiSpectra={monitor.hemiSpectra}
+              hemiLatest={monitor.hemiLatest}
+              hemiEvents={monitor.hemiEvents}
+              dsaView={dsaView}
+              windowSeconds={windowMinutes * 60}
+              elapsed={monitor.elapsed}
+            />
+            {/* Trend alerts (depth swings, BSR burden) and clinician markers */}
+            <DsaMarkerRail
+              markers={dsaMarkerRail}
+              elapsed={monitor.elapsed}
+              windowSeconds={windowMinutes * 60}
+            />
             {!monitor.epochs.length ? (
               <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 Connect a Muse 2 headband to start building the spectrogram — or run the demo signal
