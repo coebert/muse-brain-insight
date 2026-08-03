@@ -1291,7 +1291,11 @@ function Monitor() {
             depthArtifact={latest?.depthArtifact ?? null}
             depthGatedFraction={latest?.depth.gatedFraction}
           />
-          <SqiTrend history={monitor.sqiHistory} bilateral={dsaView !== "combined"} />
+          <SqiTrend
+            history={monitor.sqiHistory}
+            bilateral={dsaView !== "combined"}
+            threshold={sqiAlerts.threshold}
+          />
         </div>
         ) : null}
 
