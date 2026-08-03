@@ -255,7 +255,7 @@ export function FullscreenMonitor({
             />
           </div>
           <MetricCard
-              size="bedside"
+            size="bedside"
             label="Suppression ratio"
             value={latest ? srValue.toFixed(0) : "—"}
             unit="%"
@@ -263,20 +263,20 @@ export function FullscreenMonitor({
             tone={srTone}
           />
           <MetricCard
-              size="bedside"
+            size="bedside"
             label="SEF 95"
             value={latest ? latest.sef95.toFixed(1) : "—"}
             unit="Hz"
             hint={latest ? `Entropy ${latest.entropy.state.toFixed(2)}` : undefined}
           />
           <MetricCard
-              size="bedside"
+            size="bedside"
             label="qCON-like"
             value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
             hint={latest ? COMPOSITE_BAND_LABEL[latest.composite.cBand] : undefined}
           />
           <MetricCard
-              size="bedside"
+            size="bedside"
             label="qNOX-like"
             value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
             hint={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
