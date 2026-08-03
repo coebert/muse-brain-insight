@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ, type Epoch } from "@/lib/eeg/analysis";
 import {
@@ -31,7 +31,7 @@ interface Props {
   traces?: DsaTrace[] | undefined;
 }
 
-export function DsaChart({
+function DsaChartInner({
   epochs,
   frames,
   windowSeconds,
@@ -40,7 +40,11 @@ export function DsaChart({
   traces,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const spectra = frames ?? (epochs ?? []).map((e) => e.spectrum);
+  // Stable identity so the canvas only redraws when the data really changed.
+  const spectra = useMemo(
+    () => frames ?? (epochs ?? []).map((e) => e.spectrum),
+    [frames, epochs],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -199,6 +203,8 @@ export function DsaChart({
 
   return <canvas ref={canvasRef} className="h-full w-full rounded-md" aria-label="Density spectral array" />;
 }
+
+export const DsaChart = memo(DsaChartInner);
 
 export function DsaLegend({ dbMin = -6, dbMax = 26 }: { dbMin?: number; dbMax?: number }) {
   const gradient = DSA_STOPS.map((s) => `rgb(${s[0]},${s[1]},${s[2]})`).join(",");
