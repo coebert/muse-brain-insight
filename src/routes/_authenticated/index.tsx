@@ -49,7 +49,8 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
-import { combineHemiSpectra, useEegMonitor } from "@/hooks/useEegMonitor";
+import { combineHemiSpectra, useEegMonitor, worstHemi } from "@/hooks/useEegMonitor";
+import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
@@ -452,6 +453,7 @@ function Monitor() {
         <FullscreenMonitor
           epochs={monitor.epochs}
           hemiSpectra={monitor.hemiSpectra}
+          hemiLatest={monitor.hemiLatest}
           latest={latest}
           waveform={monitor.waveform}
           elapsed={monitor.elapsed}
@@ -732,14 +734,25 @@ function Monitor() {
             <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
               {(dsaView === "bilateral"
                 ? [
-                    { side: "Left", montage: "TP9 + AF7", frames: monitor.hemiSpectra.map((h) => h.left) },
-                    { side: "Right", montage: "AF8 + TP10", frames: monitor.hemiSpectra.map((h) => h.right) },
+                    {
+                      side: "Left",
+                      montage: "TP9 + AF7",
+                      frames: monitor.hemiSpectra.map((h) => h.left),
+                      metrics: monitor.hemiLatest?.left ?? null,
+                    },
+                    {
+                      side: "Right",
+                      montage: "AF8 + TP10",
+                      frames: monitor.hemiSpectra.map((h) => h.right),
+                      metrics: monitor.hemiLatest?.right ?? null,
+                    },
                   ]
                 : [
                     {
                       side: "Combined",
                       montage: "L + R mean",
                       frames: combineHemiSpectra(monitor.hemiSpectra),
+                      metrics: worstHemi(monitor.hemiLatest),
                     },
                   ]
               ).map((h) => (
@@ -747,6 +760,10 @@ function Monitor() {
                   <span className="metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1.5 py-0.5 text-xs tracking-[0.12em] text-foreground uppercase">
                     {h.side} · {h.montage}
                   </span>
+                  <HemiQualityBadge
+                    metrics={h.metrics}
+                    className="absolute top-1 right-2 z-10"
+                  />
                   <DsaChart frames={h.frames} windowSeconds={windowMinutes * 60} />
                 </div>
               ))}

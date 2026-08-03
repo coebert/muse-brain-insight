@@ -68,11 +68,25 @@ export interface HemiMetrics {
   seizureAlert: boolean;
   qualityGrade: SignalQuality["grade"];
   flat: boolean;
+  /** 0–1 usability of this side's electrode pair. */
+  qualityScore: number;
+  /** 0–1 confidence in this side's spectral metrics (DSA, SEF95, bands). */
+  spectralConfidence: number;
+  /** Muscle/diathermy contamination share for this side (0–1). */
+  emgIndex: number;
+  /** Human-readable causes of quality loss on this side. */
+  reasons: string[];
 }
 
 export interface HemiLatest {
   left: HemiMetrics;
   right: HemiMetrics;
+}
+
+/** The less trustworthy of the two sides — used to label the combined DSA lane. */
+export function worstHemi(latest: HemiLatest | null): HemiMetrics | null {
+  if (!latest) return null;
+  return latest.left.qualityScore <= latest.right.qualityScore ? latest.left : latest.right;
 }
 
 function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
@@ -337,6 +351,12 @@ export function useEegMonitor() {
           seizureAlert: e.seizureAlert,
           qualityGrade: worst,
           flat: group.every((c) => quality[c]?.flat ?? false),
+          qualityScore: grades.length
+            ? Math.min(...grades.map((q) => q?.score ?? 0))
+            : 0,
+          spectralConfidence: e.confidence.spectral,
+          emgIndex: Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0),
+          reasons: Array.from(new Set(grades.flatMap((q) => q?.reasons ?? []))),
         };
       };
       setHemiLatest({
