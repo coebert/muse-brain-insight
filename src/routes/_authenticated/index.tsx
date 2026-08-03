@@ -62,7 +62,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
-import { useDepthWindowAlerts } from "@/hooks/useDepthWindowAlerts";
+import {
+  useDepthWindowAlerts,
+  type DepthWindowTransition,
+} from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
