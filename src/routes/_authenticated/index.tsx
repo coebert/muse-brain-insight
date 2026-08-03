@@ -391,6 +391,7 @@ function Monitor() {
       {fullscreen ? (
         <FullscreenMonitor
           epochs={monitor.epochs}
+          hemiSpectra={monitor.hemiSpectra}
           latest={latest}
           waveform={monitor.waveform}
           elapsed={monitor.elapsed}
@@ -603,7 +604,7 @@ function Monitor() {
         {/* Density spectral array */}
         <section className="panel overflow-hidden">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
-            <h1 className="text-sm font-semibold">Density spectral array</h1>
+            <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
             <DsaLegend />
             <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
               <Select
