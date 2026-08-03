@@ -20,6 +20,7 @@ import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { AppNav } from "@/components/AppNav";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { CaseFields } from "@/components/monitor/CaseFields";
+import { useDsaViewPreference } from "@/lib/eeg/dsa-view-pref";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
