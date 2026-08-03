@@ -141,7 +141,7 @@ function Monitor() {
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   /** Stacked left/right DSAs, or one combined lane for faster scanning. */
-  const [dsaView, setDsaView] = useState<"bilateral" | "combined">("bilateral");
+  const [dsaView, setDsaView] = useState<"bilateral" | "combined" | "overlay">("bilateral");
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -712,6 +712,7 @@ function Monitor() {
                   [
                     { key: "bilateral", label: "Bilateral" },
                     { key: "combined", label: "Combined" },
+                    { key: "overlay", label: "Overlay" },
                   ] as const
                 ).map((v) => (
                   <button
