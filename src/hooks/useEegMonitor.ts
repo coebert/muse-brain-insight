@@ -171,6 +171,7 @@ export function useEegMonitor() {
   const [epochs, setEpochs] = useState<Epoch[]>([]);
   const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
   const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
+  const [hemiEvents, setHemiEvents] = useState<HemiEvent[]>([]);
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
   const [elapsed, setElapsed] = useState(0);
@@ -191,6 +192,7 @@ export function useEegMonitor() {
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
   const manualEventsRef = useRef<DetectedEvent[]>([]);
+  const hemiEventsRef = useRef<HemiEvent[]>([]);
   const channelRef = useRef(channel);
   channelRef.current = channel;
 
