@@ -301,6 +301,7 @@ describe("useDepthWindowAlerts — reliability gating", () => {
       [
         { index: 30, t: 0, reliable: false },
         { index: 30, t: 40, reliable: false },
+        { index: 30, t: 80, reliable: false },
       ],
       { dwellSeconds: 30, requireReliable: false },
     );
