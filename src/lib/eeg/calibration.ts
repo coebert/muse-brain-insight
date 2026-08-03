@@ -4,6 +4,7 @@
 // sedated, anaesthesia or burst suppression land in the expected index range.
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { DEFAULT_DEPTH_CALIBRATION, depthMixer, type DepthCalibration } from "@/lib/eeg/depth";
 
 export type StateLabel = "awake" | "sedated" | "anaesthesia" | "burst_suppression";
