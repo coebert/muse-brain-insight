@@ -554,6 +554,7 @@ export function useEegMonitor() {
     hemiSpectra,
     hemiLatest,
     hemiEvents,
+    sqiHistory,
     events,
     latest,
     waveform,
