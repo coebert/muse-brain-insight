@@ -407,6 +407,8 @@ export function useEegMonitor() {
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
+      // Only republish the episode list when something visible changed.
+      let hemiDirty = false;
       /** Opens, extends or closes a hemisphere episode marker. */
       const trackHemiEvent = (
         side: HemiSide,
@@ -421,6 +423,7 @@ export function useEegMonitor() {
         const list = hemiEventsRef.current;
         const open = list.find((e) => e.side === side && e.kind === kind && e.ongoing);
         if (active) {
+          hemiDirty = true;
           if (open) {
             open.duration = Math.max(HOP_SECONDS, t - open.t);
             open.peakSr = Math.max(open.peakSr, sr);
@@ -444,6 +447,7 @@ export function useEegMonitor() {
             });
           }
         } else if (open) {
+          hemiDirty = true;
           open.ongoing = false;
           open.duration = Math.max(HOP_SECONDS, t - open.t);
         }
@@ -503,13 +507,7 @@ export function useEegMonitor() {
         emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
       };
       setSqiHistory((prev) => compactSqi([...prev, point]));
-      // Only republish the episode list when something visible changed: new
-      // episode, or an open episode whose duration/peaks are still growing.
-      const list = hemiEventsRef.current;
-      const hasOpen = list.some((e) => e.ongoing);
-      setHemiEvents((prev) =>
-        hasOpen || prev.length !== list.length ? list.map((e) => ({ ...e })) : prev,
-      );
+      if (hemiDirty) setHemiEvents(hemiEventsRef.current.map((e) => ({ ...e })));
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
