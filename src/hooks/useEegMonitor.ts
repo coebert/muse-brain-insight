@@ -308,6 +308,28 @@ export function useEegMonitor() {
       }
       setContactOk(contact);
       setChannelQuality(quality);
+
+      // Side-specific metrics so alarms can name the affected hemisphere.
+      const sideMetrics = (group: MuseChannel[], analyzer: EegAnalyzer): HemiMetrics => {
+        const e = analyzer.analyze(groupSignal(group, EPOCH_LEN), t);
+        const grades = group.map((c) => quality[c]);
+        const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
+          ? "poor"
+          : grades.some((q) => q?.grade === "fair")
+            ? "fair"
+            : "good";
+        return {
+          suppressionRatio: e.suppressionRatio,
+          seizureScore: e.seizureScore,
+          seizureAlert: e.seizureAlert,
+          qualityGrade: worst,
+          flat: group.every((c) => quality[c]?.flat ?? false),
+        };
+      };
+      setHemiLatest({
+        left: sideMetrics(LEFT_CHANNELS, leftAnalyzerRef.current),
+        right: sideMetrics(RIGHT_CHANNELS, rightAnalyzerRef.current),
+      });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
@@ -363,6 +385,7 @@ export function useEegMonitor() {
     setSettings,
     epochs,
     hemiSpectra,
+    hemiLatest,
     events,
     latest,
     waveform,
