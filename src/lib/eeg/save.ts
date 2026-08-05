@@ -43,6 +43,23 @@ function decimate(epochs: Epoch[]): Epoch[] {
   return out;
 }
 
+/**
+ * Run one database write, turning a PostgREST error into a thrown error so the
+ * retry policy can see it, and retrying transient failures with backoff.
+ */
+async function write<T>(
+  op: () => PromiseLike<{ data: T; error: { message: string } | null }>,
+): Promise<T> {
+  return withRetry(
+    async () => {
+      const { data, error } = await op();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    { shouldRetry: isTransient },
+  );
+}
+
 export async function saveSession(
   meta: SessionMeta,
   epochs: Epoch[],
@@ -71,11 +88,10 @@ export async function saveSession(
   });
   const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
 
-  const { data: session, error } = await withRetry(
-    () =>
-      supabase
-        .from("eeg_sessions")
-        .insert({
+  const session = await write(() =>
+    supabase
+      .from("eeg_sessions")
+      .insert({
       user_id: userId,
       case_code: sealedCase ?? meta.caseCode,
       context: meta.context,
@@ -98,12 +114,10 @@ export async function saveSession(
       suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
       seizure_alerts: summary.seizureAlerts,
       ended_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single(),
-    { shouldRetry: isTransient },
+      })
+      .select("id")
+      .single(),
   );
-  if (error) throw error;
 
   const rows = decimate(epochs).map((e) => ({
     session_id: session.id,
@@ -154,11 +168,7 @@ export async function saveSession(
   }));
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200);
-    const { error: epochError } = await withRetry(
-      () => supabase.from("eeg_epochs").insert(chunk),
-      { shouldRetry: isTransient },
-    );
-    if (epochError) throw epochError;
+    await write(() => supabase.from("eeg_epochs").insert(chunk));
   }
 
   if (events.length) {
@@ -171,11 +181,7 @@ export async function saveSession(
       duration_seconds: Number(ev.duration.toFixed(1)),
       detail: ev.detail,
     }));
-    const { error: eventError } = await withRetry(
-      () => supabase.from("eeg_events").insert(eventRows),
-      { shouldRetry: isTransient },
-    );
-    if (eventError) throw eventError;
+    await write(() => supabase.from("eeg_events").insert(eventRows));
   }
 
   clearStagedSave();
