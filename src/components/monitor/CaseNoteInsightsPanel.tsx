@@ -5,9 +5,13 @@ import {
   Crosshair,
   Lightbulb,
   ListFilter,
+  Minus,
   NotebookPen,
   Pencil,
+  Scale,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
   Undo2,
   X,
 } from "lucide-react";
@@ -32,6 +36,11 @@ import {
   type EegCitation,
 } from "@/lib/eeg/case-notes.functions";
 import { formatClock } from "@/lib/eeg/format";
+import {
+  INFLUENCE_LABEL,
+  type FeedbackImpact,
+  type FeedbackInfluence,
+} from "@/lib/eeg/feedback-influence";
 import {
   patternKey as makePatternKey,
   VERDICT_LABEL,
@@ -64,6 +73,99 @@ const VERDICT_STYLES: Record<PatternVerdict, string> = {
   rejected: "bg-critical/15 text-critical",
   edited: "bg-caution/15 text-caution",
 };
+
+const INFLUENCE_STYLES: Record<FeedbackInfluence["direction"], string> = {
+  raised: "text-signal",
+  lowered: "text-critical",
+  unchanged: "text-muted-foreground",
+  new: "text-muted-foreground",
+};
+
+const INFLUENCE_ICON = {
+  raised: TrendingUp,
+  lowered: TrendingDown,
+  unchanged: Minus,
+  new: Sparkles,
+} as const;
+
+/** Why this pattern sits where it does after the clinician's earlier verdicts. */
+function InfluenceNote({
+  influence,
+  strength,
+}: {
+  influence: FeedbackInfluence | undefined;
+  strength: string;
+}) {
+  if (!influence) return null;
+  const Icon = INFLUENCE_ICON[influence.direction];
+  const moved =
+    influence.direction !== "new" &&
+    influence.strengthWithoutFeedback !== "not proposed" &&
+    influence.strengthWithoutFeedback !== strength;
+  return (
+    <div className="mt-2 rounded-md bg-muted/40 px-2.5 py-2">
+      <p className={cn("flex items-center gap-1.5 text-xs font-medium", INFLUENCE_STYLES[influence.direction])}>
+        <Icon className="size-3.5" />
+        {INFLUENCE_LABEL[influence.direction]}
+        {moved ? (
+          <span className="text-muted-foreground">
+            ({influence.strengthWithoutFeedback} → {strength})
+          </span>
+        ) : null}
+      </p>
+      {influence.because ? (
+        <p className="mt-1 text-xs text-muted-foreground">{influence.because}</p>
+      ) : null}
+      {influence.drivers.length ? (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {influence.drivers.map((d) => (
+            <span
+              key={d}
+              className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {influence.relatedTitles.length ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Weighed against your verdicts on: {influence.relatedTitles.join("; ")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** How the whole verdict library reshaped this run's ranking. */
+function FeedbackImpactSummary({ impact }: { impact: FeedbackImpact }) {
+  const judged = impact.accepted + impact.rejected + impact.edited;
+  if (!judged && !impact.summary) return null;
+  return (
+    <section className="rounded-md border border-border px-3 py-2.5">
+      <h3 className="flex items-center gap-2 text-xs tracking-wide text-muted-foreground uppercase">
+        <Scale className="size-3.5" /> How your feedback shaped this ranking
+      </h3>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {judged} earlier verdict{judged === 1 ? "" : "s"} applied · {impact.accepted} accepted ·{" "}
+        {impact.edited} reworded · {impact.rejected} rejected
+      </p>
+      {impact.summary ? <p className="mt-1.5 text-sm">{impact.summary}</p> : null}
+      {impact.suppressed.length ? (
+        <>
+          <p className="mt-2 text-xs tracking-wide text-muted-foreground uppercase">
+            Held back because you rejected them before
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+            {impact.suppressed.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
 
 /** Timestamped EEG segments a finding rests on, each opening in Trends. */
 function Citations({ citations }: { citations: EegCitation[] }) {
@@ -357,6 +459,8 @@ export function CaseNoteInsightsPanel() {
             {result.casesAnalysed} reviewed · {new Date(result.generatedAt).toLocaleString()}
           </p>
 
+          <FeedbackImpactSummary impact={result.feedbackImpact} />
+
           {patterns.length ? (
             <div className="space-y-2">
               <h3 className="text-xs tracking-wide text-muted-foreground uppercase">
@@ -525,6 +629,7 @@ export function CaseNoteInsightsPanel() {
                     <p className="mt-1.5 text-sm">Next step: {p.suggestedAction}</p>
                   ) : null}
                   <Citations citations={p.citations} />
+                  <InfluenceNote influence={p.feedbackInfluence} strength={p.strength} />
                   {p.caseCodes?.length ? (
                     <p className="metric-value mt-1.5 text-xs text-muted-foreground">
                       Seen in {p.caseCodes.join(", ")}

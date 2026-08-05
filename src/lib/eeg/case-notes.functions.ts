@@ -2,7 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normaliseFacts, type CaseFacts, type CaseTimelinePoint } from "@/lib/eeg/case-facts";
+import {
+  countVerdicts,
+  normaliseInfluence,
+  type FeedbackImpact,
+  type FeedbackInfluence,
+} from "@/lib/eeg/feedback-influence";
 import { normaliseFeedback, patternKey, type PatternFeedback } from "@/lib/eeg/pattern-feedback";
+
+export type { FeedbackImpact, FeedbackInfluence };
 
 /** A stretch of one recording cited as support for a detail or pattern. */
 export interface EegCitation {
@@ -39,6 +47,8 @@ export interface CasePattern {
   citations: EegCitation[];
   /** Stable identity used to attach the clinician's verdict. */
   patternKey?: string;
+  /** How the clinician's earlier verdicts moved this pattern's ranking. */
+  feedbackInfluence?: FeedbackInfluence | undefined;
 }
 
 export interface CaseNoteInsights {
@@ -53,6 +63,8 @@ export interface CaseNoteInsights {
   generatedAt: string;
   /** Verdicts the clinician has already recorded on earlier patterns. */
   feedback: PatternFeedback[];
+  /** How those verdicts changed this run's ranking. */
+  feedbackImpact: FeedbackImpact;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant working with an anaesthetist/intensivist who records EEG from a 4-channel frontal Muse 2 headband during general anaesthesia and ICU sedation.
@@ -70,6 +82,8 @@ You are also given PRIOR CLINICIAN FEEDBACK: patterns proposed before, each mark
 - EDITED: their wording and framing are correct. Reuse their title and detail verbatim and build on that reading.
 - REJECTED: do not propose that pattern or a trivial rewording of it again. Apply the stated reason to related hypotheses, and revisit only if clearly stronger evidence has appeared — then say why the earlier objection no longer holds.
 
+Make that learning visible. For EVERY pattern you propose, fill feedbackInfluence: whether prior verdicts "raised", "lowered" or left "unchanged" its confidence, or "new" if no earlier verdict bears on it; the strength it would have carried with no feedback (strengthWithoutFeedback, or "not proposed"); one sentence in "because" naming the accepted/edited/rejected verdicts that moved it; "drivers" listing the specific case details or EEG features that drove the shift (e.g. "clinician's reworded framing of slow emergence", "two further cases with BSR > 20%"); and "relatedTitles" naming the earlier judged patterns you weighed it against. Also fill feedbackImpact.summary with one or two sentences on how the verdict library changed this run's ranking overall, and feedbackImpact.suppressed with the ideas you held back because they repeat a rejected pattern.
+
 Your job has two parts:
 1. Read each free-text summary and extract the key clinical details as short, structured, comparable facts (e.g. "frail elderly", "emergency laparotomy", "sepsis on noradrenaline", "slow emergence", "postoperative delirium", "propofol TCI Ce 2.4"). Normalise wording so the same concept reads the same way across cases. Then say in one sentence how the narrative squares with that case's recorded EEG numbers.
 2. Across all cases, look for NEW clinical patterns linking those extracted details to the EEG findings — for example a subgroup that suppresses at low doses, a diagnosis associated with high seizure scores, a drug or surgical event followed by a characteristic depth change, or a narrative feature that predicts slow emergence.
@@ -82,8 +96,8 @@ Rules:
 - British clinical English, concise and specific. Never repeat identifiable detail; if a note contains anything identifying, ignore it and flag it under recordingGaps.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
-{"headline":string,"perCase":[{"sessionId":string,"caseCode":string,"keyDetails":[string],"riskFactors":[string],"eegCorrelation":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}]}],"patterns":[{"title":string,"detail":string,"strength":"emerging"|"moderate"|"strong","caseCodes":[string],"suggestedAction":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}]}],"recordingGaps":[string],"limitations":[string]}
-At most 4 citations per case and 6 per pattern, at most 8 key details and 5 risk factors per case, at most 6 patterns, at most 5 recordingGaps and 4 limitations. Keep each string under about 45 words.`;
+{"headline":string,"perCase":[{"sessionId":string,"caseCode":string,"keyDetails":[string],"riskFactors":[string],"eegCorrelation":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}]}],"patterns":[{"title":string,"detail":string,"strength":"emerging"|"moderate"|"strong","caseCodes":[string],"suggestedAction":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}],"feedbackInfluence":{"direction":"raised"|"lowered"|"unchanged"|"new","strengthWithoutFeedback":"emerging"|"moderate"|"strong"|"not proposed","because":string,"drivers":[string],"relatedTitles":[string]}}],"recordingGaps":[string],"limitations":[string],"feedbackImpact":{"summary":string,"suppressed":[string]}}
+At most 4 citations per case and 6 per pattern, at most 8 key details and 5 risk factors per case, at most 6 patterns, at most 4 drivers and 3 relatedTitles per pattern, at most 5 recordingGaps, 4 limitations and 4 suppressed. Keep each string under about 45 words. Order patterns most to least confident after applying the feedback.`;
 
 interface SessionRow {
   id: string;
@@ -249,6 +263,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         limitations: [],
         generatedAt: new Date().toISOString(),
         feedback,
+        feedbackImpact: countVerdicts(feedback, "", []),
       };
     }
 
@@ -298,10 +313,18 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         ...p,
         citations: Array.isArray(p?.citations) ? p.citations : [],
         patternKey: patternKey(p?.title ?? ""),
+        feedbackInfluence: normaliseInfluence(p?.feedbackInfluence),
       })),
       recordingGaps: Array.isArray(parsed.recordingGaps) ? parsed.recordingGaps : [],
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
       generatedAt: new Date().toISOString(),
       feedback,
+      feedbackImpact: countVerdicts(
+        feedback,
+        parsed.feedbackImpact?.summary ?? "",
+        Array.isArray(parsed.feedbackImpact?.suppressed)
+          ? parsed.feedbackImpact.suppressed.slice(0, 4)
+          : [],
+      ),
     };
   });
