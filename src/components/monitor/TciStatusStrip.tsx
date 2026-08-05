@@ -28,16 +28,16 @@ export function TciStatusStrip({
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {live.map((inf) => {
             const model = tciModel(inf.modelKey);
-            const last = inf.changes?.[inf.changes.length - 1];
+            const last = inf.lastChangeAt;
             return (
               <span key={inf.id} className="text-xs whitespace-nowrap text-foreground">
                 <span className="font-medium">{model?.label ?? inf.modelKey}</span>{" "}
                 <span className="metric-value text-signal">
                   {model ? describeTargets(model, inf.targets) : ""}
                 </span>
-                {last ? (
+                {last != null ? (
                   <span className="ml-1 text-muted-foreground">
-                    (last change {formatClock(last.t)})
+                    (last change {formatClock(last)})
                   </span>
                 ) : null}
               </span>

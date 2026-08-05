@@ -12,7 +12,7 @@ function Row({
 }: {
   label: string;
   value: string;
-  live?: string;
+  live?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
@@ -82,7 +82,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={90}
             step={1}
             value={[depthWindow.prefs.low, depthWindow.prefs.high]}
-            onValueChange={([low, high]) => depthWindow.setPrefs({ low, high })}
+            onValueChange={([low = 0, high = 100]) => depthWindow.setPrefs({ low, high })}
           />
         </Row>
         <Row label="Dwell before alerting" value={`${depthWindow.prefs.dwellSeconds} s`}>
@@ -91,7 +91,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={180}
             step={5}
             value={[depthWindow.prefs.dwellSeconds]}
-            onValueChange={([v]) => depthWindow.setPrefs({ dwellSeconds: v })}
+            onValueChange={([v = 0]) => depthWindow.setPrefs({ dwellSeconds: v })}
           />
         </Row>
         <Row label="Depth fall alert" value={`${settings.depthDropUnits} units`}>
@@ -100,7 +100,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={40}
             step={1}
             value={[settings.depthDropUnits]}
-            onValueChange={([v]) => onSettingsChange({ depthDropUnits: v }, `Depth fall ${v}`)}
+            onValueChange={([v = 0]) => onSettingsChange({ depthDropUnits: v }, `Depth fall ${v}`)}
           />
         </Row>
         <Row label="Depth rise alert" value={`${settings.depthRiseUnits} units`}>
@@ -109,7 +109,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={40}
             step={1}
             value={[settings.depthRiseUnits]}
-            onValueChange={([v]) => onSettingsChange({ depthRiseUnits: v }, `Depth rise ${v}`)}
+            onValueChange={([v = 0]) => onSettingsChange({ depthRiseUnits: v }, `Depth rise ${v}`)}
           />
         </Row>
         <Row label="Trend window" value={`${settings.depthTrendSeconds} s`}>
@@ -118,7 +118,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={300}
             step={10}
             value={[settings.depthTrendSeconds]}
-            onValueChange={([v]) =>
+            onValueChange={([v = 0]) =>
               onSettingsChange({ depthTrendSeconds: v }, `Trend window ${v}s`)
             }
           />
@@ -132,7 +132,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={20}
             step={1}
             value={[settings.suppressionThresholdUv]}
-            onValueChange={([v]) =>
+            onValueChange={([v = 0]) =>
               onSettingsChange({ suppressionThresholdUv: v }, `Suppression floor ${v} µV`)
             }
           />
@@ -147,7 +147,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={300}
             step={10}
             value={[settings.srWindowSeconds]}
-            onValueChange={([v]) => onSettingsChange({ srWindowSeconds: v }, `SR window ${v}s`)}
+            onValueChange={([v = 0]) => onSettingsChange({ srWindowSeconds: v }, `SR window ${v}s`)}
           />
         </Row>
         <Row label="Burden alert" value={`${settings.bsrAlertPercent}%`}>
@@ -156,7 +156,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={60}
             step={1}
             value={[settings.bsrAlertPercent]}
-            onValueChange={([v]) => onSettingsChange({ bsrAlertPercent: v }, `BSR alert ${v}%`)}
+            onValueChange={([v = 0]) => onSettingsChange({ bsrAlertPercent: v }, `BSR alert ${v}%`)}
           />
         </Row>
         <Row label="Worsening step" value={`${settings.bsrWorseningPercent}%`}>
@@ -165,7 +165,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={40}
             step={1}
             value={[settings.bsrWorseningPercent]}
-            onValueChange={([v]) =>
+            onValueChange={([v = 0]) =>
               onSettingsChange({ bsrWorseningPercent: v }, `BSR worsening ${v}%`)
             }
           />
@@ -183,7 +183,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={0.95}
             step={0.01}
             value={[settings.seizureThreshold]}
-            onValueChange={([v]) =>
+            onValueChange={([v = 0]) =>
               onSettingsChange({ seizureThreshold: v }, `Seizure threshold ${v.toFixed(2)}`)
             }
           />
@@ -194,7 +194,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={10}
             step={1}
             value={[settings.seizureEpochs]}
-            onValueChange={([v]) => onSettingsChange({ seizureEpochs: v }, `Seizure epochs ${v}`)}
+            onValueChange={([v = 0]) => onSettingsChange({ seizureEpochs: v }, `Seizure epochs ${v}`)}
           />
         </Row>
       </Group>
@@ -210,7 +210,7 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={90}
             step={5}
             value={[sqi.threshold]}
-            onValueChange={([v]) => sqi.setThreshold(v)}
+            onValueChange={([v = 0]) => sqi.setThreshold(v)}
           />
         </Row>
       </Group>

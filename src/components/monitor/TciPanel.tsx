@@ -69,7 +69,9 @@ export function TciPanel({
     if (value === prev) return;
     onChange(
       infusions.map((i) =>
-        i.id === infusion.id ? { ...i, targets: { ...i.targets, [drug.key]: value } } : i,
+        i.id === infusion.id
+          ? { ...i, targets: { ...i.targets, [drug.key]: value }, lastChangeAt: elapsed }
+          : i,
       ),
     );
     onMark(
