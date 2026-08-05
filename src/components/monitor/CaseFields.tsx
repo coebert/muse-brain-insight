@@ -147,6 +147,20 @@ export function CaseFields({
           onChange={(e) => onChange({ ...meta, notes: e.target.value })}
         />
       </div>
+      <div>
+        <Label htmlFor={`${idPrefix}-summary`}>Case summary (free text)</Label>
+        <Textarea
+          id={`${idPrefix}-summary`}
+          className="mt-1.5 min-h-32"
+          placeholder="Write the case in your own words: what was done, how the patient behaved, anything unusual — e.g. “Frail 84-year-old, emergency laparotomy for perforated diverticulum. Deep suppression at low propofol Ce, slow to wake, delirious in recovery.”"
+          value={meta.caseSummary}
+          onChange={(e) => onChange({ ...meta, caseSummary: e.target.value })}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Kept encrypted and read by the AI, which extracts key details and looks for patterns
+          across your cases. Never include names, dates of birth or hospital numbers.
+        </p>
+      </div>
     </div>
   );
 }
