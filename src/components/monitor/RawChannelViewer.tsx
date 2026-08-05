@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
 import type { SignalQuality } from "@/lib/eeg/dsp";
+import { EPOCH_SECONDS, type DetectedEvent, type Epoch } from "@/lib/eeg/analysis";
 import { RAW_ARCHIVE_HZ, type RawArchive } from "@/lib/eeg/raw-archive";
 import { formatClock } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,92 @@ export interface RawChannelViewerProps {
   streaming: boolean;
   contactOk: Record<string, boolean>;
   channelQuality: Record<string, SignalQuality>;
+  /** Analysed epochs — used to shade suppressed periods on the traces. */
+  epochs?: Epoch[];
+  /** Detector events — seizure suspicions and burst-suppression episodes. */
+  events?: DetectedEvent[];
+}
+
+/** A detection shaded over the raw traces. */
+interface Overlay {
+  from: number;
+  to: number;
+  kind: "seizure" | "suppression";
+  label: string;
+}
+
+/** Merge touching/overlapping spans of one kind so the shading reads cleanly. */
+function mergeSpans(spans: Overlay[]): Overlay[] {
+  const sorted = [...spans].sort((a, b) => a.from - b.from);
+  const out: Overlay[] = [];
+  for (const s of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.kind === s.kind && s.from <= last.to + 0.01) {
+      last.to = Math.max(last.to, s.to);
+    } else out.push({ ...s });
+  }
+  return out;
+}
+
+const OVERLAY_STYLE: Record<Overlay["kind"], { fill: string; edge: string; text: string }> = {
+  seizure: {
+    fill: "rgba(239,68,68,0.18)",
+    edge: "rgba(239,68,68,0.85)",
+    text: "rgb(252,165,165)",
+  },
+  suppression: {
+    fill: "rgba(245,190,40,0.16)",
+    edge: "rgba(245,190,40,0.85)",
+    text: "rgb(250,214,137)",
+  },
+};
+
+/** Absolutely positioned detection bands drawn over one trace lane. */
+function DetectionBands({
+  overlays,
+  from,
+  to,
+  showLabels,
+}: {
+  overlays: Overlay[];
+  from: number;
+  to: number;
+  showLabels: boolean;
+}) {
+  const span = Math.max(0.001, to - from);
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {overlays.map((o, i) => {
+        const left = ((Math.max(o.from, from) - from) / span) * 100;
+        const width = ((Math.min(o.to, to) - Math.max(o.from, from)) / span) * 100;
+        if (width <= 0) return null;
+        const style = OVERLAY_STYLE[o.kind];
+        return (
+          <div
+            key={`${o.kind}-${o.from}-${i}`}
+            className="absolute inset-y-0"
+            style={{
+              left: `${left}%`,
+              width: `${Math.max(width, 0.4)}%`,
+              background: style.fill,
+              borderLeft: `1px solid ${style.edge}`,
+              borderRight: `1px solid ${style.edge}`,
+            }}
+            title={`${o.label} · ${formatClock(o.from)}–${formatClock(o.to)}`}
+          >
+            {showLabels ? (
+              <span
+                className="metric-value absolute left-0.5 top-0.5 whitespace-nowrap text-[9px] font-semibold"
+                style={{ color: style.text }}
+              >
+                {o.label}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const CHANNEL_SITES: Record<MuseChannel, string> = {
