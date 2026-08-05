@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normaliseFacts, type CaseFacts } from "@/lib/eeg/case-facts";
 
 export interface CaseNoteKeyDetails {
   sessionId: string;
@@ -38,6 +39,8 @@ export interface CaseNoteInsights {
 const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant working with an anaesthetist/intensivist who records EEG from a 4-channel frontal Muse 2 headband during general anaesthesia and ICU sedation.
 
 You are given a set of that clinician's own anonymised cases. Each case has: an anonymised case code, demographics and admission details, the clinician's FREE-TEXT case summary and notes, and the quantitative EEG summary actually recorded (suppression ratio and suppression time, seizure alerts, depth index, SEF95, duration).
+
+Each case may also carry CONFIRMED STRUCTURED FIELDS that the clinician has already reviewed and corrected. Where those are present, treat them as the authoritative reading of the note: reuse their exact wording in keyDetails and riskFactors rather than re-deriving your own, and build patterns on them.
 
 Your job has two parts:
 1. Read each free-text summary and extract the key clinical details as short, structured, comparable facts (e.g. "frail elderly", "emergency laparotomy", "sepsis on noradrenaline", "slow emergence", "postoperative delirium", "propofol TCI Ce 2.4"). Normalise wording so the same concept reads the same way across cases. Then say in one sentence how the narrative squares with that case's recorded EEG numbers.
@@ -95,6 +98,33 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const sessions = (rows ?? []) as SessionRow[];
+
+    // Clinician-confirmed structured fields take precedence over the model's
+    // own reading of the same note.
+    const confirmed = new Map<string, CaseFacts>();
+    if (sessions.length) {
+      const { data: factRows } = await context.supabase
+        .from("case_note_facts")
+        .select("session_id, fields_sealed, confirmed")
+        .eq("user_id", context.userId)
+        .eq("confirmed", true)
+        .in(
+          "session_id",
+          sessions.map((s) => s.id),
+        );
+      for (const row of factRows ?? []) {
+        if (!row.fields_sealed) continue;
+        try {
+          confirmed.set(
+            row.session_id,
+            normaliseFacts(JSON.parse(open(row.fields_sealed) ?? "{}")),
+          );
+        } catch {
+          /* skip unreadable rows */
+        }
+      }
+    }
+
     const cases = sessions
       .map((s) => ({
         sessionId: s.id,
@@ -105,6 +135,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         sex: s.sex,
         admissionDiagnosis: open(s.admission_diagnosis),
         clinicalFeatures: s.clinical_features ?? [],
+        confirmedFields: confirmed.get(s.id) ?? null,
         caseSummaryFreeText: open(s.case_summary),
         notesFreeText: open(s.notes),
         eeg: {

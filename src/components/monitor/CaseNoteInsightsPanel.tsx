@@ -41,8 +41,8 @@ export function CaseNoteInsightsPanel() {
             <NotebookPen className="size-4 text-signal" /> Case-note intelligence
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            The AI reads the free-text summaries you wrote for each case, extracts the key clinical
-            details, and looks for patterns linking them to the EEG you recorded.
+            The AI compares your cases and looks for patterns linking their details to the EEG you
+            recorded. Details you have confirmed above are used as written.
           </p>
         </div>
         <Button onClick={analyse} disabled={loading} className="min-h-11 sm:min-h-9">
