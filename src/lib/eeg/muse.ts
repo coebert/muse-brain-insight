@@ -63,6 +63,22 @@ export const MUSE_PRESETS: MusePreset[] = [
 
 export const DEFAULT_MUSE_PRESET = "p21";
 
+/** One reason a chosen streaming mode cannot (or should not) be used. */
+export interface StreamingIssue {
+  severity: "blocker" | "warning";
+  title: string;
+  detail: string;
+  /** Plain-language remedy shown to the clinician. */
+  fix: string;
+  /** Preset to switch to when the remedy is a one-click change. */
+  suggestedPreset?: string;
+}
+
+export interface StreamingValidation {
+  status: "ok" | "warning" | "blocked";
+  issues: StreamingIssue[];
+}
+
 /** What the headband reported about itself before streaming was confirmed. */
 export interface MuseCapabilities {
   deviceName: string;
