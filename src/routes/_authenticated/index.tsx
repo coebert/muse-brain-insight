@@ -82,6 +82,8 @@ import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
+import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
+import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { saveSession } from "@/lib/eeg/save";
@@ -162,6 +164,19 @@ function Monitor() {
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
+
+  // Start-up speed: reuse the last context and location, and suggest the next
+  // sequential anonymised case code so a case starts in two taps.
+  useEffect(() => {
+    const prefs = loadCaseStartup();
+    if (!prefs) return;
+    setMeta((prev) => ({
+      ...prev,
+      context: prefs.context || prev.context,
+      location: prefs.location || prev.location,
+      caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode),
+    }));
+  }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -174,6 +189,7 @@ function Monitor() {
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
   const [fullscreen, setFullscreen] = useState(false);
   const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   /** TCI pumps running for this clinical episode (several may run at once). */
@@ -330,12 +346,21 @@ function Monitor() {
       return;
     }
     setCaseOpen(false);
+    saveCaseStartup({
+      context: meta.context,
+      location: meta.location,
+      lastCaseCode: meta.caseCode.trim(),
+    });
     setMarkers([]);
     setInfusions([]);
     alarms.clearAll();
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
+    const ticked = Object.entries(checklist)
+      .filter(([, on]) => on)
+      .map(([key]) => key);
+    if (ticked.length) audit(`Pre-case checklist: ${ticked.join(", ")}`);
     await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
@@ -1568,6 +1593,12 @@ function Monitor() {
             </DialogDescription>
           </DialogHeader>
           <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
+          <PreCaseChecklist
+            checked={checklist}
+            onToggle={(key: ChecklistKey) =>
+              setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
+            }
+          />
           {bleSupported ? null : (
             <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
               This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
