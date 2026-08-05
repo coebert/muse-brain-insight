@@ -1176,6 +1176,42 @@ function Monitor() {
             />
 
             <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
+
+            {/* Event rail — the last few entries stay visible beside the trace. */}
+            {caseState !== "idle" ? (
+              <div className="panel px-3 py-2.5 sm:px-4">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Recent events
+                  </h2>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11"
+                    onClick={() => setCaseSheet("log")}
+                  >
+                    Open full log
+                  </Button>
+                </div>
+                {allEvents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nothing recorded yet.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {allEvents.slice(-5).map((e, i) => (
+                      <li
+                        key={`${e.t}-${i}`}
+                        className="flex items-baseline gap-2 text-xs text-foreground"
+                      >
+                        <span className="metric-value shrink-0 text-muted-foreground">
+                          {formatClock(e.t)}
+                        </span>
+                        <span className="truncate">{e.detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </>
         ) : null}
 
