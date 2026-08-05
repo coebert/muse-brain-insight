@@ -58,7 +58,10 @@ type EventQuery = {
   select: (columns: string) => EventQuery;
   eq: (column: string, value: string) => EventQuery;
   in: (column: string, values: string[]) => EventQuery;
-  order: (column: string, opts: { ascending: boolean }) => Promise<{
+  order: (
+    column: string,
+    opts: { ascending: boolean },
+  ) => Promise<{
     data: EventRow[] | null;
     error: { message: string } | null;
   }>;
