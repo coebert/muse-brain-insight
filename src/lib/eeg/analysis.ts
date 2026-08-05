@@ -13,8 +13,10 @@ import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 import { CompositeIndexEstimator, type CompositeReading } from "./composite";
+import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
 
 export type { SignalQuality } from "./dsp";
+export type { SeizureEvidence } from "./seizure-evidence";
 export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
 export type { CompositeReading } from "./composite";
@@ -228,6 +230,8 @@ export interface DetectedEvent {
   t: number;
   duration: number;
   detail: string;
+  /** Interpretable detector evidence — currently attached to seizure events. */
+  evidence?: SeizureEvidence;
 }
 
 function clamp01(v: number): number {
@@ -253,6 +257,17 @@ export class EegAnalyzer {
   private suppressionHistory: { t: number; fraction: number }[] = [];
   private activeSuppressionStart: number | null = null;
   private activeSeizureStart: number | null = null;
+  /** Running feature evidence for the seizure episode currently in progress. */
+  private seizureRun: {
+    peakScore: number;
+    rhythmicity: number;
+    lineLengthRatio: number;
+    ictalFraction: number;
+    qualitySum: number;
+    epochs: number;
+    maxEmg: number;
+    minConfidence: number;
+  } | null = null;
   private poorQualityStart: number | null = null;
   private recentQuality: number[] = [];
   private depthHistory: { t: number; value: number }[] = [];
@@ -282,6 +297,7 @@ export class EegAnalyzer {
     this.suppressionHistory = [];
     this.activeSuppressionStart = null;
     this.activeSeizureStart = null;
+    this.seizureRun = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
     this.depthHistory = [];
@@ -433,8 +449,37 @@ export class EegAnalyzer {
     }
 
     let seizureAlert = false;
+    // Seizure confidence is computed here (rather than only in the confidence
+    // block below) so the evidence attached to the event reflects the run.
+    const seizureBaselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
+    const seizureEmgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const seizureConfidence = clamp01(
+      quality.score *
+        (0.3 + 0.7 * seizureBaselineMaturity) *
+        (1 - 0.6 * seizureEmgPenalty) *
+        (isSuppressed ? 0.6 : 1),
+    );
     if (seizureScore >= this.settings.seizureThreshold) {
       this.consecutiveSeizureEpochs++;
+      const run = this.seizureRun ?? {
+        peakScore: 0,
+        rhythmicity: 0,
+        lineLengthRatio: 0,
+        ictalFraction: 0,
+        qualitySum: 0,
+        epochs: 0,
+        maxEmg: 0,
+        minConfidence: 1,
+      };
+      run.peakScore = Math.max(run.peakScore, seizureScore);
+      run.rhythmicity = Math.max(run.rhythmicity, rhythmic);
+      run.lineLengthRatio = Math.max(run.lineLengthRatio, llRatio);
+      run.ictalFraction = Math.max(run.ictalFraction, ictalFraction);
+      run.qualitySum += quality.score;
+      run.epochs += 1;
+      run.maxEmg = Math.max(run.maxEmg, quality.emgIndex);
+      run.minConfidence = Math.min(run.minConfidence, seizureConfidence);
+      this.seizureRun = run;
       if (this.consecutiveSeizureEpochs >= this.settings.seizureEpochs) {
         seizureAlert = true;
         if (this.activeSeizureStart === null) {
@@ -444,24 +489,38 @@ export class EegAnalyzer {
     } else {
       if (this.activeSeizureStart !== null) {
         const duration = t - this.activeSeizureStart;
+        const run = this.seizureRun;
         this.events.push({
           kind: "seizure",
           severity: duration >= 10 ? "critical" : "warning",
           t: this.activeSeizureStart,
           duration,
-          detail: `Rhythmic ictal-appearing activity for ${duration.toFixed(0)} s (peak score ${seizureScore.toFixed(2)})`,
+          detail: `Rhythmic ictal-appearing activity for ${duration.toFixed(0)} s (peak score ${(run?.peakScore ?? seizureScore).toFixed(2)})`,
+          evidence: buildSeizureEvidence({
+            peakScore: run?.peakScore ?? seizureScore,
+            threshold: this.settings.seizureThreshold,
+            epochsRequired: this.settings.seizureEpochs,
+            epochsObserved: run?.epochs ?? this.consecutiveSeizureEpochs,
+            rhythmicity: run?.rhythmicity ?? rhythmic,
+            lineLengthRatio: run?.lineLengthRatio ?? llRatio,
+            ictalFraction: run?.ictalFraction ?? ictalFraction,
+            signalQuality: run && run.epochs ? run.qualitySum / run.epochs : quality.score,
+            emgIndex: run?.maxEmg ?? quality.emgIndex,
+            confidence: run?.minConfidence ?? seizureConfidence,
+            durationSeconds: duration,
+          }),
         });
         this.activeSeizureStart = null;
       }
       this.consecutiveSeizureEpochs = 0;
+      this.seizureRun = null;
     }
 
     // --- per-metric confidence ---------------------------------------------
     const srFill = clamp01(
       this.suppressionHistory.length / Math.max(1, this.settings.srWindowSeconds / HOP_SECONDS),
     );
-    const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
-    const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const emgPenalty = seizureEmgPenalty;
     // Depth-specific preprocessing: repair bounded ocular/movement transients,
     // reject EMG-, spike- and saturation-contaminated epochs outright.
     const prep = this.depthGate.evaluate(window, psd, this.fs, quality.score);
@@ -515,12 +574,7 @@ export class EegAnalyzer {
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
-      seizure: clamp01(
-        quality.score *
-          (0.3 + 0.7 * baselineMaturity) *
-          (1 - 0.6 * emgPenalty) *
-          (isSuppressed ? 0.6 : 1),
-      ),
+      seizure: seizureConfidence,
       // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
       // penalises the depth index harder than the plain spectral metrics; the
       // share of the 30 s window lost to the artefact gate matters just as much.

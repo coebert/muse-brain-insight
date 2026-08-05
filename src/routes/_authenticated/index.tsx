@@ -273,7 +273,18 @@ function Monitor() {
       tone: "marker",
       top: true,
     }));
-    return [...alerts, ...windowCrossings, ...annotations];
+    // Seizure suspicions carry their interpretable confidence on the rail label
+    // so the DSA shows how much to trust each flag without opening the log.
+    const seizures = monitor.events
+      .filter((e) => e.kind === "seizure")
+      .map<DsaMarker>((e) => ({
+        t: e.t,
+        label: e.evidence
+          ? `Seizure? ${(e.evidence.confidence * 100).toFixed(0)} % conf`
+          : `Seizure? ${formatClock(e.t)}`,
+        tone: e.severity === "critical" ? "critical" : "caution",
+      }));
+    return [...alerts, ...windowCrossings, ...seizures, ...annotations];
   }, [monitor.events, markers]);
 
   /** Timestamped audit entry in the session event log. */
