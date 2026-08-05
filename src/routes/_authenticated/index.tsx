@@ -1189,21 +1189,18 @@ function Monitor() {
                 <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:hidden">
                   Mark event
                 </p>
-                <div className="-mx-3 flex snap-x items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+                <div className="flex items-center gap-2">
                   <span className="hidden shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase sm:inline">
                     Mark event
                   </span>
-                  {MARKER_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => addMarker(preset)}
-                      disabled={!caseRunning}
-                      className="shrink-0 snap-start rounded-full border border-border px-3 py-1.5 text-xs whitespace-nowrap text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40 sm:px-2.5 sm:py-1"
-                    >
-                      {preset}
-                    </button>
-                  ))}
+                  <QuickMarkBar
+                    mode={mode}
+                    elapsed={monitor.elapsed}
+                    running={caseRunning}
+                    onMark={addMarker}
+                    onMore={() => setCaseSheet("mark")}
+                    size="compact"
+                  />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Input
