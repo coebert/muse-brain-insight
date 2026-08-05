@@ -67,10 +67,46 @@ export interface Psd {
   binWidth: number;
 }
 
+/* ------------------------------------------------------------------ */
+/* Scratch pooling                                                     */
+/* ------------------------------------------------------------------ */
+
+// The monitor runs several FFTs per second at a handful of fixed lengths, so
+// the working buffers and the frequency axis are reused rather than
+// reallocated on every hop. Only `power` is freshly allocated per call, since
+// callers keep it; `freqs` is read-only for every consumer in the app.
+const scratchCache = new Map<number, { re: Float64Array; im: Float64Array }>();
+function scratch(n: number): { re: Float64Array; im: Float64Array } {
+  let s = scratchCache.get(n);
+  if (!s) {
+    s = { re: new Float64Array(n), im: new Float64Array(n) };
+    scratchCache.set(n, s);
+  }
+  return s;
+}
+
+const freqCache = new Map<string, Float64Array>();
+function freqAxis(n: number, fs: number): Float64Array {
+  const key = `${n}:${fs}`;
+  let f = freqCache.get(key);
+  if (!f) {
+    f = new Float64Array(n / 2);
+    for (let k = 0; k < n / 2; k++) f[k] = (k * fs) / n;
+    freqCache.set(key, f);
+  }
+  return f;
+}
+
+/** Largest power of two that fits in `len`. */
+function fftLength(len: number): number {
+  let n = 1;
+  while (n * 2 <= len) n *= 2;
+  return n;
+}
+
 /** Single-taper (Hann) periodogram. Input is detrended internally. */
 export function computePsd(signal: Float64Array, fs = MUSE_SAMPLE_RATE): Psd {
-  let n = 1;
-  while (n * 2 <= signal.length) n *= 2;
+  const n = fftLength(signal.length);
   const seg = signal.subarray(signal.length - n);
 
   let mean = 0;
@@ -78,8 +114,8 @@ export function computePsd(signal: Float64Array, fs = MUSE_SAMPLE_RATE): Psd {
   mean /= n;
 
   const w = hannCached(n);
-  const re = new Float64Array(n);
-  const im = new Float64Array(n);
+  const { re, im } = scratch(n);
+  im.fill(0);
   let winPower = 0;
   for (let i = 0; i < n; i++) {
     re[i] = (seg[i]! - mean) * w[i]!;
@@ -88,15 +124,76 @@ export function computePsd(signal: Float64Array, fs = MUSE_SAMPLE_RATE): Psd {
   fft(re, im);
 
   const half = n / 2;
-  const freqs = new Float64Array(half);
+  const freqs = freqAxis(n, fs);
   const power = new Float64Array(half);
   const scale = 1 / (fs * winPower);
   for (let k = 0; k < half; k++) {
     const mag = re[k]! * re[k]! + im[k]! * im[k]!;
-    freqs[k] = (k * fs) / n;
     power[k] = (k === 0 ? mag : 2 * mag) * scale;
   }
   return { freqs, power, binWidth: fs / n };
+}
+
+/**
+ * Two Hann periodograms from a single complex FFT.
+ *
+ * Both inputs are real, so they are packed as `a + i·b` and unscrambled
+ * afterwards with the standard conjugate-symmetry identities. The result is
+ * numerically identical to calling {@link computePsd} twice, at half the
+ * transform cost — which matters because the bedside loop needs several
+ * spectra every second.
+ */
+export function computePsdPair(
+  a: Float64Array,
+  b: Float64Array,
+  fs = MUSE_SAMPLE_RATE,
+): [Psd, Psd] {
+  const n = Math.min(fftLength(a.length), fftLength(b.length));
+  if (n < 2) return [computePsd(a, fs), computePsd(b, fs)];
+  const sa = a.subarray(a.length - n);
+  const sb = b.subarray(b.length - n);
+
+  let meanA = 0;
+  let meanB = 0;
+  for (let i = 0; i < n; i++) {
+    meanA += sa[i]!;
+    meanB += sb[i]!;
+  }
+  meanA /= n;
+  meanB /= n;
+
+  const w = hannCached(n);
+  const { re, im } = scratch(n);
+  let winPower = 0;
+  for (let i = 0; i < n; i++) {
+    re[i] = (sa[i]! - meanA) * w[i]!;
+    im[i] = (sb[i]! - meanB) * w[i]!;
+    winPower += w[i]! * w[i]!;
+  }
+  fft(re, im);
+
+  const half = n / 2;
+  const freqs = freqAxis(n, fs);
+  const powerA = new Float64Array(half);
+  const powerB = new Float64Array(half);
+  const scale = 1 / (fs * winPower);
+  for (let k = 0; k < half; k++) {
+    const j = k === 0 ? 0 : n - k;
+    // A[k] = (Z[k] + conj(Z[n-k])) / 2 ; B[k] = (Z[k] - conj(Z[n-k])) / 2i
+    const ar = (re[k]! + re[j]!) / 2;
+    const ai = (im[k]! - im[j]!) / 2;
+    const br = (im[k]! + im[j]!) / 2;
+    const bi = -(re[k]! - re[j]!) / 2;
+    const magA = ar * ar + ai * ai;
+    const magB = br * br + bi * bi;
+    powerA[k] = (k === 0 ? magA : 2 * magA) * scale;
+    powerB[k] = (k === 0 ? magB : 2 * magB) * scale;
+  }
+  const binWidth = fs / n;
+  return [
+    { freqs, power: powerA, binWidth },
+    { freqs, power: powerB, binWidth },
+  ];
 }
 
 export function bandPower(psd: Psd, lo: number, hi: number): number {
