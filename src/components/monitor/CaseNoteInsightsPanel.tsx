@@ -14,7 +14,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   mineCaseNotes,
@@ -33,6 +41,15 @@ import {
   deletePatternFeedback,
   savePatternFeedback,
 } from "@/lib/eeg/pattern-feedback.functions";
+import {
+  cohortOptions,
+  DEFAULT_PATTERN_FILTERS,
+  matchesFilters,
+  PATTERN_TYPE_LABEL,
+  patternType,
+  type PatternFilters,
+  type PatternType,
+} from "@/lib/eeg/pattern-filters";
 import { cn } from "@/lib/utils";
 
 const STRENGTH_STYLES: Record<string, string> = {
