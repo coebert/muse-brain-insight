@@ -7,13 +7,17 @@ const EXTRACT_PROMPT = `You are a clinical neurophysiology research assistant. Y
 
 For EACH case, read the free-text summary and notes and extract the clinical details into fixed, normalised fields. Normalise wording so the same concept reads identically across cases (e.g. always "emergency laparotomy", "sepsis", "propofol TCI", "slow emergence"). Use short noun phrases, British clinical English, lower case unless a proper noun.
 
+You are also given that case's recorded EEG timeline: detections (burst suppression, isoelectric periods, seizure suspicion, signal loss) and clinician markers, each with a start time in seconds from the beginning of the recording, plus the case duration.
+
+For every detail you can anchor in the recording, add an evidence entry giving the exact segment of EEG that supports it: the detail exactly as you worded it in the fields above, startSeconds and endSeconds within the recording, and one short phrase saying what is visible over that stretch. Use only times that fall inside the recording and that correspond to entries in the timeline given; if a detail has no supporting segment, leave it out of evidence rather than guessing.
+
 Rules:
 - Never invent detail. If the note does not say, leave the field empty or "unknown".
 - Never copy anything identifying; omit it.
 - At most 8 items per list, each under 8 words.
 
 Respond with JSON ONLY, no fences:
-{"cases":[{"sessionId":string,"procedure":string,"urgency":"elective"|"emergency"|"unknown","comorbidities":[string],"drugs":[string],"intraoperativeEvents":[string],"emergence":"normal"|"slow"|"agitated"|"not_applicable"|"unknown","postopIssues":[string],"keyDetails":[string],"riskFactors":[string]}]}`;
+{"cases":[{"sessionId":string,"procedure":string,"urgency":"elective"|"emergency"|"unknown","comorbidities":[string],"drugs":[string],"intraoperativeEvents":[string],"emergence":"normal"|"slow"|"agitated"|"not_applicable"|"unknown","postopIssues":[string],"keyDetails":[string],"riskFactors":[string],"evidence":[{"detail":string,"startSeconds":number,"endSeconds":number,"why":string}]}]}`;
 
 interface SessionRow {
   id: string;
@@ -22,7 +26,17 @@ interface SessionRow {
   notes: string | null;
   admission_diagnosis: string | null;
   clinical_features: string[] | null;
+  duration_seconds: number | null;
   created_at: string;
+}
+
+interface EventRow {
+  session_id: string;
+  kind: string;
+  severity: string;
+  t_offset_seconds: number | string;
+  duration_seconds: number | string;
+  detail: string | null;
 }
 
 interface FactsRow {
@@ -32,7 +46,38 @@ interface FactsRow {
 }
 
 const SELECT_SESSIONS =
-  "id, case_code, case_summary, notes, admission_diagnosis, clinical_features, created_at";
+  "id, case_code, case_summary, notes, admission_diagnosis, clinical_features, duration_seconds, created_at";
+
+/** Detections and markers for the given sessions, keyed by session id. */
+async function loadTimelines(
+  supabase: { from: (t: string) => any },
+  userId: string,
+  sessionIds: string[],
+): Promise<Map<string, CaseTimelinePoint[]>> {
+  const byId = new Map<string, CaseTimelinePoint[]>();
+  if (!sessionIds.length) return byId;
+  const { data, error } = await supabase
+    .from("eeg_events")
+    .select("session_id, kind, severity, t_offset_seconds, duration_seconds, detail")
+    .eq("user_id", userId)
+    .in("session_id", sessionIds)
+    .order("t_offset_seconds", { ascending: true });
+  if (error) throw new Error(error.message);
+  for (const row of (data ?? []) as EventRow[]) {
+    const start = Math.round(Number(row.t_offset_seconds) || 0);
+    const list = byId.get(row.session_id) ?? [];
+    if (list.length >= 120) continue;
+    list.push({
+      kind: row.kind,
+      severity: row.severity,
+      startSeconds: start,
+      endSeconds: start + Math.round(Number(row.duration_seconds) || 0),
+      detail: row.detail ?? "",
+    });
+    byId.set(row.session_id, list);
+  }
+  return byId;
+}
 
 function excerpt(text: string | null): string {
   const t = (text ?? "").trim();
@@ -72,6 +117,12 @@ export const loadCaseFacts = createServerFn({ method: "POST" })
       );
     if (factsError) throw new Error(factsError.message);
 
+    const timelines = await loadTimelines(
+      supabase,
+      userId,
+      sessions.map((s) => s.id),
+    );
+
     const saved = new Map<string, FactsRow>(
       ((factRows ?? []) as FactsRow[]).map((r) => [r.session_id, r]),
     );
@@ -94,6 +145,8 @@ export const loadCaseFacts = createServerFn({ method: "POST" })
         facts,
         confirmed: row?.confirmed ?? false,
         draft: false,
+        durationSeconds: s.duration_seconds ?? 0,
+        timeline: timelines.get(s.id) ?? [],
       };
     });
   });
@@ -120,9 +173,17 @@ export const proposeCaseFacts = createServerFn({ method: "POST" })
       .in("id", data.sessionIds);
     if (error) throw new Error(error.message);
 
+    const timelines = await loadTimelines(
+      supabase,
+      userId,
+      ((rows ?? []) as SessionRow[]).map((s) => s.id),
+    );
+
     const cases = ((rows ?? []) as SessionRow[])
       .map((s) => ({
         sessionId: s.id,
+        durationSeconds: s.duration_seconds ?? 0,
+        eegTimeline: timelines.get(s.id) ?? [],
         admissionDiagnosis: open(s.admission_diagnosis),
         clinicalFeatures: s.clinical_features ?? [],
         caseSummaryFreeText: open(s.case_summary),
