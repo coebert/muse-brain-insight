@@ -352,6 +352,52 @@ function Monitor() {
     ),
   });
 
+  // Real-time alerting when the smoothed seizure-risk trend crosses the
+  // clinician's thresholds, with a short AI read of each crossing.
+  const seizureRisk = useSeizureRiskAlerts({
+    epochs: monitor.epochs,
+    enabled: caseRunning,
+    mode,
+    markers: markers.map((m) => ({ t: m.t, detail: m.detail })),
+    patient: {
+      ageYears: meta.ageYears,
+      sex: meta.sex,
+      admissionDiagnosis: meta.admissionDiagnosis,
+      clinicalFeatures: meta.clinicalFeatures,
+      context: meta.context,
+    },
+    // Every confirmed crossing is timestamped in the session timeline so the
+    // case can be reviewed later.
+    onAlert: useCallback(
+      (a: SeizureTrendAlert) => {
+        monitor.addEvent({
+          kind: "annotation",
+          severity: "warning",
+          t: a.t,
+          duration: 0,
+          detail:
+            a.trigger === "sustained"
+              ? `Seizure-risk trend sustained above threshold — risk ${(a.risk * 100).toFixed(0)} % (signal ${(a.quality * 100).toFixed(0)} %)`
+              : `Seizure-risk trend rising ${(a.risePerMinute * 100).toFixed(0)} %/min — risk ${(a.risk * 100).toFixed(0)} % (signal ${(a.quality * 100).toFixed(0)} %)`,
+        });
+      },
+      [monitor],
+    ),
+    onAssessment: useCallback(
+      (a: SeizureTrendAlert) => {
+        if (!a.assessment) return;
+        monitor.addEvent({
+          kind: "annotation",
+          severity: a.assessment.severity === "critical" ? "critical" : "info",
+          t: a.t,
+          duration: 0,
+          detail: `AI seizure-trend read — ${a.assessment.headline} (${a.assessment.likelihood}, ${a.assessment.confidence} confidence)`,
+        });
+      },
+      [monitor],
+    ),
+  });
+
   function selectMode(next: MonitorMode) {
     setMode(next);
     const cfg = MODES.find((m) => m.key === next)!;
