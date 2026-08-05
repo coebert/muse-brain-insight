@@ -78,6 +78,7 @@ import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/e
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
+import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
 
