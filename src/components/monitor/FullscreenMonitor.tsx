@@ -232,6 +232,7 @@ export function FullscreenMonitor({
               dsaView={dsaView}
               windowSeconds={windowSeconds}
               elapsed={elapsed}
+              infusions={controls.infusions}
               compact
             />
             <DsaMarkerRail markers={markerRail} elapsed={elapsed} windowSeconds={windowSeconds} />
