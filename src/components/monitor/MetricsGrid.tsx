@@ -37,7 +37,6 @@ export function MetricsGrid({
   seizureAlert,
   icuMode,
   depthWindow,
-}: MetricsGridProps) {
   uncertainty,
 }: MetricsGridProps) {
   // Short "95 % CI a–b" suffixes appended to the tiles that carry an interval.
