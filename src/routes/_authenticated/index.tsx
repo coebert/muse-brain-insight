@@ -191,6 +191,8 @@ function Monitor() {
     reconnectAttempt: monitor.reconnectAttempt ?? null,
   });
   const { latest, allEvents, uncertainty, srTone, seizureAlert } = derived;
+  // Wall-clock anchor for t = 0, so alert cards can show time of day.
+  const [sessionStartedAtMs] = useState(() => Date.now());
   const dsaMarkerRail = derived.dsaMarkers;
 
   /** AI decision support for this case (session read + TCI dose–response). */
