@@ -1,5 +1,13 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Bluetooth, CheckCircle2, Loader2, RefreshCw, Wrench } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  Bluetooth,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+  Wand2,
+  Wrench,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,6 +16,7 @@ import {
   DEFAULT_MUSE_PRESET,
   probeMuseDevice,
   requestMuseDevice,
+  selectBestPreset,
   validateStreamingConfig,
   type MuseCapabilities,
 } from "@/lib/eeg/muse";
@@ -29,20 +38,47 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
   const [preset, setPreset] = useState(DEFAULT_MUSE_PRESET);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set when the app swapped the mode for the clinician, so it can say so. */
+  const [autoNote, setAutoNote] = useState<string | null>(null);
+  const lastAutoFixed = useRef<string | null>(null);
   const validation = useMemo(
     () => (caps ? validateStreamingConfig(caps, preset) : null),
     [caps, preset],
   );
 
+  // A blocked mode is never left selected: switch to the best compatible one
+  // automatically and tell the clinician what changed and why.
+  useEffect(() => {
+    if (!caps || validation?.status !== "blocked") return;
+    if (lastAutoFixed.current === preset) return;
+    const best = selectBestPreset(caps);
+    if (best.deviceBlocked || best.preset === preset) return;
+    const from = caps.presets.find((p) => p.code === preset);
+    const to = caps.presets.find((p) => p.code === best.preset);
+    lastAutoFixed.current = preset;
+    setPreset(best.preset);
+    setAutoNote(
+      `${from?.label ?? preset} is not compatible with this headband — switched to ${to?.label ?? best.preset}.`,
+    );
+  }, [caps, preset, validation]);
+
   async function detect() {
     setBusy(true);
     setError(null);
+    setAutoNote(null);
+    lastAutoFixed.current = null;
     try {
       const found = device ?? (await requestMuseDevice());
       setDevice(found);
       const detected = await probeMuseDevice(found);
       setCaps(detected);
-      setPreset(detected.recommendedPreset);
+      // Start on the richest mode the headband can actually deliver.
+      const best = selectBestPreset(detected);
+      setPreset(best.preset);
+      if (!best.deviceBlocked && best.preset !== detected.recommendedPreset) {
+        const to = detected.presets.find((p) => p.code === best.preset);
+        setAutoNote(`Selected ${to?.label ?? best.preset} — the best mode this headband supports.`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not read the headband's capabilities.");
     } finally {
