@@ -692,6 +692,10 @@ function Monitor() {
         if (!silent) toast.error("Sign in to use AI interpretation.");
         return;
       }
+      // A slow gateway call must not be overtaken by the surveillance timer:
+      // two in flight would race and the later reply would win arbitrarily.
+      if (aiInFlight.current) return;
+      aiInFlight.current = true;
       setAiLoading(true);
       setAiError(null);
       try {
@@ -714,6 +718,7 @@ function Monitor() {
           activeMode.label,
         );
         const result = await runInterpretation({ data: { digest } });
+        if (!mounted.current) return;
         setAiResult(result);
         setAiLastRunAt(Date.now());
         // Raise a toast only for problems we have not already surfaced.
@@ -734,10 +739,12 @@ function Monitor() {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "AI analysis failed.";
+        if (!mounted.current) return;
         setAiError(message);
         if (!silent) toast.error(message);
       } finally {
-        setAiLoading(false);
+        aiInFlight.current = false;
+        if (mounted.current) setAiLoading(false);
       }
     },
     [
@@ -768,6 +775,8 @@ function Monitor() {
       toast.error("Sign in to use AI interpretation.");
       return;
     }
+    if (tciInFlight.current) return;
+    tciInFlight.current = true;
     setTciLoading(true);
     setTciError(null);
     try {
@@ -784,13 +793,16 @@ function Monitor() {
           },
         },
       });
+      if (!mounted.current) return;
       setTciReport(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "AI analysis failed.";
+      if (!mounted.current) return;
       setTciError(message);
       toast.error(message);
     } finally {
-      setTciLoading(false);
+      tciInFlight.current = false;
+      if (mounted.current) setTciLoading(false);
     }
   }, [user, tciDigest, meta, activeMode.label, runTciInterpretation]);
 
