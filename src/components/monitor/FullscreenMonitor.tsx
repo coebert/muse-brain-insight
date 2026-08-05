@@ -1,6 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Minimize2, TriangleAlert } from "lucide-react";
 
+import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
+import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
+import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import type { CaseControls } from "@/components/monitor/case-controls";
+import { quickMarkers } from "@/lib/eeg/marker-presets";
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
@@ -36,6 +42,8 @@ interface Props {
   suppressionThresholdUv: number;
   dsaView: DsaView;
   onDsaViewChange: (view: DsaView) => void;
+  /** Live-case controls; when supplied the bedside action bar is rendered. */
+  controls?: CaseControls | undefined;
   onExit: () => void;
 }
 
@@ -57,6 +65,7 @@ export function FullscreenMonitor({
   suppressionThresholdUv,
   dsaView,
   onDsaViewChange,
+  controls,
   onExit,
 }: Props) {
   // Enter the browser's fullscreen mode where allowed, and mirror Esc/F11 exits.
@@ -85,6 +94,7 @@ export function FullscreenMonitor({
     };
   }, [onExit]);
 
+  const [sheet, setSheet] = useState<CaseSheet>(null);
   const windowSeconds = windowMinutes * 60;
   const visible = useMemo(() => epochs.slice(-windowSeconds), [epochs, windowSeconds]);
   const markerRail = useMemo(
@@ -137,6 +147,47 @@ export function FullscreenMonitor({
         </div>
       ) : null}
 
+      {controls && controls.alarms.alarms.length ? (
+        <div className="shrink-0 px-2 pt-2">
+          <AlarmBanner
+            alarms={controls.alarms.alarms}
+            audioEnabled={controls.alarms.audioEnabled}
+            muted={controls.alarms.muted}
+            muteRemaining={controls.alarms.muteRemaining}
+            onAcknowledge={controls.alarms.acknowledge}
+            onAcknowledgeAll={controls.alarms.acknowledgeAll}
+            onAcknowledgeSide={controls.alarms.acknowledgeSide}
+            onPauseAudio={controls.alarms.pauseAudio}
+            onResumeAudio={controls.alarms.resumeAudio}
+            onToggleAudio={() => controls.alarms.setAudioEnabled(!controls.alarms.audioEnabled)}
+          />
+        </div>
+      ) : null}
+
+      {controls ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 pt-2">
+          <div className="min-w-[14rem] flex-1">
+            <TciStatusStrip
+              infusions={controls.infusions}
+              onOpen={() => setSheet("tci")}
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {quickMarkers(controls.mode).map((label) => (
+              <button
+                key={label}
+                type="button"
+                disabled={!controls.running}
+                onClick={() => controls.onMark(label)}
+                className="min-h-11 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Bedside grid */}
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-auto p-2 lg:grid-cols-[minmax(0,1fr)_260px] lg:overflow-hidden short:grid-cols-[minmax(0,1fr)_180px]! short:overflow-hidden!">
         {/* Traces */}
@@ -161,26 +212,9 @@ export function FullscreenMonitor({
             <span className="absolute top-1 left-2 z-10 text-xs tracking-[0.16em] text-muted-foreground uppercase">
               DSA · {windowMinutes} min
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="absolute top-1 right-2 z-10 h-7 px-2 text-xs"
-              onClick={() =>
-                onDsaViewChange(
-                  dsaView === "bilateral"
-                    ? "combined"
-                    : dsaView === "combined"
-                      ? "overlay"
-                      : "bilateral",
-                )
-              }
-            >
-              {dsaView === "bilateral"
-                ? "Combined view"
-                : dsaView === "combined"
-                  ? "Overlay view"
-                  : "Bilateral view"}
-            </Button>
+            <div className="absolute top-1 right-2 z-10">
+              <DsaViewToggle value={dsaView} onChange={onDsaViewChange} size="sm" />
+            </div>
             <HemiDsaPanel
               hemiSpectra={hemiSpectra}
               hemiLatest={hemiLatest}
@@ -292,6 +326,13 @@ export function FullscreenMonitor({
           </div>
         </div>
       </div>
+
+      {controls ? (
+        <>
+          <div className="h-14 shrink-0" />
+          <CaseActionBar controls={controls} open={sheet} onOpenChange={setSheet} />
+        </>
+      ) : null}
     </div>
   );
 }
