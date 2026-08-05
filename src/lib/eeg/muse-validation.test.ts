@@ -61,10 +61,15 @@ describe("validateStreamingConfig", () => {
     expect(result.status).toBe("ok");
   });
 
-  it("blocks firmware older than the preset-switching minimum", () => {
+  it("does not block a current headband on an older firmware family", () => {
     const result = validateStreamingConfig(caps({ firmwareVersion: "1.1.9" }), DEFAULT_MUSE_PRESET);
-    expect(result.status).toBe("blocked");
-    expect(result.issues.some((i) => i.title === "Firmware too old")).toBe(true);
+    expect(result.status).toBe("ok");
+  });
+
+  it("warns, without blocking, on pre-release firmware", () => {
+    const result = validateStreamingConfig(caps({ firmwareVersion: "0.9.1" }), DEFAULT_MUSE_PRESET);
+    expect(result.status).toBe("warning");
+    expect(result.issues.some((i) => i.title === "Unusually old firmware")).toBe(true);
   });
 
   it("warns rather than blocks when firmware is not reported", () => {
