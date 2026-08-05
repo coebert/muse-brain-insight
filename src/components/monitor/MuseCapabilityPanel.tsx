@@ -139,7 +139,14 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
 
       <div className="space-y-2">
         <Label className="text-xs text-muted-foreground">Streaming configuration</Label>
-        <RadioGroup value={preset} onValueChange={setPreset} className="gap-2">
+        <RadioGroup
+          value={preset}
+          onValueChange={(next) => {
+            setAutoNote(null);
+            setPreset(next);
+          }}
+          className="gap-2"
+        >
           {caps.presets.map((option) => (
             <label
               key={option.code}
@@ -161,6 +168,12 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
             </label>
           ))}
         </RadioGroup>
+        {autoNote ? (
+          <p className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            <Wand2 className="mt-0.5 size-3.5 shrink-0" />
+            {autoNote}
+          </p>
+        ) : null}
         <p className="text-xs text-muted-foreground">
           All offered modes keep the four scalp electrodes at 256 Hz, which every metric on the
           monitor assumes.
