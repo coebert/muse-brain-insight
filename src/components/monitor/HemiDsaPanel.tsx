@@ -4,6 +4,7 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 import { DsaChart, marginsFor, type DsaTrace } from "@/components/monitor/DsaChart";
 import { Button } from "@/components/ui/button";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
+import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import { TciTimeline } from "@/components/monitor/TciTimeline";
 import type { TciInfusion } from "@/lib/eeg/tci";
@@ -231,6 +232,7 @@ function HemiDsaPanelInner({
     <div className="flex h-full min-h-0 flex-col">
       {/* Zoom / pan toolbar — shared by every lane so context is never lost. */}
       <div className="flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-0.5">
+        <ParameterInfo parameter="dsa" className="mr-1" />
         <span className="metric-value text-xs text-muted-foreground">
           {zoomed
             ? `-${Math.round(view.from)}s → -${Math.round(view.to)}s`
@@ -285,7 +287,10 @@ function HemiDsaPanelInner({
             >
               {lane.side} · {lane.montage}
             </span>
-            <HemiQualityBadge metrics={lane.metrics} compact className="ml-auto shrink-0" />
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              <HemiQualityBadge metrics={lane.metrics} compact />
+              <ParameterInfo parameter="sqi" />
+            </div>
           </div>
           <LaneInteract view={view} windowSeconds={windowSeconds} onChange={setView}>
             <DsaChart
