@@ -228,6 +228,8 @@ export interface DetectedEvent {
   t: number;
   duration: number;
   detail: string;
+  /** Interpretable detector evidence — currently attached to seizure events. */
+  evidence?: SeizureEvidence;
 }
 
 function clamp01(v: number): number {
