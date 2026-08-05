@@ -29,8 +29,10 @@ import {
   type MuseChannel,
 } from "@/lib/eeg/muse";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
+import { createRawArchive } from "@/lib/eeg/raw-archive";
 
 export type { WaveformStore } from "@/lib/eeg/waveform-store";
+export type { RawArchive } from "@/lib/eeg/raw-archive";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
@@ -315,6 +317,8 @@ export function useEegMonitor() {
   } = stream;
   // The live trace bypasses React state — see waveform-store.
   const waveformStoreRef = useRef(createWaveformStore());
+  // Per-electrode rolling archive powering the raw-channel viewer.
+  const rawArchiveRef = useRef(createRawArchive());
   const [reconnectAttempt, setReconnectAttempt] = useState<{
     attempt: number;
     attempts: number;
@@ -379,6 +383,7 @@ export function useEegMonitor() {
     hemiEventsRef.current = [];
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
+    rawArchiveRef.current.reset();
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
     for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
@@ -430,11 +435,15 @@ export function useEegMonitor() {
           const buf = buffersRef.current[ch];
           if (!buf) return;
           lastSampleAtRef.current = Date.now();
+          const filtered = new Float64Array(samples.length);
           for (let i = 0; i < samples.length; i++) {
-            buf.data[buf.write] = buf.filter.process(samples[i]!);
+            const v = buf.filter.process(samples[i]!);
+            filtered[i] = v;
+            buf.data[buf.write] = v;
             buf.write = (buf.write + 1) % BUFFER_LEN;
             if (buf.count < BUFFER_LEN) buf.count++;
           }
+          rawArchiveRef.current.push(ch, filtered, MUSE_SAMPLE_RATE);
         });
         sourceRef.current = source;
         setSourceName(source.name);
@@ -710,6 +719,7 @@ export function useEegMonitor() {
     events,
     latest,
     waveformStore: waveformStoreRef.current,
+    rawArchive: rawArchiveRef.current,
     elapsed,
     contactOk,
     channelQuality,
