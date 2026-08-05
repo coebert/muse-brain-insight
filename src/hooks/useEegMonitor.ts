@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
   DEFAULT_SETTINGS,
@@ -28,6 +28,9 @@ import {
   type EegSource,
   type MuseChannel,
 } from "@/lib/eeg/muse";
+import { createWaveformStore } from "@/lib/eeg/waveform-store";
+
+export type { WaveformStore } from "@/lib/eeg/waveform-store";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
