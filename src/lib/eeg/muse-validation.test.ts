@@ -32,6 +32,80 @@ describe("parseFirmwareVersion", () => {
     expect(parseFirmwareVersion(null)).toBeNull();
     expect(parseFirmwareVersion("unknown")).toBeNull();
   });
+
+  it("reads every shipped Muse firmware string shape", () => {
+    // Real strings seen from Muse 2016 / Muse 2 / Muse S `v1` replies.
+    expect(parseFirmwareVersion("1.2.13")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("2.1")).toEqual([2, 1, 0]);
+    expect(parseFirmwareVersion("3.4.10")).toEqual([3, 4, 10]);
+    expect(parseFirmwareVersion("v1.2.13")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("  1.2.13  ")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("1.2.13.4")).toEqual([1, 2, 13]);
+  });
+
+  it("reads pre-release and build-suffixed identifiers", () => {
+    expect(parseFirmwareVersion("1.2.13-rc1")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("1.2.13-beta.2")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("1.2.13+build.2794")).toEqual([1, 2, 13]);
+    expect(parseFirmwareVersion("1.2.13 (2794)")).toEqual([1, 2, 13]);
+  });
+
+  it("refuses build numbers, dates and other non-versions", () => {
+    // A build counter must never be mistaken for a version — that was the
+    // cause of false "firmware too old" blocks on up-to-date headbands.
+    expect(parseFirmwareVersion("2794")).toBeNull();
+    expect(parseFirmwareVersion("27")).toBeNull();
+    expect(parseFirmwareVersion("")).toBeNull();
+    expect(parseFirmwareVersion("n/a")).toBeNull();
+    expect(parseFirmwareVersion("RevE")).toBeNull();
+  });
+});
+
+describe("firmware never blocks an up-to-date headband", () => {
+  const shipped = [
+    "1.2.13",
+    "1.2.13-rc1",
+    "1.2.13+build.2794",
+    "2.1",
+    "3.4.10",
+    "v1.0.0",
+    "1.0.0 (2794)",
+  ];
+
+  for (const firmwareVersion of shipped) {
+    it(`accepts firmware "${firmwareVersion}"`, () => {
+      const result = validateStreamingConfig(caps({ firmwareVersion }), DEFAULT_MUSE_PRESET);
+      expect(result.status).toBe("ok");
+      expect(result.issues).toHaveLength(0);
+    });
+  }
+
+  const unparseable = ["2794", "n/a", "RevE", null];
+
+  for (const firmwareVersion of unparseable) {
+    it(`warns without blocking on unreadable firmware "${String(firmwareVersion)}"`, () => {
+      const result = validateStreamingConfig(caps({ firmwareVersion }), DEFAULT_MUSE_PRESET);
+      expect(result.status).toBe("warning");
+      expect(result.issues.some((i) => i.severity === "blocker")).toBe(false);
+      expect(result.issues.some((i) => i.title === "Firmware not reported")).toBe(true);
+    });
+  }
+
+  it("still flags genuinely pre-release firmware as a warning only", () => {
+    for (const firmwareVersion of ["0.9.1", "0.1.0-beta"]) {
+      const result = validateStreamingConfig(caps({ firmwareVersion }), DEFAULT_MUSE_PRESET);
+      expect(result.status).toBe("warning");
+      expect(result.issues.some((i) => i.title === "Unusually old firmware")).toBe(true);
+    }
+  });
+
+  it("keeps every streaming preset selectable regardless of firmware string", () => {
+    for (const firmwareVersion of [...shipped, "2794", null]) {
+      const best = selectBestPreset(caps({ firmwareVersion }));
+      expect(best.deviceBlocked).toBe(false);
+      expect(best.validation.status).not.toBe("blocked");
+    }
+  });
 });
 
 describe("validateStreamingConfig", () => {
