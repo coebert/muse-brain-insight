@@ -184,8 +184,18 @@ export function CaseActionBar({
             <>
               <SheetHeader className="px-0">
                 <SheetTitle>Session log</SheetTitle>
-                <SheetDescription>Detections and clinician markers, newest last.</SheetDescription>
+                <SheetDescription>
+                  Handover summary, then detections and clinician markers, newest last.
+                </SheetDescription>
               </SheetHeader>
+              <dl className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {controls.handover.map((row) => (
+                  <div key={row.label} className="rounded-md border border-border px-2.5 py-2">
+                    <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                    <dd className="metric-value text-sm text-foreground">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
               <div className="rounded-lg border border-border">
                 <EventLog events={controls.events} />
               </div>

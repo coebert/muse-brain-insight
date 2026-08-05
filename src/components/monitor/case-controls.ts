@@ -52,6 +52,9 @@ export interface CaseControls {
     setAudioEnabled: (on: boolean) => void;
   };
 
+  /** One-screen "what has happened so far" for handover. */
+  handover: { label: string; value: string }[];
+
   /** Live readings shown beside the limits so a value can be judged in context. */
   live: {
     depthIndex: number | null;

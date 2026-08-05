@@ -557,6 +557,17 @@ function Monitor() {
       resumeAudio: alarms.resumeAudio,
       setAudioEnabled: (on) => alarms.setAudioEnabled(on),
     },
+    handover: [
+      { label: "Case time", value: formatClock(monitor.elapsed) },
+      { label: "Mean SR", value: `${summary.meanSr.toFixed(0)} %` },
+      {
+        label: "Suppression time",
+        value: formatDuration(Math.round(summary.suppressionSeconds)),
+      },
+      { label: "Alerts", value: String(monitor.events.filter((e) => e.kind !== "annotation").length) },
+      { label: "Markers", value: String(markers.length) },
+      { label: "TCI running", value: summariseInfusions(infusions) },
+    ],
     live: {
       depthIndex: latest?.depth.index ?? null,
       suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
