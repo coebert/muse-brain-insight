@@ -1,10 +1,16 @@
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Lightbulb, NotebookPen, Sparkles } from "lucide-react";
+import { Crosshair, Lightbulb, NotebookPen, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { mineCaseNotes, type CaseNoteInsights } from "@/lib/eeg/case-notes.functions";
+import {
+  mineCaseNotes,
+  type CaseNoteInsights,
+  type EegCitation,
+} from "@/lib/eeg/case-notes.functions";
+import { formatClock } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
 
 const STRENGTH_STYLES: Record<string, string> = {
@@ -12,6 +18,28 @@ const STRENGTH_STYLES: Record<string, string> = {
   moderate: "bg-caution/15 text-caution",
   strong: "bg-signal/15 text-signal",
 };
+
+/** Timestamped EEG segments a finding rests on, each opening in Trends. */
+function Citations({ citations }: { citations: EegCitation[] }) {
+  if (!citations?.length) return null;
+  return (
+    <ul className="mt-2 space-y-1 border-l border-border pl-2.5">
+      {citations.map((c, i) => (
+        <li key={`${c.sessionId}-${c.startSeconds}-${i}`} className="text-xs">
+          <Link
+            to="/trends"
+            search={{ session: c.sessionId, t: c.startSeconds }}
+            className="metric-value inline-flex items-center gap-1 text-signal hover:underline"
+          >
+            <Crosshair className="size-3" />
+            {c.caseCode} {formatClock(c.startSeconds)}–{formatClock(c.endSeconds)}
+          </Link>{" "}
+          <span className="text-muted-foreground">{c.why}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * Reads the clinician's free-text case summaries, pulls out the key details
@@ -82,6 +110,7 @@ export function CaseNoteInsightsPanel() {
                   {p.suggestedAction ? (
                     <p className="mt-1.5 text-sm">Next step: {p.suggestedAction}</p>
                   ) : null}
+                  <Citations citations={p.citations} />
                   {p.caseCodes?.length ? (
                     <p className="metric-value mt-1.5 text-xs text-muted-foreground">
                       Seen in {p.caseCodes.join(", ")}
@@ -98,7 +127,10 @@ export function CaseNoteInsightsPanel() {
                 Key details drawn from each note
               </h3>
               {result.perCase.map((c) => (
-                <article key={c.sessionId || c.caseCode} className="rounded-md bg-muted/30 px-3 py-2.5">
+                <article
+                  key={c.sessionId || c.caseCode}
+                  className="rounded-md bg-muted/30 px-3 py-2.5"
+                >
                   <h4 className="metric-value text-sm font-medium">{c.caseCode}</h4>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {c.keyDetails?.map((d) => (
@@ -121,6 +153,7 @@ export function CaseNoteInsightsPanel() {
                   {c.eegCorrelation ? (
                     <p className="mt-1.5 text-sm text-muted-foreground">{c.eegCorrelation}</p>
                   ) : null}
+                  <Citations citations={c.citations} />
                 </article>
               ))}
             </div>

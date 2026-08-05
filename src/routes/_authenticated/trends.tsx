@@ -42,6 +42,14 @@ import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 
 export const Route = createFileRoute("/_authenticated/trends")({
+  // Deep links from case evidence: /trends?session=<id>&t=<seconds>
+  validateSearch: (search: Record<string, unknown>) => ({
+    session: typeof search["session"] === "string" ? search["session"] : undefined,
+    t:
+      Number.isFinite(Number(search["t"])) && search["t"] !== undefined
+        ? Math.max(0, Math.round(Number(search["t"])))
+        : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Session trends — whole-case DSA and metrics — CortexTrace" },
@@ -107,7 +115,8 @@ const tooltipStyle = {
 };
 
 function Trends() {
-  const [sessionId, setSessionId] = useState<string>("");
+  const search = Route.useSearch();
+  const [sessionId, setSessionId] = useState<string>(search.session ?? "");
 
   const sessions = useQuery({
     queryKey: ["eeg_sessions", "trends"],
@@ -219,7 +228,7 @@ function Trends() {
   const markers = events.data ?? [];
 
   // --- Review scrubber state: shared cursor + selected alert window ---------
-  const [cursor, setCursor] = useState(0);
+  const [cursor, setCursor] = useState(search.t ?? 0);
   const [playing, setPlaying] = useState(false);
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [alertWindows, setAlertWindows] = useState<ScrubWindow[]>([]);
