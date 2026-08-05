@@ -219,6 +219,10 @@ function Monitor() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiWatch, setAiWatch] = useState(false);
   const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
+  /** AI reading of how the recorded TCI targets moved the EEG. */
+  const [tciReport, setTciReport] = useState<TciResponseReport | null>(null);
+  const [tciLoading, setTciLoading] = useState(false);
+  const [tciError, setTciError] = useState<string | null>(null);
   const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
   /**
