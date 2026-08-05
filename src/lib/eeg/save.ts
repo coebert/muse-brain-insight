@@ -118,6 +118,7 @@ export async function saveSession(
       .select("id")
       .single(),
   );
+  if (!session) throw new Error("The case was not saved — no record was returned.");
 
   const rows = decimate(epochs).map((e) => ({
     session_id: session.id,
