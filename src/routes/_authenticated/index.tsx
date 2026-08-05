@@ -1345,6 +1345,16 @@ function Monitor() {
 
             <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
 
+            {caseState !== "idle" ? (
+              <SeizureRiskPanel
+                prefs={seizureRisk.prefs}
+                setPrefs={seizureRisk.setPrefs}
+                trend={seizureRisk.trend}
+                alerts={seizureRisk.alerts}
+                dismiss={seizureRisk.dismiss}
+              />
+            ) : null}
+
             {/* Event rail — the last few entries stay visible beside the trace. */}
             {caseState !== "idle" ? (
               <div className="panel px-3 py-2.5 sm:px-4">
