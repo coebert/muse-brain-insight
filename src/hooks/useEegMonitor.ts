@@ -215,27 +215,110 @@ function readLast(buffer: ChannelBuffer, n: number): Float64Array {
   return out;
 }
 
+/* ------------------------------------------------------------------ */
+/* Streaming state                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Everything the analysis loop produces, committed as one value.
+ *
+ * A hop used to fire eight separate `setState` calls; consumers could observe
+ * a half-updated case (new epochs, stale hemisphere metrics). One reducer
+ * action keeps the trend, the hemispheres and the quality read-outs in step.
+ */
+interface StreamState {
+  epochs: Epoch[];
+  hemiSpectra: HemiSpectra[];
+  hemiLatest: HemiLatest | null;
+  hemiEvents: HemiEvent[];
+  sqiHistory: SqiPoint[];
+  events: DetectedEvent[];
+  elapsed: number;
+  contactOk: Record<string, boolean>;
+  channelQuality: Record<string, SignalQuality>;
+  dataGapSeconds: number;
+}
+
+const INITIAL_STREAM: StreamState = {
+  epochs: [],
+  hemiSpectra: [],
+  hemiLatest: null,
+  hemiEvents: [],
+  sqiHistory: [],
+  events: [],
+  elapsed: 0,
+  contactOk: {},
+  channelQuality: {},
+  dataGapSeconds: 0,
+};
+
+type StreamAction =
+  | { type: "reset" }
+  | { type: "gap"; elapsed: number; dataGapSeconds: number }
+  | { type: "events"; events: DetectedEvent[] }
+  | {
+      type: "epoch";
+      elapsed: number;
+      epoch: Epoch;
+      events: DetectedEvent[];
+      hemi: HemiSpectra;
+      hemiLatest: HemiLatest;
+      hemiEvents: HemiEvent[] | null;
+      sqi: SqiPoint;
+      contactOk: Record<string, boolean>;
+      channelQuality: Record<string, SignalQuality>;
+    };
+
+function streamReducer(state: StreamState, action: StreamAction): StreamState {
+  switch (action.type) {
+    case "reset":
+      return INITIAL_STREAM;
+    case "gap":
+      return { ...state, elapsed: action.elapsed, dataGapSeconds: action.dataGapSeconds };
+    case "events":
+      return { ...state, events: action.events };
+    case "epoch":
+      return {
+        ...state,
+        elapsed: action.elapsed,
+        dataGapSeconds: 0,
+        epochs: compactEpochs([...state.epochs, action.epoch]),
+        events: action.events,
+        hemiSpectra: compactHemi([...state.hemiSpectra, action.hemi]),
+        hemiLatest: action.hemiLatest,
+        hemiEvents: action.hemiEvents ?? state.hemiEvents,
+        sqiHistory: compactSqi([...state.sqiHistory, action.sqi]),
+        contactOk: action.contactOk,
+        channelQuality: action.channelQuality,
+      };
+  }
+}
+
 export function useEegMonitor() {
   const [status, setStatus] = useState<MonitorStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("");
   const [channel, setChannel] = useState<MuseChannel | "average">("average");
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
-  const [epochs, setEpochs] = useState<Epoch[]>([]);
-  const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
-  const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
-  const [hemiEvents, setHemiEvents] = useState<HemiEvent[]>([]);
-  const [sqiHistory, setSqiHistory] = useState<SqiPoint[]>([]);
-  const [events, setEvents] = useState<DetectedEvent[]>([]);
-  const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
-  const [elapsed, setElapsed] = useState(0);
-  const [contactOk, setContactOk] = useState<Record<string, boolean>>({});
-  const [channelQuality, setChannelQuality] = useState<Record<string, SignalQuality>>({});
+  const [stream, dispatch] = useReducer(streamReducer, INITIAL_STREAM);
+  const {
+    epochs,
+    hemiSpectra,
+    hemiLatest,
+    hemiEvents,
+    sqiHistory,
+    events,
+    elapsed,
+    contactOk,
+    channelQuality,
+    dataGapSeconds,
+  } = stream;
+  // The live trace bypasses React state — see waveform-store.
+  const waveformStoreRef = useRef(createWaveformStore());
   const [reconnectAttempt, setReconnectAttempt] = useState<{
     attempt: number;
     attempts: number;
   } | null>(null);
-  const [dataGapSeconds, setDataGapSeconds] = useState(0);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
