@@ -282,6 +282,7 @@ export function FullscreenMonitor({
             <MetricCard
               size="bedside"
               label="Depth index"
+            info="depth"
               value={depth?.index != null ? String(depth.index) : "—"}
               hint={
                 depth
@@ -297,6 +298,7 @@ export function FullscreenMonitor({
           <MetricCard
             size="bedside"
             label="Suppression ratio"
+            info="sr"
             value={latest ? srValue.toFixed(0) : "—"}
             unit="%"
             hint={`Supp. time ${formatDuration(suppressionSeconds)}`}
@@ -305,6 +307,7 @@ export function FullscreenMonitor({
           <MetricCard
             size="bedside"
             label="SEF 95"
+            info="sef95"
             value={latest ? latest.sef95.toFixed(1) : "—"}
             unit="Hz"
             hint={latest ? `Entropy ${latest.entropy.state.toFixed(2)}` : undefined}
@@ -312,12 +315,14 @@ export function FullscreenMonitor({
           <MetricCard
             size="bedside"
             label="qCON-like"
+            info="cIndex"
             value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
             hint={latest ? COMPOSITE_BAND_LABEL[latest.composite.cBand] : undefined}
           />
           <MetricCard
             size="bedside"
             label="qNOX-like"
+            info="nIndex"
             value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
             hint={latest ? NOCICEPTION_BAND_LABEL[latest.composite.nBand] : undefined}
           />
@@ -325,6 +330,7 @@ export function FullscreenMonitor({
             <MetricCard
               size="bedside"
               label="Seizure score"
+            info="seizure"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
               hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
               tone={latest?.seizureAlert ? "critical" : "default"}

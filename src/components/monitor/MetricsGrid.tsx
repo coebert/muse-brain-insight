@@ -42,6 +42,7 @@ export function MetricsGrid({
           depth: (
             <MetricTile
               key="depth"
+              info="depth"
               label="Depth index (OpenIBIS)"
               value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
               hint={
@@ -72,6 +73,7 @@ export function MetricsGrid({
           sr: (
             <MetricTile
               key="sr"
+              info="sr"
               label={`Suppression ratio (${srWindowSeconds}s)`}
               value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
               unit="%"
@@ -83,6 +85,7 @@ export function MetricsGrid({
           time: (
             <MetricTile
               key="time"
+              info="suppressionTime"
               label="Suppression time"
               value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
               unit={summary.suppressionSeconds < 60 ? "s" : "min"}
@@ -94,6 +97,7 @@ export function MetricsGrid({
           seizure: (
             <MetricTile
               key="seizure"
+              info="seizure"
               label="Seizure score"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
               tone={
@@ -117,6 +121,7 @@ export function MetricsGrid({
           sef: (
             <MetricTile
               key="sef"
+              info="sef95"
               label="Spectral edge 95"
               value={latest ? latest.sef95.toFixed(1) : "—"}
               unit="Hz"
@@ -127,6 +132,7 @@ export function MetricsGrid({
           amp: (
             <MetricTile
               key="amp"
+              info="amplitude"
               label="Amplitude (p-p)"
               value={latest ? latest.amplitudeUv.toFixed(0) : "—"}
               unit="µV"
@@ -138,6 +144,7 @@ export function MetricsGrid({
           entropy: (
             <MetricTile
               key="entropy"
+              info="entropy"
               label="Spectral entropy (state)"
               value={latest ? latest.entropy.state.toFixed(2) : "—"}
               hint={
@@ -152,6 +159,7 @@ export function MetricsGrid({
           dar: (
             <MetricTile
               key="dar"
+              info="deltaAlpha"
               label="Delta / alpha ratio"
               value={latest ? latest.ratios.deltaAlpha.toFixed(2) : "—"}
               hint={
@@ -165,6 +173,7 @@ export function MetricsGrid({
           bar: (
             <MetricTile
               key="bar"
+              info="betaAlpha"
               label="Beta / alpha ratio"
               value={latest ? latest.ratios.betaAlpha.toFixed(2) : "—"}
               hint="Rises with light anaesthesia and benzodiazepine beta"
@@ -174,6 +183,7 @@ export function MetricsGrid({
           cindex: (
             <MetricTile
               key="cindex"
+              info="cIndex"
               label="Consciousness index (qCON-like)"
               value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
               hint={
@@ -198,6 +208,7 @@ export function MetricsGrid({
           nindex: (
             <MetricTile
               key="nindex"
+              info="nIndex"
               label="Nociception index (qNOX-like)"
               value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
               hint={

@@ -16,6 +16,7 @@ import { TciPanel } from "@/components/monitor/TciPanel";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { tciModel } from "@/lib/eeg/tci";
 import { cn } from "@/lib/utils";
+import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 
 export type CaseSheet = "mark" | "tci" | "limits" | "alarms" | "log" | null;
 
@@ -125,7 +126,10 @@ export function CaseActionBar({
           {sheet === "tci" ? (
             <>
               <SheetHeader className="px-0">
-                <SheetTitle>TCI pumps</SheetTitle>
+                <SheetTitle className="flex items-center gap-2">
+                  TCI pumps
+                  <ParameterInfo parameter="ce" size="md" />
+                </SheetTitle>
                 <SheetDescription>
                   {livePumps.length
                     ? livePumps
