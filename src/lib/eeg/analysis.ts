@@ -297,6 +297,7 @@ export class EegAnalyzer {
     this.suppressionHistory = [];
     this.activeSuppressionStart = null;
     this.activeSeizureStart = null;
+    this.seizureRun = null;
     this.poorQualityStart = null;
     this.recentQuality = [];
     this.depthHistory = [];
