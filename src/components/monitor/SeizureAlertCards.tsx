@@ -80,7 +80,7 @@ export function SeizureAlertCards({
           role="alert"
           className={cn(
             "panel border-critical/60 bg-critical/10 px-3 py-2.5 sm:px-4",
-            ongoing && "animate-pulse-slow",
+            ongoing && "animate-pulse",
           )}
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
