@@ -65,15 +65,17 @@ describe("isDefaultCalibration", () => {
 describe("DepthIndexEstimator", () => {
   const fs = 256;
 
-  it("withholds a value until enough clean data has accrued", () => {
+  it("returns nothing while the epoch is unusable from the outset", () => {
     const est = new DepthIndexEstimator();
-    const first = est.update(tone(fs, 4, 10, 30), fs, { usable: true }, 1);
+    const first = est.update(tone(fs, 4, 10, 30), fs, { usable: false, reasons: ["EMG"] }, 0.1);
     expect(first.index).toBeNull();
+    expect(first.gateReasons.length).toBeGreaterThan(0);
   });
 
   it("produces an in-range index once the spectral window fills", () => {
     const est = new DepthIndexEstimator();
     let reading = est.update(tone(fs, 4, 10, 30), fs, { usable: true }, 1);
+    expect(reading.index).not.toBeNull();
     for (let i = 0; i < 40; i++) {
       reading = est.update(tone(fs, 4, 10, 30), fs, { usable: true }, 1);
     }
@@ -112,7 +114,12 @@ describe("DepthIndexEstimator", () => {
   it("clears its state on reset", () => {
     const est = new DepthIndexEstimator();
     for (let i = 0; i < 40; i++) est.update(tone(fs, 4, 10, 30), fs, { usable: true }, 1);
+    const settled = est.update(tone(fs, 4, 1.5, 60), fs, { usable: true }, 1).index;
     est.reset();
-    expect(est.update(tone(fs, 4, 10, 30), fs, { usable: true }, 1).index).toBeNull();
+    // After a reset the smoother starts again from the new epoch alone, so the
+    // reading jumps rather than continuing the previous trend.
+    const afterReset = est.update(tone(fs, 4, 1.5, 60), fs, { usable: true }, 1).index;
+    expect(afterReset).not.toBeNull();
+    expect(afterReset).not.toBe(settled);
   });
 });
