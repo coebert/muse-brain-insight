@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
+import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
 
 export interface SessionMeta {
   caseCode: string;
@@ -37,6 +38,23 @@ function decimate(epochs: Epoch[]): Epoch[] {
   return out;
 }
 
+/**
+ * Run one database write, turning a PostgREST error into a thrown error so the
+ * retry policy can see it, and retrying transient failures with backoff.
+ */
+async function write<T>(
+  op: () => PromiseLike<{ data: T; error: { message: string } | null }>,
+): Promise<T> {
+  return withRetry(
+    async () => {
+      const { data, error } = await op();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    { shouldRetry: isTransient },
+  );
+}
+
 export async function saveSession(
   meta: SessionMeta,
   epochs: Epoch[],
@@ -47,6 +65,10 @@ export async function saveSession(
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (!userId) throw new Error("You need to be signed in to save a session.");
+
+  // Stage the case locally first so a dropped connection mid-save cannot lose
+  // a completed record.
+  stageSave(meta.caseCode, { meta, summary, elapsed, events: events.length });
 
   // Free-text fields are encrypted (AES-256-GCM) before they leave the browser session.
   const { values: sealed } = await sealTexts({
@@ -61,35 +83,37 @@ export async function saveSession(
   });
   const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
 
-  const { data: session, error } = await supabase
-    .from("eeg_sessions")
-    .insert({
-      user_id: userId,
-      case_code: sealedCase ?? meta.caseCode,
-      context: meta.context,
-      location: sealedLocation ?? null,
-      notes: sealedNotes ?? null,
-      device_name: meta.deviceName || null,
-      age_years: (() => {
-        const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
-        if (n === null || Number.isNaN(n)) return null;
-        // Never store an exact age of 90+, which can be identifying.
-        return n >= 90 ? null : Math.round(n);
-      })(),
-      age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
-      sex: meta.sex || null,
-      admission_diagnosis: sealedDiagnosis ?? null,
-      clinical_features: meta.clinicalFeatures,
-      duration_seconds: Math.round(elapsed),
-      mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
-      max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
-      suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
-      seizure_alerts: summary.seizureAlerts,
-      ended_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-  if (error) throw error;
+  const session = await write(() =>
+    supabase
+      .from("eeg_sessions")
+      .insert({
+        user_id: userId,
+        case_code: sealedCase ?? meta.caseCode,
+        context: meta.context,
+        location: sealedLocation ?? null,
+        notes: sealedNotes ?? null,
+        device_name: meta.deviceName || null,
+        age_years: (() => {
+          const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
+          if (n === null || Number.isNaN(n)) return null;
+          // Never store an exact age of 90+, which can be identifying.
+          return n >= 90 ? null : Math.round(n);
+        })(),
+        age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
+        sex: meta.sex || null,
+        admission_diagnosis: sealedDiagnosis ?? null,
+        clinical_features: meta.clinicalFeatures,
+        duration_seconds: Math.round(elapsed),
+        mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
+        max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
+        suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
+        seizure_alerts: summary.seizureAlerts,
+        ended_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single(),
+  );
+  if (!session) throw new Error("The case was not saved — no record was returned.");
 
   const rows = decimate(epochs).map((e) => ({
     session_id: session.id,
@@ -139,24 +163,23 @@ export async function saveSession(
     spectrum: e.spectrum.map((v) => Number(v.toFixed(1))),
   }));
   for (let i = 0; i < rows.length; i += 200) {
-    const { error: epochError } = await supabase.from("eeg_epochs").insert(rows.slice(i, i + 200));
-    if (epochError) throw epochError;
+    const chunk = rows.slice(i, i + 200);
+    await write(() => supabase.from("eeg_epochs").insert(chunk));
   }
 
   if (events.length) {
-    const { error: eventError } = await supabase.from("eeg_events").insert(
-      events.map((ev) => ({
-        session_id: session.id,
-        user_id: userId,
-        kind: ev.kind,
-        severity: ev.severity,
-        t_offset_seconds: Number(ev.t.toFixed(2)),
-        duration_seconds: Number(ev.duration.toFixed(1)),
-        detail: ev.detail,
-      })),
-    );
-    if (eventError) throw eventError;
+    const eventRows = events.map((ev) => ({
+      session_id: session.id,
+      user_id: userId,
+      kind: ev.kind,
+      severity: ev.severity,
+      t_offset_seconds: Number(ev.t.toFixed(2)),
+      duration_seconds: Number(ev.duration.toFixed(1)),
+      detail: ev.detail,
+    }));
+    await write(() => supabase.from("eeg_events").insert(eventRows));
   }
 
+  clearStagedSave();
   return session.id as string;
 }
