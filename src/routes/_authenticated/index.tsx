@@ -1089,6 +1089,7 @@ function Monitor() {
                     dsaView={dsaView}
                     windowSeconds={windowMinutes * 60}
                     elapsed={monitor.elapsed}
+                    infusions={infusions}
                   />
                 </MonitorErrorBoundary>
                 {/* Trend alerts (depth swings, BSR burden) and clinician markers */}
