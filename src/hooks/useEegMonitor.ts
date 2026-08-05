@@ -309,11 +309,20 @@ export function useEegMonitor() {
   }, []);
 
   const connect = useCallback(
-    async (kind: SourceKind, options?: { preserveTimeline?: boolean }) => {
+    async (
+      kind: SourceKind,
+      options?: { preserveTimeline?: boolean; device?: BluetoothDevice; preset?: string },
+    ) => {
       setError(null);
       setStatus("connecting");
       try {
-        const source: EegSource = kind === "muse" ? new MuseClient() : new SimulatedSource();
+        const source: EegSource =
+          kind === "muse"
+            ? new MuseClient({
+                ...(options?.device ? { device: options.device } : {}),
+                ...(options?.preset ? { preset: options.preset } : {}),
+              })
+            : new SimulatedSource();
         source.onDisconnect(() => {
           setStatus("idle");
           setReconnectAttempt(null);
