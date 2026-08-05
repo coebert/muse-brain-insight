@@ -42,7 +42,7 @@ export function TciPanel({
   elapsed: number;
   onMark: (detail: string) => void;
 }) {
-  const [pick, setPick] = useState<string>(TCI_MODELS[0].key);
+  const [pick, setPick] = useState<string>(TCI_MODELS[0]?.key ?? "eleveld_propofol");
 
   const live = infusions.filter((i) => i.stoppedAt === null);
 
