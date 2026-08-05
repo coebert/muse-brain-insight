@@ -89,7 +89,9 @@ export function DetectionThresholds({ settings, onApply }: Props) {
           max={300}
           step={30}
           current={settings.srWindowSeconds}
-          onChange={(v) => onApply({ srWindowSeconds: v }, `Suppression ratio window set to ${v} s`)}
+          onChange={(v) =>
+            onApply({ srWindowSeconds: v }, `Suppression ratio window set to ${v} s`)
+          }
         />
         <SliderRow
           label="Seizure alert threshold"

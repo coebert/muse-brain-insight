@@ -3,10 +3,7 @@ import { Bluetooth, FlaskConical, Save } from "lucide-react";
 
 import { CaseFields } from "@/components/monitor/CaseFields";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
-import {
-  PreCaseChecklist,
-  type ChecklistKey,
-} from "@/components/monitor/PreCaseChecklist";
+import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,7 +34,10 @@ interface Props {
   onSave: () => void;
   caseOpen: boolean;
   onCaseOpenChange: (open: boolean) => void;
-  onStart: (kind: "muse" | "simulated", options?: { device?: BluetoothDevice; preset?: string }) => void;
+  onStart: (
+    kind: "muse" | "simulated",
+    options?: { device?: BluetoothDevice; preset?: string },
+  ) => void;
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
   onEnd: (fileNow: boolean) => void;

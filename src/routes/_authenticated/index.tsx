@@ -513,7 +513,6 @@ function Monitor() {
         ? "caution"
         : "signal";
 
-
   async function handleSave() {
     if (!meta.caseCode.trim()) {
       toast.error("Add an anonymised case code first.");
@@ -1256,7 +1255,6 @@ function Monitor() {
           className="fixed inset-0 z-[60] cursor-pointer bg-black/60"
         />
       ) : null}
-
     </div>
   );
 }
