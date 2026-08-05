@@ -38,7 +38,12 @@ export function MetricsGrid({
   icuMode,
   depthWindow,
 }: MetricsGridProps) {
-  const ci = arguments.length ? undefined : undefined;
+  uncertainty,
+}: MetricsGridProps) {
+  // Short "95 % CI a–b" suffixes appended to the tiles that carry an interval.
+  const srCi = uncertainty?.suppression.interval;
+  const sefCi = uncertainty?.spectral.interval;
+  const seizureCi = uncertainty?.seizure.interval;
   return (
     <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {(() => {
