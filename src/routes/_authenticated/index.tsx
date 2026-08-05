@@ -432,6 +432,7 @@ function Monitor() {
     setMarkers([]);
     setInfusions([]);
     alarms.clearAll();
+    seizureRisk.clear();
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
