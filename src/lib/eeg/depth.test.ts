@@ -48,9 +48,7 @@ describe("depthMixer", () => {
 describe("isDefaultCalibration", () => {
   it("recognises the published constants", () => {
     expect(isDefaultCalibration(DEFAULT_DEPTH_CALIBRATION)).toBe(true);
-    expect(
-      isDefaultCalibration(JSON.parse(JSON.stringify(DEFAULT_DEPTH_CALIBRATION))),
-    ).toBe(true);
+    expect(isDefaultCalibration(JSON.parse(JSON.stringify(DEFAULT_DEPTH_CALIBRATION)))).toBe(true);
   });
 
   it("detects a fitted calibration", () => {

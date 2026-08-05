@@ -82,8 +82,7 @@ describe("readSeries", () => {
   });
 });
 
-const series = (values: number[], step = 1): Point[] =>
-  values.map((v, i) => ({ t: i * step, v }));
+const series = (values: number[], step = 1): Point[] => values.map((v, i) => ({ t: i * step, v }));
 
 describe("alignSeries", () => {
   it("pairs samples inside the tolerance", () => {

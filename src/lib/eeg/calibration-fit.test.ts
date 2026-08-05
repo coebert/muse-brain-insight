@@ -42,7 +42,10 @@ function samples(perState = 20): CalibrationSample[] {
 
 describe("evaluate", () => {
   it("summarises only the states present in the training set", () => {
-    const metrics = evaluate(samples().filter((s) => s.label === "anaesthesia"), DEFAULT_DEPTH_CALIBRATION);
+    const metrics = evaluate(
+      samples().filter((s) => s.label === "anaesthesia"),
+      DEFAULT_DEPTH_CALIBRATION,
+    );
     expect(metrics.perState).toHaveLength(1);
     expect(metrics.perState[0]!.label).toBe("anaesthesia");
     expect(metrics.samples).toBeGreaterThan(0);

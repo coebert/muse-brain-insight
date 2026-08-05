@@ -1,12 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
-import {
-  clearStagedSave,
-  isTransient,
-  stageSave,
-  withRetry,
-} from "@/lib/eeg/save-staging";
+import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
 
 export interface SessionMeta {
   caseCode: string;
@@ -92,28 +87,28 @@ export async function saveSession(
     supabase
       .from("eeg_sessions")
       .insert({
-      user_id: userId,
-      case_code: sealedCase ?? meta.caseCode,
-      context: meta.context,
-      location: sealedLocation ?? null,
-      notes: sealedNotes ?? null,
-      device_name: meta.deviceName || null,
-      age_years: (() => {
-        const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
-        if (n === null || Number.isNaN(n)) return null;
-        // Never store an exact age of 90+, which can be identifying.
-        return n >= 90 ? null : Math.round(n);
-      })(),
-      age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
-      sex: meta.sex || null,
-      admission_diagnosis: sealedDiagnosis ?? null,
-      clinical_features: meta.clinicalFeatures,
-      duration_seconds: Math.round(elapsed),
-      mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
-      max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
-      suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
-      seizure_alerts: summary.seizureAlerts,
-      ended_at: new Date().toISOString(),
+        user_id: userId,
+        case_code: sealedCase ?? meta.caseCode,
+        context: meta.context,
+        location: sealedLocation ?? null,
+        notes: sealedNotes ?? null,
+        device_name: meta.deviceName || null,
+        age_years: (() => {
+          const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
+          if (n === null || Number.isNaN(n)) return null;
+          // Never store an exact age of 90+, which can be identifying.
+          return n >= 90 ? null : Math.round(n);
+        })(),
+        age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
+        sex: meta.sex || null,
+        admission_diagnosis: sealedDiagnosis ?? null,
+        clinical_features: meta.clinicalFeatures,
+        duration_seconds: Math.round(elapsed),
+        mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
+        max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
+        suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
+        seizure_alerts: summary.seizureAlerts,
+        ended_at: new Date().toISOString(),
       })
       .select("id")
       .single(),
