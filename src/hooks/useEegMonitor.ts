@@ -14,6 +14,7 @@ import {
 import {
   MUSE_SAMPLE_RATE,
   computePsd,
+  computePsdPair,
   makeEegFilter,
   signalQuality,
   type FilterChain,
