@@ -33,6 +33,7 @@ import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
+import { SeizureAlertCards } from "@/components/monitor/SeizureAlertCards";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
 import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
@@ -190,6 +191,8 @@ function Monitor() {
     reconnectAttempt: monitor.reconnectAttempt ?? null,
   });
   const { latest, allEvents, uncertainty, srTone, seizureAlert } = derived;
+  // Wall-clock anchor for t = 0, so alert cards can show time of day.
+  const [sessionStartedAtMs] = useState(() => Date.now());
   const dsaMarkerRail = derived.dsaMarkers;
 
   /** AI decision support for this case (session read + TCI dose–response). */
@@ -1015,6 +1018,16 @@ function Monitor() {
                 onMark={addMarker}
               />
             </section>
+
+            {/* Real-time seizure alert cards, newest first */}
+            {caseState !== "idle" ? (
+              <SeizureAlertCards
+                events={allEvents}
+                hemiEvents={monitor.hemiEvents}
+                elapsed={monitor.elapsed}
+                startedAtMs={sessionStartedAtMs}
+              />
+            ) : null}
 
             {/* Metrics */}
             <MetricsGrid
