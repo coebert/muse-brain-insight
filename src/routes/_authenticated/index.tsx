@@ -160,6 +160,9 @@ function Monitor() {
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
+  // Resolved after hydration: navigator is not available during SSR.
+  const [bleSupported, setBleSupported] = useState(true);
+  useEffect(() => setBleSupported(isWebBluetoothAvailable()), []);
   const [endOpen, setEndOpen] = useState(false);
   const [caseState, setCaseState] = useState<"idle" | "running" | "ended">("idle");
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
