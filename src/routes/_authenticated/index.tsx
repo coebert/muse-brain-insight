@@ -373,18 +373,7 @@ function Monitor() {
   // Derive bedside alarm conditions from the live epoch and detected events.
   useEffect(() => {
     if (!caseRunning) return;
-    alarms.sync(
-      deriveAlarmConditions({
-        latest,
-        hemi: monitor.hemiLatest,
-        icuMode,
-        bsrAlertPercent: monitor.settings.bsrAlertPercent,
-        dataGapSeconds: monitor.dataGapSeconds,
-        reconnecting,
-        reconnectAttempt: monitor.reconnectAttempt,
-      }),
-      monitor.elapsed,
-    );
+    alarms.sync(derived.alarmConditions, monitor.elapsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     latest,
@@ -493,21 +482,8 @@ function Monitor() {
       { label: "Markers", value: String(markers.length) },
       { label: "TCI running", value: summariseInfusions(infusions) },
     ],
-    live: {
-      depthIndex: latest?.depth.index ?? null,
-      suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
-      seizureScore: latest?.seizureScore ?? null,
-      sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
-    },
+    live: derived.live,
   };
-
-  const srTone = !latest
-    ? "default"
-    : latest.suppressionRatio >= 40
-      ? "critical"
-      : latest.suppressionRatio >= 10
-        ? "caution"
-        : "signal";
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
