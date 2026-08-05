@@ -80,6 +80,11 @@ import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
+import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
+import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
+import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
+import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
@@ -159,6 +164,19 @@ function Monitor() {
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
+
+  // Start-up speed: reuse the last context and location, and suggest the next
+  // sequential anonymised case code so a case starts in two taps.
+  useEffect(() => {
+    const prefs = loadCaseStartup();
+    if (!prefs) return;
+    setMeta((prev) => ({
+      ...prev,
+      context: prefs.context || prev.context,
+      location: prefs.location || prev.location,
+      caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode),
+    }));
+  }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -170,6 +188,8 @@ function Monitor() {
   const [caseState, setCaseState] = useState<"idle" | "running" | "ended">("idle");
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
   const [fullscreen, setFullscreen] = useState(false);
+  const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   /** TCI pumps running for this clinical episode (several may run at once). */
@@ -326,12 +346,21 @@ function Monitor() {
       return;
     }
     setCaseOpen(false);
+    saveCaseStartup({
+      context: meta.context,
+      location: meta.location,
+      lastCaseCode: meta.caseCode.trim(),
+    });
     setMarkers([]);
     setInfusions([]);
     alarms.clearAll();
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
+    const ticked = Object.entries(checklist)
+      .filter(([, on]) => on)
+      .map(([key]) => key);
+    if (ticked.length) audit(`Pre-case checklist: ${ticked.join(", ")}`);
     await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
@@ -452,25 +481,100 @@ function Monitor() {
     monitor.elapsed,
   ]);
 
-  function addMarker(label: string) {
+  function addMarker(label: string, backdateSeconds = 0) {
     const text = label.trim();
     if (!text) return;
     if (!caseRunning) {
       toast.error("Start a case before marking events.");
       return;
     }
-    setMarkers((prev) => [
-      ...prev,
-      {
-        kind: "annotation",
-        severity: "info",
-        t: monitor.elapsed,
-        duration: 0,
-        detail: text,
+    const t = Math.max(0, monitor.elapsed - Math.max(0, backdateSeconds));
+    const marker: DetectedEvent = {
+      kind: "annotation",
+      severity: "info",
+      t,
+      duration: 0,
+      detail: text,
+    };
+    setMarkers((prev) => [...prev, marker].sort((a, b) => a.t - b.t));
+    toast.success(`${text} marked at ${formatClock(t)}`, {
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: () => setMarkers((prev) => prev.filter((m) => m !== marker)),
       },
-    ]);
-    toast.success(`${text} marked at ${formatClock(monitor.elapsed)}`);
+    });
   }
+
+  /** Limits differ from the defaults for the current mode. */
+  const modePreset = DETECTION_PRESETS.find((p) => p.key === activeMode.presetKey);
+  const limitsOffDefault = modePreset
+    ? (Object.keys(modePreset.settings) as (keyof typeof monitor.settings)[]).some(
+        (k) => monitor.settings[k] !== modePreset.settings[k],
+      )
+    : false;
+
+  /** Single source of truth for every live-case control, shared by both views. */
+  const caseControls: CaseControls = {
+    running: caseRunning,
+    elapsed: monitor.elapsed,
+    mode,
+    onMark: addMarker,
+    markers,
+    events: allEvents,
+    infusions,
+    onInfusionsChange: setInfusions,
+    settings: monitor.settings,
+    onSettingsChange: applySettings,
+    limitsOffDefault,
+    onResetLimits: () => {
+      if (!modePreset) return;
+      monitor.setSettings({ ...modePreset.settings });
+      if (caseRunning) audit(`Limits reset to ${activeMode.label} defaults`);
+      toast.success(`Limits reset to ${activeMode.label} defaults`);
+    },
+    depthWindow,
+    sqi: { threshold: sqiAlerts.threshold, setThreshold: sqiAlerts.setThreshold },
+    alarms: {
+      alarms: alarms.alarms,
+      unacknowledged: alarms.unacknowledged,
+      audioEnabled: alarms.audioEnabled,
+      muted: alarms.muted,
+      muteRemaining: alarms.muteRemaining,
+      acknowledge: (id) => {
+        alarms.acknowledge(id);
+        audit(`Alarm acknowledged (${id})`);
+      },
+      acknowledgeAll: () => {
+        alarms.acknowledgeAll();
+        audit("All alarms acknowledged");
+      },
+      acknowledgeSide: (side) => {
+        alarms.acknowledgeSide(side);
+        audit(`Alarms acknowledged (${side})`);
+      },
+      pauseAudio: alarms.pauseAudio,
+      resumeAudio: alarms.resumeAudio,
+      setAudioEnabled: (on) => alarms.setAudioEnabled(on),
+    },
+    handover: [
+      { label: "Case time", value: formatClock(monitor.elapsed) },
+      { label: "Mean SR", value: `${summary.meanSr.toFixed(0)} %` },
+      {
+        label: "Suppression time",
+        value: formatDuration(Math.round(summary.suppressionSeconds)),
+      },
+      { label: "Alerts", value: String(monitor.events.filter((e) => e.kind !== "annotation").length) },
+      { label: "Markers", value: String(markers.length) },
+      { label: "TCI running", value: summariseInfusions(infusions) },
+    ],
+    live: {
+      depthIndex: latest?.depth.index ?? null,
+      suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
+      seizureScore: latest?.seizureScore ?? null,
+      sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
+    },
+  };
 
   const srTone = !latest
     ? "default"
@@ -605,6 +709,7 @@ function Monitor() {
           onDsaViewChange={setDsaView}
           suppressionSeconds={summary.suppressionSeconds}
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+          controls={caseState !== "idle" ? caseControls : undefined}
           onExit={() => setFullscreen(false)}
         />
       ) : null}
@@ -736,6 +841,9 @@ function Monitor() {
           </span>
           <span>{activeMode.blurb}</span>
         </div>
+        {caseState !== "idle" ? (
+          <TciStatusStrip infusions={infusions} onOpen={() => setCaseSheet("tci")} />
+        ) : null}
         {monitor.error ? (
           <div className="panel border-critical/60 px-4 py-3 text-sm text-critical">
             {monitor.error}
@@ -1104,6 +1212,42 @@ function Monitor() {
             />
 
             <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
+
+            {/* Event rail — the last few entries stay visible beside the trace. */}
+            {caseState !== "idle" ? (
+              <div className="panel px-3 py-2.5 sm:px-4">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Recent events
+                  </h2>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11"
+                    onClick={() => setCaseSheet("log")}
+                  >
+                    Open full log
+                  </Button>
+                </div>
+                {allEvents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nothing recorded yet.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {allEvents.slice(-5).map((e, i) => (
+                      <li
+                        key={`${e.t}-${i}`}
+                        className="flex items-baseline gap-2 text-xs text-foreground"
+                      >
+                        <span className="metric-value shrink-0 text-muted-foreground">
+                          {formatClock(e.t)}
+                        </span>
+                        <span className="truncate">{e.detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </>
         ) : null}
 
@@ -1407,7 +1551,12 @@ function Monitor() {
           certified medical device — never use these numbers as the sole basis for a clinical
           decision.
         </p>
+        {caseState !== "idle" ? <div className="h-16" /> : null}
       </main>
+
+      {caseState !== "idle" ? (
+        <CaseActionBar controls={caseControls} open={caseSheet} onOpenChange={setCaseSheet} />
+      ) : null}
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -1455,6 +1604,12 @@ function Monitor() {
             </DialogDescription>
           </DialogHeader>
           <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
+          <PreCaseChecklist
+            checked={checklist}
+            onToggle={(key: ChecklistKey) =>
+              setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
+            }
+          />
           {bleSupported ? null : (
             <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
               This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in

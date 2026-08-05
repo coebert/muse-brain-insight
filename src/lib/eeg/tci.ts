@@ -103,6 +103,8 @@ export interface TciInfusion {
   targets: Record<string, number>;
   startedAt: number;
   stoppedAt: number | null;
+  /** Case-clock time of the most recent Ce change, if any. */
+  lastChangeAt?: number;
 }
 
 export function formatCe(value: number, drug: TciDrugSpec): string {
