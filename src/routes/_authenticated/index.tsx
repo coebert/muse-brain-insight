@@ -91,7 +91,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
-import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
+import {
+  CHECKLIST_ITEMS,
+  PreCaseChecklist,
+  type ChecklistKey,
+} from "@/components/monitor/PreCaseChecklist";
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
@@ -373,10 +377,12 @@ function Monitor() {
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
-    const ticked = Object.entries(checklist)
-      .filter(([, on]) => on)
-      .map(([key]) => key);
-    if (ticked.length) audit(`Pre-case checklist: ${ticked.join(", ")}`);
+    const ticked = CHECKLIST_ITEMS.filter((item) => checklist[item.key]).map((i) => i.label);
+    audit(
+      ticked.length === CHECKLIST_ITEMS.length
+        ? "Pre-case checklist complete"
+        : `Pre-case checklist: ${ticked.length ? ticked.join("; ") : "none ticked"}`,
+    );
     await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
