@@ -96,6 +96,11 @@ export function useAlarms(options: { enabled: boolean; onLog?: (alarm: Alarm) =>
     );
   }, []);
 
+  /** Undo an acknowledgement (10-second undo toast at the bedside). */
+  const unacknowledge = useCallback((id: string) => {
+    setAlarms((prev) => prev.map((a) => (a.id === id ? { ...a, acknowledgedAt: null } : a)));
+  }, []);
+
   const clearAll = useCallback(() => setAlarms([]), []);
 
   /** Two-minute audio pause, the standard bedside behaviour. */
@@ -135,6 +140,7 @@ export function useAlarms(options: { enabled: boolean; onLog?: (alarm: Alarm) =>
     acknowledge,
     acknowledgeAll,
     acknowledgeSide,
+    unacknowledge,
     clearAll,
     audioEnabled,
     setAudioEnabled,
