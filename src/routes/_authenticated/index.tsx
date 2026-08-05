@@ -386,6 +386,21 @@ function Monitor() {
       return;
     }
     const t = Math.max(0, monitor.elapsed - Math.max(0, backdateSeconds));
+    placeMarker(text, t);
+  }
+
+  /** Place an annotation at an explicit session time (e.g. clicked on a trace). */
+  function addMarkerAt(label: string, tSeconds: number) {
+    const text = label.trim();
+    if (!text) return;
+    if (!caseRunning) {
+      toast.error("Start a case before marking events.");
+      return;
+    }
+    placeMarker(text, Math.max(0, tSeconds));
+  }
+
+  function placeMarker(text: string, t: number) {
     const marker: DetectedEvent = {
       kind: "annotation",
       severity: "info",
@@ -1179,6 +1194,10 @@ function Monitor() {
                   channelQuality={monitor.channelQuality}
                   epochs={monitor.epochs}
                   events={derived.allEvents}
+                  markers={markers}
+                  onAnnotateChannel={(channel, t, text) =>
+                    addMarkerAt(`${channel} · ${text}`, t)
+                  }
                 />
 
                 <DetectionThresholds
