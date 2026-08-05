@@ -1,6 +1,6 @@
 import type { AnalysisSettings, DetectedEvent } from "@/lib/eeg/analysis";
 import type { AlarmSide } from "@/lib/eeg/alarms";
-import type { Alarm } from "@/hooks/useAlarms";
+import type { ActiveAlarm } from "@/hooks/useAlarms";
 import type { DepthWindowPrefs, DepthWindowStatus } from "@/hooks/useDepthWindowAlerts";
 import type { TciInfusion } from "@/lib/eeg/tci";
 
@@ -39,8 +39,8 @@ export interface CaseControls {
   sqi: { threshold: number; setThreshold: (next: number) => void };
 
   alarms: {
-    alarms: Alarm[];
-    unacknowledged: Alarm[];
+    alarms: ActiveAlarm[];
+    unacknowledged: ActiveAlarm[];
     audioEnabled: boolean;
     muted: boolean;
     muteRemaining: number;
