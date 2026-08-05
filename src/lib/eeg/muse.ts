@@ -268,6 +268,121 @@ export function decodeMusePacket(data: DataView): Float64Array {
   return out;
 }
 
+/** Extracts a comparable numeric version from strings like "1.2.13" or "fw 1.2". */
+export function parseFirmwareVersion(value: string | null): number[] | null {
+  if (!value) return null;
+  const match = /(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(value);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2] ?? 0), Number(match[3] ?? 0)];
+}
+
+function isOlderThan(version: number[], minimum: number[]): boolean {
+  for (let i = 0; i < minimum.length; i++) {
+    const a = version[i] ?? 0;
+    const b = minimum[i] ?? 0;
+    if (a !== b) return a < b;
+  }
+  return false;
+}
+
+/** Firmware below this cannot be trusted to honour a preset change. */
+const MIN_FIRMWARE = [1, 2, 0];
+
+/**
+ * Checks the chosen streaming mode against what the headband actually
+ * reported, so a case never starts on a configuration the device cannot
+ * deliver. Every blocker carries a concrete remedy.
+ */
+export function validateStreamingConfig(
+  caps: MuseCapabilities,
+  presetCode: string,
+): StreamingValidation {
+  const issues: StreamingIssue[] = [];
+  const known = MUSE_PRESETS.find((p) => p.code === presetCode);
+  const supported = caps.presets.some((p) => p.code === presetCode);
+
+  if (!known) {
+    issues.push({
+      severity: "blocker",
+      title: "Unrecognised streaming mode",
+      detail: `“${presetCode}” is not a mode CortexTrace knows how to analyse.`,
+      fix: `Switch to ${DEFAULT_MUSE_PRESET} — four scalp electrodes at 256 Hz.`,
+      suggestedPreset: DEFAULT_MUSE_PRESET,
+    });
+  } else if (!supported) {
+    issues.push({
+      severity: "blocker",
+      title: "Mode not supported by this headband",
+      detail: `${caps.model} did not report support for ${known.label}.`,
+      fix: `Switch to ${DEFAULT_MUSE_PRESET}, which every Muse headband supports.`,
+      suggestedPreset: DEFAULT_MUSE_PRESET,
+    });
+  }
+
+  if (known?.requiresMuseS && caps.model !== "Muse S") {
+    issues.push({
+      severity: "blocker",
+      title: "Muse S firmware required",
+      detail: `${known.label} needs Muse S hardware; this headband reports as ${caps.model}.`,
+      fix: `Switch to ${DEFAULT_MUSE_PRESET} or connect a Muse S headband.`,
+      suggestedPreset: DEFAULT_MUSE_PRESET,
+    });
+  }
+
+  if (known && known.channels < 4) {
+    issues.push({
+      severity: "blocker",
+      title: "Too few electrodes",
+      detail: "Bilateral DSA, suppression ratio and depth index all need four scalp electrodes.",
+      fix: `Switch to ${DEFAULT_MUSE_PRESET}.`,
+      suggestedPreset: DEFAULT_MUSE_PRESET,
+    });
+  }
+
+  if (known && known.sampleRate < 256) {
+    issues.push({
+      severity: "blocker",
+      title: "Sample rate too low",
+      detail: `${known.sampleRate} Hz cannot resolve the beta band used by the depth index.`,
+      fix: `Switch to a 256 Hz mode such as ${DEFAULT_MUSE_PRESET}.`,
+      suggestedPreset: DEFAULT_MUSE_PRESET,
+    });
+  }
+
+  const firmware = parseFirmwareVersion(caps.firmwareVersion);
+  if (!firmware) {
+    issues.push({
+      severity: "warning",
+      title: "Firmware not reported",
+      detail: "The headband did not answer the version query, so the mode cannot be verified.",
+      fix: "Re-read the headband; if it still stays silent, power-cycle it and pair again.",
+    });
+  } else if (isOlderThan(firmware, MIN_FIRMWARE)) {
+    issues.push({
+      severity: "blocker",
+      title: "Firmware too old",
+      detail: `Firmware ${caps.firmwareVersion} predates reliable preset switching (needs ${MIN_FIRMWARE.join(".")} or later).`,
+      fix: "Update the headband in the Muse mobile app, then detect it again.",
+    });
+  }
+
+  if (caps.batteryPercent != null && caps.batteryPercent < 20) {
+    issues.push({
+      severity: caps.batteryPercent < 10 ? "blocker" : "warning",
+      title: "Battery low",
+      detail: `The headband reports ${caps.batteryPercent}% charge.`,
+      fix: "Charge the headband before the case, or swap to a charged one.",
+    });
+  }
+
+  const status = issues.some((i) => i.severity === "blocker")
+    ? "blocked"
+    : issues.length > 0
+      ? "warning"
+      : "ok";
+  return { status, issues };
+}
+
 export class MuseClient implements EegSource {
   name = "Muse";
   private device: BluetoothDevice | null = null;
