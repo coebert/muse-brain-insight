@@ -483,8 +483,10 @@ export function useEegMonitor() {
         side: HemiSide,
         group: MuseChannel[],
         analyzer: EegAnalyzer,
+        signal: Float64Array,
+        psd: Psd,
       ): { metrics: HemiMetrics; spectrum: number[] } => {
-        const e = analyzer.analyze(groupSignal(group, EPOCH_LEN), t);
+        const e = analyzer.analyze(signal, t, psd);
         const grades = group.map((c) => quality[c]);
         const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
           ? "poor"
@@ -530,8 +532,18 @@ export function useEegMonitor() {
         // range, so the hemisphere lane reuses it instead of re-running an FFT.
         return { metrics, spectrum: e.spectrum };
       };
-      const left = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current);
-      const right = sideMetrics("right", RIGHT_CHANNELS, rightAnalyzerRef.current);
+      // Both hemisphere spectra also come from a single paired FFT.
+      const leftSignal = groupSignal(LEFT_CHANNELS, EPOCH_LEN);
+      const rightSignal = groupSignal(RIGHT_CHANNELS, EPOCH_LEN);
+      const [leftPsd, rightPsd] = computePsdPair(leftSignal, rightSignal, MUSE_SAMPLE_RATE);
+      const left = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current, leftSignal, leftPsd);
+      const right = sideMetrics(
+        "right",
+        RIGHT_CHANNELS,
+        rightAnalyzerRef.current,
+        rightSignal,
+        rightPsd,
+      );
       const leftMetrics = left.metrics;
       const rightMetrics = right.metrics;
       const hemi: HemiSpectra = { left: left.spectrum, right: right.spectrum };
