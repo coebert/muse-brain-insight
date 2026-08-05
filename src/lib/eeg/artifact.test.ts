@@ -85,11 +85,32 @@ describe("DepthArtifactGate", () => {
     expect(report.reasons.join(" ")).toMatch(/saturation/i);
   });
 
-  it("rejects broadband frontalis EMG", () => {
-    const rnd = noise(40, 11);
-    const emg = build(4, (_, t) => 5 * Math.sin(2 * Math.PI * 1.5 * t) + rnd());
+  it("rejects frontalis EMG that dominates the beta ratio", () => {
+    // High-frequency-weighted contamination, as frontalis EMG appears on a
+    // frontal montage.
+    const emg = build(4, (_, t) => {
+      let v = 5 * Math.sin(2 * Math.PI * 1.5 * t);
+      for (let f = 30; f <= 45; f += 1.5) v += 14 * Math.sin(2 * Math.PI * f * t + f);
+      return v;
+    });
     const { report } = evaluate(emg);
-    expect(report.emgIndex).toBeGreaterThan(0.2);
+    expect(report.emgIndex).toBeGreaterThan(0.34);
+    expect(report.usable).toBe(false);
+    expect(report.reasons.join(" ")).toMatch(/EMG/);
+  });
+
+  it("rejects a step rise in high-frequency power against the clean baseline", () => {
+    const gate = new DepthArtifactGate();
+    for (let i = 0; i < 8; i++) evaluate(cleanEeg(), gate);
+    // Slow-wave-dominated epoch (deep anaesthesia) with EMG riding on top: the
+    // relative share stays low, so only the surge test can catch it.
+    const contaminated = build(4, (_, t) => {
+      let v = 120 * Math.sin(2 * Math.PI * 1.2 * t);
+      for (let f = 30; f <= 45; f += 1.5) v += 9 * Math.sin(2 * Math.PI * f * t + f);
+      return v;
+    });
+    const { report } = evaluate(contaminated, gate);
+    expect(report.emgSurge).toBeGreaterThan(4);
     expect(report.usable).toBe(false);
   });
 
