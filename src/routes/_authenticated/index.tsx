@@ -1,20 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bluetooth,
   CircleStop,
-  FlaskConical,
-  HeartPulse,
-  Info,
   Maximize2,
   Moon,
   MoreVertical,
   SignalLow,
   Sun,
-  Stethoscope,
   Save,
   Undo2,
   Volume2,
@@ -27,17 +22,15 @@ import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { MonitorErrorBoundary } from "@/components/monitor/MonitorErrorBoundary";
 import { AppNav } from "@/components/AppNav";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
-import { CaseFields } from "@/components/monitor/CaseFields";
 import { useDsaViewPreference } from "@/lib/eeg/dsa-view-pref";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
-import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
-import { interpretTciResponse, type TciResponseReport } from "@/lib/eeg/tci-response.functions";
-import { buildFeatureDigest } from "@/lib/eeg/features";
-import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
+import { CaseDialogs } from "@/components/monitor/CaseDialogs";
+import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
+import { useCaseAi } from "@/hooks/useCaseAi";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
@@ -46,18 +39,8 @@ import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -75,17 +58,23 @@ import { useSeizureRiskAlerts, type SeizureTrendAlert } from "@/hooks/useSeizure
 import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
-import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
+import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
+import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
+import {
+  MODES,
+  defaultWindowMinutes,
+  modeConfig,
+  type MonitorMode,
+} from "@/components/monitor/monitor-modes";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
-import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
+import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
-import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
-import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
+import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
-import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
@@ -96,11 +85,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
-import {
-  CHECKLIST_ITEMS,
-  PreCaseChecklist,
-  type ChecklistKey,
-} from "@/components/monitor/PreCaseChecklist";
+import { CHECKLIST_ITEMS, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
@@ -129,51 +114,10 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Monitor,
 });
 
-type MonitorMode = "anaesthesia" | "icu";
-
-const MODES: {
-  key: MonitorMode;
-  label: string;
-  icon: typeof Stethoscope;
-  blurb: string;
-  presetKey: string;
-  context: string;
-}[] = [
-  {
-    key: "anaesthesia",
-    label: "Anaesthesia",
-    icon: Stethoscope,
-    blurb:
-      "Continuous DSA with spectral edge, suppression ratio and suppression time up front. Seizure detection runs conservatively in the background.",
-    presetKey: "anaesthesia",
-    context: "general_anaesthesia",
-  },
-  {
-    key: "icu",
-    label: "ICU",
-    icon: HeartPulse,
-    blurb:
-      "Seizure- and burst-suppression-led: sensitive ictal alerting, longer suppression window, seizure score and suppression burden shown first.",
-    presetKey: "icu",
-    context: "icu_sedation",
-  },
-];
-
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
 
-  /** Guards against state writes after the clinician navigates away mid-call. */
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  /** One AI request at a time per panel; the watch timer must not overlap. */
-  const aiInFlight = useRef(false);
-  const tciInFlight = useRef(false);
   /** Latest setter, so the start-up effect can stay a true mount-only effect. */
   const setSettingsRef = useRef(monitor.setSettings);
   setSettingsRef.current = monitor.setSettings;
@@ -189,10 +133,10 @@ function Monitor() {
     const prefs = loadCaseStartup();
     if (!prefs) return;
     setMode(prefs.mode);
-    const cfg = MODES.find((m) => m.key === prefs.mode);
-    const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    const cfg = modeConfig(prefs.mode);
+    const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
     if (preset) setSettingsRef.current({ ...preset.settings });
-    setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
+    setWindowMinutes(defaultWindowMinutes(prefs.mode));
     setMeta((prev) => ({
       ...prev,
       context: prefs.context || prev.context,
@@ -219,16 +163,6 @@ function Monitor() {
   /** TCI pumps running for this clinical episode (several may run at once). */
   const [infusions, setInfusions] = useState<TciInfusion[]>([]);
   const [markerText, setMarkerText] = useState("");
-  const [aiResult, setAiResult] = useState<Interpretation | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiWatch, setAiWatch] = useState(false);
-  const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
-  /** AI reading of how the recorded TCI targets moved the EEG. */
-  const [tciReport, setTciReport] = useState<TciResponseReport | null>(null);
-  const [tciLoading, setTciLoading] = useState(false);
-  const [tciError, setTciError] = useState<string | null>(null);
-  const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
   /**
    * Stacked left/right DSAs, or one combined lane for faster scanning.
@@ -252,63 +186,30 @@ function Monitor() {
     [monitor.epochs, monitor.settings.srWindowSeconds, monitor.settings.seizureThreshold],
   );
   const icuMode = mode === "icu";
-  const activeMode = MODES.find((m) => m.key === mode)!;
+  const activeMode = modeConfig(mode);
 
   const allEvents = useMemo(
     () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
     [monitor.events, markers],
   );
 
+  /** AI decision support for this case (session read + TCI dose–response). */
+  const ai = useCaseAi({
+    signedIn: Boolean(user),
+    epochs: monitor.epochs,
+    events: allEvents,
+    elapsed: monitor.elapsed,
+    meta,
+    infusions,
+    modeLabel: activeMode.label,
+    streaming,
+  });
+
   /** Trend alerts and clinician annotations drawn over the DSA lanes. */
-  const dsaMarkerRail = useMemo<DsaMarker[]>(() => {
-    const alerts = monitor.events
-      .filter(
-        (e) =>
-          e.kind === "depth_drop" || e.kind === "depth_rise" || e.kind === "suppression_burden",
-      )
-      .map<DsaMarker>((e) => ({
-        t: e.t,
-        label: `${
-          e.kind === "depth_drop" ? "Depth ↓" : e.kind === "depth_rise" ? "Depth ↑" : "BSR"
-        } ${formatClock(e.t)}`,
-        tone: e.severity === "critical" ? "critical" : "caution",
-      }));
-    // Depth-window crossings: when OpenIBIS left or re-entered the target band.
-    const windowCrossings = monitor.events
-      .filter((e) => e.kind === "depth_window_exit" || e.kind === "depth_window_return")
-      .map<DsaMarker>((e) => ({
-        t: e.t,
-        label:
-          e.kind === "depth_window_return"
-            ? `In window ${formatClock(e.t)}`
-            : `${e.detail.startsWith("Below") ? "Below" : "Above"} window ${formatClock(e.t)}`,
-        tone:
-          e.kind === "depth_window_return"
-            ? "marker"
-            : e.severity === "critical"
-              ? "critical"
-              : "caution",
-        top: true,
-      }));
-    const annotations = markers.map<DsaMarker>((m) => ({
-      t: m.t,
-      label: m.detail,
-      tone: "marker",
-      top: true,
-    }));
-    // Seizure suspicions carry their interpretable confidence on the rail label
-    // so the DSA shows how much to trust each flag without opening the log.
-    const seizures = monitor.events
-      .filter((e) => e.kind === "seizure")
-      .map<DsaMarker>((e) => ({
-        t: e.t,
-        label: e.evidence
-          ? `Seizure? ${(e.evidence.confidence * 100).toFixed(0)} % conf`
-          : `Seizure? ${formatClock(e.t)}`,
-        tone: e.severity === "critical" ? "critical" : "caution",
-      }));
-    return [...alerts, ...windowCrossings, ...seizures, ...annotations];
-  }, [monitor.events, markers]);
+  const dsaMarkerRail = useMemo(
+    () => buildDsaMarkers(monitor.events, markers),
+    [monitor.events, markers],
+  );
 
   /** Timestamped audit entry in the session event log. */
   const audit = useCallback(
@@ -418,11 +319,11 @@ function Monitor() {
 
   function selectMode(next: MonitorMode) {
     setMode(next);
-    const cfg = MODES.find((m) => m.key === next)!;
+    const cfg = modeConfig(next);
     const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
     if (preset) monitor.setSettings({ ...preset.settings });
     setMeta((prev) => ({ ...prev, context: cfg.context }));
-    setWindowMinutes(next === "icu" ? 30 : 10);
+    setWindowMinutes(defaultWindowMinutes(next));
     if (caseRunning) audit(`Mode changed to ${cfg.label}`);
   }
 
@@ -451,8 +352,7 @@ function Monitor() {
     setInfusions([]);
     alarms.clearAll();
     seizureRisk.clear();
-    setAiResult(null);
-    seenAlertIds.current.clear();
+    ai.reset();
     setCaseState("running");
     const ticked = CHECKLIST_ITEMS.filter((item) => checklist[item.key]).map((i) => i.label);
     audit(
@@ -477,98 +377,18 @@ function Monitor() {
   // Derive bedside alarm conditions from the live epoch and detected events.
   useEffect(() => {
     if (!caseRunning) return;
-    const conditions: AlarmCondition[] = [];
-    const hemi = monitor.hemiLatest;
-
-    // Seizure: attribute to the hemisphere whose electrode pair is ictal.
-    if (latest?.seizureAlert || hemi?.left.seizureAlert || hemi?.right.seizureAlert) {
-      const sides: AlarmSide[] =
-        hemi && (hemi.left.seizureAlert || hemi.right.seizureAlert)
-          ? hemi.left.seizureAlert && hemi.right.seizureAlert
-            ? ["bilateral"]
-            : hemi.left.seizureAlert
-              ? ["left"]
-              : ["right"]
-          : ["bilateral"];
-      for (const side of sides) {
-        const score =
-          side === "left"
-            ? (hemi?.left.seizureScore ?? 0)
-            : side === "right"
-              ? (hemi?.right.seizureScore ?? 0)
-              : (latest?.seizureScore ?? 0);
-        conditions.push({
-          id: `seizure:${side}`,
-          side,
-          priority: icuMode ? "high" : "medium",
-          title: `Possible seizure activity — ${SIDE_LABEL[side]}`,
-          detail: `Rhythmic discharges, score ${score.toFixed(2)} — review the raw trace.`,
-        });
-      }
-    }
-
-    // Suppression: raise one alarm per side that crosses the threshold.
-    const srBySide: { side: AlarmSide; sr: number }[] = hemi
-      ? [
-          { side: "left", sr: hemi.left.suppressionRatio },
-          { side: "right", sr: hemi.right.suppressionRatio },
-        ]
-      : latest
-        ? [{ side: "bilateral", sr: latest.suppressionRatio }]
-        : [];
-    for (const { side, sr } of srBySide) {
-      if (sr >= 40) {
-        conditions.push({
-          id: `deep-suppression:${side}`,
-          side,
-          priority: "high",
-          title: `Deep burst suppression — ${SIDE_LABEL[side]}`,
-          detail: `Suppression ratio ${sr.toFixed(0)} % — consider lightening.`,
-        });
-      } else if (sr >= monitor.settings.bsrAlertPercent) {
-        conditions.push({
-          id: `suppression:${side}`,
-          side,
-          priority: "medium",
-          title: `Burst suppression — ${SIDE_LABEL[side]}`,
-          detail: `Suppression ratio ${sr.toFixed(0)} %.`,
-        });
-      }
-    }
-
-    // Signal loss: a whole-headband gap is bilateral, a flat pair is one side.
-    if (monitor.dataGapSeconds >= 5 || reconnecting) {
-      conditions.push({
-        id: "signal-loss:bilateral",
-        side: "bilateral",
-        priority: "medium",
-        title: "EEG signal lost — both hemispheres",
-        detail: reconnecting
-          ? `Reconnecting to the headband (attempt ${monitor.reconnectAttempt?.attempt ?? 1} of ${monitor.reconnectAttempt?.attempts ?? 5}).`
-          : `No data for ${Math.round(monitor.dataGapSeconds)} s — check the headband.`,
-      });
-    } else if (hemi) {
-      for (const side of ["left", "right"] as const) {
-        if (hemi[side].flat) {
-          conditions.push({
-            id: `signal-loss:${side}`,
-            side,
-            priority: "medium",
-            title: `EEG signal lost — ${SIDE_LABEL[side]}`,
-            detail: "Both electrodes on this side are flat — reseat the headband.",
-          });
-        }
-      }
-    }
-    if (latest && !latest.depthReliability.reliable && latest.quality.grade === "poor") {
-      conditions.push({
-        id: "quality",
-        priority: "low",
-        title: "Poor signal quality",
-        detail: latest.depthReliability.reasons[0] ?? "Indices are unreliable in this segment.",
-      });
-    }
-    alarms.sync(conditions, monitor.elapsed);
+    alarms.sync(
+      deriveAlarmConditions({
+        latest,
+        hemi: monitor.hemiLatest,
+        icuMode,
+        bsrAlertPercent: monitor.settings.bsrAlertPercent,
+        dataGapSeconds: monitor.dataGapSeconds,
+        reconnecting,
+        reconnectAttempt: monitor.reconnectAttempt,
+      }),
+      monitor.elapsed,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     latest,
@@ -692,137 +512,6 @@ function Monitor() {
       : latest.suppressionRatio >= 10
         ? "caution"
         : "signal";
-
-  const runInterpretation = useServerFn(interpretSession);
-
-  const analyse = useCallback(
-    async (silent = false) => {
-      if (!user) {
-        if (!silent) toast.error("Sign in to use AI interpretation.");
-        return;
-      }
-      // A slow gateway call must not be overtaken by the surveillance timer:
-      // two in flight would race and the later reply would win arbitrarily.
-      if (aiInFlight.current) return;
-      aiInFlight.current = true;
-      setAiLoading(true);
-      setAiError(null);
-      try {
-        const digest = buildFeatureDigest(
-          monitor.epochs,
-          allEvents,
-          {
-            ageYears: meta.ageYears,
-            sex: meta.sex,
-            admissionDiagnosis: meta.admissionDiagnosis,
-            clinicalFeatures: meta.clinicalFeatures,
-            context: meta.context,
-            // Give the interpreter the drug regimen running right now, so
-            // depth and nociception findings are read in context.
-            notes: [meta.notes, `TCI in progress — ${summariseInfusions(infusions)}`]
-              .filter(Boolean)
-              .join(" | "),
-          },
-          monitor.elapsed,
-          activeMode.label,
-        );
-        const result = await runInterpretation({ data: { digest } });
-        if (!mounted.current) return;
-        setAiResult(result);
-        setAiLastRunAt(Date.now());
-        // Raise a toast only for problems we have not already surfaced.
-        for (const alert of result.alerts ?? []) {
-          if (seenAlertIds.current.has(alert.id)) continue;
-          seenAlertIds.current.add(alert.id);
-          if (alert.severity === "critical") {
-            toast.error(alert.title, {
-              description: alert.action || alert.detail,
-              duration: 15000,
-            });
-          } else if (alert.severity === "warning") {
-            toast.warning(alert.title, {
-              description: alert.action || alert.detail,
-              duration: 10000,
-            });
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "AI analysis failed.";
-        if (!mounted.current) return;
-        setAiError(message);
-        if (!silent) toast.error(message);
-      } finally {
-        aiInFlight.current = false;
-        if (mounted.current) setAiLoading(false);
-      }
-    },
-    [
-      user,
-      monitor.epochs,
-      monitor.elapsed,
-      allEvents,
-      meta,
-      infusions,
-      activeMode.label,
-      runInterpretation,
-    ],
-  );
-
-  const analyseRef = useRef(analyse);
-  analyseRef.current = analyse;
-
-  /** Ce steps and whole-case dose–response, recomputed as the EEG accrues. */
-  const tciDigest = useMemo(
-    () => buildTciResponseDigest(monitor.epochs, allEvents, infusions, monitor.elapsed),
-    [infusions, monitor.epochs, allEvents, monitor.elapsed],
-  );
-
-  const runTciInterpretation = useServerFn(interpretTciResponse);
-
-  const analyseTci = useCallback(async () => {
-    if (!user) {
-      toast.error("Sign in to use AI interpretation.");
-      return;
-    }
-    if (tciInFlight.current) return;
-    tciInFlight.current = true;
-    setTciLoading(true);
-    setTciError(null);
-    try {
-      const result = await runTciInterpretation({
-        data: {
-          digest: tciDigest,
-          patient: {
-            ageYears: meta.ageYears,
-            sex: meta.sex,
-            admissionDiagnosis: meta.admissionDiagnosis,
-            clinicalFeatures: meta.clinicalFeatures,
-            context: meta.context,
-            mode: activeMode.label,
-          },
-        },
-      });
-      if (!mounted.current) return;
-      setTciReport(result);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "AI analysis failed.";
-      if (!mounted.current) return;
-      setTciError(message);
-      toast.error(message);
-    } finally {
-      tciInFlight.current = false;
-      if (mounted.current) setTciLoading(false);
-    }
-  }, [user, tciDigest, meta, activeMode.label, runTciInterpretation]);
-
-  // Continuous surveillance: re-review the session every 3 minutes while streaming.
-  useEffect(() => {
-    if (!aiWatch || !streaming) return;
-    const id = setInterval(() => {
-      if (monitor.epochs.length >= 30) void analyseRef.current(true);
-    }, 180_000);
-    return () => clearInterval(id);
-  }, [aiWatch, streaming, monitor.epochs.length]);
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
@@ -1450,31 +1139,25 @@ function Monitor() {
 
         {tab === "review" ? (
           <AiInsightPanel
-            result={aiResult}
-            loading={aiLoading}
-            error={aiError}
+            result={ai.result}
+            loading={ai.loading}
+            error={ai.error}
             epochCount={monitor.epochs.length}
-            onRun={() => void analyse(false)}
-            watch={aiWatch}
-            onWatchChange={(next) => {
-              setAiWatch(next);
-              if (next) {
-                toast.info("Continuous AI surveillance on — reviewing every 3 minutes.");
-                if (monitor.epochs.length >= 30) void analyse(true);
-              }
-            }}
-            lastRunAt={aiLastRunAt}
+            onRun={() => void ai.analyse(false)}
+            watch={ai.watch}
+            onWatchChange={ai.setWatchEnabled}
+            lastRunAt={ai.lastRunAt}
             feedbackContext={mode}
           />
         ) : null}
 
         {tab === "review" ? (
           <TciResponsePanel
-            digest={tciDigest}
-            report={tciReport}
-            loading={tciLoading}
-            error={tciError}
-            onRun={() => void analyseTci()}
+            digest={ai.tciDigest}
+            report={ai.tciReport}
+            loading={ai.tciLoading}
+            error={ai.tciError}
+            onRun={() => void ai.analyseTci()}
           />
         ) : null}
 
@@ -1513,214 +1196,7 @@ function Monitor() {
                   </div>
                 </div>
 
-                <div className="panel px-3 py-4 sm:px-4">
-                  <h2 className="text-sm font-semibold">Detection thresholds</h2>
-                  <div className="mt-3">
-                    <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {DETECTION_PRESETS.map((p) => {
-                        const active = matchPreset(monitor.settings) === p.key;
-                        return (
-                          <Button
-                            key={p.key}
-                            size="sm"
-                            variant={active ? "default" : "outline"}
-                            title={p.description}
-                            onClick={() =>
-                              applySettings(p.settings, `Sensitivity preset set to ${p.label}`)
-                            }
-                          >
-                            {p.label}
-                          </Button>
-                        );
-                      })}
-                      {matchPreset(monitor.settings) === "custom" && (
-                        <span className="self-center text-xs text-muted-foreground">Custom</span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {DETECTION_PRESETS.find((p) => p.key === matchPreset(monitor.settings))
-                        ?.description ?? "Manually tuned thresholds."}
-                    </p>
-                  </div>
-                  <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Suppression amplitude</Label>
-                        <span className="metric-value">
-                          {monitor.settings.suppressionThresholdUv} µV
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={3}
-                        max={20}
-                        step={1}
-                        value={[monitor.settings.suppressionThresholdUv]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({
-                            ...monitor.settings,
-                            suppressionThresholdUv: v ?? 8,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Suppression ratio window</Label>
-                        <span className="metric-value">{monitor.settings.srWindowSeconds} s</span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={30}
-                        max={300}
-                        step={30}
-                        value={[monitor.settings.srWindowSeconds]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, srWindowSeconds: v ?? 60 })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Seizure alert threshold</Label>
-                        <span className="metric-value">
-                          {monitor.settings.seizureThreshold.toFixed(2)}
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={0.3}
-                        max={0.9}
-                        step={0.01}
-                        value={[monitor.settings.seizureThreshold]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, seizureThreshold: v ?? 0.62 })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Alert persistence</Label>
-                        <span className="metric-value">{monitor.settings.seizureEpochs} s</span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={1}
-                        max={10}
-                        step={1}
-                        value={[monitor.settings.seizureEpochs]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, seizureEpochs: v ?? 3 })
-                        }
-                      />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Consecutive 1 s epochs above threshold before an alert is raised.
-                      </p>
-                    </div>
-                    <div className="border-t border-border pt-4">
-                      <h3 className="text-xs font-semibold">Trend alerts</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Depth-index swings and new or worsening burst suppression are timestamped in
-                        the event log and marked on the DSA timeline.
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Depth drop alert</Label>
-                        <span className="metric-value">
-                          −{monitor.settings.depthDropUnits} units
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={5}
-                        max={40}
-                        step={1}
-                        value={[monitor.settings.depthDropUnits]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, depthDropUnits: v ?? 15 })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Depth rise alert</Label>
-                        <span className="metric-value">
-                          +{monitor.settings.depthRiseUnits} units
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={5}
-                        max={40}
-                        step={1}
-                        value={[monitor.settings.depthRiseUnits]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, depthRiseUnits: v ?? 15 })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Depth trend window</Label>
-                        <span className="metric-value">{monitor.settings.depthTrendSeconds} s</span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={30}
-                        max={300}
-                        step={15}
-                        value={[monitor.settings.depthTrendSeconds]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, depthTrendSeconds: v ?? 60 })
-                        }
-                      />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Change is measured across this window; one alert per window at most.
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">New burst suppression at</Label>
-                        <span className="metric-value">
-                          {monitor.settings.bsrAlertPercent} % SR
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={1}
-                        max={50}
-                        step={1}
-                        value={[monitor.settings.bsrAlertPercent]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, bsrAlertPercent: v ?? 10 })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <Label className="text-xs">Worsening step</Label>
-                        <span className="metric-value">
-                          +{monitor.settings.bsrWorseningPercent} % SR
-                        </span>
-                      </div>
-                      <Slider
-                        className="mt-3"
-                        min={2}
-                        max={30}
-                        step={1}
-                        value={[monitor.settings.bsrWorseningPercent]}
-                        onValueChange={([v]) =>
-                          monitor.setSettings({ ...monitor.settings, bsrWorseningPercent: v ?? 10 })
-                        }
-                      />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Re-alerts each time the suppression ratio climbs a further step.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <DetectionThresholds settings={monitor.settings} onApply={applySettings} />
               </div>
             ) : null}
 
@@ -1747,83 +1223,29 @@ function Monitor() {
         <CaseActionBar controls={caseControls} open={caseSheet} onOpenChange={setCaseSheet} />
       ) : null}
 
-      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>File this case</DialogTitle>
-            <DialogDescription>
-              Only the case code you type here is stored — no names, dates of birth or hospital
-              numbers. Use a code that cannot identify the patient outside your own records.
-            </DialogDescription>
-          </DialogHeader>
-          {user ? (
-            <>
-              <CaseFields meta={meta} onChange={setMeta} idPrefix="save" />
-              <p className="metric-value text-xs text-muted-foreground">
-                {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} · {allEvents.length}{" "}
-                events ({markers.length} clinician markers)
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Sign in to store sessions securely against your own account.
-            </p>
-          )}
-          <DialogFooter>
-            {user ? (
-              <Button onClick={() => void handleSave()} disabled={saving}>
-                {saving ? "Saving…" : "Save session"}
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link to="/auth">Sign in</Link>
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={caseOpen} onOpenChange={setCaseOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Start a case</DialogTitle>
-            <DialogDescription>
-              Record the case details before streaming. The case then survives a headband dropout
-              and can be filed at the end without retyping anything.
-            </DialogDescription>
-          </DialogHeader>
-          <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
-          <PreCaseChecklist
-            checked={checklist}
-            onToggle={(key: ChecklistKey) =>
-              setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
-            }
-          />
-          {bleSupported ? null : (
-            <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
-              This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
-              Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
-            </p>
-          )}
-          {bleSupported ? (
-            <MuseCapabilityPanel
-              onConfirm={(device, preset) => void startCase("muse", { device, preset })}
-            />
-          ) : null}
-          <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => void startCase("simulated")}>
-              <FlaskConical className="size-4" /> Demo signal
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!bleSupported}
-              onClick={() => void startCase("muse")}
-            >
-              <Bluetooth className="size-4" /> Skip detection
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CaseDialogs
+        meta={meta}
+        onMetaChange={setMeta}
+        signedIn={Boolean(user)}
+        epochCount={monitor.epochs.length}
+        eventCount={allEvents.length}
+        markerCount={markers.length}
+        elapsed={monitor.elapsed}
+        meanSr={summary.meanSr}
+        bleSupported={bleSupported}
+        checklist={checklist}
+        onToggleChecklist={(key) => setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))}
+        saveOpen={saveOpen}
+        onSaveOpenChange={setSaveOpen}
+        saving={saving}
+        onSave={() => void handleSave()}
+        caseOpen={caseOpen}
+        onCaseOpenChange={setCaseOpen}
+        onStart={(kind, options) => void startCase(kind, options)}
+        endOpen={endOpen}
+        onEndOpenChange={setEndOpen}
+        onEnd={(fileNow) => endCase(fileNow)}
+      />
 
       {dim ? (
         <button
@@ -1833,30 +1255,6 @@ function Monitor() {
           className="fixed inset-0 z-[60] cursor-pointer bg-black/60"
         />
       ) : null}
-
-      <Dialog open={endOpen} onOpenChange={setEndOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>End case {meta.caseCode ? `“${meta.caseCode}”` : ""}?</DialogTitle>
-            <DialogDescription>
-              Streaming stops and the recording is closed. File it now to keep the trend, events and
-              alarm history — nothing is stored until you do.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="metric-value text-xs text-muted-foreground">
-            {formatClock(monitor.elapsed)} · {monitor.epochs.length} epochs · {allEvents.length}{" "}
-            events · mean SR {summary.meanSr.toFixed(0)} %
-          </p>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => endCase(false)}>
-              End without filing
-            </Button>
-            <Button onClick={() => endCase(true)}>
-              <Save className="size-4" /> End and file case
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
