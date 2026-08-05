@@ -37,7 +37,42 @@ export interface EegSource {
 }
 
 export function isWebBluetoothAvailable(): boolean {
-  return typeof navigator !== "undefined" && "bluetooth" in navigator;
+  return (
+    typeof navigator !== "undefined" &&
+    "bluetooth" in navigator &&
+    typeof navigator.bluetooth?.requestDevice === "function"
+  );
+}
+
+/** Human-readable guidance shown when the browser cannot do Web Bluetooth. */
+export const WEB_BLUETOOTH_HELP =
+  "Web Bluetooth is unavailable in this browser. On desktop or Android use Chrome or Edge; on iPhone or iPad open this app in Bluefy (or another Web BLE browser).";
+
+/**
+ * Some Web Bluetooth implementations — notably Bluefy on iOS — do not always
+ * surface a Muse through a namePrefix filter (iOS hides the advertised name
+ * until the device is bonded). Fall back to the full chooser, still scoped to
+ * the Muse GATT service, so the headband can be picked manually.
+ */
+export async function requestMuseDevice(): Promise<BluetoothDevice> {
+  if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
+  try {
+    return await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "Muse" }, { services: [MUSE_SERVICE] }],
+      optionalServices: [MUSE_SERVICE],
+    });
+  } catch (error) {
+    // NotFoundError covers both "nothing matched" and "user cancelled"; only
+    // retry for the former, otherwise cancelling would reopen the chooser.
+    const cancelled = /cancel/i.test((error as Error)?.message ?? "");
+    if (error instanceof DOMException && error.name === "NotFoundError" && !cancelled) {
+      return await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [MUSE_SERVICE],
+      });
+    }
+    throw error;
+  }
 }
 
 /** Muse packets carry 12 samples packed as 12-bit unsigned integers. */
@@ -89,16 +124,11 @@ export class MuseClient implements EegSource {
 
   async start(onSamples: SampleHandler) {
     if (!isWebBluetoothAvailable()) {
-      throw new Error(
-        "Web Bluetooth is unavailable in this browser. Use Chrome or Edge on desktop or Android.",
-      );
+      throw new Error(WEB_BLUETOOTH_HELP);
     }
     this.stopping = false;
     this.samplesCb = onSamples;
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "Muse" }],
-      optionalServices: [MUSE_SERVICE],
-    });
+    const device = await requestMuseDevice();
     this.device = device;
     this.name = device.name ?? "Muse";
     device.addEventListener("gattserverdisconnected", () => {

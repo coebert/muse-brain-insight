@@ -77,7 +77,7 @@ import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composit
 import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
-import { MUSE_CHANNELS } from "@/lib/eeg/muse";
+import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
 
@@ -160,6 +160,9 @@ function Monitor() {
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
   const [saveOpen, setSaveOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
+  // Resolved after hydration: navigator is not available during SSR.
+  const [bleSupported, setBleSupported] = useState(true);
+  useEffect(() => setBleSupported(isWebBluetoothAvailable()), []);
   const [endOpen, setEndOpen] = useState(false);
   const [caseState, setCaseState] = useState<"idle" | "running" | "ended">("idle");
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
@@ -1411,11 +1414,17 @@ function Monitor() {
             </DialogDescription>
           </DialogHeader>
           <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
+          {bleSupported ? null : (
+            <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
+              This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
+              Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
+            </p>
+          )}
           <DialogFooter className="gap-2">
             <Button variant="secondary" onClick={() => void startCase("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
             </Button>
-            <Button onClick={() => void startCase("muse")}>
+            <Button disabled={!bleSupported} onClick={() => void startCase("muse")}>
               <Bluetooth className="size-4" /> Connect Muse 2
             </Button>
           </DialogFooter>
