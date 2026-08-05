@@ -1140,31 +1140,25 @@ function Monitor() {
 
         {tab === "review" ? (
           <AiInsightPanel
-            result={aiResult}
-            loading={aiLoading}
-            error={aiError}
+            result={ai.result}
+            loading={ai.loading}
+            error={ai.error}
             epochCount={monitor.epochs.length}
-            onRun={() => void analyse(false)}
-            watch={aiWatch}
-            onWatchChange={(next) => {
-              setAiWatch(next);
-              if (next) {
-                toast.info("Continuous AI surveillance on — reviewing every 3 minutes.");
-                if (monitor.epochs.length >= 30) void analyse(true);
-              }
-            }}
-            lastRunAt={aiLastRunAt}
+            onRun={() => void ai.analyse(false)}
+            watch={ai.watch}
+            onWatchChange={ai.setWatchEnabled}
+            lastRunAt={ai.lastRunAt}
             feedbackContext={mode}
           />
         ) : null}
 
         {tab === "review" ? (
           <TciResponsePanel
-            digest={tciDigest}
-            report={tciReport}
-            loading={tciLoading}
-            error={tciError}
-            onRun={() => void analyseTci()}
+            digest={ai.tciDigest}
+            report={ai.tciReport}
+            loading={ai.tciLoading}
+            error={ai.tciError}
+            onRun={() => void ai.analyseTci()}
           />
         ) : null}
 
@@ -1437,83 +1431,29 @@ function Monitor() {
         <CaseActionBar controls={caseControls} open={caseSheet} onOpenChange={setCaseSheet} />
       ) : null}
 
-      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>File this case</DialogTitle>
-            <DialogDescription>
-              Only the case code you type here is stored — no names, dates of birth or hospital
-              numbers. Use a code that cannot identify the patient outside your own records.
-            </DialogDescription>
-          </DialogHeader>
-          {user ? (
-            <>
-              <CaseFields meta={meta} onChange={setMeta} idPrefix="save" />
-              <p className="metric-value text-xs text-muted-foreground">
-                {monitor.epochs.length} epochs · {formatClock(monitor.elapsed)} · {allEvents.length}{" "}
-                events ({markers.length} clinician markers)
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Sign in to store sessions securely against your own account.
-            </p>
-          )}
-          <DialogFooter>
-            {user ? (
-              <Button onClick={() => void handleSave()} disabled={saving}>
-                {saving ? "Saving…" : "Save session"}
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link to="/auth">Sign in</Link>
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={caseOpen} onOpenChange={setCaseOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Start a case</DialogTitle>
-            <DialogDescription>
-              Record the case details before streaming. The case then survives a headband dropout
-              and can be filed at the end without retyping anything.
-            </DialogDescription>
-          </DialogHeader>
-          <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
-          <PreCaseChecklist
-            checked={checklist}
-            onToggle={(key: ChecklistKey) =>
-              setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))
-            }
-          />
-          {bleSupported ? null : (
-            <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
-              This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
-              Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
-            </p>
-          )}
-          {bleSupported ? (
-            <MuseCapabilityPanel
-              onConfirm={(device, preset) => void startCase("muse", { device, preset })}
-            />
-          ) : null}
-          <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => void startCase("simulated")}>
-              <FlaskConical className="size-4" /> Demo signal
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!bleSupported}
-              onClick={() => void startCase("muse")}
-            >
-              <Bluetooth className="size-4" /> Skip detection
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CaseDialogs
+        meta={meta}
+        onMetaChange={setMeta}
+        signedIn={Boolean(user)}
+        epochCount={monitor.epochs.length}
+        eventCount={allEvents.length}
+        markerCount={markers.length}
+        elapsed={monitor.elapsed}
+        meanSr={summary.meanSr}
+        bleSupported={bleSupported}
+        checklist={checklist}
+        onToggleChecklist={(key) => setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))}
+        saveOpen={saveOpen}
+        onSaveOpenChange={setSaveOpen}
+        saving={saving}
+        onSave={() => void handleSave()}
+        caseOpen={caseOpen}
+        onCaseOpenChange={setCaseOpen}
+        onStart={(kind, options) => void startCase(kind, options)}
+        endOpen={endOpen}
+        onEndOpenChange={setEndOpen}
+        onEnd={(fileNow) => endCase(fileNow)}
+      />
 
       {dim ? (
         <button
@@ -1524,29 +1464,6 @@ function Monitor() {
         />
       ) : null}
 
-      <Dialog open={endOpen} onOpenChange={setEndOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>End case {meta.caseCode ? `“${meta.caseCode}”` : ""}?</DialogTitle>
-            <DialogDescription>
-              Streaming stops and the recording is closed. File it now to keep the trend, events and
-              alarm history — nothing is stored until you do.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="metric-value text-xs text-muted-foreground">
-            {formatClock(monitor.elapsed)} · {monitor.epochs.length} epochs · {allEvents.length}{" "}
-            events · mean SR {summary.meanSr.toFixed(0)} %
-          </p>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => endCase(false)}>
-              End without filing
-            </Button>
-            <Button onClick={() => endCase(true)}>
-              <Save className="size-4" /> End and file case
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
