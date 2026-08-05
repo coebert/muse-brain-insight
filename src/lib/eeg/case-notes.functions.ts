@@ -39,6 +39,33 @@ export interface CasePattern {
   citations: EegCitation[];
   /** Stable identity used to attach the clinician's verdict. */
   patternKey?: string;
+  /** How the clinician's earlier verdicts moved this pattern's ranking. */
+  feedbackInfluence?: FeedbackInfluence;
+}
+
+/** Effect of prior accept/reject/edit verdicts on one pattern's confidence. */
+export interface FeedbackInfluence {
+  /** Whether prior feedback raised, lowered or left this pattern's confidence. */
+  direction: "raised" | "lowered" | "unchanged" | "new";
+  /** Strength this pattern would have carried without the feedback. */
+  strengthWithoutFeedback: "emerging" | "moderate" | "strong" | "not proposed";
+  /** One sentence saying which verdicts moved it and why. */
+  because: string;
+  /** The specific case details or EEG features that drove the shift. */
+  drivers: string[];
+  /** Titles of earlier judged patterns this one was weighed against. */
+  relatedTitles: string[];
+}
+
+/** Session-wide account of how the feedback library shaped this run. */
+export interface FeedbackImpact {
+  accepted: number;
+  rejected: number;
+  edited: number;
+  /** Plain-language summary of what the verdicts changed this time. */
+  summary: string;
+  /** Ideas suppressed because they repeat a rejected pattern. */
+  suppressed: string[];
 }
 
 export interface CaseNoteInsights {
@@ -53,6 +80,8 @@ export interface CaseNoteInsights {
   generatedAt: string;
   /** Verdicts the clinician has already recorded on earlier patterns. */
   feedback: PatternFeedback[];
+  /** How those verdicts changed this run's ranking. */
+  feedbackImpact: FeedbackImpact;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant working with an anaesthetist/intensivist who records EEG from a 4-channel frontal Muse 2 headband during general anaesthesia and ICU sedation.
