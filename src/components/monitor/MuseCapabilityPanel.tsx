@@ -120,6 +120,8 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
     ["Battery", caps.batteryPercent == null ? "not reported" : `${caps.batteryPercent}%`],
   ];
 
+  const selectedPreset = caps.presets.find((p) => p.code === preset);
+
   return (
     <div className="space-y-3 rounded-md border border-border bg-card/60 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -228,6 +230,26 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
             ))}
           </ul>
         )
+      ) : null}
+
+      {selectedPreset ? (
+        <div className="rounded-md border border-border bg-muted/40 p-3">
+          <p className="text-xs font-medium">Selected streaming parameters</p>
+          <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded bg-background/60 p-2">
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Mode</dt>
+              <dd className="text-sm font-semibold">{selectedPreset.label}</dd>
+            </div>
+            <div className="rounded bg-background/60 p-2">
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Sample rate</dt>
+              <dd className="text-sm font-semibold">{selectedPreset.sampleRate} Hz</dd>
+            </div>
+            <div className="rounded bg-background/60 p-2">
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Channels</dt>
+              <dd className="text-sm font-semibold">{selectedPreset.channels}</dd>
+            </div>
+          </dl>
+        </div>
       ) : null}
 
       <Button
