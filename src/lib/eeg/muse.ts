@@ -239,7 +239,10 @@ export async function probeMuseDevice(device: BluetoothDevice): Promise<MuseCapa
   return {
     deviceName: name,
     model,
-    firmwareVersion: str("fw") ?? str("bn"),
+    // Only the firmware field is a firmware version. The build number ("bn")
+    // is an unrelated counter and must never be read as a version, or an
+    // up-to-date headband can look ancient.
+    firmwareVersion: str("fw"),
     hardwareVersion: hardware,
     buildNumber: str("bn"),
     protocolVersion: str("pv"),
@@ -268,12 +271,16 @@ export function decodeMusePacket(data: DataView): Float64Array {
   return out;
 }
 
-/** Extracts a comparable numeric version from strings like "1.2.13" or "fw 1.2". */
+/**
+ * Extracts a comparable numeric version from strings like "1.2.13" or
+ * "fw 1.2". A bare number (a build counter, a date) is NOT a version — those
+ * return null so the headband is never judged on a misread string.
+ */
 export function parseFirmwareVersion(value: string | null): number[] | null {
   if (!value) return null;
-  const match = /(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(value);
+  const match = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(value);
   if (!match) return null;
-  return [Number(match[1]), Number(match[2] ?? 0), Number(match[3] ?? 0)];
+  return [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)];
 }
 
 function isOlderThan(version: number[], minimum: number[]): boolean {
@@ -285,8 +292,13 @@ function isOlderThan(version: number[], minimum: number[]): boolean {
   return false;
 }
 
-/** Firmware below this cannot be trusted to honour a preset change. */
-const MIN_FIRMWARE = [1, 2, 0];
+/**
+ * Muse firmware families differ between hardware revisions (a fully updated
+ * Muse 2016 sits well below a current Muse 2), so only genuinely pre-release
+ * firmware is called out — and only as a warning, never a blocker. Interop
+ * problems surface during the streaming handshake, not from a version string.
+ */
+const MIN_FIRMWARE = [1, 0, 0];
 
 /**
  * Checks the chosen streaming mode against what the headband actually
@@ -359,10 +371,10 @@ export function validateStreamingConfig(
     });
   } else if (isOlderThan(firmware, MIN_FIRMWARE)) {
     issues.push({
-      severity: "blocker",
-      title: "Firmware too old",
-      detail: `Firmware ${caps.firmwareVersion} predates reliable preset switching (needs ${MIN_FIRMWARE.join(".")} or later).`,
-      fix: "Update the headband in the Muse mobile app, then detect it again.",
+      severity: "warning",
+      title: "Unusually old firmware",
+      detail: `The headband reports firmware ${caps.firmwareVersion}, older than any shipped Muse release (${MIN_FIRMWARE.join(".")}).`,
+      fix: "Check for an update in the Muse mobile app. If it is already current, start the case — streaming is verified at handshake.",
     });
   }
 
