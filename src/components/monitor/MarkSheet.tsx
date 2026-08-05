@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BACKDATE_OFFSETS, MARKER_GROUPS } from "@/lib/eeg/marker-presets";
+import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
+import type { MarkerMode } from "@/lib/eeg/marker-presets";
 import { formatClock } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +14,12 @@ import { cn } from "@/lib/utils";
  */
 export function MarkSheet({
   elapsed,
+  mode,
   onMark,
   onDone,
 }: {
   elapsed: number;
+  mode?: MarkerMode;
   onMark: (label: string, backdateSeconds?: number) => void;
   onDone: () => void;
 }) {
@@ -30,9 +34,27 @@ export function MarkSheet({
 
   return (
     <div className="space-y-4">
+      {mode ? (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Quick markers · one tap, default timestamp
+          </p>
+          <QuickMarkBar
+            mode={mode}
+            elapsed={elapsed}
+            running
+            size="compact"
+            onMark={(label, backdateSeconds) => {
+              onMark(label, backdateSeconds);
+              onDone();
+            }}
+          />
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Timestamp
+          Custom timestamp
         </span>
         <div className="flex flex-wrap gap-1.5">
           {BACKDATE_OFFSETS.map((offset) => (
