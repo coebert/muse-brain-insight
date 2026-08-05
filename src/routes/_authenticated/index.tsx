@@ -694,6 +694,45 @@ function Monitor() {
   const analyseRef = useRef(analyse);
   analyseRef.current = analyse;
 
+  /** Ce steps and whole-case dose–response, recomputed as the EEG accrues. */
+  const tciDigest = useMemo(
+    () => buildTciResponseDigest(infusions, monitor.epochs, allEvents),
+    [infusions, monitor.epochs, allEvents],
+  );
+
+  const runTciInterpretation = useServerFn(interpretTciResponse);
+
+  const analyseTci = useCallback(async () => {
+    if (!user) {
+      toast.error("Sign in to use AI interpretation.");
+      return;
+    }
+    setTciLoading(true);
+    setTciError(null);
+    try {
+      const result = await runTciInterpretation({
+        data: {
+          digest: tciDigest,
+          patient: {
+            ageYears: meta.ageYears,
+            sex: meta.sex,
+            admissionDiagnosis: meta.admissionDiagnosis,
+            clinicalFeatures: meta.clinicalFeatures,
+            context: meta.context,
+            mode: activeMode.label,
+          },
+        },
+      });
+      setTciReport(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI analysis failed.";
+      setTciError(message);
+      toast.error(message);
+    } finally {
+      setTciLoading(false);
+    }
+  }, [user, tciDigest, meta, activeMode.label, runTciInterpretation]);
+
   // Continuous surveillance: re-review the session every 3 minutes while streaming.
   useEffect(() => {
     if (!aiWatch || !streaming) return;
