@@ -1177,6 +1177,8 @@ function Monitor() {
                   streaming={streaming}
                   contactOk={monitor.contactOk}
                   channelQuality={monitor.channelQuality}
+                  epochs={monitor.epochs}
+                  events={derived.allEvents}
                 />
 
                 <DetectionThresholds
