@@ -106,21 +106,24 @@ function HemiDsaPanelInner({
   return (
     <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
       {lanes.map((lane) => (
-        <div key={lane.key} className="relative min-h-0 border-b border-border/60 last:border-b-0">
-          <span
-            className={cn(
-              "metric-value absolute top-1 left-14 z-10 rounded bg-background/70 px-1 text-xs text-foreground",
-              !compact && "px-1.5 py-0.5 tracking-[0.12em] uppercase",
-            )}
-          >
-            {lane.side} · {lane.montage}
-          </span>
-          <HemiQualityBadge
-            metrics={lane.metrics}
-            compact={compact}
-            className={cn("absolute right-2 z-10", compact ? "top-8" : "top-1")}
-          />
-          <DsaChart frames={lane.frames} windowSeconds={windowSeconds} traces={lane.traces} />
+        <div
+          key={lane.key}
+          className="flex min-h-0 flex-col border-b border-border/60 last:border-b-0"
+        >
+          {/* Lane header sits above the plot so nothing overlaps the heat map. */}
+          <div className="flex min-h-0 shrink-0 items-center gap-2 px-2 py-1">
+            <span
+              className={cn(
+                "metric-value min-w-0 truncate text-xs text-foreground",
+                !compact && "tracking-[0.12em] uppercase",
+              )}
+            >
+              {lane.side} · {lane.montage}
+            </span>
+            <HemiQualityBadge metrics={lane.metrics} compact className="ml-auto shrink-0" />
+          </div>
+          <div className="relative min-h-0 flex-1">
+            <DsaChart frames={lane.frames} windowSeconds={windowSeconds} traces={lane.traces} />
           {dsaView === "overlay" ? (
             <div
               className={cn(
@@ -149,6 +152,7 @@ function HemiDsaPanelInner({
             windowSeconds={windowSeconds}
             compact={compact}
           />
+          </div>
         </div>
       ))}
     </div>
