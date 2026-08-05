@@ -81,6 +81,12 @@ import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
 import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
@@ -796,14 +802,6 @@ function Monitor() {
             {caseRunning ? (
               <>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 sm:flex-none"
-                  onClick={() => setSaveOpen(true)}
-                >
-                  <Save className="size-4" /> File now
-                </Button>
-                <Button
                   variant="destructive"
                   size="sm"
                   className="flex-1 sm:flex-none"
@@ -819,6 +817,22 @@ function Monitor() {
                 >
                   <Maximize2 className="size-4" /> Monitor view
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" aria-label="More case actions">
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
+                      <Save className="size-4" /> File now
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setDim(!dim)}>
+                      {dim ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                      {dim ? "Undim display" : "Dim for theatre"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
@@ -1649,6 +1663,15 @@ function Monitor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {dim ? (
+        <button
+          type="button"
+          aria-label="Undim display"
+          onClick={() => setDim(false)}
+          className="fixed inset-0 z-[60] cursor-pointer bg-black/60"
+        />
+      ) : null}
 
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
         <DialogContent>
