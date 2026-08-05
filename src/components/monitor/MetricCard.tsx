@@ -151,7 +151,10 @@ function MetricCardInner({
           title={`Confidence ${(confidence * 100).toFixed(0)} % — ${conf.word}, based on live signal quality`}
         >
           <div className="flex items-center justify-between text-xs tracking-wide text-muted-foreground uppercase">
-            <span>Confidence</span>
+            <span className="flex items-center gap-1.5">
+              Confidence
+              <ParameterInfo parameter="confidence" />
+            </span>
             <span className={cn("metric-value", conf.text)}>{(confidence * 100).toFixed(0)} %</span>
           </div>
           <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
