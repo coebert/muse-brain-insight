@@ -1179,6 +1179,10 @@ function Monitor() {
                   channelQuality={monitor.channelQuality}
                   epochs={monitor.epochs}
                   events={derived.allEvents}
+                  markers={markers}
+                  onAnnotateChannel={(channel, t, text) =>
+                    addMarkerAt(`${channel} · ${text}`, t)
+                  }
                 />
 
                 <DetectionThresholds
