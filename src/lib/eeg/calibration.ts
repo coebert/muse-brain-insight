@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { DEFAULT_DEPTH_CALIBRATION, depthMixer, type DepthCalibration } from "@/lib/eeg/depth";
+import { parseDepthCalibration, parseFitMetrics } from "@/lib/eeg/calibration-schema";
 
 export type StateLabel = "awake" | "sedated" | "anaesthesia" | "burst_suppression";
 
@@ -237,9 +238,7 @@ export function loadStoredCalibration(): DepthCalibration | null {
   try {
     const raw = window.localStorage.getItem(ACTIVE_CAL_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as DepthCalibration;
-    if (!parsed?.sedation || !parsed?.general) return null;
-    return parsed;
+    return parseDepthCalibration(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -302,21 +301,21 @@ type CalibrationRow = Pick<
 export interface StoredCalibration {
   id: string;
   name: string;
-  params: DepthCalibration;
+  params: DepthCalibration | null;
   metrics: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
 }
 
-/** Narrow the two JSON columns; the rest of the row is already typed. */
+/** Validate the two JSON columns; the rest of the row is already typed. */
 function toStoredCalibration(row: CalibrationRow): StoredCalibration {
   return {
     id: row.id,
     name: row.name,
     is_active: row.is_active,
     created_at: row.created_at,
-    params: row.params as unknown as DepthCalibration,
-    metrics: (row.metrics ?? {}) as Record<string, unknown>,
+    params: parseDepthCalibration(row.params),
+    metrics: parseFitMetrics(row.metrics),
   };
 }
 
