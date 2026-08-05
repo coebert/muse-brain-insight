@@ -4,6 +4,7 @@ import {
   Check,
   Crosshair,
   Lightbulb,
+  ListFilter,
   NotebookPen,
   Pencil,
   Sparkles,
