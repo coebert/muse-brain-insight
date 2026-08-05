@@ -32,6 +32,12 @@ import { useDsaViewPreference } from "@/lib/eeg/dsa-view-pref";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
+import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
+import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
+import {
+  interpretTciResponse,
+  type TciResponseReport,
+} from "@/lib/eeg/tci-response.functions";
 import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
@@ -219,6 +225,10 @@ function Monitor() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiWatch, setAiWatch] = useState(false);
   const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
+  /** AI reading of how the recorded TCI targets moved the EEG. */
+  const [tciReport, setTciReport] = useState<TciResponseReport | null>(null);
+  const [tciLoading, setTciLoading] = useState(false);
+  const [tciError, setTciError] = useState<string | null>(null);
   const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
   /**
@@ -683,6 +693,45 @@ function Monitor() {
 
   const analyseRef = useRef(analyse);
   analyseRef.current = analyse;
+
+  /** Ce steps and whole-case dose–response, recomputed as the EEG accrues. */
+  const tciDigest = useMemo(
+    () => buildTciResponseDigest(monitor.epochs, allEvents, infusions, monitor.elapsed),
+    [infusions, monitor.epochs, allEvents, monitor.elapsed],
+  );
+
+  const runTciInterpretation = useServerFn(interpretTciResponse);
+
+  const analyseTci = useCallback(async () => {
+    if (!user) {
+      toast.error("Sign in to use AI interpretation.");
+      return;
+    }
+    setTciLoading(true);
+    setTciError(null);
+    try {
+      const result = await runTciInterpretation({
+        data: {
+          digest: tciDigest,
+          patient: {
+            ageYears: meta.ageYears,
+            sex: meta.sex,
+            admissionDiagnosis: meta.admissionDiagnosis,
+            clinicalFeatures: meta.clinicalFeatures,
+            context: meta.context,
+            mode: activeMode.label,
+          },
+        },
+      });
+      setTciReport(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI analysis failed.";
+      setTciError(message);
+      toast.error(message);
+    } finally {
+      setTciLoading(false);
+    }
+  }, [user, tciDigest, meta, activeMode.label, runTciInterpretation]);
 
   // Continuous surveillance: re-review the session every 3 minutes while streaming.
   useEffect(() => {
@@ -1324,6 +1373,16 @@ function Monitor() {
             }}
             lastRunAt={aiLastRunAt}
             feedbackContext={mode}
+          />
+        ) : null}
+
+        {tab === "review" ? (
+          <TciResponsePanel
+            digest={tciDigest}
+            report={tciReport}
+            loading={tciLoading}
+            error={tciError}
+            onRun={() => void analyseTci()}
           />
         ) : null}
 
