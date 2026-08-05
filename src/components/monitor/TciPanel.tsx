@@ -67,6 +67,7 @@ export function TciPanel({
       targets,
       startedAt: elapsed,
       stoppedAt: null,
+      history: [{ at: elapsed, targets: { ...targets } }],
     };
     commit([...infusions, infusion], `${model.short} started`);
     onMark(`TCI start — ${model.short}: Ce ${describeTargets(model, targets)}`);
@@ -81,7 +82,15 @@ export function TciPanel({
     commit(
       infusions.map((i) =>
         i.id === infusion.id
-          ? { ...i, targets: { ...i.targets, [drug.key]: value }, lastChangeAt: elapsed }
+          ? {
+              ...i,
+              targets: { ...i.targets, [drug.key]: value },
+              lastChangeAt: elapsed,
+              history: [
+                ...(i.history ?? [{ at: i.startedAt, targets: { ...i.targets } }]),
+                { at: elapsed, targets: { ...i.targets, [drug.key]: value } },
+              ],
+            }
           : i,
       ),
       `${model.short} ${drug.label} ${formatCe(value, drug)}`,
