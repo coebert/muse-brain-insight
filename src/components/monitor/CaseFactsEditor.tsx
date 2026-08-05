@@ -1,5 +1,6 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ListChecks, Plus, Sparkles, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Check, Crosshair, ExternalLink, ListChecks, Plus, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,13 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatClock } from "@/lib/eeg/format";
 import {
   EMERGENCE_OPTIONS,
   FACT_LIST_FIELDS,
   URGENCY_OPTIONS,
   factsAreEmpty,
+  parseClock,
   type CaseFacts,
   type CaseFactsRecord,
+  type FactEvidence,
 } from "@/lib/eeg/case-facts";
 import { loadCaseFacts, proposeCaseFacts, saveCaseFacts } from "@/lib/eeg/case-facts.functions";
 import { cn } from "@/lib/utils";
@@ -87,6 +91,178 @@ function ListField({
           <Plus className="size-3.5" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+
+/** Time field that accepts mm:ss and keeps the stored value in seconds. */
+function ClockInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  label: string;
+}) {
+  const [text, setText] = useState(formatClock(value));
+  useEffect(() => setText(formatClock(value)), [value]);
+  return (
+    <Input
+      aria-label={label}
+      className="metric-value h-8 w-20 text-xs"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const parsed = parseClock(text);
+        if (parsed === null) setText(formatClock(value));
+        else onChange(parsed);
+      }}
+    />
+  );
+}
+
+/**
+ * Ties each extracted detail to the stretch of recording that shows it, so
+ * nothing is confirmed without a checkable place in the EEG.
+ */
+function EvidenceEditor({
+  record,
+  onChange,
+}: {
+  record: CaseFactsRecord;
+  onChange: (next: FactEvidence[]) => void;
+}) {
+  const evidence = record.facts.evidence;
+  const detailOptions = [
+    ...record.facts.keyDetails,
+    ...record.facts.riskFactors,
+    ...record.facts.intraoperativeEvents,
+    ...record.facts.postopIssues,
+  ];
+
+  function set(index: number, patch: Partial<FactEvidence>) {
+    onChange(evidence.map((e, i) => (i === index ? { ...e, ...patch } : e)));
+  }
+
+  function addFromTimeline(index: number) {
+    const point = record.timeline[index];
+    if (!point) return;
+    onChange([
+      ...evidence,
+      {
+        detail: detailOptions[0] ?? "",
+        startSeconds: point.startSeconds,
+        endSeconds: Math.max(point.endSeconds, point.startSeconds + 10),
+        why: point.detail || point.kind.replace(/_/g, " "),
+      },
+    ]);
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border/70 bg-muted/20 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h5 className="flex items-center gap-1.5 text-xs font-medium">
+          <Crosshair className="size-3.5 text-signal" /> Where the EEG shows it
+        </h5>
+        <div className="flex items-center gap-1.5">
+          {record.timeline.length ? (
+            <Select value="" onValueChange={(v) => addFromTimeline(Number(v))}>
+              <SelectTrigger className="h-8 w-[190px] text-xs">
+                <SelectValue placeholder="Add from recording" />
+              </SelectTrigger>
+              <SelectContent>
+                {record.timeline.map((t, i) => (
+                  <SelectItem key={`${t.kind}-${t.startSeconds}-${i}`} value={String(i)}>
+                    {formatClock(t.startSeconds)} · {t.detail || t.kind.replace(/_/g, " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() =>
+              onChange([
+                ...evidence,
+                { detail: detailOptions[0] ?? "", startSeconds: 0, endSeconds: 30, why: "" },
+              ])
+            }
+          >
+            <Plus className="size-3.5" /> Segment
+          </Button>
+        </div>
+      </div>
+
+      {!evidence.length ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          No segments linked yet — anchor each detail to the minute of recording that shows it.
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {evidence.map((e, i) => (
+            <li key={i} className="rounded border border-border bg-background/40 px-2 py-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <ClockInput
+                  label="Segment start"
+                  value={e.startSeconds}
+                  onChange={(v) => set(i, { startSeconds: v })}
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <ClockInput
+                  label="Segment end"
+                  value={e.endSeconds}
+                  onChange={(v) => set(i, { endSeconds: Math.max(v, e.startSeconds) })}
+                />
+                <Link
+                  to="/trends"
+                  search={{ session: record.sessionId, t: e.startSeconds }}
+                  className="flex items-center gap-1 text-xs text-signal hover:underline"
+                >
+                  <ExternalLink className="size-3" /> Open in trends
+                </Link>
+                <button
+                  type="button"
+                  aria-label="Remove segment"
+                  className="ml-auto text-muted-foreground hover:text-critical"
+                  onClick={() => onChange(evidence.filter((_, j) => j !== i))}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+                <Input
+                  className="h-8 text-xs"
+                  list={`details-${record.sessionId}`}
+                  placeholder="Detail this supports"
+                  value={e.detail}
+                  onChange={(ev) => set(i, { detail: ev.target.value })}
+                />
+                <Input
+                  className="h-8 text-xs"
+                  placeholder="What the EEG shows here"
+                  value={e.why}
+                  onChange={(ev) => set(i, { why: ev.target.value })}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <datalist id={`details-${record.sessionId}`}>
+        {detailOptions.map((d) => (
+          <option key={d} value={d} />
+        ))}
+      </datalist>
+      {record.durationSeconds ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Recording runs {formatClock(record.durationSeconds)}.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -195,6 +371,8 @@ function CaseCard({
           />
         ))}
       </div>
+
+      <EvidenceEditor record={record} onChange={(evidence) => set({ evidence })} />
 
       <div className="mt-3 flex justify-end">
         <Button size="sm" className="min-h-9" disabled={saving} onClick={onSave}>
