@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bluetooth, Loader2, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Bluetooth, CheckCircle2, Loader2, RefreshCw, Wrench } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import {
   DEFAULT_MUSE_PRESET,
   probeMuseDevice,
   requestMuseDevice,
+  validateStreamingConfig,
   type MuseCapabilities,
 } from "@/lib/eeg/muse";
 
@@ -28,6 +29,10 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
   const [preset, setPreset] = useState(DEFAULT_MUSE_PRESET);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const validation = useMemo(
+    () => (caps ? validateStreamingConfig(caps, preset) : null),
+    [caps, preset],
+  );
 
   async function detect() {
     setBusy(true);
@@ -127,12 +132,64 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
       </div>
 
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
+
+      {validation ? (
+        validation.status === "ok" ? (
+          <p className="flex items-center gap-2 rounded-md border border-signal/40 bg-signal/10 p-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="size-4 shrink-0 text-signal" />
+            Checked against the headband: this mode delivers four electrodes at 256 Hz.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {validation.issues.map((issue) => (
+              <li
+                key={issue.title}
+                className={
+                  issue.severity === "blocker"
+                    ? "rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs"
+                    : "rounded-md border border-caution/40 bg-caution/10 p-2 text-xs"
+                }
+              >
+                <p className="flex items-center gap-2 font-medium">
+                  <AlertTriangle
+                    className={
+                      issue.severity === "blocker"
+                        ? "size-4 shrink-0 text-destructive"
+                        : "size-4 shrink-0 text-caution"
+                    }
+                  />
+                  {issue.title}
+                </p>
+                <p className="mt-1 text-muted-foreground">{issue.detail}</p>
+                <p className="mt-1 flex items-start gap-1.5 text-muted-foreground">
+                  <Wrench className="mt-0.5 size-3.5 shrink-0" />
+                  {issue.fix}
+                </p>
+                {issue.suggestedPreset && issue.suggestedPreset !== preset ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="mt-2"
+                    onClick={() => setPreset(issue.suggestedPreset!)}
+                  >
+                    Apply fix
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+
       <Button
         className="w-full"
-        disabled={disabled || busy || !device}
+        disabled={disabled || busy || !device || validation?.status === "blocked"}
         onClick={() => device && onConfirm(device, preset)}
       >
-        <Bluetooth className="size-4" /> Confirm and start streaming
+        <Bluetooth className="size-4" />
+        {validation?.status === "blocked"
+          ? "Resolve the issue above to start"
+          : "Confirm and start streaming"}
       </Button>
     </div>
   );
