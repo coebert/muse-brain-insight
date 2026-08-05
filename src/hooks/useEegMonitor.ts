@@ -458,14 +458,12 @@ export function useEegMonitor() {
       // re-analysing stale buffer contents.
       if (Date.now() - lastSampleAtRef.current > STALE_SAMPLE_MS) {
         if (gapStartRef.current == null) gapStartRef.current = t;
-        setDataGapSeconds(t - gapStartRef.current);
-        setElapsed(t);
+        dispatch({ type: "gap", elapsed: t, dataGapSeconds: t - gapStartRef.current });
         return;
       }
       if (gapStartRef.current != null) {
         const gap = t - gapStartRef.current;
         gapStartRef.current = null;
-        setDataGapSeconds(0);
         if (gap >= 3) {
           manualEventsRef.current = [
             ...manualEventsRef.current,
@@ -481,9 +479,6 @@ export function useEegMonitor() {
       }
 
       const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
-      setElapsed(t);
-      setEpochs((prev) => compactEpochs([...prev, epoch]));
-      setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
 
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
@@ -508,8 +503,6 @@ export function useEegMonitor() {
         contact[ca] = !qa.flat && qa.grade !== "poor";
         contact[cb] = !qb.flat && qb.grade !== "poor";
       }
-      setContactOk(contact);
-      setChannelQuality(quality);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
