@@ -54,21 +54,31 @@ const SELECT_SESSIONS =
   "id, case_code, case_summary, notes, admission_diagnosis, clinical_features, duration_seconds, created_at";
 
 /** Detections and markers for the given sessions, keyed by session id. */
+type EventQuery = {
+  select: (columns: string) => EventQuery;
+  eq: (column: string, value: string) => EventQuery;
+  in: (column: string, values: string[]) => EventQuery;
+  order: (column: string, opts: { ascending: boolean }) => Promise<{
+    data: EventRow[] | null;
+    error: { message: string } | null;
+  }>;
+};
+
 async function loadTimelines(
-  supabase: { from: (t: string) => any },
+  supabase: { from: (table: "eeg_events") => unknown },
   userId: string,
   sessionIds: string[],
 ): Promise<Map<string, CaseTimelinePoint[]>> {
   const byId = new Map<string, CaseTimelinePoint[]>();
   if (!sessionIds.length) return byId;
-  const { data, error } = await supabase
-    .from("eeg_events")
+  const query = supabase.from("eeg_events") as EventQuery;
+  const { data, error } = await query
     .select("session_id, kind, severity, t_offset_seconds, duration_seconds, detail")
     .eq("user_id", userId)
     .in("session_id", sessionIds)
     .order("t_offset_seconds", { ascending: true });
   if (error) throw new Error(error.message);
-  for (const row of (data ?? []) as EventRow[]) {
+  for (const row of data ?? []) {
     const start = Math.round(Number(row.t_offset_seconds) || 0);
     const list = byId.get(row.session_id) ?? [];
     if (list.length >= 120) continue;
