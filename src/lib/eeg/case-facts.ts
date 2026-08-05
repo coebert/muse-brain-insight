@@ -3,6 +3,16 @@
  * summary. These are the fields the AI normalises first and the clinician
  * confirms before any cross-case pattern mining runs on them.
  */
+/** A stretch of the recording that backs up a written detail. */
+export interface FactEvidence {
+  /** The extracted detail this segment supports, worded exactly as in the fields. */
+  detail: string;
+  startSeconds: number;
+  endSeconds: number;
+  /** What is visible in the EEG over that stretch. */
+  why: string;
+}
+
 export interface CaseFacts {
   /** Operation, procedure or reason for sedation, in normalised wording. */
   procedure: string;
@@ -15,6 +25,8 @@ export interface CaseFacts {
   /** Free-form short facts that do not fit the fields above. */
   keyDetails: string[];
   riskFactors: string[];
+  /** Timestamped EEG segments supporting the details above. */
+  evidence: FactEvidence[];
 }
 
 export const EMPTY_CASE_FACTS: CaseFacts = {
@@ -27,6 +39,7 @@ export const EMPTY_CASE_FACTS: CaseFacts = {
   postopIssues: [],
   keyDetails: [],
   riskFactors: [],
+  evidence: [],
 };
 
 export const URGENCY_OPTIONS: { value: CaseFacts["urgency"]; label: string }[] = [
@@ -51,6 +64,29 @@ export const FACT_LIST_FIELDS = [
   { key: "keyDetails", label: "Other key details" },
   { key: "riskFactors", label: "Risk factors" },
 ] as const satisfies readonly { key: keyof CaseFacts; label: string }[];
+
+function seconds(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+}
+
+function evidenceList(value: unknown, max = 12): FactEvidence[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((raw) => {
+      const r = (raw ?? {}) as Record<string, unknown>;
+      const start = seconds(r["startSeconds"]);
+      const end = Math.max(start, seconds(r["endSeconds"]));
+      return {
+        detail: typeof r["detail"] === "string" ? r["detail"].trim().slice(0, 120) : "",
+        startSeconds: start,
+        endSeconds: end,
+        why: typeof r["why"] === "string" ? r["why"].trim().slice(0, 240) : "",
+      };
+    })
+    .filter((e) => e.detail || e.why)
+    .slice(0, max);
+}
 
 function strings(value: unknown, max = 10): string[] {
   if (!Array.isArray(value)) return [];
@@ -82,6 +118,7 @@ export function normaliseFacts(raw: unknown): CaseFacts {
     postopIssues: strings(r["postopIssues"]),
     keyDetails: strings(r["keyDetails"]),
     riskFactors: strings(r["riskFactors"], 6),
+    evidence: evidenceList(r["evidence"]),
   };
 }
 
@@ -96,8 +133,18 @@ export function factsAreEmpty(f: CaseFacts): boolean {
     !f.intraoperativeEvents.length &&
     !f.postopIssues.length &&
     !f.keyDetails.length &&
-    !f.riskFactors.length
+    !f.riskFactors.length &&
+    !f.evidence.length
   );
+}
+
+/** One recorded event offered to the clinician when anchoring a detail. */
+export interface CaseTimelinePoint {
+  kind: string;
+  severity: string;
+  startSeconds: number;
+  endSeconds: number;
+  detail: string;
 }
 
 export interface CaseFactsRecord {
@@ -110,4 +157,8 @@ export interface CaseFactsRecord {
   confirmed: boolean;
   /** True when these fields came from the AI and have not been saved yet. */
   draft: boolean;
+  /** Recorded duration, so evidence times can be sanity-checked. */
+  durationSeconds: number;
+  /** Detections and markers from the recording, for anchoring details. */
+  timeline: CaseTimelinePoint[];
 }
