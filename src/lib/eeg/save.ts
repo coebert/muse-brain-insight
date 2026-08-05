@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
+import {
+  clearStagedSave,
+  isTransient,
+  stageSave,
+  withRetry,
+} from "@/lib/eeg/save-staging";
 
 export interface SessionMeta {
   caseCode: string;
@@ -48,6 +54,10 @@ export async function saveSession(
   const userId = userData.user?.id;
   if (!userId) throw new Error("You need to be signed in to save a session.");
 
+  // Stage the case locally first so a dropped connection mid-save cannot lose
+  // a completed record.
+  stageSave(meta.caseCode, { meta, summary, elapsed, events: events.length });
+
   // Free-text fields are encrypted (AES-256-GCM) before they leave the browser session.
   const { values: sealed } = await sealTexts({
     data: {
@@ -61,9 +71,11 @@ export async function saveSession(
   });
   const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
 
-  const { data: session, error } = await supabase
-    .from("eeg_sessions")
-    .insert({
+  const { data: session, error } = await withRetry(
+    () =>
+      supabase
+        .from("eeg_sessions")
+        .insert({
       user_id: userId,
       case_code: sealedCase ?? meta.caseCode,
       context: meta.context,
@@ -86,9 +98,11 @@ export async function saveSession(
       suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
       seizure_alerts: summary.seizureAlerts,
       ended_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
+        })
+        .select("id")
+        .single(),
+    { shouldRetry: isTransient },
+  );
   if (error) throw error;
 
   const rows = decimate(epochs).map((e) => ({
@@ -139,24 +153,31 @@ export async function saveSession(
     spectrum: e.spectrum.map((v) => Number(v.toFixed(1))),
   }));
   for (let i = 0; i < rows.length; i += 200) {
-    const { error: epochError } = await supabase.from("eeg_epochs").insert(rows.slice(i, i + 200));
+    const chunk = rows.slice(i, i + 200);
+    const { error: epochError } = await withRetry(
+      () => supabase.from("eeg_epochs").insert(chunk),
+      { shouldRetry: isTransient },
+    );
     if (epochError) throw epochError;
   }
 
   if (events.length) {
-    const { error: eventError } = await supabase.from("eeg_events").insert(
-      events.map((ev) => ({
-        session_id: session.id,
-        user_id: userId,
-        kind: ev.kind,
-        severity: ev.severity,
-        t_offset_seconds: Number(ev.t.toFixed(2)),
-        duration_seconds: Number(ev.duration.toFixed(1)),
-        detail: ev.detail,
-      })),
+    const eventRows = events.map((ev) => ({
+      session_id: session.id,
+      user_id: userId,
+      kind: ev.kind,
+      severity: ev.severity,
+      t_offset_seconds: Number(ev.t.toFixed(2)),
+      duration_seconds: Number(ev.duration.toFixed(1)),
+      detail: ev.detail,
+    }));
+    const { error: eventError } = await withRetry(
+      () => supabase.from("eeg_events").insert(eventRows),
+      { shouldRetry: isTransient },
     );
     if (eventError) throw eventError;
   }
 
+  clearStagedSave();
   return session.id as string;
 }
