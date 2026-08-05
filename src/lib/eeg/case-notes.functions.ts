@@ -48,7 +48,7 @@ export interface CasePattern {
   /** Stable identity used to attach the clinician's verdict. */
   patternKey?: string;
   /** How the clinician's earlier verdicts moved this pattern's ranking. */
-  feedbackInfluence?: FeedbackInfluence;
+  feedbackInfluence?: FeedbackInfluence | undefined;
 }
 
 export interface CaseNoteInsights {
