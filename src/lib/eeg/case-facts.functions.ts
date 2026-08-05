@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normaliseFacts, type CaseFacts, type CaseFactsRecord } from "@/lib/eeg/case-facts";
+import {
+  normaliseFacts,
+  type CaseFacts,
+  type CaseFactsRecord,
+  type CaseTimelinePoint,
+} from "@/lib/eeg/case-facts";
 
 const EXTRACT_PROMPT = `You are a clinical neurophysiology research assistant. You are given anonymised cases written by an anaesthetist/intensivist who records frontal EEG (Muse 2) during general anaesthesia and ICU sedation.
 
