@@ -1,5 +1,7 @@
 import { memo } from "react";
 import { cn } from "@/lib/utils";
+import { ParameterInfo } from "@/components/monitor/ParameterInfo";
+import type { ParameterInfoKey } from "@/lib/eeg/parameter-info";
 
 /** Clinical tone shared by every metric readout in the app. */
 export type MetricTone = "default" | "caution" | "critical" | "signal";
@@ -40,6 +42,8 @@ export interface MetricCardProps {
   degraded?: boolean | undefined;
   /** Why the metric is unreliable/degraded (tooltip). */
   reliabilityReasons?: string[] | undefined;
+  /** Opens an explanation of significance, physiology and reliability. */
+  info?: ParameterInfoKey | undefined;
   /** `tile` = dashboard grid card, `bedside` = fullscreen monitor numeric. */
   size?: "tile" | "bedside";
 }
@@ -61,6 +65,7 @@ function MetricCardInner({
   unreliable,
   degraded,
   reliabilityReasons,
+  info,
   size = "tile",
 }: MetricCardProps) {
   const reasonText = reliabilityReasons?.length ? reliabilityReasons.join(" · ") : undefined;
@@ -78,6 +83,7 @@ function MetricCardInner({
       >
         <p className="flex items-center gap-1.5 text-xs tracking-[0.16em] text-muted-foreground uppercase">
           {label}
+          {info ? <ParameterInfo parameter={info} /> : null}
           {unreliable ? (
             <span className="rounded-sm bg-critical/15 px-1 py-px text-[9px] tracking-normal text-critical">
               unreliable
@@ -109,8 +115,9 @@ function MetricCardInner({
       )}
       {...(reasonText ? { title: reasonText } : {})}
     >
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
-        {label}
+      <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
+        <span className="min-w-0">{label}</span>
+        {info ? <ParameterInfo parameter={info} /> : null}
       </p>
       <p
         className={cn(
