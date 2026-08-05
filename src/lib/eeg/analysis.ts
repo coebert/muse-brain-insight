@@ -574,12 +574,7 @@ export class EegAnalyzer {
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
       suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
-      seizure: clamp01(
-        quality.score *
-          (0.3 + 0.7 * baselineMaturity) *
-          (1 - 0.6 * emgPenalty) *
-          (isSuppressed ? 0.6 : 1),
-      ),
+      seizure: seizureConfidence,
       // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
       // penalises the depth index harder than the plain spectral metrics; the
       // share of the 30 s window lost to the artefact gate matters just as much.
