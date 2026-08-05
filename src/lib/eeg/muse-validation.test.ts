@@ -4,6 +4,7 @@ import {
   DEFAULT_MUSE_PRESET,
   MUSE_PRESETS,
   parseFirmwareVersion,
+  selectBestPreset,
   validateStreamingConfig,
   type MuseCapabilities,
 } from "./muse";
@@ -91,5 +92,30 @@ describe("validateStreamingConfig", () => {
     );
     expect(result.status).toBe("blocked");
     expect(result.issues[0]?.title).toMatch(/not supported/i);
+  });
+});
+describe("selectBestPreset", () => {
+  it("keeps the recommended mode when it is compatible", () => {
+    const best = selectBestPreset(caps());
+    expect(best.preset).toBe(DEFAULT_MUSE_PRESET);
+    expect(best.deviceBlocked).toBe(false);
+    expect(best.validation.status).toBe("ok");
+  });
+
+  it("falls back to a compatible mode when the recommended one is unsupported", () => {
+    const best = selectBestPreset(
+      caps({
+        recommendedPreset: "p50",
+        presets: MUSE_PRESETS.filter((p) => p.code === "p20" || p.code === "p50"),
+      }),
+    );
+    expect(best.preset).toBe("p20");
+    expect(best.deviceBlocked).toBe(false);
+  });
+
+  it("reports a device-level block when no mode can clear validation", () => {
+    const best = selectBestPreset(caps({ firmwareVersion: "1.0.0" }));
+    expect(best.deviceBlocked).toBe(true);
+    expect(best.validation.status).toBe("blocked");
   });
 });
