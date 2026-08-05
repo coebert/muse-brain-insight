@@ -1,20 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bluetooth,
   CircleStop,
-  FlaskConical,
-  HeartPulse,
-  Info,
   Maximize2,
   Moon,
   MoreVertical,
   SignalLow,
   Sun,
-  Stethoscope,
   Save,
   Undo2,
   Volume2,
@@ -27,17 +22,15 @@ import { DsaChart, DsaLegend } from "@/components/monitor/DsaChart";
 import { MonitorErrorBoundary } from "@/components/monitor/MonitorErrorBoundary";
 import { AppNav } from "@/components/AppNav";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
-import { CaseFields } from "@/components/monitor/CaseFields";
 import { useDsaViewPreference } from "@/lib/eeg/dsa-view-pref";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
-import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
-import { interpretTciResponse, type TciResponseReport } from "@/lib/eeg/tci-response.functions";
-import { buildFeatureDigest } from "@/lib/eeg/features";
-import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
+import { CaseDialogs } from "@/components/monitor/CaseDialogs";
+import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
+import { useCaseAi } from "@/hooks/useCaseAi";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
@@ -46,18 +39,8 @@ import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -75,17 +58,23 @@ import { useSeizureRiskAlerts, type SeizureTrendAlert } from "@/hooks/useSeizure
 import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
-import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
+import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
+import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
+import {
+  MODES,
+  defaultWindowMinutes,
+  modeConfig,
+  type MonitorMode,
+} from "@/components/monitor/monitor-modes";
 import type { DetectedEvent } from "@/lib/eeg/analysis";
-import { DETECTION_PRESETS, matchPreset } from "@/lib/eeg/analysis";
+import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
-import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
-import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/eeg/depth";
+import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
-import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
@@ -96,11 +85,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
-import {
-  CHECKLIST_ITEMS,
-  PreCaseChecklist,
-  type ChecklistKey,
-} from "@/components/monitor/PreCaseChecklist";
+import { CHECKLIST_ITEMS, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
