@@ -34,8 +34,7 @@ import { useCaseAi } from "@/hooks/useCaseAi";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
-import { computeUncertainty } from "@/lib/eeg/uncertainty";
-import type { MetricTone } from "@/components/monitor/MetricCard";
+import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
@@ -59,8 +58,6 @@ import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDep
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
-import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
-import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
 import {
   MODES,
   defaultWindowMinutes,
@@ -170,28 +167,30 @@ function Monitor() {
    */
   const [dsaView, setDsaView] = useDsaViewPreference(meta.caseCode);
 
-  const { latest, summary, status } = monitor;
+  const { summary, status } = monitor;
   const streaming = status === "streaming";
   const reconnecting = status === "reconnecting";
   const caseRunning = caseState === "running";
-  const seizureAlert = latest?.seizureAlert ?? false;
-  // Confidence intervals and contributing factors behind the three headline
-  // assessments; recomputed as epochs arrive from the analyser.
-  const uncertainty = useMemo(
-    () =>
-      computeUncertainty(monitor.epochs, {
-        srWindowSeconds: monitor.settings.srWindowSeconds,
-        seizureThreshold: monitor.settings.seizureThreshold,
-      }),
-    [monitor.epochs, monitor.settings.srWindowSeconds, monitor.settings.seizureThreshold],
-  );
   const icuMode = mode === "icu";
   const activeMode = modeConfig(mode);
 
-  const allEvents = useMemo(
-    () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
-    [monitor.events, markers],
-  );
+  /**
+   * One shared clinical picture per epoch: merged event log, DSA marks,
+   * uncertainty, alarm conditions and the headline live values.
+   */
+  const derived = useClinicalDerivations({
+    epochs: monitor.epochs,
+    events: monitor.events,
+    markers,
+    hemi: monitor.hemiLatest,
+    settings: monitor.settings,
+    icuMode,
+    dataGapSeconds: monitor.dataGapSeconds,
+    reconnecting,
+    reconnectAttempt: monitor.reconnectAttempt ?? null,
+  });
+  const { latest, allEvents, uncertainty, srTone, seizureAlert } = derived;
+  const dsaMarkerRail = derived.dsaMarkers;
 
   /** AI decision support for this case (session read + TCI dose–response). */
   const ai = useCaseAi({
@@ -204,12 +203,6 @@ function Monitor() {
     modeLabel: activeMode.label,
     streaming,
   });
-
-  /** Trend alerts and clinician annotations drawn over the DSA lanes. */
-  const dsaMarkerRail = useMemo(
-    () => buildDsaMarkers(monitor.events, markers),
-    [monitor.events, markers],
-  );
 
   /** Timestamped audit entry in the session event log. */
   const audit = useCallback(
@@ -377,28 +370,9 @@ function Monitor() {
   // Derive bedside alarm conditions from the live epoch and detected events.
   useEffect(() => {
     if (!caseRunning) return;
-    alarms.sync(
-      deriveAlarmConditions({
-        latest,
-        hemi: monitor.hemiLatest,
-        icuMode,
-        bsrAlertPercent: monitor.settings.bsrAlertPercent,
-        dataGapSeconds: monitor.dataGapSeconds,
-        reconnecting,
-        reconnectAttempt: monitor.reconnectAttempt,
-      }),
-      monitor.elapsed,
-    );
+    alarms.sync(derived.alarmConditions, monitor.elapsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    latest,
-    monitor.hemiLatest,
-    caseRunning,
-    icuMode,
-    monitor.dataGapSeconds,
-    reconnecting,
-    monitor.elapsed,
-  ]);
+  }, [derived.alarmConditions, caseRunning, monitor.elapsed]);
 
   function addMarker(label: string, backdateSeconds = 0) {
     const text = label.trim();
@@ -497,21 +471,8 @@ function Monitor() {
       { label: "Markers", value: String(markers.length) },
       { label: "TCI running", value: summariseInfusions(infusions) },
     ],
-    live: {
-      depthIndex: latest?.depth.index ?? null,
-      suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
-      seizureScore: latest?.seizureScore ?? null,
-      sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
-    },
+    live: derived.live,
   };
-
-  const srTone = !latest
-    ? "default"
-    : latest.suppressionRatio >= 40
-      ? "critical"
-      : latest.suppressionRatio >= 10
-        ? "caution"
-        : "signal";
 
   async function handleSave() {
     if (!meta.caseCode.trim()) {
@@ -1061,7 +1022,7 @@ function Monitor() {
               latest={latest}
               summary={summary}
               srWindowSeconds={monitor.settings.srWindowSeconds}
-              srTone={srTone as MetricTone}
+              srTone={srTone}
               seizureAlert={seizureAlert}
               icuMode={icuMode}
               depthWindow={depthWindow}
