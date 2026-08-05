@@ -35,7 +35,6 @@ import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
 import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
-import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
