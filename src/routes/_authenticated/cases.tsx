@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Clock } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
+import { CaseFactsEditor } from "@/components/monitor/CaseFactsEditor";
 import { CaseNoteInsightsPanel } from "@/components/monitor/CaseNoteInsightsPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,6 +118,10 @@ function Cases() {
           Most recent cases first — what the incoming clinician needs to see: last depth index,
           suppression burden and alerts still needing a decision.
         </p>
+
+        <div className="mt-5">
+          <CaseFactsEditor />
+        </div>
 
         <div className="mt-5">
           <CaseNoteInsightsPanel />
