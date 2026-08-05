@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Minimize2, TriangleAlert } from "lucide-react";
+import { Minimize2, Moon, Sun, TriangleAlert } from "lucide-react";
 
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
@@ -133,6 +133,16 @@ export function FullscreenMonitor({
         >
           Signal {quality ? `${Math.round(quality.score * 100)} %` : "—"}
         </span>
+        {controls ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={controls.dim ? "Undim display" : "Dim display for theatre"}
+            onClick={() => controls.onDimChange(!controls.dim)}
+          >
+            {controls.dim ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </Button>
+        ) : null}
         <Button size="sm" variant="outline" onClick={onExit}>
           <Minimize2 className="size-4" /> Exit
         </Button>
@@ -331,6 +341,14 @@ export function FullscreenMonitor({
         <>
           <div className="h-14 shrink-0" />
           <CaseActionBar controls={controls} open={sheet} onOpenChange={setSheet} />
+          {controls.dim ? (
+            <button
+              type="button"
+              aria-label="Undim display"
+              onClick={() => controls.onDimChange(false)}
+              className="fixed inset-0 z-[60] cursor-pointer bg-black/60"
+            />
+          ) : null}
         </>
       ) : null}
     </div>
