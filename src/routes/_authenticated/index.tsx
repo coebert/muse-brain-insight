@@ -90,6 +90,7 @@ import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
 import {
   DropdownMenu,
   DropdownMenuContent,
