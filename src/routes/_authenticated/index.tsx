@@ -1081,6 +1081,15 @@ function Monitor() {
                   </div>
                 ) : null}
               </div>
+
+              {/* Contemporaneous TCI pump entry (model + effect-site targets) */}
+              <TciPanel
+                infusions={infusions}
+                onChange={setInfusions}
+                running={caseRunning}
+                elapsed={monitor.elapsed}
+                onMark={addMarker}
+              />
             </section>
 
             {/* Metrics */}
