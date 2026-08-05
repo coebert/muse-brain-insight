@@ -39,6 +39,7 @@ import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
+import { RawChannelViewer } from "@/components/monitor/RawChannelViewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -1169,6 +1170,14 @@ function Monitor() {
                     />
                   </div>
                 </div>
+
+                {/* Per-electrode raw EEG — live and scrubbable in review */}
+                <RawChannelViewer
+                  archive={monitor.rawArchive}
+                  streaming={streaming}
+                  contactOk={monitor.contactOk}
+                  channelQuality={monitor.channelQuality}
+                />
 
                 <DetectionThresholds
                   settings={monitor.settings}
