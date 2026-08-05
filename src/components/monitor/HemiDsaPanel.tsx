@@ -5,6 +5,8 @@ import { DsaChart, marginsFor, type DsaTrace } from "@/components/monitor/DsaCha
 import { Button } from "@/components/ui/button";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
 import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
+import { TciTimeline } from "@/components/monitor/TciTimeline";
+import type { TciInfusion } from "@/lib/eeg/tci";
 import {
   combineHemiSpectra,
   hemiSefTraces,
@@ -121,6 +123,8 @@ interface Props {
   elapsed: number;
   /** Tighter type scale and spacing for the bedside fullscreen monitor. */
   compact?: boolean;
+  /** TCI pumps drawn as a dosing lane on the same time axis. */
+  infusions?: TciInfusion[];
 }
 
 interface Lane {
@@ -145,6 +149,7 @@ function HemiDsaPanelInner({
   windowSeconds,
   elapsed,
   compact = false,
+  infusions = [],
 }: Props) {
   // One shared viewport across every lane so left/right stay time-aligned.
   const [view, setView] = useState<DsaViewport>({ from: windowSeconds, to: 0 });
@@ -322,6 +327,13 @@ function HemiDsaPanelInner({
         </div>
       ))}
       </div>
+      <TciTimeline
+        infusions={infusions}
+        elapsed={elapsed}
+        windowSeconds={windowSeconds}
+        view={view}
+        compact={compact}
+      />
     </div>
   );
 }
