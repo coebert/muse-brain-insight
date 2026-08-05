@@ -312,8 +312,12 @@ export class EegAnalyzer {
   }
 
   /** `window` is the most recent EPOCH_SECONDS of filtered signal, in µV. */
-  analyze(window: Float64Array, t: number): Epoch {
-    const psd = computePsd(window, this.fs);
+  /**
+   * `precomputed` lets the caller supply a spectrum it already has (e.g. from
+   * a paired FFT), avoiding a second transform of the same window.
+   */
+  analyze(window: Float64Array, t: number, precomputed?: Psd): Epoch {
+    const psd = precomputed ?? computePsd(window, this.fs);
     const spectrum: number[] = [];
     for (let k = 0; k < psd.freqs.length; k++) {
       const f = psd.freqs[k]!;
