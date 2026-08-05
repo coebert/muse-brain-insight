@@ -13,6 +13,10 @@ import {
 
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { formatClock } from "@/lib/eeg/format";
+import {
+  SeizureConfidenceChip,
+  SeizureEvidenceCard,
+} from "@/components/monitor/SeizureEvidenceCard";
 import { cn } from "@/lib/utils";
 
 const meta = {
@@ -56,12 +60,16 @@ export function EventLog({ events }: { events: DetectedEvent[] }) {
               )}
             />
             <div className="min-w-0">
-              <p className="text-sm font-medium">{isMarker ? event.detail : label}</p>
+              <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                {isMarker ? event.detail : label}
+                {event.evidence ? <SeizureConfidenceChip evidence={event.evidence} /> : null}
+              </p>
               {isMarker ? null : <p className="text-xs text-muted-foreground">{event.detail}</p>}
               <p className="metric-value mt-0.5 text-xs text-muted-foreground">
                 {formatClock(event.t)}
                 {isMarker ? " · marked by clinician" : ` · ${event.duration.toFixed(0)} s`}
               </p>
+              {event.evidence ? <SeizureEvidenceCard evidence={event.evidence} /> : null}
             </div>
           </li>
         );
