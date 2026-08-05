@@ -141,6 +141,44 @@ export type Database = {
           },
         ]
       }
+      case_note_facts: {
+        Row: {
+          confirmed: boolean
+          created_at: string
+          fields_sealed: string | null
+          id: string
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed?: boolean
+          created_at?: string
+          fields_sealed?: string | null
+          id?: string
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed?: boolean
+          created_at?: string
+          fields_sealed?: string | null
+          id?: string
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_note_facts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       depth_calibrations: {
         Row: {
           created_at: string
