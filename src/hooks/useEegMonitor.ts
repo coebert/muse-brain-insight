@@ -621,8 +621,6 @@ export function useEegMonitor() {
       const leftMetrics = left.metrics;
       const rightMetrics = right.metrics;
       const hemi: HemiSpectra = { left: left.spectrum, right: right.spectrum };
-      setHemiSpectra((prev) => compactHemi([...prev, hemi]));
-      setHemiLatest({ left: leftMetrics, right: rightMetrics });
 
       // BIS-style Signal Quality Index trend: one point per epoch, thinned
       // with the same rule as the DSA so long cases keep their full history.
@@ -635,8 +633,19 @@ export function useEegMonitor() {
         sqi: Math.min(leftSqi, rightSqi),
         emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
       };
-      setSqiHistory((prev) => compactSqi([...prev, point]));
-      if (hemiDirty) setHemiEvents(hemiEventsRef.current.map((e) => ({ ...e })));
+      dispatch({
+        type: "epoch",
+        elapsed: t,
+        epoch,
+        events: [...analyzerRef.current.events, ...manualEventsRef.current],
+        hemi,
+        hemiLatest: { left: leftMetrics, right: rightMetrics },
+        // Only republish the episode list when something visible changed.
+        hemiEvents: hemiDirty ? hemiEventsRef.current.map((e) => ({ ...e })) : null,
+        sqi: point,
+        contactOk: contact,
+        channelQuality: quality,
+      });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
@@ -644,8 +653,9 @@ export function useEegMonitor() {
   // Waveform refresh.
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting") return;
+    const store = waveformStoreRef.current;
     const id = setInterval(() => {
-      setWaveform(activeSignal(MUSE_SAMPLE_RATE * 4));
+      store.set(activeSignal(MUSE_SAMPLE_RATE * 4));
     }, 200);
     return () => clearInterval(id);
   }, [status, activeSignal]);
@@ -696,7 +706,7 @@ export function useEegMonitor() {
     sqiHistory,
     events,
     latest,
-    waveform,
+    waveformStore: waveformStoreRef.current,
     elapsed,
     contactOk,
     channelQuality,
