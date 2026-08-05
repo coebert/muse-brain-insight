@@ -459,6 +459,8 @@ export function CaseNoteInsightsPanel() {
             {result.casesAnalysed} reviewed · {new Date(result.generatedAt).toLocaleString()}
           </p>
 
+          <FeedbackImpactSummary impact={result.feedbackImpact} />
+
           {patterns.length ? (
             <div className="space-y-2">
               <h3 className="text-xs tracking-wide text-muted-foreground uppercase">
@@ -627,6 +629,7 @@ export function CaseNoteInsightsPanel() {
                     <p className="mt-1.5 text-sm">Next step: {p.suggestedAction}</p>
                   ) : null}
                   <Citations citations={p.citations} />
+                  <InfluenceNote influence={p.feedbackInfluence} strength={p.strength} />
                   {p.caseCodes?.length ? (
                     <p className="metric-value mt-1.5 text-xs text-muted-foreground">
                       Seen in {p.caseCodes.join(", ")}
