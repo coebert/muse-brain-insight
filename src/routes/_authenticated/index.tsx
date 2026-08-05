@@ -174,6 +174,9 @@ function Monitor() {
   /** One AI request at a time per panel; the watch timer must not overlap. */
   const aiInFlight = useRef(false);
   const tciInFlight = useRef(false);
+  /** Latest setter, so the start-up effect can stay a true mount-only effect. */
+  const setSettingsRef = useRef(monitor.setSettings);
+  setSettingsRef.current = monitor.setSettings;
 
   // Apply the locally saved depth calibration (if any) to the live estimator.
   useEffect(() => {
@@ -188,7 +191,7 @@ function Monitor() {
     setMode(prefs.mode);
     const cfg = MODES.find((m) => m.key === prefs.mode);
     const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
-    if (preset) monitor.setSettings({ ...preset.settings });
+    if (preset) setSettingsRef.current({ ...preset.settings });
     setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
     setMeta((prev) => ({
       ...prev,
