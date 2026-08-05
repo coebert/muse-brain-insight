@@ -235,6 +235,16 @@ function Monitor() {
   const reconnecting = status === "reconnecting";
   const caseRunning = caseState === "running";
   const seizureAlert = latest?.seizureAlert ?? false;
+  // Confidence intervals and contributing factors behind the three headline
+  // assessments; recomputed as epochs arrive from the analyser.
+  const uncertainty = useMemo(
+    () =>
+      computeUncertainty(monitor.epochs, {
+        srWindowSeconds: monitor.settings.srWindowSeconds,
+        seizureThreshold: monitor.settings.seizureThreshold,
+      }),
+    [monitor.epochs, monitor.settings.srWindowSeconds, monitor.settings.seizureThreshold],
+  );
   const icuMode = mode === "icu";
   const activeMode = MODES.find((m) => m.key === mode)!;
 
