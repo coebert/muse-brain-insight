@@ -280,6 +280,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         limitations: [],
         generatedAt: new Date().toISOString(),
         feedback,
+        feedbackImpact: countVerdicts(feedback, "", []),
       };
     }
 
@@ -329,10 +330,18 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         ...p,
         citations: Array.isArray(p?.citations) ? p.citations : [],
         patternKey: patternKey(p?.title ?? ""),
+        feedbackInfluence: normaliseInfluence(p?.feedbackInfluence),
       })),
       recordingGaps: Array.isArray(parsed.recordingGaps) ? parsed.recordingGaps : [],
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
       generatedAt: new Date().toISOString(),
       feedback,
+      feedbackImpact: countVerdicts(
+        feedback,
+        parsed.feedbackImpact?.summary ?? "",
+        Array.isArray(parsed.feedbackImpact?.suppressed)
+          ? parsed.feedbackImpact.suppressed.slice(0, 4)
+          : [],
+      ),
     };
   });
