@@ -9,6 +9,8 @@ export interface CaseStartupPrefs {
   location: string;
   /** Case code used last time, e.g. "ICU-007". */
   lastCaseCode: string;
+  /** Monitoring mode (and therefore detection preset) used last time. */
+  mode: "anaesthesia" | "icu";
 }
 
 export function loadCaseStartup(): CaseStartupPrefs | null {
@@ -21,6 +23,7 @@ export function loadCaseStartup(): CaseStartupPrefs | null {
       context: typeof parsed.context === "string" ? parsed.context : "general_anaesthesia",
       location: typeof parsed.location === "string" ? parsed.location : "",
       lastCaseCode: typeof parsed.lastCaseCode === "string" ? parsed.lastCaseCode : "",
+      mode: parsed.mode === "icu" ? "icu" : "anaesthesia",
     };
   } catch {
     return null;

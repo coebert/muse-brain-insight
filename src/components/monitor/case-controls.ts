@@ -47,10 +47,15 @@ export interface CaseControls {
     acknowledge: (id: string) => void;
     acknowledgeAll: () => void;
     acknowledgeSide: (side: AlarmSide) => void;
+    unacknowledge: (id: string) => void;
     pauseAudio: () => void;
     resumeAudio: () => void;
     setAudioEnabled: (on: boolean) => void;
   };
+
+  /** Dimmed display for darkened theatres. */
+  dim: boolean;
+  onDimChange: (next: boolean) => void;
 
   /** One-screen "what has happened so far" for handover. */
   handover: { label: string; value: string }[];

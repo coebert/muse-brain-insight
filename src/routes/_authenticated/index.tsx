@@ -10,7 +10,10 @@ import {
   HeartPulse,
   Info,
   Maximize2,
+  Moon,
+  MoreVertical,
   SignalLow,
+  Sun,
   Stethoscope,
   Save,
   Undo2,
@@ -81,8 +84,18 @@ import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
-import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
+import {
+  CHECKLIST_ITEMS,
+  PreCaseChecklist,
+  type ChecklistKey,
+} from "@/components/monitor/PreCaseChecklist";
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
@@ -170,6 +183,11 @@ function Monitor() {
   useEffect(() => {
     const prefs = loadCaseStartup();
     if (!prefs) return;
+    setMode(prefs.mode);
+    const cfg = MODES.find((m) => m.key === prefs.mode);
+    const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    if (preset) monitor.setSettings({ ...preset.settings });
+    setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
     setMeta((prev) => ({
       ...prev,
       context: prefs.context || prev.context,
@@ -190,6 +208,7 @@ function Monitor() {
   const [fullscreen, setFullscreen] = useState(false);
   const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [dim, setDim] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   /** TCI pumps running for this clinical episode (several may run at once). */
@@ -350,6 +369,7 @@ function Monitor() {
       context: meta.context,
       location: meta.location,
       lastCaseCode: meta.caseCode.trim(),
+      mode,
     });
     setMarkers([]);
     setInfusions([]);
@@ -357,10 +377,12 @@ function Monitor() {
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
-    const ticked = Object.entries(checklist)
-      .filter(([, on]) => on)
-      .map(([key]) => key);
-    if (ticked.length) audit(`Pre-case checklist: ${ticked.join(", ")}`);
+    const ticked = CHECKLIST_ITEMS.filter((item) => checklist[item.key]).map((i) => i.label);
+    audit(
+      ticked.length === CHECKLIST_ITEMS.length
+        ? "Pre-case checklist complete"
+        : `Pre-case checklist: ${ticked.length ? ticked.join("; ") : "none ticked"}`,
+    );
     await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
@@ -544,6 +566,10 @@ function Monitor() {
       acknowledge: (id) => {
         alarms.acknowledge(id);
         audit(`Alarm acknowledged (${id})`);
+        toast.success("Alarm acknowledged", {
+          duration: 10000,
+          action: { label: "Undo", onClick: () => alarms.unacknowledge(id) },
+        });
       },
       acknowledgeAll: () => {
         alarms.acknowledgeAll();
@@ -553,10 +579,13 @@ function Monitor() {
         alarms.acknowledgeSide(side);
         audit(`Alarms acknowledged (${side})`);
       },
+      unacknowledge: alarms.unacknowledge,
       pauseAudio: alarms.pauseAudio,
       resumeAudio: alarms.resumeAudio,
       setAudioEnabled: (on) => alarms.setAudioEnabled(on),
     },
+    dim,
+    onDimChange: setDim,
     handover: [
       { label: "Case time", value: formatClock(monitor.elapsed) },
       { label: "Mean SR", value: `${summary.meanSr.toFixed(0)} %` },
@@ -782,14 +811,6 @@ function Monitor() {
             {caseRunning ? (
               <>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 sm:flex-none"
-                  onClick={() => setSaveOpen(true)}
-                >
-                  <Save className="size-4" /> File now
-                </Button>
-                <Button
                   variant="destructive"
                   size="sm"
                   className="flex-1 sm:flex-none"
@@ -805,6 +826,22 @@ function Monitor() {
                 >
                   <Maximize2 className="size-4" /> Monitor view
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" aria-label="More case actions">
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
+                      <Save className="size-4" /> File now
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setDim(!dim)}>
+                      {dim ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                      {dim ? "Undim display" : "Dim for theatre"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
@@ -1635,6 +1672,15 @@ function Monitor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {dim ? (
+        <button
+          type="button"
+          aria-label="Undim display"
+          onClick={() => setDim(false)}
+          className="fixed inset-0 z-[60] cursor-pointer bg-black/60"
+        />
+      ) : null}
 
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
         <DialogContent>
