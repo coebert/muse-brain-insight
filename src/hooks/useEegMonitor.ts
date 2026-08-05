@@ -377,14 +377,8 @@ export function useEegMonitor() {
     rightAnalyzerRef.current.reset();
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
-    setEpochs([]);
-    setHemiSpectra([]);
-    setHemiLatest(null);
-    setHemiEvents([]);
-    setSqiHistory([]);
-    setEvents([]);
-    setElapsed(0);
-    setDataGapSeconds(0);
+    dispatch({ type: "reset" });
+    waveformStoreRef.current.set(new Float64Array(0));
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
     for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
@@ -393,7 +387,7 @@ export function useEegMonitor() {
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
     manualEventsRef.current = [...manualEventsRef.current, event];
-    setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
+    dispatch({ type: "events", events: [...analyzerRef.current.events, ...manualEventsRef.current] });
   }, []);
 
   const connect = useCallback(
