@@ -405,11 +405,26 @@ export function useEegMonitor() {
 
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
-      for (const c of MUSE_CHANNELS) {
-        const seg = readLast(buffersRef.current[c]!, MUSE_SAMPLE_RATE * 2);
-        const q = signalQuality(seg, computePsd(seg, MUSE_SAMPLE_RATE), MUSE_SAMPLE_RATE);
-        quality[c] = q;
-        contact[c] = !q.flat && q.grade !== "poor";
+      // Channels are rated in pairs: two real spectra come out of one complex
+      // FFT, halving the per-second transform load with identical numbers.
+      for (let i = 0; i < MUSE_CHANNELS.length; i += 2) {
+        const ca = MUSE_CHANNELS[i]!;
+        const cb = MUSE_CHANNELS[i + 1];
+        const segA = readLast(buffersRef.current[ca]!, MUSE_SAMPLE_RATE * 2);
+        if (!cb) {
+          const q = signalQuality(segA, computePsd(segA, MUSE_SAMPLE_RATE), MUSE_SAMPLE_RATE);
+          quality[ca] = q;
+          contact[ca] = !q.flat && q.grade !== "poor";
+          continue;
+        }
+        const segB = readLast(buffersRef.current[cb]!, MUSE_SAMPLE_RATE * 2);
+        const [psdA, psdB] = computePsdPair(segA, segB, MUSE_SAMPLE_RATE);
+        const qa = signalQuality(segA, psdA, MUSE_SAMPLE_RATE);
+        const qb = signalQuality(segB, psdB, MUSE_SAMPLE_RATE);
+        quality[ca] = qa;
+        quality[cb] = qb;
+        contact[ca] = !qa.flat && qa.grade !== "poor";
+        contact[cb] = !qb.flat && qb.grade !== "poor";
       }
       setContactOk(contact);
       setChannelQuality(quality);
