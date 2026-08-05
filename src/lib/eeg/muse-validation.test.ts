@@ -119,7 +119,7 @@ describe("selectBestPreset", () => {
   });
 
   it("reports a device-level block when no mode can clear validation", () => {
-    const best = selectBestPreset(caps({ firmwareVersion: "1.0.0" }));
+    const best = selectBestPreset(caps({ batteryPercent: 4 }));
     expect(best.deviceBlocked).toBe(true);
     expect(best.validation.status).toBe("blocked");
   });
