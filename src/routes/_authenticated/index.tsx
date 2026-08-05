@@ -788,10 +788,12 @@ function Monitor() {
           <>
             {/* Density spectral array */}
             <section className="panel overflow-hidden">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2.5 sm:px-4">
-                <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
-                <DsaLegend />
-                <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+              <div className="flex flex-col gap-2 border-b border-border px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:px-4">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
+                  <DsaLegend />
+                </div>
+                <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:flex sm:w-auto">
                   <Select
                     value={monitor.channel}
                     onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
@@ -822,7 +824,7 @@ function Monitor() {
                       <SelectItem value="60">60 min</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex shrink-0 rounded-md border border-border p-0.5">
+                  <div className="col-span-2 flex shrink-0 rounded-md border border-border p-0.5">
                     {(
                       [
                         { key: "bilateral", label: "Bilateral" },
@@ -836,7 +838,7 @@ function Monitor() {
                         aria-pressed={dsaView === v.key}
                         onClick={() => setDsaView(v.key)}
                         className={cn(
-                          "min-h-[36px] rounded px-3 text-xs font-medium",
+                          "min-h-[36px] flex-1 rounded px-3 text-xs font-medium sm:flex-none",
                           dsaView === v.key
                             ? "bg-secondary text-secondary-foreground"
                             : "text-muted-foreground hover:text-foreground",
@@ -859,7 +861,7 @@ function Monitor() {
                     }
                     onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
                     className={cn(
-                      "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center rounded-md border border-border",
+                      "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center justify-self-start rounded-md border border-border",
                       markerAlerts.soundEnabled
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
@@ -877,7 +879,7 @@ function Monitor() {
                         type="button"
                         aria-label="Signal quality alert threshold"
                         title={`Alert below SQI ${sqiAlerts.threshold} %`}
-                        className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="flex min-h-[36px] shrink-0 items-center justify-center gap-1.5 justify-self-end rounded-md border border-border px-2 text-xs text-muted-foreground hover:text-foreground sm:justify-self-auto"
                       >
                         <SignalLow className="h-4 w-4" />
                         <span className="metric-value">{sqiAlerts.threshold} %</span>
@@ -910,7 +912,12 @@ function Monitor() {
                   </Popover>
                 </div>
               </div>
-              <div className="relative h-[300px] bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!">
+              <div
+                className={cn(
+                  "relative bg-[rgb(8,16,34)] sm:h-[420px] md:h-[500px] short:h-[240px]!",
+                  dsaView === "bilateral" ? "h-[380px]" : "h-[260px]",
+                )}
+              >
                 <MonitorErrorBoundary label="Density spectral array">
                   <HemiDsaPanel
                     hemiSpectra={monitor.hemiSpectra}

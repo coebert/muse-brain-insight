@@ -51,9 +51,9 @@ function DsaMarkerRailInner({
             <div className={cn("h-full w-px", line[m.tone])} />
             <span
               className={cn(
-                "metric-value absolute max-w-[150px] truncate rounded px-1 py-0.5 text-xs whitespace-nowrap",
+                "metric-value absolute max-w-[110px] truncate rounded px-1 py-0.5 text-xs whitespace-nowrap sm:max-w-[150px]",
                 chip[m.tone],
-                m.top ? "top-1" : "bottom-1",
+                m.top ? "top-8" : "bottom-6",
                 left > 65 ? "right-1" : "left-1",
               )}
             >
