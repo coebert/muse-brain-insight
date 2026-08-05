@@ -62,8 +62,10 @@ export async function requestMuseDevice(): Promise<BluetoothDevice> {
       optionalServices: [MUSE_SERVICE],
     });
   } catch (error) {
-    // The user cancelling the chooser must not silently reopen it.
-    if (error instanceof DOMException && error.name === "NotFoundError") {
+    // NotFoundError covers both "nothing matched" and "user cancelled"; only
+    // retry for the former, otherwise cancelling would reopen the chooser.
+    const cancelled = /cancel/i.test((error as Error)?.message ?? "");
+    if (error instanceof DOMException && error.name === "NotFoundError" && !cancelled) {
       return await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [MUSE_SERVICE],
