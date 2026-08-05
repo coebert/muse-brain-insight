@@ -499,7 +499,11 @@ function Monitor() {
             admissionDiagnosis: meta.admissionDiagnosis,
             clinicalFeatures: meta.clinicalFeatures,
             context: meta.context,
-            notes: meta.notes,
+            // Give the interpreter the drug regimen running right now, so
+            // depth and nociception findings are read in context.
+            notes: [meta.notes, `TCI in progress — ${summariseInfusions(infusions)}`]
+              .filter(Boolean)
+              .join(" | "),
           },
           monitor.elapsed,
           activeMode.label,
@@ -531,7 +535,16 @@ function Monitor() {
         setAiLoading(false);
       }
     },
-    [user, monitor.epochs, monitor.elapsed, allEvents, meta, activeMode.label, runInterpretation],
+    [
+      user,
+      monitor.epochs,
+      monitor.elapsed,
+      allEvents,
+      meta,
+      infusions,
+      activeMode.label,
+      runInterpretation,
+    ],
   );
 
   const analyseRef = useRef(analyse);
