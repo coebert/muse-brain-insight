@@ -172,6 +172,18 @@ function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
 
+  /** Guards against state writes after the clinician navigates away mid-call. */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  /** One AI request at a time per panel; the watch timer must not overlap. */
+  const aiInFlight = useRef(false);
+  const tciInFlight = useRef(false);
+
   // Apply the locally saved depth calibration (if any) to the live estimator.
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
