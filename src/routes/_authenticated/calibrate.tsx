@@ -618,9 +618,10 @@ function Calibrate() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => void activateStored(c.id, c.params)}
+                      disabled={!c.params}
+                      onClick={() => c.params && void activateStored(c.id, c.params)}
                     >
-                      Apply
+                      {c.params ? "Apply" : "Unreadable"}
                     </Button>
                     <Button
                       size="icon"
