@@ -131,21 +131,6 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Monitor,
 });
 
-const MARKER_PRESETS = [
-  "Induction",
-  "Propofol bolus",
-  "Ketamine bolus",
-  "Rocuronium bolus",
-  "Opioid bolus",
-  "Vasopressor bolus",
-  "Laryngoscopy",
-  "Surgical incision",
-  "Facial twitching noted",
-  "Movement / artefact",
-  "Sedation hold",
-  "Emergence",
-];
-
 type MonitorMode = "anaesthesia" | "icu";
 
 const MODES: {
