@@ -72,7 +72,7 @@ export function CaseNoteInsightsPanel() {
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-xs",
-                        STRENGTH_STYLES[p.strength] ?? STRENGTH_STYLES.emerging,
+                        STRENGTH_STYLES[p.strength] ?? STRENGTH_STYLES["emerging"],
                       )}
                     >
                       {p.strength}
