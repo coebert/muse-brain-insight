@@ -1,0 +1,1 @@
+ALTER TABLE public.eeg_sessions ADD COLUMN IF NOT EXISTS case_summary text;
