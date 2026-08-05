@@ -115,7 +115,10 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       for (const row of factRows ?? []) {
         if (!row.fields_sealed) continue;
         try {
-          confirmed.set(row.session_id, normaliseFacts(JSON.parse(open(row.fields_sealed) ?? "{}")));
+          confirmed.set(
+            row.session_id,
+            normaliseFacts(JSON.parse(open(row.fields_sealed) ?? "{}")),
+          );
         } catch {
           /* skip unreadable rows */
         }

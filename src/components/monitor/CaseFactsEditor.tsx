@@ -21,11 +21,7 @@ import {
   type CaseFacts,
   type CaseFactsRecord,
 } from "@/lib/eeg/case-facts";
-import {
-  loadCaseFacts,
-  proposeCaseFacts,
-  saveCaseFacts,
-} from "@/lib/eeg/case-facts.functions";
+import { loadCaseFacts, proposeCaseFacts, saveCaseFacts } from "@/lib/eeg/case-facts.functions";
 import { cn } from "@/lib/utils";
 
 /** Chip list with add/remove, used for every list-shaped field. */
@@ -203,7 +199,11 @@ function CaseCard({
       <div className="mt-3 flex justify-end">
         <Button size="sm" className="min-h-9" disabled={saving} onClick={onSave}>
           <Check className="size-4" />
-          {saving ? "Saving…" : record.confirmed && !record.draft ? "Save changes" : "Confirm details"}
+          {saving
+            ? "Saving…"
+            : record.confirmed && !record.draft
+              ? "Save changes"
+              : "Confirm details"}
         </Button>
       </div>
     </article>
@@ -214,7 +214,11 @@ function CaseCard({
  * Review step before pattern mining: the AI proposes normalised fields from
  * each free-text case summary and the clinician corrects and confirms them.
  */
-export function CaseFactsEditor({ onConfirmedChange }: { onConfirmedChange?: (n: number) => void }) {
+export function CaseFactsEditor({
+  onConfirmedChange,
+}: {
+  onConfirmedChange?: (n: number) => void;
+}) {
   const load = useServerFn(loadCaseFacts);
   const propose = useServerFn(proposeCaseFacts);
   const save = useServerFn(saveCaseFacts);
@@ -259,7 +263,9 @@ export function CaseFactsEditor({ onConfirmedChange }: { onConfirmedChange?: (n:
           byId.has(r.sessionId) ? { ...r, facts: byId.get(r.sessionId)!, draft: true } : r,
         ),
       );
-      toast.success(`Extracted details for ${drafts.length} case${drafts.length === 1 ? "" : "s"} — check and confirm them.`);
+      toast.success(
+        `Extracted details for ${drafts.length} case${drafts.length === 1 ? "" : "s"} — check and confirm them.`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not extract details.");
     } finally {
