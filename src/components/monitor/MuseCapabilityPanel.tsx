@@ -135,8 +135,8 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
 
       {validation ? (
         validation.status === "ok" ? (
-          <p className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 p-2 text-xs text-muted-foreground">
-            <CheckCircle2 className="size-4 shrink-0 text-success" />
+          <p className="flex items-center gap-2 rounded-md border border-signal/40 bg-signal/10 p-2 text-xs text-muted-foreground">
+            <CheckCircle2 className="size-4 shrink-0 text-signal" />
             Checked against the headband: this mode delivers four electrodes at 256 Hz.
           </p>
         ) : (
