@@ -145,7 +145,10 @@ function Validate() {
     if (!table || eegCol === NONE) return [];
     const raw = readSeries(table, timeCol === NONE ? null : Number(timeCol), Number(eegCol), eegHz);
     if (raw.length < eegHz * 10) return [];
-    return depthFromSamples(raw.map((p) => p.v), eegHz);
+    return depthFromSamples(
+      raw.map((p) => p.v),
+      eegHz,
+    );
   }, [table, eegCol, timeCol, eegHz]);
 
   const sessionDepth: Point[] = useMemo(() => {
@@ -212,7 +215,7 @@ function Validate() {
       {
         fileName: fileName || "uploaded file",
         sourceLabel:
-          table && refCol !== NONE ? table.headers[Number(refCol)] ?? "reference" : "reference",
+          table && refCol !== NONE ? (table.headers[Number(refCol)] ?? "reference") : "reference",
         comparisonLabel: testLabel,
         lagSeconds: lag,
         toleranceSeconds: tolerance,
@@ -225,8 +228,7 @@ function Validate() {
 
   const cadence = testSeries.length > 1 ? medianInterval(testSeries) : 1;
   const columnOptions = table?.headers ?? [];
-  const fmt = (v: number | null, d = 2) =>
-    v === null || !Number.isFinite(v) ? "—" : v.toFixed(d);
+  const fmt = (v: number | null, d = 2) => (v === null || !Number.isFinite(v) ? "—" : v.toFixed(d));
 
   return (
     <div className="min-h-screen bg-background">
@@ -411,7 +413,9 @@ function Validate() {
                 variant="outline"
                 size="sm"
                 disabled={pairs.length < 3}
-                onClick={() => download("depth-agreement-pairs.csv", buildPairedCsv(pairs), "text/csv")}
+                onClick={() =>
+                  download("depth-agreement-pairs.csv", buildPairedCsv(pairs), "text/csv")
+                }
               >
                 Paired data (.csv)
               </Button>
@@ -432,7 +436,11 @@ function Validate() {
         {pairs.length >= 3 ? (
           <>
             <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat label="Pearson r" value={fmt(metrics.r, 3)} sub={`${metrics.n} paired samples`} />
+              <Stat
+                label="Pearson r"
+                value={fmt(metrics.r, 3)}
+                sub={`${metrics.n} paired samples`}
+              />
               <Stat label="Lin's CCC" value={fmt(metrics.ccc, 3)} sub="concordance" />
               <Stat
                 label="Bias"
@@ -527,8 +535,16 @@ function Validate() {
                       }}
                     />
                     <ReferenceLine y={metrics.bias} stroke="var(--chart-1)" />
-                    <ReferenceLine y={metrics.loaUpper} stroke="var(--chart-3)" strokeDasharray="4 4" />
-                    <ReferenceLine y={metrics.loaLower} stroke="var(--chart-3)" strokeDasharray="4 4" />
+                    <ReferenceLine
+                      y={metrics.loaUpper}
+                      stroke="var(--chart-3)"
+                      strokeDasharray="4 4"
+                    />
+                    <ReferenceLine
+                      y={metrics.loaLower}
+                      stroke="var(--chart-3)"
+                      strokeDasharray="4 4"
+                    />
                     <Scatter data={bland} fill="var(--chart-2)" isAnimationActive={false} />
                   </ScatterChart>
                 </ResponsiveContainer>

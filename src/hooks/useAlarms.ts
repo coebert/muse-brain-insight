@@ -116,10 +116,7 @@ export function useAlarms(options: { enabled: boolean; onLog?: (alarm: Alarm) =>
     return () => clearInterval(id);
   }, []);
 
-  const unacknowledged = useMemo(
-    () => alarms.filter((a) => a.acknowledgedAt == null),
-    [alarms],
-  );
+  const unacknowledged = useMemo(() => alarms.filter((a) => a.acknowledgedAt == null), [alarms]);
   const muted = muteUntil > now;
   const muteRemaining = muted ? Math.ceil((muteUntil - now) / 1000) : 0;
 

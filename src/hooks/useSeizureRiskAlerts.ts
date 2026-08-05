@@ -16,10 +16,7 @@ import {
   type SeizureTrendState,
   type SeizureTrendTrigger,
 } from "@/lib/eeg/seizure-trend";
-import {
-  assessSeizureTrend,
-  type SeizureTrendAssessment,
-} from "@/lib/eeg/seizure-trend.functions";
+import { assessSeizureTrend, type SeizureTrendAssessment } from "@/lib/eeg/seizure-trend.functions";
 
 /** One fired trend crossing, with its AI read once it arrives. */
 export interface SeizureTrendAlert {
@@ -144,9 +141,7 @@ export function useSeizureRiskAlerts({
     onAlertRef.current?.(alert);
 
     const title =
-      trigger === "sustained"
-        ? "Seizure risk above threshold"
-        : "Seizure risk rising rapidly";
+      trigger === "sustained" ? "Seizure risk above threshold" : "Seizure risk rising rapidly";
     const description =
       trigger === "sustained"
         ? `Risk ${(snapshot.risk * 100).toFixed(0)} % ≥ ${(p.riskThreshold * 100).toFixed(0)} % for ${Math.round(snapshot.aboveSeconds)} s · ${formatClock(snapshot.t)}`

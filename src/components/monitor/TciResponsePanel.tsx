@@ -88,55 +88,58 @@ export function TciResponsePanel({
               Response to each target change
             </h3>
             <ul className="mt-1.5 space-y-1.5">
-              {digest.steps.slice(-6).reverse().map((s) => (
-                <li
-                  key={`${s.drug}-${s.tSeconds}`}
-                  className="rounded-md border border-border bg-card/50 px-2.5 py-2"
-                >
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="metric-value text-muted-foreground">
-                      {formatClock(s.tSeconds)}
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {s.model} · {s.drug}
-                    </span>
-                    <span className="metric-value flex items-center gap-1 text-signal">
-                      {s.direction === "decrease" ? (
-                        <TrendingDown className="size-3.5" />
-                      ) : (
-                        <TrendingUp className="size-3.5" />
-                      )}
-                      {s.fromCe != null ? `${s.fromCe} → ` : ""}
-                      {s.toCe} {s.unit}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                    {s.deltas
-                      .filter((d) => KEY_METRICS.includes(d.metric) && d.change != null)
-                      .map((d) => (
-                        <span key={d.metric} className="metric-value text-xs">
-                          <span className="text-muted-foreground">{d.metric} </span>
-                          <span
-                            className={cn(
-                              (d.change ?? 0) > 0 ? "text-caution" : "text-signal",
-                              Math.abs(d.change ?? 0) < 0.5 && "text-muted-foreground",
-                            )}
-                          >
-                            {(d.change ?? 0) > 0 ? "+" : ""}
-                            {d.change}
+              {digest.steps
+                .slice(-6)
+                .reverse()
+                .map((s) => (
+                  <li
+                    key={`${s.drug}-${s.tSeconds}`}
+                    className="rounded-md border border-border bg-card/50 px-2.5 py-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="metric-value text-muted-foreground">
+                        {formatClock(s.tSeconds)}
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {s.model} · {s.drug}
+                      </span>
+                      <span className="metric-value flex items-center gap-1 text-signal">
+                        {s.direction === "decrease" ? (
+                          <TrendingDown className="size-3.5" />
+                        ) : (
+                          <TrendingUp className="size-3.5" />
+                        )}
+                        {s.fromCe != null ? `${s.fromCe} → ` : ""}
+                        {s.toCe} {s.unit}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {s.deltas
+                        .filter((d) => KEY_METRICS.includes(d.metric) && d.change != null)
+                        .map((d) => (
+                          <span key={d.metric} className="metric-value text-xs">
+                            <span className="text-muted-foreground">{d.metric} </span>
+                            <span
+                              className={cn(
+                                (d.change ?? 0) > 0 ? "text-caution" : "text-signal",
+                                Math.abs(d.change ?? 0) < 0.5 && "text-muted-foreground",
+                              )}
+                            >
+                              {(d.change ?? 0) > 0 ? "+" : ""}
+                              {d.change}
+                            </span>
                           </span>
-                        </span>
-                      ))}
-                  </div>
-                  {s.followedBy.length ? (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-caution">
-                      <Zap className="size-3" /> {s.followedBy.length} event
-                      {s.followedBy.length === 1 ? "" : "s"} within 4 min —{" "}
-                      {s.followedBy[0]!.detail}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
+                        ))}
+                    </div>
+                    {s.followedBy.length ? (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-caution">
+                        <Zap className="size-3" /> {s.followedBy.length} event
+                        {s.followedBy.length === 1 ? "" : "s"} within 4 min —{" "}
+                        {s.followedBy[0]!.detail}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
             </ul>
           </div>
         ) : null}

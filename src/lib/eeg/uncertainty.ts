@@ -347,7 +347,9 @@ function suppressionUncertainty(epochs: Epoch[], srWindowSeconds: number): Asses
   const caveats: string[] = [];
   if (fill < 0.6) caveats.push("Window not yet full — the ratio will settle as more EEG arrives.");
   if (amplitude < 12) {
-    caveats.push("Very low amplitude — confirm electrode contact before accepting deep suppression.");
+    caveats.push(
+      "Very low amplitude — confirm electrode contact before accepting deep suppression.",
+    );
   }
   if (rejected > window.length * 0.3) caveats.push("Heavy artefact rejection in this window.");
   caveats.push("Suppression thresholds are amplitude-based and not age- or drug-adjusted.");

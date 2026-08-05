@@ -6,7 +6,7 @@ export const startPasskeyRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { buildRegistrationOptions } = await import("./webauthn.server");
-    const email = String(context.claims['email'] ?? "");
+    const email = String(context.claims["email"] ?? "");
     if (!email) throw new Error("Account has no email address.");
     return buildRegistrationOptions(context.userId, email);
   });
@@ -16,7 +16,7 @@ export const finishPasskeyRegistration = createServerFn({ method: "POST" })
   .inputValidator((data: { response: Record<string, unknown>; label: string }) => data)
   .handler(async ({ data, context }) => {
     const { saveRegistration } = await import("./webauthn.server");
-    const email = String(context.claims['email'] ?? "");
+    const email = String(context.claims["email"] ?? "");
     return saveRegistration(context.userId, email, data.response, data.label || "This device");
   });
 

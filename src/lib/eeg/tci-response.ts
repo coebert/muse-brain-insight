@@ -198,7 +198,16 @@ export function buildTciResponseDigest(
           .filter((p): p is { x: number; y: number } => p.y != null);
         return {
           metric: m.label,
-          r: pairs.length >= 10 ? round(pearson(pairs.map((p) => p.x), pairs.map((p) => p.y)), 2) : null,
+          r:
+            pairs.length >= 10
+              ? round(
+                  pearson(
+                    pairs.map((p) => p.x),
+                    pairs.map((p) => p.y),
+                  ),
+                  2,
+                )
+              : null,
           epochs: pairs.length,
         };
       });

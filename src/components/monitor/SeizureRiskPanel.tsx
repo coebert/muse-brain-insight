@@ -40,7 +40,13 @@ function pct(v: number): string {
  * Live seizure-risk trend status, the configurable alert thresholds, and the
  * real-time AI read for each threshold crossing during the case.
  */
-export function SeizureRiskPanel({ prefs, setPrefs, trend, alerts, dismiss }: SeizureRiskPanelProps) {
+export function SeizureRiskPanel({
+  prefs,
+  setPrefs,
+  trend,
+  alerts,
+  dismiss,
+}: SeizureRiskPanelProps) {
   return (
     <div className="space-y-3">
       <Alert className={cn(STATUS_TONE[trend.status])}>
@@ -169,7 +175,9 @@ export function SeizureRiskPanel({ prefs, setPrefs, trend, alerts, dismiss }: Se
             Risk {pct(trend.risk)} · rise {trend.risePerMinute >= 0 ? "+" : ""}
             {(trend.risePerMinute * 100).toFixed(0)} %/min · {pct(trend.aboveFraction)} of window
             above threshold
-            {trend.aboveSeconds > 0 ? ` · ${formatDuration(Math.round(trend.aboveSeconds))} above` : ""}
+            {trend.aboveSeconds > 0
+              ? ` · ${formatDuration(Math.round(trend.aboveSeconds))} above`
+              : ""}
           </span>
           <span className="mt-0.5 block text-xs">
             Signal {pct(trend.quality)} · seizure-metric confidence {pct(trend.confidence)} · EMG{" "}
@@ -232,7 +240,9 @@ export function SeizureRiskPanel({ prefs, setPrefs, trend, alerts, dismiss }: Se
                             <Sparkles className="size-3.5 text-signal" aria-hidden />
                             {a.assessment.headline}
                           </p>
-                          <p className={cn("metric-value", LIKELIHOOD_TONE[a.assessment.likelihood])}>
+                          <p
+                            className={cn("metric-value", LIKELIHOOD_TONE[a.assessment.likelihood])}
+                          >
                             {a.assessment.likelihood} ictal activity · {a.assessment.confidence}{" "}
                             confidence
                           </p>

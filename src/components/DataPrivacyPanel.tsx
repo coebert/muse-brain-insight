@@ -47,8 +47,8 @@ export function DataPrivacyPanel({ onChanged }: { onChanged: () => void }) {
           <p className="mt-1 max-w-prose text-xs text-muted-foreground">
             Records are stored on encrypted-at-rest managed infrastructure, and every free-text
             field (case code, location, admission diagnosis, notes) is additionally sealed with
-            AES-256-GCM using a server-held key, so it is unreadable in the database itself.
-            Access is restricted to your signed-in account by row-level security.
+            AES-256-GCM using a server-held key, so it is unreadable in the database itself. Access
+            is restricted to your signed-in account by row-level security.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -34,10 +34,7 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
 import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
-import {
-  interpretTciResponse,
-  type TciResponseReport,
-} from "@/lib/eeg/tci-response.functions";
+import { interpretTciResponse, type TciResponseReport } from "@/lib/eeg/tci-response.functions";
 import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
@@ -74,14 +71,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
-import {
-  useSeizureRiskAlerts,
-  type SeizureTrendAlert,
-} from "@/hooks/useSeizureRiskAlerts";
-import {
-  useDepthWindowAlerts,
-  type DepthWindowTransition,
-} from "@/hooks/useDepthWindowAlerts";
+import { useSeizureRiskAlerts, type SeizureTrendAlert } from "@/hooks/useSeizureRiskAlerts";
+import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
@@ -676,7 +667,10 @@ function Monitor() {
         label: "Suppression time",
         value: formatDuration(Math.round(summary.suppressionSeconds)),
       },
-      { label: "Alerts", value: String(monitor.events.filter((e) => e.kind !== "annotation").length) },
+      {
+        label: "Alerts",
+        value: String(monitor.events.filter((e) => e.kind !== "annotation").length),
+      },
       { label: "Markers", value: String(markers.length) },
       { label: "TCI running", value: summariseInfusions(infusions) },
     ],

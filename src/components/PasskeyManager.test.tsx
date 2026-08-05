@@ -71,7 +71,12 @@ describe("PasskeyManager integration", () => {
     startRegistration.mockResolvedValue({ id: "cred-1", rawId: "cred-1" });
     finishPasskeyRegistration.mockImplementation(async () => {
       storedKeys = [
-        { id: "row-1", label: "This device", created_at: "2026-08-01T10:00:00Z", last_used_at: null },
+        {
+          id: "row-1",
+          label: "This device",
+          created_at: "2026-08-01T10:00:00Z",
+          last_used_at: null,
+        },
       ];
       return { ok: true };
     });
@@ -131,7 +136,9 @@ describe("PasskeyManager integration", () => {
     expect(toastError).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /show exact reason/i }));
-    expect(await screen.findByText(/InvalidStateError: credential already registered/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/InvalidStateError: credential already registered/),
+    ).toBeInTheDocument();
   });
 
   it("surfaces server verification failures from the finish step", async () => {

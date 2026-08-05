@@ -65,7 +65,12 @@ export function PasskeyErrorNotice({ failure, standaloneUrl, onDismiss }: Props)
             >
               {showDetail ? "Hide exact reason" : "Show exact reason"}
             </button>
-            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => void copyReason()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={() => void copyReason()}
+            >
               <Copy className="size-3" /> Copy details
             </Button>
           </div>

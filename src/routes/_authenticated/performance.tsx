@@ -26,10 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getModelPerformance,
-  type PerformanceBucket,
-} from "@/lib/eeg/model-performance.functions";
+import { getModelPerformance, type PerformanceBucket } from "@/lib/eeg/model-performance.functions";
 
 export const Route = createFileRoute("/_authenticated/performance")({
   head: () => ({
@@ -145,7 +142,12 @@ function ModelPerformancePage() {
     }
     return row;
   });
-  const modelColours = ["hsl(var(--marker))", "hsl(var(--caution))", "hsl(var(--primary))", "hsl(var(--critical))"];
+  const modelColours = [
+    "hsl(var(--marker))",
+    "hsl(var(--caution))",
+    "hsl(var(--primary))",
+    "hsl(var(--critical))",
+  ];
 
   return (
     <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
@@ -199,8 +201,8 @@ function ModelPerformancePage() {
       {data ? (
         data.overall.total === 0 ? (
           <p className="panel p-6 text-sm text-muted-foreground">
-            No graded alerts in this window. Mark AI alerts correct or incorrect, and log findings the
-            reviewer missed, to build precision and recall.
+            No graded alerts in this window. Mark AI alerts correct or incorrect, and log findings
+            the reviewer missed, to build precision and recall.
           </p>
         ) : (
           <>
@@ -215,7 +217,11 @@ function ModelPerformancePage() {
                 value={pct(data.overall.recall)}
                 hint={`${data.overall.falseNegatives} finding(s) logged as missed`}
               />
-              <Tile label="F1" value={pct(data.overall.f1)} hint="Balance of precision and recall" />
+              <Tile
+                label="F1"
+                value={pct(data.overall.f1)}
+                hint="Balance of precision and recall"
+              />
               <Tile
                 label="Calibration error"
                 value={pct(data.expectedCalibrationError)}
@@ -231,8 +237,17 @@ function ModelPerformancePage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendRows}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="period" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                    <XAxis
+                      dataKey="period"
+                      tick={{ fontSize: 11 }}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      unit="%"
+                      tick={{ fontSize: 11 }}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
                     <Tooltip
                       contentStyle={{
                         background: "hsl(var(--card))",
@@ -241,9 +256,30 @@ function ModelPerformancePage() {
                       }}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="precision" name="Precision %" stroke="hsl(var(--marker))" dot={false} connectNulls />
-                    <Line type="monotone" dataKey="recall" name="Recall %" stroke="hsl(var(--primary))" dot={false} connectNulls />
-                    <Line type="monotone" dataKey="rejection" name="Rejection %" stroke="hsl(var(--critical))" dot={false} connectNulls />
+                    <Line
+                      type="monotone"
+                      dataKey="precision"
+                      name="Precision %"
+                      stroke="hsl(var(--marker))"
+                      dot={false}
+                      connectNulls
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="recall"
+                      name="Recall %"
+                      stroke="hsl(var(--primary))"
+                      dot={false}
+                      connectNulls
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="rejection"
+                      name="Rejection %"
+                      stroke="hsl(var(--critical))"
+                      dot={false}
+                      connectNulls
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -259,14 +295,24 @@ function ModelPerformancePage() {
                   Confidence calibration
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Claimed hit rate for each stated confidence level versus what you actually confirmed.
+                  Claimed hit rate for each stated confidence level versus what you actually
+                  confirmed.
                 </p>
                 <div className="mt-3 h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={calibrationRows}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        unit="%"
+                        tick={{ fontSize: 11 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
                       <Tooltip
                         contentStyle={{
                           background: "hsl(var(--card))",
@@ -275,7 +321,11 @@ function ModelPerformancePage() {
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="Claimed" fill="hsl(var(--muted-foreground))" radius={[3, 3, 0, 0]} />
+                      <Bar
+                        dataKey="Claimed"
+                        fill="hsl(var(--muted-foreground))"
+                        radius={[3, 3, 0, 0]}
+                      />
                       <Bar dataKey="Observed" fill="hsl(var(--marker))" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -304,8 +354,17 @@ function ModelPerformancePage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={modelRows}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="period" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                      <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <XAxis
+                        dataKey="period"
+                        tick={{ fontSize: 11 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        unit="%"
+                        tick={{ fontSize: 11 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
                       <Tooltip
                         contentStyle={{
                           background: "hsl(var(--card))",
@@ -363,12 +422,16 @@ function ModelPerformancePage() {
                     {data.topRejectionReasons.map((r) => (
                       <li key={r.reason} className="flex items-baseline gap-2">
                         <span>{r.reason}</span>
-                        <span className="metric-value ml-auto text-xs text-muted-foreground">{r.count}</span>
+                        <span className="metric-value ml-auto text-xs text-muted-foreground">
+                          {r.count}
+                        </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">No rejection reasons recorded.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No rejection reasons recorded.
+                  </p>
                 )}
               </section>
               <section className="panel p-4">
@@ -391,8 +454,8 @@ function ModelPerformancePage() {
                   </ul>
                 ) : (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    None logged. Use “Report a finding the reviewer missed” on the AI review panel to
-                    start measuring recall.
+                    None logged. Use “Report a finding the reviewer missed” on the AI review panel
+                    to start measuring recall.
                   </p>
                 )}
               </section>

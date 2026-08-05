@@ -93,9 +93,7 @@ export function TciTimeline({
       className="shrink-0 border-t border-border/60 bg-card/40"
       aria-label="TCI dosing timeline"
     >
-      <div
-        className="metric-value px-2 pt-1 text-[0.65rem] tracking-[0.12em] text-muted-foreground uppercase"
-      >
+      <div className="metric-value px-2 pt-1 text-[0.65rem] tracking-[0.12em] text-muted-foreground uppercase">
         TCI dosing
       </div>
       <svg

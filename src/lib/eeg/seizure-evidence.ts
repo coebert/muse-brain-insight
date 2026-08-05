@@ -76,8 +76,7 @@ export function buildSeizureEvidence(input: SeizureEvidenceInput): SeizureEviden
     lineLength: WEIGHTS.lineLength * llScore,
     ictalBand: WEIGHTS.ictalBand * ictalScore,
   };
-  const total =
-    contributions.rhythmicity + contributions.lineLength + contributions.ictalBand || 1;
+  const total = contributions.rhythmicity + contributions.lineLength + contributions.ictalBand || 1;
 
   const features: SeizureFeatureEvidence[] = [
     {
@@ -104,8 +103,7 @@ export function buildSeizureEvidence(input: SeizureEvidenceInput): SeizureEviden
       value: `${(input.ictalFraction * 100).toFixed(0)} % of total`,
       score: ictalScore,
       share: contributions.ictalBand / total,
-      meaning:
-        "Share of power in the 3–13 Hz range where most electrographic seizures evolve.",
+      meaning: "Share of power in the 3–13 Hz range where most electrographic seizures evolve.",
     },
   ];
 

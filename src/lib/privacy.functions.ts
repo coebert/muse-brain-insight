@@ -48,7 +48,8 @@ export const exportMyData = createServerFn({ method: "POST" })
     return {
       exported_at: new Date().toISOString(),
       format: "cortextrace-export/1",
-      encryption: "Free-text fields are stored AES-256-GCM encrypted and decrypted for this export.",
+      encryption:
+        "Free-text fields are stored AES-256-GCM encrypted and decrypted for this export.",
       sessions: (sessions ?? []).map((s) => ({
         ...s,
         case_code: open(s.case_code),

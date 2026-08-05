@@ -176,8 +176,8 @@ function AuthPage() {
               />
             )}
             <p className="text-xs text-muted-foreground">
-              Biometric sign-in works once you have added a passkey from the Sessions page on
-              this device.
+              Biometric sign-in works once you have added a passkey from the Sessions page on this
+              device.
             </p>
           </div>
         </div>

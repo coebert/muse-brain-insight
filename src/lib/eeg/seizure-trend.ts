@@ -215,7 +215,9 @@ export function buildTrendDigest(options: {
   const { trend, prefs, epochs } = options;
   const recent = epochs.slice(-Math.max(4, Math.round(prefs.trendWindowSeconds / 2)));
   const mean = (pick: (e: Epoch) => number) =>
-    recent.length ? Number((recent.reduce((a, e) => a + pick(e), 0) / recent.length).toFixed(3)) : null;
+    recent.length
+      ? Number((recent.reduce((a, e) => a + pick(e), 0) / recent.length).toFixed(3))
+      : null;
   return {
     trigger: options.trigger,
     mode: options.mode,

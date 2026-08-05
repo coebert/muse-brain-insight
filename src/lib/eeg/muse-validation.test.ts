@@ -128,10 +128,7 @@ describe("validateStreamingConfig", () => {
   });
 
   it("allows the Muse S preset when the headband is a Muse S", () => {
-    const result = validateStreamingConfig(
-      caps({ model: "Muse S", presets: MUSE_PRESETS }),
-      "p50",
-    );
+    const result = validateStreamingConfig(caps({ model: "Muse S", presets: MUSE_PRESETS }), "p50");
     expect(result.status).toBe("ok");
   });
 

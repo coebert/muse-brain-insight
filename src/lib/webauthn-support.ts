@@ -154,7 +154,10 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
     };
   }
 
-  if (/NotSupportedError/i.test(name) || /not supported|no available authenticator/i.test(message)) {
+  if (
+    /NotSupportedError/i.test(name) ||
+    /not supported|no available authenticator/i.test(message)
+  ) {
     return {
       title: "No usable authenticator on this device",
       explanation:
@@ -197,7 +200,11 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
     };
   }
 
-  if (/could not be verified|not registered|does not belong|verification failed|session/i.test(message)) {
+  if (
+    /could not be verified|not registered|does not belong|verification failed|session/i.test(
+      message,
+    )
+  ) {
     return {
       title: "The server rejected the passkey",
       explanation: "The signature or account link could not be verified server-side.",

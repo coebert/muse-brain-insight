@@ -200,7 +200,9 @@ function Trends() {
       rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
     const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
     const cadence =
-      rows.length > 1 ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1)) : 1;
+      rows.length > 1
+        ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1))
+        : 1;
     const suppressedSeconds = rows.filter((r) => r.suppressed).length * cadence;
     const sr = vals("sr");
     return {
@@ -285,7 +287,12 @@ function Trends() {
           ifOverflow="extendDomain"
         />
       ) : null}
-      <ReferenceLine x={cursor} stroke="var(--chart-2)" strokeWidth={1.5} ifOverflow="extendDomain" />
+      <ReferenceLine
+        x={cursor}
+        stroke="var(--chart-2)"
+        strokeWidth={1.5}
+        ifOverflow="extendDomain"
+      />
     </>
   );
 
@@ -500,7 +507,6 @@ function Trends() {
 
             <div className="mt-4">
               <TimelineScrubber
-
                 durationSeconds={summary.duration}
                 cursor={cursor}
                 onCursorChange={setCursor}
@@ -642,7 +648,10 @@ function Trends() {
                 </ResponsiveContainer>
               </TrendPanel>
 
-              <TrendPanel title="Entropy ×100 and seizure score" hint="seizure score on 0–1 scale ×100">
+              <TrendPanel
+                title="Entropy ×100 and seizure score"
+                hint="seizure score on 0–1 scale ×100"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
