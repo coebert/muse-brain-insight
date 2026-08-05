@@ -115,6 +115,7 @@ export function CaseActionBar({
               </SheetHeader>
               <MarkSheet
                 elapsed={controls.elapsed}
+                mode={controls.mode}
                 onMark={controls.onMark}
                 onDone={() => setSheet(null)}
               />
