@@ -223,7 +223,48 @@ function HemiDsaPanelInner({
   }, [hemiSpectra, hemiLatest, dsaView, compact]);
 
   return (
-    <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Zoom / pan toolbar — shared by every lane so context is never lost. */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-0.5">
+        <span className="metric-value text-xs text-muted-foreground">
+          {zoomed
+            ? `-${Math.round(view.from)}s → -${Math.round(view.to)}s`
+            : `Last ${Math.round(windowSeconds)}s · live`}
+        </span>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Zoom out DSA"
+            disabled={!zoomed}
+            onClick={() => zoomBy(1.6)}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Zoom in DSA"
+            disabled={span <= MIN_SPAN_SECONDS}
+            onClick={() => zoomBy(1 / 1.6)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Reset DSA zoom to live view"
+            disabled={!zoomed && view.to === 0}
+            onClick={() => setView({ from: windowSeconds, to: 0 })}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <div className={cn("grid min-h-0 flex-1", dsaView === "bilateral" && "grid-rows-2")}>
       {lanes.map((lane) => (
         <div
           key={lane.key}
@@ -241,8 +282,13 @@ function HemiDsaPanelInner({
             </span>
             <HemiQualityBadge metrics={lane.metrics} compact className="ml-auto shrink-0" />
           </div>
-          <div className="relative min-h-0 flex-1">
-            <DsaChart frames={lane.frames} windowSeconds={windowSeconds} traces={lane.traces} />
+          <LaneInteract view={view} windowSeconds={windowSeconds} onChange={setView}>
+            <DsaChart
+              frames={lane.frames}
+              windowSeconds={windowSeconds}
+              traces={lane.traces}
+              view={view}
+            />
           {dsaView === "overlay" ? (
             <div
               className={cn(
@@ -270,10 +316,12 @@ function HemiDsaPanelInner({
             elapsed={elapsed}
             windowSeconds={windowSeconds}
             compact={compact}
+            view={view}
           />
-          </div>
+          </LaneInteract>
         </div>
       ))}
+      </div>
     </div>
   );
 }
