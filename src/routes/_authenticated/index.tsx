@@ -79,6 +79,8 @@ import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
+import { TciPanel } from "@/components/monitor/TciPanel";
+import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
 
@@ -170,6 +172,8 @@ function Monitor() {
   const [fullscreen, setFullscreen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
+  /** TCI pumps running for this clinical episode (several may run at once). */
+  const [infusions, setInfusions] = useState<TciInfusion[]>([]);
   const [markerText, setMarkerText] = useState("");
   const [aiResult, setAiResult] = useState<Interpretation | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -323,6 +327,7 @@ function Monitor() {
     }
     setCaseOpen(false);
     setMarkers([]);
+    setInfusions([]);
     alarms.clearAll();
     setAiResult(null);
     seenAlertIds.current.clear();
@@ -495,7 +500,11 @@ function Monitor() {
             admissionDiagnosis: meta.admissionDiagnosis,
             clinicalFeatures: meta.clinicalFeatures,
             context: meta.context,
-            notes: meta.notes,
+            // Give the interpreter the drug regimen running right now, so
+            // depth and nociception findings are read in context.
+            notes: [meta.notes, `TCI in progress — ${summariseInfusions(infusions)}`]
+              .filter(Boolean)
+              .join(" | "),
           },
           monitor.elapsed,
           activeMode.label,
@@ -527,7 +536,16 @@ function Monitor() {
         setAiLoading(false);
       }
     },
-    [user, monitor.epochs, monitor.elapsed, allEvents, meta, activeMode.label, runInterpretation],
+    [
+      user,
+      monitor.epochs,
+      monitor.elapsed,
+      allEvents,
+      meta,
+      infusions,
+      activeMode.label,
+      runInterpretation,
+    ],
   );
 
   const analyseRef = useRef(analyse);
@@ -1063,6 +1081,15 @@ function Monitor() {
                   </div>
                 ) : null}
               </div>
+
+              {/* Contemporaneous TCI pump entry (model + effect-site targets) */}
+              <TciPanel
+                infusions={infusions}
+                onChange={setInfusions}
+                running={caseRunning}
+                elapsed={monitor.elapsed}
+                onMark={addMarker}
+              />
             </section>
 
             {/* Metrics */}
