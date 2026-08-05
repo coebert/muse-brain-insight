@@ -8,6 +8,8 @@ export interface SessionMeta {
   context: string;
   location: string;
   notes: string;
+  /** Free-text clinical summary written by the clinician. */
+  caseSummary: string;
   deviceName: string;
   /** Age in whole years; ages ≥ 90 are stored as a band only. */
   ageYears: string;
@@ -78,10 +80,12 @@ export async function saveSession(
         meta.location || null,
         meta.notes || null,
         meta.admissionDiagnosis.trim() || null,
+        meta.caseSummary.trim() || null,
       ],
     },
   });
-  const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis] = sealed as (string | null)[];
+  const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis, sealedSummary] =
+    sealed as (string | null)[];
 
   const session = await write(() =>
     supabase
@@ -92,6 +96,7 @@ export async function saveSession(
         context: meta.context,
         location: sealedLocation ?? null,
         notes: sealedNotes ?? null,
+        case_summary: sealedSummary ?? null,
         device_name: meta.deviceName || null,
         age_years: (() => {
           const n = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);

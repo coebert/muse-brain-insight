@@ -4,6 +4,8 @@ export interface CaseMeta {
   context: string;
   location: string;
   notes: string;
+  /** Free-text clinical summary of the case, mined by the AI for patterns. */
+  caseSummary: string;
   ageYears: string;
   sex: string;
   admissionDiagnosis: string;
@@ -15,6 +17,7 @@ export const EMPTY_CASE_META: CaseMeta = {
   context: "general_anaesthesia",
   location: "",
   notes: "",
+  caseSummary: "",
   ageYears: "",
   sex: "",
   admissionDiagnosis: "",

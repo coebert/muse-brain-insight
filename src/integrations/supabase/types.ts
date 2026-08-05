@@ -342,6 +342,7 @@ export type Database = {
           age_band: string | null
           age_years: number | null
           case_code: string
+          case_summary: string | null
           clinical_features: string[]
           context: string
           created_at: string
@@ -364,6 +365,7 @@ export type Database = {
           age_band?: string | null
           age_years?: number | null
           case_code: string
+          case_summary?: string | null
           clinical_features?: string[]
           context?: string
           created_at?: string
@@ -386,6 +388,7 @@ export type Database = {
           age_band?: string | null
           age_years?: number | null
           case_code?: string
+          case_summary?: string | null
           clinical_features?: string[]
           context?: string
           created_at?: string

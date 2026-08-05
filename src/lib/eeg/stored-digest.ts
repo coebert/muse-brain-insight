@@ -31,6 +31,8 @@ export interface StoredSessionMeta {
   admissionDiagnosis: string | null;
   clinicalFeatures: string[];
   notes: string | null;
+  /** Clinician's free-text case summary, if one was written. */
+  caseSummary?: string | null;
   durationSeconds: number;
 }
 
@@ -173,6 +175,7 @@ export function buildStoredDigest(
       clinicalFeatures: meta.clinicalFeatures,
       clinicalContext: meta.context,
       notes: meta.notes,
+      caseSummary: meta.caseSummary ?? null,
     },
     suppression: {
       meanRatioPct: round(mean(srVals), 1),
