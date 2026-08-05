@@ -105,6 +105,53 @@ export interface TciInfusion {
   stoppedAt: number | null;
   /** Case-clock time of the most recent Ce change, if any. */
   lastChangeAt?: number;
+  /**
+   * Every target the pump has held, oldest first, so the timeline overlay can
+   * draw the dosing history against the EEG rather than only the latest value.
+   */
+  history?: TciCePoint[];
+}
+
+/** A target set held from `at` (case-clock seconds) until the next point. */
+export interface TciCePoint {
+  at: number;
+  targets: Record<string, number>;
+}
+
+/** Distinct lane colours so each drug is recognisable on the overlay. */
+export const TCI_DRUG_COLORS: Record<TciDrugKey, string> = {
+  propofol: "rgb(120,220,180)",
+  alfentanil: "rgb(255,176,64)",
+  ketamine: "rgb(200,150,255)",
+  remifentanil: "rgb(96,208,255)",
+};
+
+/**
+ * Step history for one drug: the value held from each point onward. Falls back
+ * to a single point at the start time for infusions recorded before history
+ * tracking existed.
+ */
+export function ceHistory(
+  infusion: TciInfusion,
+  drug: TciDrugKey | string,
+): { at: number; value: number }[] {
+  const points =
+    infusion.history && infusion.history.length > 0
+      ? infusion.history
+      : [{ at: infusion.startedAt, targets: infusion.targets }];
+  const out: { at: number; value: number }[] = [];
+  for (const p of points) {
+    const value = p.targets[drug] ?? 0;
+    if (out.length && out[out.length - 1]!.value === value) continue;
+    out.push({ at: p.at, value });
+  }
+  return out;
+}
+
+/** Append a target set to the infusion's dosing history. */
+export function withCePoint(infusion: TciInfusion, at: number): TciInfusion {
+  const history = [...(infusion.history ?? []), { at, targets: { ...infusion.targets } }];
+  return { ...infusion, history };
 }
 
 export function formatCe(value: number, drug: TciDrugSpec): string {
