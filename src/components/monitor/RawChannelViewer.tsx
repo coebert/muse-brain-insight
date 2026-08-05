@@ -1,7 +1,15 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Pause, Play, Rewind } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
 import type { SignalQuality } from "@/lib/eeg/dsp";
@@ -33,6 +41,37 @@ export interface RawChannelViewerProps {
 function annotationChannel(detail: string): MuseChannel | null {
   const match = /^(TP9|AF7|AF8|TP10)\s·\s/.exec(detail);
   return match ? (match[1] as MuseChannel) : null;
+}
+
+/** Annotation pins for one electrode, positioned within the visible window. */
+function ChannelNotes({
+  notes,
+  from,
+  to,
+}: {
+  notes: { t: number; text: string }[];
+  from: number;
+  to: number;
+}) {
+  const span = Math.max(0.001, to - from);
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {notes
+        .filter((n) => n.t >= from && n.t <= to)
+        .map((n, i) => (
+          <div
+            key={`${n.t}-${i}`}
+            className="absolute inset-y-0 border-l border-dashed border-primary/80"
+            style={{ left: `${((n.t - from) / span) * 100}%` }}
+            title={`${n.text} · ${formatClock(n.t)}`}
+          >
+            <span className="absolute bottom-0.5 left-0.5 max-w-[140px] truncate rounded bg-primary/20 px-1 text-[9px] text-primary">
+              {n.text}
+            </span>
+          </div>
+        ))}
+    </div>
+  );
 }
 
 /** A detection shaded over the raw traces. */
