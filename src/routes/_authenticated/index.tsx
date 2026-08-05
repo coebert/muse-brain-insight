@@ -78,6 +78,7 @@ import { DEPTH_STATE_LABEL, depthTone, setActiveDepthCalibration } from "@/lib/e
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
+import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
 
@@ -312,7 +313,10 @@ function Monitor() {
     if (caseRunning) audit(description);
   }
 
-  async function startCase(kind: "muse" | "simulated") {
+  async function startCase(
+    kind: "muse" | "simulated",
+    options?: { device?: BluetoothDevice; preset?: string },
+  ) {
     if (!meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
       return;
@@ -323,7 +327,10 @@ function Monitor() {
     setAiResult(null);
     seenAlertIds.current.clear();
     setCaseState("running");
-    await monitor.connect(kind);
+    await monitor.connect(kind, {
+      ...(options?.device ? { device: options.device } : {}),
+      ...(options?.preset ? { preset: options.preset } : {}),
+    });
   }
 
   function endCase(fileNow: boolean) {
@@ -1420,12 +1427,21 @@ function Monitor() {
               Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
             </p>
           )}
+          {bleSupported ? (
+            <MuseCapabilityPanel
+              onConfirm={(device, preset) => void startCase("muse", { device, preset })}
+            />
+          ) : null}
           <DialogFooter className="gap-2">
             <Button variant="secondary" onClick={() => void startCase("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
             </Button>
-            <Button disabled={!bleSupported} onClick={() => void startCase("muse")}>
-              <Bluetooth className="size-4" /> Connect Muse 2
+            <Button
+              variant="outline"
+              disabled={!bleSupported}
+              onClick={() => void startCase("muse")}
+            >
+              <Bluetooth className="size-4" /> Skip detection
             </Button>
           </DialogFooter>
         </DialogContent>
