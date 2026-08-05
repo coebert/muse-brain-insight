@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Minus, Plus, Syringe, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,16 @@ export function TciPanel({
 }) {
   const [pick, setPick] = useState<string>(TCI_MODELS[0]?.key ?? "eleveld_propofol");
 
+  /** Every pump change is undoable for 10 s — fat fingers happen at induction. */
+  function commit(next: TciInfusion[], message: string) {
+    const before = infusions;
+    onChange(next);
+    toast.success(message, {
+      duration: 10000,
+      action: { label: "Undo", onClick: () => onChange(before) },
+    });
+  }
+
   const live = infusions.filter((i) => i.stoppedAt === null);
 
   function startInfusion() {
@@ -57,7 +68,7 @@ export function TciPanel({
       startedAt: elapsed,
       stoppedAt: null,
     };
-    onChange([...infusions, infusion]);
+    commit([...infusions, infusion], `${model.short} started`);
     onMark(`TCI start — ${model.short}: Ce ${describeTargets(model, targets)}`);
   }
 
@@ -67,12 +78,13 @@ export function TciPanel({
     const value = clampCe(next, drug);
     const prev = infusion.targets[drug.key] ?? 0;
     if (value === prev) return;
-    onChange(
+    commit(
       infusions.map((i) =>
         i.id === infusion.id
           ? { ...i, targets: { ...i.targets, [drug.key]: value }, lastChangeAt: elapsed }
           : i,
       ),
+      `${model.short} ${drug.label} ${formatCe(value, drug)}`,
     );
     onMark(
       `TCI ${model.short} — ${drug.label} Ce ${formatCe(prev, drug)} → ${formatCe(value, drug)}`,
@@ -81,7 +93,10 @@ export function TciPanel({
 
   function stopInfusion(infusion: TciInfusion) {
     const model = tciModel(infusion.modelKey);
-    onChange(infusions.map((i) => (i.id === infusion.id ? { ...i, stoppedAt: elapsed } : i)));
+    commit(
+      infusions.map((i) => (i.id === infusion.id ? { ...i, stoppedAt: elapsed } : i)),
+      `${model?.short ?? "Pump"} stopped`,
+    );
     if (model) onMark(`TCI stop — ${model.short}`);
   }
 
@@ -169,6 +184,9 @@ function InfusionCard({
         <span className="text-xs font-semibold text-foreground">{model.label}</span>
         <span className="metric-value text-xs text-muted-foreground">
           from {formatClock(infusion.startedAt)}
+          {infusion.lastChangeAt != null
+            ? ` · last change ${formatClock(infusion.lastChangeAt)}`
+            : ""}
         </span>
         <button
           type="button"
