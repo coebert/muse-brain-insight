@@ -519,8 +519,7 @@ export class EegAnalyzer {
     const srFill = clamp01(
       this.suppressionHistory.length / Math.max(1, this.settings.srWindowSeconds / HOP_SECONDS),
     );
-    const baselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
-    const emgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const emgPenalty = seizureEmgPenalty;
     // Depth-specific preprocessing: repair bounded ocular/movement transients,
     // reject EMG-, spike- and saturation-contaminated epochs outright.
     const prep = this.depthGate.evaluate(window, psd, this.fs, quality.score);
