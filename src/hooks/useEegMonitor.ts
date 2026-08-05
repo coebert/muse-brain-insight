@@ -387,7 +387,10 @@ export function useEegMonitor() {
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
     manualEventsRef.current = [...manualEventsRef.current, event];
-    dispatch({ type: "events", events: [...analyzerRef.current.events, ...manualEventsRef.current] });
+    dispatch({
+      type: "events",
+      events: [...analyzerRef.current.events, ...manualEventsRef.current],
+    });
   }, []);
 
   const connect = useCallback(
