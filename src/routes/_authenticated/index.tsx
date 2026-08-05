@@ -696,8 +696,8 @@ function Monitor() {
 
   /** Ce steps and whole-case dose–response, recomputed as the EEG accrues. */
   const tciDigest = useMemo(
-    () => buildTciResponseDigest(infusions, monitor.epochs, allEvents),
-    [infusions, monitor.epochs, allEvents],
+    () => buildTciResponseDigest(monitor.epochs, allEvents, infusions, monitor.elapsed),
+    [infusions, monitor.epochs, allEvents, monitor.elapsed],
   );
 
   const runTciInterpretation = useServerFn(interpretTciResponse);
