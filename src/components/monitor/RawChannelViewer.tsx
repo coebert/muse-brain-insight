@@ -215,6 +215,8 @@ export function RawChannelViewer({
   channelQuality,
   epochs = [],
   events = [],
+  markers = [],
+  onAnnotateChannel,
 }: RawChannelViewerProps) {
   const [live, setLive] = useState(true);
   const [windowSeconds, setWindowSeconds] = useState<number>(10);
@@ -222,6 +224,9 @@ export function RawChannelViewer({
   /** Left edge of the review window, seconds from session start. */
   const [cursor, setCursor] = useState(0);
   const [tick, setTick] = useState(0);
+  /** Electrode + session time the clinician clicked, awaiting a label. */
+  const [pending, setPending] = useState<{ channel: MuseChannel; t: number } | null>(null);
+  const [draft, setDraft] = useState("");
 
   // Redraw at 5 Hz while live; while reviewing the picture is static.
   useEffect(() => {
@@ -291,6 +296,34 @@ export function RawChannelViewer({
   }, [epochs, events]);
 
   const visible = detections.filter((d) => d.to > traces.from && d.from < traces.to);
+
+  // Annotations placed on a specific electrode, grouped per channel.
+  const channelNotes = useMemo(() => {
+    const byChannel = new Map<MuseChannel, { t: number; text: string }[]>();
+    for (const m of markers) {
+      const channel = annotationChannel(m.detail);
+      if (!channel) continue;
+      const list = byChannel.get(channel) ?? [];
+      list.push({ t: m.t, text: m.detail.replace(/^\S+\s·\s/, "") });
+      byChannel.set(channel, list);
+    }
+    return byChannel;
+  }, [markers]);
+
+  /** Turn a click on a lane into a session time within the visible window. */
+  function laneTime(event: ReactMouseEvent<HTMLDivElement>): number {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const frac = rect.width ? (event.clientX - rect.left) / rect.width : 0;
+    return traces.from + Math.max(0, Math.min(1, frac)) * (traces.to - traces.from);
+  }
+
+  function commitAnnotation() {
+    if (!pending) return;
+    const text = draft.trim();
+    if (text && onAnnotateChannel) onAnnotateChannel(pending.channel, pending.t, text);
+    setPending(null);
+    setDraft("");
+  }
 
   return (
     <div className="panel overflow-hidden">
@@ -389,7 +422,18 @@ export function RawChannelViewer({
                 ) : null}
               </div>
               <div className="h-[72px] min-w-0 flex-1 bg-[rgb(8,16,34)]">
-                <div className="relative h-full w-full">
+                <div
+                  className={cn("relative h-full w-full", onAnnotateChannel && "cursor-crosshair")}
+                  onClick={
+                    onAnnotateChannel
+                      ? (e) => {
+                          setPending({ channel, t: laneTime(e) });
+                          setDraft("");
+                        }
+                      : undefined
+                  }
+                  title={onAnnotateChannel ? `Click to annotate ${channel}` : undefined}
+                >
                   <ChannelTrace data={samples} gainUv={gainUv} side={SIDE_OF[channel]} />
                   <DetectionBands
                     overlays={visible}
@@ -397,12 +441,61 @@ export function RawChannelViewer({
                     to={traces.to}
                     showLabels={channel === MUSE_CHANNELS[0]}
                   />
+                  <ChannelNotes
+                    notes={channelNotes.get(channel) ?? []}
+                    from={traces.from}
+                    to={traces.to}
+                  />
+                  {pending?.channel === channel ? (
+                    <div
+                      className="pointer-events-none absolute inset-y-0 w-px bg-primary"
+                      style={{
+                        left: `${((pending.t - traces.from) / Math.max(0.001, traces.to - traces.from)) * 100}%`,
+                      }}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {pending ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 sm:px-4">
+          <span className="metric-value text-xs font-semibold">
+            {pending.channel} · {formatClock(pending.t)}
+          </span>
+          <Input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitAnnotation();
+              if (e.key === "Escape") setPending(null);
+            }}
+            placeholder="Annotation (e.g. electrode lifted, facial twitching)"
+            className="h-9 min-w-[180px] flex-1 text-xs"
+            aria-label={`Annotation for ${pending.channel}`}
+          />
+          <Button size="sm" className="min-h-9 text-xs" onClick={commitAnnotation}>
+            Save
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-9 text-xs"
+            onClick={() => setPending(null)}
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : onAnnotateChannel ? (
+        <p className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground sm:px-4">
+          Click any trace to place a timestamped annotation on that electrode — saved with the
+          session.
+        </p>
+      ) : null}
 
       {/* Whole-session detection ribbon — where the current window sits. */}
       {span > 0.5 ? (
