@@ -11,6 +11,8 @@ interface Props {
   elapsed: number;
   windowSeconds: number;
   compact?: boolean;
+  /** Visible slice in seconds-ago at each edge; defaults to the full window. */
+  view?: { from: number; to: number } | undefined;
 }
 
 const SIDE_LABEL: Record<HemiSide, string> = { left: "L", right: "R" };
@@ -23,10 +25,17 @@ const HIGH_EMG = 50;
  * Burst-suppression and seizure episodes drawn over one hemisphere's DSA lane,
  * time-aligned with the heat map and hoverable for detail.
  */
-function HemiEventOverlayInner({ events, side, elapsed, windowSeconds, compact }: Props) {
+function HemiEventOverlayInner({ events, side, elapsed, windowSeconds, compact, view }: Props) {
+  const from = view ? view.from : windowSeconds;
+  const to = view ? view.to : 0;
+  const span = Math.max(1e-6, from - to);
+  /** 0..1 across the plot for a given age in seconds. */
+  const fracFor = (age: number) => (from - age) / span;
   const visible = events.filter((e) => {
     if (side !== "both" && e.side !== side) return false;
-    return elapsed - (e.t + e.duration) < windowSeconds;
+    const startAge = elapsed - e.t;
+    const endAge = Math.max(elapsed - (e.t + e.duration), 0);
+    return endAge < from && startAge > to;
   });
   if (!visible.length) return null;
 
@@ -35,8 +44,8 @@ function HemiEventOverlayInner({ events, side, elapsed, windowSeconds, compact }
       {visible.map((e, i) => {
         const startAge = elapsed - e.t;
         const endAge = Math.max(elapsed - (e.t + e.duration), 0);
-        const left = Math.max((1 - startAge / windowSeconds) * 100, 0);
-        const right = (1 - endAge / windowSeconds) * 100;
+        const left = Math.max(fracFor(startAge) * 100, 0);
+        const right = Math.min(fracFor(endAge) * 100, 100);
         const width = Math.max(right - left, 0.6);
         const seizure = e.kind === "seizure";
         const label = seizure ? "Seizure" : "Burst supp.";

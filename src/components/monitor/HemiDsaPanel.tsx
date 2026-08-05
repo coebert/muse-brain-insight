@@ -1,6 +1,8 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Maximize2, Minus, Plus } from "lucide-react";
 
-import { DsaChart, type DsaTrace } from "@/components/monitor/DsaChart";
+import { DsaChart, marginsFor, type DsaTrace } from "@/components/monitor/DsaChart";
+import { Button } from "@/components/ui/button";
 import { HemiQualityBadge } from "@/components/monitor/HemiQualityBadge";
 import { HemiEventOverlay } from "@/components/monitor/HemiEventOverlay";
 import {
@@ -17,6 +19,98 @@ import { cn } from "@/lib/utils";
 
 export const LEFT_TRACE_COLOR = "rgb(96,208,255)";
 export const RIGHT_TRACE_COLOR = "rgb(255,176,64)";
+
+/** Shortest inspectable slice; below this the heat map has no useful detail. */
+const MIN_SPAN_SECONDS = 10;
+
+interface DsaViewport {
+  /** Seconds-ago at the left (older) edge. */
+  from: number;
+  /** Seconds-ago at the right (newer) edge. */
+  to: number;
+}
+
+/**
+ * Wheel/pinch zoom and drag pan over one lane, anchored on the cursor so the
+ * epoch under the pointer stays put. Wheel must be a native non-passive
+ * listener — React's onWheel is passive and cannot preventDefault.
+ */
+function LaneInteract({
+  view,
+  windowSeconds,
+  onChange,
+  children,
+}: {
+  view: DsaViewport;
+  windowSeconds: number;
+  onChange: (next: DsaViewport) => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const latest = useRef({ view, windowSeconds, onChange });
+  latest.current = { view, windowSeconds, onChange };
+  const drag = useRef<{ x: number; from: number; to: number } | null>(null);
+
+  /** Plot geometry in CSS px, matching the canvas margins. */
+  const plotOf = (el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    const m = marginsFor(rect.width, rect.height);
+    return { left: rect.left + m.left, w: Math.max(1, rect.width - m.left - m.right) };
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const { view: v, windowSeconds: ws, onChange: cb } = latest.current;
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      const span = v.from - v.to;
+      const next = Math.min(ws, Math.max(MIN_SPAN_SECONDS, span * Math.exp(dy * 0.0015)));
+      const { left, w } = plotOf(el);
+      const frac = Math.max(0, Math.min(1, (e.clientX - left) / w));
+      // Keep the age under the cursor fixed while the span changes.
+      const anchor = v.from - frac * span;
+      let to = anchor - (1 - frac) * next;
+      to = Math.max(0, Math.min(ws - next, to));
+      cb({ from: to + next, to });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const span = view.from - view.to;
+  const zoomed = span < windowSeconds - 0.5;
+
+  return (
+    <div
+      ref={ref}
+      className={cn("relative min-h-0 flex-1", zoomed && "cursor-grab active:cursor-grabbing")}
+      style={zoomed ? { touchAction: "none" } : undefined}
+      onPointerDown={(e) => {
+        if (!zoomed) return;
+        drag.current = { x: e.clientX, from: view.from, to: view.to };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d) return;
+        const { w } = plotOf(e.currentTarget);
+        const dAge = ((e.clientX - d.x) / w) * span;
+        const to = Math.max(0, Math.min(windowSeconds - span, d.to + dAge));
+        onChange({ from: to + span, to });
+      }}
+      onPointerUp={() => {
+        drag.current = null;
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface Props {
   hemiSpectra: HemiSpectra[];
@@ -52,6 +146,31 @@ function HemiDsaPanelInner({
   elapsed,
   compact = false,
 }: Props) {
+  // One shared viewport across every lane so left/right stay time-aligned.
+  const [view, setView] = useState<DsaViewport>({ from: windowSeconds, to: 0 });
+  useEffect(() => {
+    setView((v) => {
+      const s = Math.min(windowSeconds, Math.max(MIN_SPAN_SECONDS, v.from - v.to));
+      const to = Math.max(0, Math.min(windowSeconds - s, v.to));
+      return { from: to + s, to };
+    });
+  }, [windowSeconds]);
+
+  const span = view.from - view.to;
+  const zoomed = span < windowSeconds - 0.5;
+  const zoomBy = useCallback(
+    (factor: number) => {
+      setView((v) => {
+        const cur = v.from - v.to;
+        const next = Math.min(windowSeconds, Math.max(MIN_SPAN_SECONDS, cur * factor));
+        const centre = (v.from + v.to) / 2;
+        const to = Math.max(0, Math.min(windowSeconds - next, centre - next / 2));
+        return { from: to + next, to };
+      });
+    },
+    [windowSeconds],
+  );
+
   const lanes = useMemo<Lane[]>(() => {
     if (dsaView === "bilateral") {
       return [
@@ -104,7 +223,48 @@ function HemiDsaPanelInner({
   }, [hemiSpectra, hemiLatest, dsaView, compact]);
 
   return (
-    <div className={cn("grid h-full", dsaView === "bilateral" && "grid-rows-2")}>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Zoom / pan toolbar — shared by every lane so context is never lost. */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-0.5">
+        <span className="metric-value text-xs text-muted-foreground">
+          {zoomed
+            ? `-${Math.round(view.from)}s → -${Math.round(view.to)}s`
+            : `Last ${Math.round(windowSeconds)}s · live`}
+        </span>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Zoom out DSA"
+            disabled={!zoomed}
+            onClick={() => zoomBy(1.6)}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Zoom in DSA"
+            disabled={span <= MIN_SPAN_SECONDS}
+            onClick={() => zoomBy(1 / 1.6)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Reset DSA zoom to live view"
+            disabled={!zoomed && view.to === 0}
+            onClick={() => setView({ from: windowSeconds, to: 0 })}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <div className={cn("grid min-h-0 flex-1", dsaView === "bilateral" && "grid-rows-2")}>
       {lanes.map((lane) => (
         <div
           key={lane.key}
@@ -122,8 +282,13 @@ function HemiDsaPanelInner({
             </span>
             <HemiQualityBadge metrics={lane.metrics} compact className="ml-auto shrink-0" />
           </div>
-          <div className="relative min-h-0 flex-1">
-            <DsaChart frames={lane.frames} windowSeconds={windowSeconds} traces={lane.traces} />
+          <LaneInteract view={view} windowSeconds={windowSeconds} onChange={setView}>
+            <DsaChart
+              frames={lane.frames}
+              windowSeconds={windowSeconds}
+              traces={lane.traces}
+              view={view}
+            />
           {dsaView === "overlay" ? (
             <div
               className={cn(
@@ -151,10 +316,12 @@ function HemiDsaPanelInner({
             elapsed={elapsed}
             windowSeconds={windowSeconds}
             compact={compact}
+            view={view}
           />
-          </div>
+          </LaneInteract>
         </div>
       ))}
+      </div>
     </div>
   );
 }
