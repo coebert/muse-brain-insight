@@ -43,6 +43,8 @@ import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.funct
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
+import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
+import { computeUncertainty } from "@/lib/eeg/uncertainty";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
@@ -233,6 +235,16 @@ function Monitor() {
   const reconnecting = status === "reconnecting";
   const caseRunning = caseState === "running";
   const seizureAlert = latest?.seizureAlert ?? false;
+  // Confidence intervals and contributing factors behind the three headline
+  // assessments; recomputed as epochs arrive from the analyser.
+  const uncertainty = useMemo(
+    () =>
+      computeUncertainty(monitor.epochs, {
+        srWindowSeconds: monitor.settings.srWindowSeconds,
+        seizureThreshold: monitor.settings.seizureThreshold,
+      }),
+    [monitor.epochs, monitor.settings.srWindowSeconds, monitor.settings.seizureThreshold],
+  );
   const icuMode = mode === "icu";
   const activeMode = MODES.find((m) => m.key === mode)!;
 
@@ -1335,6 +1347,7 @@ function Monitor() {
 
             {/* Metrics */}
             <MetricsGrid
+              uncertainty={uncertainty}
               latest={latest}
               summary={summary}
               srWindowSeconds={monitor.settings.srWindowSeconds}
@@ -1343,6 +1356,8 @@ function Monitor() {
               icuMode={icuMode}
               depthWindow={depthWindow}
             />
+
+            <AssessmentConfidencePanel report={uncertainty} />
 
             <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
 
