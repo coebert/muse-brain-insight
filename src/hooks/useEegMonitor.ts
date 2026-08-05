@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
   DEFAULT_SETTINGS,
@@ -28,6 +28,9 @@ import {
   type EegSource,
   type MuseChannel,
 } from "@/lib/eeg/muse";
+import { createWaveformStore } from "@/lib/eeg/waveform-store";
+
+export type { WaveformStore } from "@/lib/eeg/waveform-store";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
@@ -212,27 +215,110 @@ function readLast(buffer: ChannelBuffer, n: number): Float64Array {
   return out;
 }
 
+/* ------------------------------------------------------------------ */
+/* Streaming state                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Everything the analysis loop produces, committed as one value.
+ *
+ * A hop used to fire eight separate `setState` calls; consumers could observe
+ * a half-updated case (new epochs, stale hemisphere metrics). One reducer
+ * action keeps the trend, the hemispheres and the quality read-outs in step.
+ */
+interface StreamState {
+  epochs: Epoch[];
+  hemiSpectra: HemiSpectra[];
+  hemiLatest: HemiLatest | null;
+  hemiEvents: HemiEvent[];
+  sqiHistory: SqiPoint[];
+  events: DetectedEvent[];
+  elapsed: number;
+  contactOk: Record<string, boolean>;
+  channelQuality: Record<string, SignalQuality>;
+  dataGapSeconds: number;
+}
+
+const INITIAL_STREAM: StreamState = {
+  epochs: [],
+  hemiSpectra: [],
+  hemiLatest: null,
+  hemiEvents: [],
+  sqiHistory: [],
+  events: [],
+  elapsed: 0,
+  contactOk: {},
+  channelQuality: {},
+  dataGapSeconds: 0,
+};
+
+type StreamAction =
+  | { type: "reset" }
+  | { type: "gap"; elapsed: number; dataGapSeconds: number }
+  | { type: "events"; events: DetectedEvent[] }
+  | {
+      type: "epoch";
+      elapsed: number;
+      epoch: Epoch;
+      events: DetectedEvent[];
+      hemi: HemiSpectra;
+      hemiLatest: HemiLatest;
+      hemiEvents: HemiEvent[] | null;
+      sqi: SqiPoint;
+      contactOk: Record<string, boolean>;
+      channelQuality: Record<string, SignalQuality>;
+    };
+
+function streamReducer(state: StreamState, action: StreamAction): StreamState {
+  switch (action.type) {
+    case "reset":
+      return INITIAL_STREAM;
+    case "gap":
+      return { ...state, elapsed: action.elapsed, dataGapSeconds: action.dataGapSeconds };
+    case "events":
+      return { ...state, events: action.events };
+    case "epoch":
+      return {
+        ...state,
+        elapsed: action.elapsed,
+        dataGapSeconds: 0,
+        epochs: compactEpochs([...state.epochs, action.epoch]),
+        events: action.events,
+        hemiSpectra: compactHemi([...state.hemiSpectra, action.hemi]),
+        hemiLatest: action.hemiLatest,
+        hemiEvents: action.hemiEvents ?? state.hemiEvents,
+        sqiHistory: compactSqi([...state.sqiHistory, action.sqi]),
+        contactOk: action.contactOk,
+        channelQuality: action.channelQuality,
+      };
+  }
+}
+
 export function useEegMonitor() {
   const [status, setStatus] = useState<MonitorStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("");
   const [channel, setChannel] = useState<MuseChannel | "average">("average");
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
-  const [epochs, setEpochs] = useState<Epoch[]>([]);
-  const [hemiSpectra, setHemiSpectra] = useState<HemiSpectra[]>([]);
-  const [hemiLatest, setHemiLatest] = useState<HemiLatest | null>(null);
-  const [hemiEvents, setHemiEvents] = useState<HemiEvent[]>([]);
-  const [sqiHistory, setSqiHistory] = useState<SqiPoint[]>([]);
-  const [events, setEvents] = useState<DetectedEvent[]>([]);
-  const [waveform, setWaveform] = useState<Float64Array>(new Float64Array(0));
-  const [elapsed, setElapsed] = useState(0);
-  const [contactOk, setContactOk] = useState<Record<string, boolean>>({});
-  const [channelQuality, setChannelQuality] = useState<Record<string, SignalQuality>>({});
+  const [stream, dispatch] = useReducer(streamReducer, INITIAL_STREAM);
+  const {
+    epochs,
+    hemiSpectra,
+    hemiLatest,
+    hemiEvents,
+    sqiHistory,
+    events,
+    elapsed,
+    contactOk,
+    channelQuality,
+    dataGapSeconds,
+  } = stream;
+  // The live trace bypasses React state — see waveform-store.
+  const waveformStoreRef = useRef(createWaveformStore());
   const [reconnectAttempt, setReconnectAttempt] = useState<{
     attempt: number;
     attempts: number;
   } | null>(null);
-  const [dataGapSeconds, setDataGapSeconds] = useState(0);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
@@ -291,14 +377,8 @@ export function useEegMonitor() {
     rightAnalyzerRef.current.reset();
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
-    setEpochs([]);
-    setHemiSpectra([]);
-    setHemiLatest(null);
-    setHemiEvents([]);
-    setSqiHistory([]);
-    setEvents([]);
-    setElapsed(0);
-    setDataGapSeconds(0);
+    dispatch({ type: "reset" });
+    waveformStoreRef.current.set(new Float64Array(0));
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
     for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
@@ -307,7 +387,10 @@ export function useEegMonitor() {
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
     manualEventsRef.current = [...manualEventsRef.current, event];
-    setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
+    dispatch({
+      type: "events",
+      events: [...analyzerRef.current.events, ...manualEventsRef.current],
+    });
   }, []);
 
   const connect = useCallback(
@@ -378,14 +461,12 @@ export function useEegMonitor() {
       // re-analysing stale buffer contents.
       if (Date.now() - lastSampleAtRef.current > STALE_SAMPLE_MS) {
         if (gapStartRef.current == null) gapStartRef.current = t;
-        setDataGapSeconds(t - gapStartRef.current);
-        setElapsed(t);
+        dispatch({ type: "gap", elapsed: t, dataGapSeconds: t - gapStartRef.current });
         return;
       }
       if (gapStartRef.current != null) {
         const gap = t - gapStartRef.current;
         gapStartRef.current = null;
-        setDataGapSeconds(0);
         if (gap >= 3) {
           manualEventsRef.current = [
             ...manualEventsRef.current,
@@ -401,9 +482,6 @@ export function useEegMonitor() {
       }
 
       const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
-      setElapsed(t);
-      setEpochs((prev) => compactEpochs([...prev, epoch]));
-      setEvents([...analyzerRef.current.events, ...manualEventsRef.current]);
 
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
@@ -428,8 +506,6 @@ export function useEegMonitor() {
         contact[ca] = !qa.flat && qa.grade !== "poor";
         contact[cb] = !qb.flat && qb.grade !== "poor";
       }
-      setContactOk(contact);
-      setChannelQuality(quality);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
@@ -548,8 +624,6 @@ export function useEegMonitor() {
       const leftMetrics = left.metrics;
       const rightMetrics = right.metrics;
       const hemi: HemiSpectra = { left: left.spectrum, right: right.spectrum };
-      setHemiSpectra((prev) => compactHemi([...prev, hemi]));
-      setHemiLatest({ left: leftMetrics, right: rightMetrics });
 
       // BIS-style Signal Quality Index trend: one point per epoch, thinned
       // with the same rule as the DSA so long cases keep their full history.
@@ -562,8 +636,19 @@ export function useEegMonitor() {
         sqi: Math.min(leftSqi, rightSqi),
         emg: Math.max(leftMetrics.emgIndex, rightMetrics.emgIndex) * 100,
       };
-      setSqiHistory((prev) => compactSqi([...prev, point]));
-      if (hemiDirty) setHemiEvents(hemiEventsRef.current.map((e) => ({ ...e })));
+      dispatch({
+        type: "epoch",
+        elapsed: t,
+        epoch,
+        events: [...analyzerRef.current.events, ...manualEventsRef.current],
+        hemi,
+        hemiLatest: { left: leftMetrics, right: rightMetrics },
+        // Only republish the episode list when something visible changed.
+        hemiEvents: hemiDirty ? hemiEventsRef.current.map((e) => ({ ...e })) : null,
+        sqi: point,
+        contactOk: contact,
+        channelQuality: quality,
+      });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
@@ -571,8 +656,9 @@ export function useEegMonitor() {
   // Waveform refresh.
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting") return;
+    const store = waveformStoreRef.current;
     const id = setInterval(() => {
-      setWaveform(activeSignal(MUSE_SAMPLE_RATE * 4));
+      store.set(activeSignal(MUSE_SAMPLE_RATE * 4));
     }, 200);
     return () => clearInterval(id);
   }, [status, activeSignal]);
@@ -623,7 +709,7 @@ export function useEegMonitor() {
     sqiHistory,
     events,
     latest,
-    waveform,
+    waveformStore: waveformStoreRef.current,
     elapsed,
     contactOk,
     channelQuality,

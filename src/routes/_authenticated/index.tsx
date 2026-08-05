@@ -45,7 +45,7 @@ import { computeUncertainty } from "@/lib/eeg/uncertainty";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
-import { WaveformStrip } from "@/components/monitor/WaveformStrip";
+import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -858,7 +858,7 @@ function Monitor() {
           hemiLatest={monitor.hemiLatest}
           hemiEvents={monitor.hemiEvents}
           latest={latest}
-          waveform={monitor.waveform}
+          waveformStore={monitor.waveformStore}
           elapsed={monitor.elapsed}
           sourceName={monitor.sourceName}
           streaming={streaming}
@@ -1505,8 +1505,8 @@ function Monitor() {
                     </div>
                   </div>
                   <div className="h-[150px] px-2">
-                    <WaveformStrip
-                      data={monitor.waveform}
+                    <LiveWaveform
+                      store={monitor.waveformStore}
                       suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
                       suppressed={latest?.isSuppressed ?? false}
                     />
