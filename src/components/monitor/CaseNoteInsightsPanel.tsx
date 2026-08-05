@@ -250,9 +250,13 @@ function PatternVerdictControls({
  */
 export function CaseNoteInsightsPanel() {
   const run = useServerFn(mineCaseNotes);
+  const save = useServerFn(savePatternFeedback);
   const [result, setResult] = useState<CaseNoteInsights | null>(null);
   const [loading, setLoading] = useState(false);
   const [verdicts, setVerdicts] = useState<Record<string, PatternFeedback>>({});
+  const [filters, setFilters] = useState<PatternFilters>(DEFAULT_PATTERN_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function analyse() {
     setLoading(true);
@@ -260,6 +264,7 @@ export function CaseNoteInsightsPanel() {
       const res = await run({ data: { limit: 25 } });
       setResult(res);
       setVerdicts(Object.fromEntries(res.feedback.map((f) => [f.patternKey, f])));
+      setSelected([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not analyse your case notes.");
     } finally {
@@ -274,6 +279,54 @@ export function CaseNoteInsightsPanel() {
       else delete copy[key];
       return copy;
     });
+  }
+
+  const patterns = result?.patterns ?? [];
+  const keyed = patterns.map((p) => ({ p, key: p.patternKey || makePatternKey(p.title) }));
+  const visible = keyed.filter(({ p, key }) => matchesFilters(p, verdicts[key], filters));
+  const visibleKeys = visible.map((v) => v.key);
+  const selectedVisible = selected.filter((k) => visibleKeys.includes(k));
+  const allVisibleSelected = visibleKeys.length > 0 && selectedVisible.length === visibleKeys.length;
+
+  function toggle(key: string, on: boolean) {
+    setSelected((prev) => (on ? [...new Set([...prev, key])] : prev.filter((k) => k !== key)));
+  }
+
+  /** Record the same verdict on every selected, currently visible pattern. */
+  async function bulkRecord(verdict: "accepted" | "rejected") {
+    const targets = keyed.filter(({ key }) => selectedVisible.includes(key));
+    if (!targets.length) return;
+    setBulkBusy(true);
+    let done = 0;
+    try {
+      for (const { p, key } of targets) {
+        const res = await save({
+          data: {
+            patternKey: key,
+            verdict,
+            title: p.title,
+            detail: p.detail,
+            suggestedAction: p.suggestedAction ?? "",
+            caseCodes: p.caseCodes ?? [],
+            note: "",
+          },
+        });
+        updateVerdict(key, res.feedback);
+        done += 1;
+      }
+      setSelected([]);
+      toast.success(
+        `${verdict === "accepted" ? "Accepted" : "Rejected"} ${done} pattern${done === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `${err.message} (${done} saved before this)`
+          : "Could not save every decision.",
+      );
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   return (
