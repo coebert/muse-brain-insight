@@ -2,7 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normaliseFacts, type CaseFacts, type CaseTimelinePoint } from "@/lib/eeg/case-facts";
+import {
+  countVerdicts,
+  normaliseInfluence,
+  type FeedbackImpact,
+  type FeedbackInfluence,
+} from "@/lib/eeg/feedback-influence";
 import { normaliseFeedback, patternKey, type PatternFeedback } from "@/lib/eeg/pattern-feedback";
+
+export type { FeedbackImpact, FeedbackInfluence };
 
 /** A stretch of one recording cited as support for a detail or pattern. */
 export interface EegCitation {
@@ -41,31 +49,6 @@ export interface CasePattern {
   patternKey?: string;
   /** How the clinician's earlier verdicts moved this pattern's ranking. */
   feedbackInfluence?: FeedbackInfluence;
-}
-
-/** Effect of prior accept/reject/edit verdicts on one pattern's confidence. */
-export interface FeedbackInfluence {
-  /** Whether prior feedback raised, lowered or left this pattern's confidence. */
-  direction: "raised" | "lowered" | "unchanged" | "new";
-  /** Strength this pattern would have carried without the feedback. */
-  strengthWithoutFeedback: "emerging" | "moderate" | "strong" | "not proposed";
-  /** One sentence saying which verdicts moved it and why. */
-  because: string;
-  /** The specific case details or EEG features that drove the shift. */
-  drivers: string[];
-  /** Titles of earlier judged patterns this one was weighed against. */
-  relatedTitles: string[];
-}
-
-/** Session-wide account of how the feedback library shaped this run. */
-export interface FeedbackImpact {
-  accepted: number;
-  rejected: number;
-  edited: number;
-  /** Plain-language summary of what the verdicts changed this time. */
-  summary: string;
-  /** Ideas suppressed because they repeat a rejected pattern. */
-  suppressed: string[];
 }
 
 export interface CaseNoteInsights {
