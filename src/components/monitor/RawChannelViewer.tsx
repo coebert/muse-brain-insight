@@ -200,6 +200,8 @@ export function RawChannelViewer({
   streaming,
   contactOk,
   channelQuality,
+  epochs = [],
+  events = [],
 }: RawChannelViewerProps) {
   const [live, setLive] = useState(true);
   const [windowSeconds, setWindowSeconds] = useState<number>(10);
@@ -230,6 +232,52 @@ export function RawChannelViewer({
   }, [archive, live, span, windowSeconds, cursor, maxCursor, tick]);
 
   const empty = span < 0.5;
+
+  // Detections in session time: seizure suspicions from the detector, and
+  // suppressed epochs (plus burst-suppression episodes) shaded as periods.
+  const detections = useMemo(() => {
+    const spans: Overlay[] = [];
+    for (const e of events) {
+      if (e.kind === "seizure") {
+        spans.push({
+          from: e.t,
+          to: e.t + Math.max(e.duration, EPOCH_SECONDS),
+          kind: "seizure",
+          label: "Seizure?",
+        });
+      } else if (e.kind === "burst_suppression" || e.kind === "isoelectric") {
+        spans.push({
+          from: e.t,
+          to: e.t + Math.max(e.duration, EPOCH_SECONDS),
+          kind: "suppression",
+          label: e.kind === "isoelectric" ? "Isoelectric" : "Burst suppression",
+        });
+      }
+    }
+    for (const ep of epochs) {
+      if (ep.isSuppressed) {
+        spans.push({
+          from: Math.max(0, ep.t - EPOCH_SECONDS),
+          to: ep.t,
+          kind: "suppression",
+          label: "Suppressed",
+        });
+      }
+      if (ep.seizureAlert) {
+        spans.push({
+          from: Math.max(0, ep.t - EPOCH_SECONDS),
+          to: ep.t,
+          kind: "seizure",
+          label: "Seizure?",
+        });
+      }
+    }
+    const seizure = mergeSpans(spans.filter((s) => s.kind === "seizure"));
+    const suppression = mergeSpans(spans.filter((s) => s.kind === "suppression"));
+    return [...suppression, ...seizure];
+  }, [epochs, events]);
+
+  const visible = detections.filter((d) => d.to > traces.from && d.from < traces.to);
 
   return (
     <div className="panel overflow-hidden">
@@ -328,12 +376,58 @@ export function RawChannelViewer({
                 ) : null}
               </div>
               <div className="h-[72px] min-w-0 flex-1 bg-[rgb(8,16,34)]">
-                <ChannelTrace data={samples} gainUv={gainUv} side={SIDE_OF[channel]} />
+                <div className="relative h-full w-full">
+                  <ChannelTrace data={samples} gainUv={gainUv} side={SIDE_OF[channel]} />
+                  <DetectionBands
+                    overlays={visible}
+                    from={traces.from}
+                    to={traces.to}
+                    showLabels={channel === MUSE_CHANNELS[0]}
+                  />
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Whole-session detection ribbon — where the current window sits. */}
+      {span > 0.5 ? (
+        <div className="border-t border-border px-3 pt-2 sm:px-4">
+          <div className="relative h-3 overflow-hidden rounded-sm bg-[rgb(8,16,34)]">
+            <DetectionBands overlays={detections} from={0} to={span} showLabels={false} />
+            <div
+              className="absolute inset-y-0 border border-primary/70 bg-primary/10"
+              style={{
+                left: `${(traces.from / Math.max(span, 0.001)) * 100}%`,
+                width: `${Math.max((windowSeconds / Math.max(span, 0.001)) * 100, 0.6)}%`,
+              }}
+            />
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-3 rounded-[2px]"
+                style={{ background: OVERLAY_STYLE.suppression.fill, border: `1px solid ${OVERLAY_STYLE.suppression.edge}` }}
+                aria-hidden
+              />
+              Burst suppression
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-3 rounded-[2px]"
+                style={{ background: OVERLAY_STYLE.seizure.fill, border: `1px solid ${OVERLAY_STYLE.seizure.edge}` }}
+                aria-hidden
+              />
+              Seizure suspicion
+            </span>
+            <span className="metric-value">
+              {detections.filter((d) => d.kind === "seizure").length} seizure ·{" "}
+              {detections.filter((d) => d.kind === "suppression").length} suppression episodes
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-3 py-2.5 sm:px-4">
         <span className="metric-value text-xs text-muted-foreground">
