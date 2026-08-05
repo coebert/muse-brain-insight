@@ -81,6 +81,7 @@ export function useCaseAi(options: UseCaseAiOptions) {
             admissionDiagnosis: meta.admissionDiagnosis,
             clinicalFeatures: meta.clinicalFeatures,
             context: meta.context,
+            caseSummary: meta.caseSummary,
             // Give the interpreter the drug regimen running right now, so
             // depth and nociception findings are read in context.
             notes: [meta.notes, `TCI in progress — ${summariseInfusions(infusions)}`]
