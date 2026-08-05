@@ -146,6 +146,31 @@ function HemiDsaPanelInner({
   elapsed,
   compact = false,
 }: Props) {
+  // One shared viewport across every lane so left/right stay time-aligned.
+  const [view, setView] = useState<DsaViewport>({ from: windowSeconds, to: 0 });
+  useEffect(() => {
+    setView((v) => {
+      const s = Math.min(windowSeconds, Math.max(MIN_SPAN_SECONDS, v.from - v.to));
+      const to = Math.max(0, Math.min(windowSeconds - s, v.to));
+      return { from: to + s, to };
+    });
+  }, [windowSeconds]);
+
+  const span = view.from - view.to;
+  const zoomed = span < windowSeconds - 0.5;
+  const zoomBy = useCallback(
+    (factor: number) => {
+      setView((v) => {
+        const cur = v.from - v.to;
+        const next = Math.min(windowSeconds, Math.max(MIN_SPAN_SECONDS, cur * factor));
+        const centre = (v.from + v.to) / 2;
+        const to = Math.max(0, Math.min(windowSeconds - next, centre - next / 2));
+        return { from: to + next, to };
+      });
+    },
+    [windowSeconds],
+  );
+
   const lanes = useMemo<Lane[]>(() => {
     if (dsaView === "bilateral") {
       return [
