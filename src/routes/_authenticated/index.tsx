@@ -1376,6 +1376,16 @@ function Monitor() {
           />
         ) : null}
 
+        {tab === "review" ? (
+          <TciResponsePanel
+            digest={tciDigest}
+            report={tciReport}
+            loading={tciLoading}
+            error={tciError}
+            onRun={() => void analyseTci()}
+          />
+        ) : null}
+
         {tab !== "monitor" ? (
           <section className={cn("grid gap-4", tab === "signal" && "lg:grid-cols-[2fr_1fr]")}>
             {tab === "signal" ? (
