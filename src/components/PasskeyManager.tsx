@@ -13,10 +13,7 @@ import {
   type PasskeyFailure,
 } from "@/lib/webauthn-support";
 import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
-import {
-  startPasskeyRegistration,
-  finishPasskeyRegistration,
-} from "@/lib/webauthn.functions";
+import { startPasskeyRegistration, finishPasskeyRegistration } from "@/lib/webauthn.functions";
 
 type Passkey = {
   id: string;
@@ -103,8 +100,8 @@ export function PasskeyManager() {
         <div>
           <h2 className="text-sm font-semibold">Biometric sign-in</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Register this device so you can unlock CortexTrace with Face ID, Touch ID or
-            Windows Hello instead of your password.
+            Register this device so you can unlock CortexTrace with Face ID, Touch ID or Windows
+            Hello instead of your password.
           </p>
         </div>
         <Button size="sm" disabled={busy} onClick={() => void addPasskey()}>
@@ -117,8 +114,8 @@ export function PasskeyManager() {
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-caution" />
           <div>
             <p>
-              Passkey registration is blocked while the app runs inside the preview frame.
-              Open CortexTrace in its own browser tab to add a passkey.
+              Passkey registration is blocked while the app runs inside the preview frame. Open
+              CortexTrace in its own browser tab to add a passkey.
             </p>
             <a
               className="mt-1 inline-flex items-center gap-1 font-medium underline"

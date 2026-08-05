@@ -81,6 +81,8 @@ async function streamResponse(body: unknown, apiKey: string): Promise<string> {
       "X-Lovable-AIG-SDK": "fetch",
     },
     body: JSON.stringify(body),
+    // A hung gateway must not hold the bedside request open indefinitely.
+    signal: AbortSignal.timeout(90_000),
   });
 
   if (res.status === 429) throw new Error("AI rate limit reached — please try again shortly.");

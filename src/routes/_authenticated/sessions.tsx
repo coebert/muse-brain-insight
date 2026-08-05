@@ -20,7 +20,8 @@ export const Route = createFileRoute("/_authenticated/sessions")({
       { property: "og:title", content: "Saved EEG sessions — CortexTrace" },
       {
         property: "og:description",
-        content: "Anonymised depth-of-anaesthesia session records with suppression and seizure summaries.",
+        content:
+          "Anonymised depth-of-anaesthesia session records with suppression and seizure summaries.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -119,10 +120,7 @@ function Sessions() {
                 <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
                 <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
                 <Stat label="Peak SR" value={`${(s.max_suppression_ratio ?? 0).toFixed(0)} %`} />
-                <Stat
-                  label="Suppression time"
-                  value={formatDuration(s.suppression_seconds ?? 0)}
-                />
+                <Stat label="Suppression time" value={formatDuration(s.suppression_seconds ?? 0)} />
                 <Stat label="Seizure events" value={String(s.seizure_alerts ?? 0)} />
               </dl>
               {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}

@@ -153,10 +153,7 @@ function Calibrate() {
     queryFn: fetchCalibrations,
   });
 
-  const labelledSessionIds = useMemo(
-    () => (sessionId ? [sessionId] : []),
-    [sessionId],
-  );
+  const labelledSessionIds = useMemo(() => (sessionId ? [sessionId] : []), [sessionId]);
 
   const samplesQuery = useQuery({
     queryKey: ["calibrate", "samples", labelledSessionIds, labels.data?.length ?? 0],

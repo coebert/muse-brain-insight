@@ -115,7 +115,10 @@ function Compare() {
   /** Epoch cadence in seconds, used to convert lag samples to time. */
   const cadence = useMemo(() => {
     if (rows.length < 2) return 1;
-    const diffs = rows.slice(1).map((r, i) => r.t - rows[i]!.t).filter((d) => d > 0);
+    const diffs = rows
+      .slice(1)
+      .map((r, i) => r.t - rows[i]!.t)
+      .filter((d) => d > 0);
     diffs.sort((a, b) => a - b);
     return diffs.length ? diffs[Math.floor(diffs.length / 2)]! : 1;
   }, [rows]);
@@ -226,9 +229,7 @@ function Compare() {
           </div>
 
           <div>
-            <span className="text-xs tracking-wide text-muted-foreground uppercase">
-              Series
-            </span>
+            <span className="text-xs tracking-wide text-muted-foreground uppercase">Series</span>
             <div className="mt-1 flex flex-wrap gap-2">
               {SERIES.map((s) => (
                 <button
@@ -271,8 +272,8 @@ function Compare() {
           <p className="metric-value mt-3 text-xs text-muted-foreground">
             {selected.case_code} · {selected.context}
             {selected.age_band ? ` · ${selected.age_band} y` : ""}
-            {selected.sex && selected.sex !== "unknown" ? ` · ${selected.sex}` : ""} ·{" "}
-            {rows.length} stored epochs · {formatClock(selected.duration_seconds ?? 0)}
+            {selected.sex && selected.sex !== "unknown" ? ` · ${selected.sex}` : ""} · {rows.length}{" "}
+            stored epochs · {formatClock(selected.duration_seconds ?? 0)}
           </p>
         ) : null}
 
@@ -347,9 +348,7 @@ function Compare() {
             <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {comparisons.map((c) => (
                 <div key={c.label} className="panel px-4 py-3">
-                  <p className="text-xs tracking-wide text-muted-foreground uppercase">
-                    {c.label}
-                  </p>
+                  <p className="text-xs tracking-wide text-muted-foreground uppercase">{c.label}</p>
                   <p className="metric-value mt-1 text-2xl">
                     {c.result.r === null ? "—" : `r ${c.result.r.toFixed(2)}`}
                   </p>
@@ -408,9 +407,7 @@ function Compare() {
                         borderRadius: 8,
                         fontSize: 12,
                       }}
-                      formatter={(v: number | string) =>
-                        typeof v === "number" ? v.toFixed(2) : v
-                      }
+                      formatter={(v: number | string) => (typeof v === "number" ? v.toFixed(2) : v)}
                       labelFormatter={(v) => `t ${formatClock(Number(v))}`}
                     />
                     <ReferenceLine y={0} stroke="var(--border)" />

@@ -9,8 +9,7 @@ import {
 export function getRelyingParty() {
   const request = getRequest();
   const origin =
-    request?.headers.get("origin") ??
-    (request?.url ? new URL(request.url).origin : undefined);
+    request?.headers.get("origin") ?? (request?.url ? new URL(request.url).origin : undefined);
   if (!origin) throw new Error("Unable to determine request origin");
   const rpID = new URL(origin).hostname;
   return { origin, rpID };

@@ -479,8 +479,26 @@ export function useEegMonitor() {
         const sideScore = grades.length ? Math.min(...grades.map((q) => q?.score ?? 0)) : 0;
         const sideSqi = (flatSide ? 0 : sideScore) * 100;
         const sideEmg = Math.max(...grades.map((q) => q?.emgIndex ?? 0), 0) * 100;
-        trackHemiEvent(side, "suppression", e.isSuppressed, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
-        trackHemiEvent(side, "seizure", e.seizureAlert, e.suppressionRatio, e.seizureScore, worst, sideSqi, sideEmg);
+        trackHemiEvent(
+          side,
+          "suppression",
+          e.isSuppressed,
+          e.suppressionRatio,
+          e.seizureScore,
+          worst,
+          sideSqi,
+          sideEmg,
+        );
+        trackHemiEvent(
+          side,
+          "seizure",
+          e.seizureAlert,
+          e.suppressionRatio,
+          e.seizureScore,
+          worst,
+          sideSqi,
+          sideEmg,
+        );
         const metrics: HemiMetrics = {
           suppressionRatio: e.suppressionRatio,
           seizureScore: e.seizureScore,
@@ -549,7 +567,7 @@ export function useEegMonitor() {
         usableFraction: 0,
       };
     }
-    const meanSr = epochs.reduce((a, e) => a + e.epochSuppression, 0) / epochs.length * 100;
+    const meanSr = (epochs.reduce((a, e) => a + e.epochSuppression, 0) / epochs.length) * 100;
     const maxSr = epochs.reduce((a, e) => Math.max(a, e.suppressionRatio), 0);
     return {
       meanSr,
@@ -557,8 +575,7 @@ export function useEegMonitor() {
       suppressionSeconds: analyzerRef.current.suppressionSeconds,
       seizureAlerts: events.filter((e) => e.kind === "seizure").length,
       meanQuality: epochs.reduce((a, e) => a + e.quality.score, 0) / epochs.length,
-      usableFraction:
-        epochs.filter((e) => e.quality.grade !== "poor").length / epochs.length,
+      usableFraction: epochs.filter((e) => e.quality.grade !== "poor").length / epochs.length,
     };
   }, [epochs, events]);
 

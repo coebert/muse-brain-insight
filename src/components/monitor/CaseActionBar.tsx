@@ -42,29 +42,33 @@ export function CaseActionBar({
   const livePumps = controls.infusions.filter((i) => i.stoppedAt === null);
   const alarmCount = controls.alarms.unacknowledged.length;
 
-  const items: { key: Exclude<CaseSheet, null>; label: string; icon: typeof MapPin; badge?: string }[] =
-    [
-      { key: "mark", label: "Mark", icon: MapPin },
-      {
-        key: "tci",
-        label: "TCI",
-        icon: Syringe,
-        ...(livePumps.length ? { badge: String(livePumps.length) } : {}),
-      },
-      {
-        key: "limits",
-        label: "Limits",
-        icon: Gauge,
-        ...(controls.limitsOffDefault ? { badge: "!" } : {}),
-      },
-      {
-        key: "alarms",
-        label: "Alarms",
-        icon: BellRing,
-        ...(alarmCount ? { badge: String(alarmCount) } : {}),
-      },
-      { key: "log", label: "Log", icon: ClipboardList },
-    ];
+  const items: {
+    key: Exclude<CaseSheet, null>;
+    label: string;
+    icon: typeof MapPin;
+    badge?: string;
+  }[] = [
+    { key: "mark", label: "Mark", icon: MapPin },
+    {
+      key: "tci",
+      label: "TCI",
+      icon: Syringe,
+      ...(livePumps.length ? { badge: String(livePumps.length) } : {}),
+    },
+    {
+      key: "limits",
+      label: "Limits",
+      icon: Gauge,
+      ...(controls.limitsOffDefault ? { badge: "!" } : {}),
+    },
+    {
+      key: "alarms",
+      label: "Alarms",
+      icon: BellRing,
+      ...(alarmCount ? { badge: String(alarmCount) } : {}),
+    },
+    { key: "log", label: "Log", icon: ClipboardList },
+  ];
 
   return (
     <>
@@ -132,9 +136,7 @@ export function CaseActionBar({
                 </SheetTitle>
                 <SheetDescription>
                   {livePumps.length
-                    ? livePumps
-                        .map((i) => tciModel(i.modelKey)?.short ?? i.modelKey)
-                        .join(" · ")
+                    ? livePumps.map((i) => tciModel(i.modelKey)?.short ?? i.modelKey).join(" · ")
                     : "No pump running."}
                 </SheetDescription>
               </SheetHeader>
@@ -178,9 +180,7 @@ export function CaseActionBar({
                 onAcknowledgeSide={controls.alarms.acknowledgeSide}
                 onPauseAudio={controls.alarms.pauseAudio}
                 onResumeAudio={controls.alarms.resumeAudio}
-                onToggleAudio={() =>
-                  controls.alarms.setAudioEnabled(!controls.alarms.audioEnabled)
-                }
+                onToggleAudio={() => controls.alarms.setAudioEnabled(!controls.alarms.audioEnabled)}
               />
             </>
           ) : null}

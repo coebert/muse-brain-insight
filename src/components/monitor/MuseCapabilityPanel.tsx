@@ -95,11 +95,7 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
           disabled={disabled || busy}
           onClick={() => void detect()}
         >
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Bluetooth className="size-4" />
-          )}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Bluetooth className="size-4" />}
           {busy ? "Reading headband…" : "Detect Muse 2"}
         </Button>
         <p className="text-xs text-muted-foreground">
@@ -155,11 +151,7 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
               htmlFor={`preset-${option.code}`}
               className="flex min-h-11 cursor-pointer items-start gap-2 rounded-md border border-border p-2"
             >
-              <RadioGroupItem
-                id={`preset-${option.code}`}
-                value={option.code}
-                className="mt-0.5"
-              />
+              <RadioGroupItem id={`preset-${option.code}`} value={option.code} className="mt-0.5" />
               <span className="space-y-0.5">
                 <span className="block text-xs font-medium">
                   {option.label}
@@ -241,11 +233,15 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
               <dd className="text-sm font-semibold">{selectedPreset.label}</dd>
             </div>
             <div className="rounded bg-background/60 p-2">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Sample rate</dt>
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Sample rate
+              </dt>
               <dd className="text-sm font-semibold">{selectedPreset.sampleRate} Hz</dd>
             </div>
             <div className="rounded bg-background/60 p-2">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Channels</dt>
+              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Channels
+              </dt>
               <dd className="text-sm font-semibold">{selectedPreset.channels}</dd>
             </div>
           </dl>

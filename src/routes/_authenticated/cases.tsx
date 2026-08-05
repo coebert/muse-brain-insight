@@ -69,10 +69,7 @@ function Cases() {
 
       const [events, actions] = await Promise.all([
         ids.length
-          ? supabase
-              .from("eeg_events")
-              .select("session_id, severity")
-              .in("session_id", ids)
+          ? supabase.from("eeg_events").select("session_id, severity").in("session_id", ids)
           : Promise.resolve({ data: [] as { session_id: string; severity: string }[] }),
         ids.length
           ? supabase.from("ai_alert_actions").select("session_id").in("session_id", ids)
@@ -90,10 +87,12 @@ function Cases() {
           const tail = last?.[0];
           return {
             ...s,
-            lastDepth: tail?.depth_index === null || tail === undefined ? null : Number(tail.depth_index),
+            lastDepth:
+              tail?.depth_index === null || tail === undefined ? null : Number(tail.depth_index),
             lastSr: tail === undefined ? null : Number(tail.suppression_ratio ?? 0),
             criticalEvents: (events.data ?? []).filter(
-              (e) => e.session_id === s.id && (e.severity === "critical" || e.severity === "warning"),
+              (e) =>
+                e.session_id === s.id && (e.severity === "critical" || e.severity === "warning"),
             ).length,
             handledAlerts: (actions.data ?? []).filter((a) => a.session_id === s.id).length,
           } as CaseRow;
@@ -162,7 +161,10 @@ function Cases() {
                     label="Last depth"
                     value={c.lastDepth === null ? "—" : c.lastDepth.toFixed(0)}
                   />
-                  <Stat label="Last SR" value={c.lastSr === null ? "—" : `${c.lastSr.toFixed(0)} %`} />
+                  <Stat
+                    label="Last SR"
+                    value={c.lastSr === null ? "—" : `${c.lastSr.toFixed(0)} %`}
+                  />
                   <Stat label="Monitored" value={formatClock(c.duration_seconds ?? 0)} />
                   <Stat
                     label="Suppression time"

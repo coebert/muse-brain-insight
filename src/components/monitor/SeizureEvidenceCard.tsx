@@ -7,7 +7,11 @@ import { cn } from "@/lib/utils";
 function toneFor(confidence: number): { chip: string; bar: string; text: string } {
   const word = confidenceWord(confidence);
   if (word === "high")
-    return { chip: "border-signal/50 bg-signal/15 text-signal", bar: "bg-signal", text: "text-signal" };
+    return {
+      chip: "border-signal/50 bg-signal/15 text-signal",
+      bar: "bg-signal",
+      text: "text-signal",
+    };
   if (word === "moderate")
     return {
       chip: "border-caution/50 bg-caution/15 text-caution",

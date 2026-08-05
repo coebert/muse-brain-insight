@@ -177,10 +177,7 @@ export function FullscreenMonitor({
       {controls ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 pt-2">
           <div className="min-w-[14rem] flex-1">
-            <TciStatusStrip
-              infusions={controls?.infusions ?? []}
-              onOpen={() => setSheet("tci")}
-            />
+            <TciStatusStrip infusions={controls?.infusions ?? []} onOpen={() => setSheet("tci")} />
           </div>
           <QuickMarkBar
             mode={controls.mode}
@@ -282,7 +279,7 @@ export function FullscreenMonitor({
             <MetricCard
               size="bedside"
               label="Depth index"
-            info="depth"
+              info="depth"
               value={depth?.index != null ? String(depth.index) : "—"}
               hint={
                 depth
@@ -330,7 +327,7 @@ export function FullscreenMonitor({
             <MetricCard
               size="bedside"
               label="Seizure score"
-            info="seizure"
+              info="seizure"
               value={latest ? latest.seizureScore.toFixed(2) : "—"}
               hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
               tone={latest?.seizureAlert ? "critical" : "default"}

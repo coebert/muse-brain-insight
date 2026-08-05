@@ -38,7 +38,8 @@ export type ParameterInfoKey =
 export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
   depth: {
     title: "Depth index (OpenIBIS)",
-    summary: "0–100 processed-EEG index of hypnotic depth, computed with the open OpenIBIS algorithm.",
+    summary:
+      "0–100 processed-EEG index of hypnotic depth, computed with the open OpenIBIS algorithm.",
     significance:
       "Guides titration of hypnotic agent: values around 40–60 correspond to general anaesthesia with a low probability of awareness, >60 suggests light anaesthesia or arousal risk, and <40 indicates deeper-than-necessary suppression associated with haemodynamic instability and, in frail patients, delirium.",
     physiology:
@@ -70,14 +71,16 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
   },
   seizure: {
     title: "Seizure score",
-    summary: "0–1 likelihood that the current epoch contains rhythmic, evolving, seizure-like activity.",
+    summary:
+      "0–1 likelihood that the current epoch contains rhythmic, evolving, seizure-like activity.",
     significance:
       "Non-convulsive seizures and non-convulsive status are common and easily missed in sedated ICU patients and after cardiac arrest; a rising score should prompt review of the raw EEG and, if sustained, formal multichannel EEG. In anaesthesia mode the same score runs as a lower-sensitivity background watch.",
     physiology:
       "Seizures produce hypersynchronous neuronal firing that shows as narrow-band rhythmic discharges with increasing amplitude and evolving frequency. The score combines spectral peak sharpness, rhythmicity, amplitude escalation and temporal evolution against the configured sensitivity preset.",
     reliability:
       "This is a screening aid, not a diagnosis. A 4-electrode frontal montage cannot localise or exclude temporal/occipital-onset seizures, and rhythmic artefact (chest physiotherapy, shivering, ventilator, tremor, chewing) is the commonest cause of a false positive. Sedation and burst suppression blunt true positives. Always correlate with the waveform, markers and clinical picture.",
-    range: "Alert threshold is set by the active sensitivity preset (ICU is more sensitive than anaesthesia).",
+    range:
+      "Alert threshold is set by the active sensitivity preset (ICU is more sensitive than anaesthesia).",
   },
   sef95: {
     title: "Spectral edge frequency 95 (SEF95)",
@@ -99,11 +102,13 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
       "Scalp amplitude reflects synchronised postsynaptic potentials from large cortical populations, attenuated by skull and scalp. Synchrony (deep anaesthesia, slow-wave activity) raises it; desynchronised awake activity and cortical suppression lower it.",
     reliability:
       "The most artefact-prone parameter shown, and the one that drives the suppression detector's amplitude floor. Blink and muscle artefact routinely exceed 200 µV. Check electrode contact whenever amplitude is implausibly high or near zero.",
-    range: "Typically 20–100 µV under anaesthesia; <10 µV suggests suppression or electrode failure.",
+    range:
+      "Typically 20–100 µV under anaesthesia; <10 µV suggests suppression or electrode failure.",
   },
   entropy: {
     title: "Spectral entropy",
-    summary: "Normalised Shannon entropy of the power spectrum — how disordered/broadband the EEG is.",
+    summary:
+      "Normalised Shannon entropy of the power spectrum — how disordered/broadband the EEG is.",
     significance:
       "Entropy falls with deepening anaesthesia and is a drug-independent, algorithmically transparent depth marker. The state value uses the lower-frequency band; the response value extends into the EMG band, so a widening state–response gap suggests nociception or impending arousal.",
     physiology:
@@ -134,7 +139,8 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
   },
   cIndex: {
     title: "Consciousness index (qCON-like)",
-    summary: "0–99 composite of hypnotic state built from fast/slow balance, entropy and suppression.",
+    summary:
+      "0–99 composite of hypnotic state built from fast/slow balance, entropy and suppression.",
     significance:
       "A second, independently derived opinion on hypnotic depth to cross-check the OpenIBIS depth index. Agreement between the two increases confidence; divergence usually flags artefact or an atypical drug regimen.",
     physiology:
@@ -156,7 +162,8 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
   },
   sqi: {
     title: "Signal quality (per hemisphere)",
-    summary: "Composite electrode-pair quality score: contact, noise, clipping, movement and dropout.",
+    summary:
+      "Composite electrode-pair quality score: contact, noise, clipping, movement and dropout.",
     significance:
       "Every number on this screen is only as good as the signal underneath it. Grade good/fair/poor tells you at a glance whether the corresponding DSA lane and metrics can be trusted, and which side needs an electrode check.",
     physiology:

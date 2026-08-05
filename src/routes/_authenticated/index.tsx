@@ -34,10 +34,7 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
 import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
-import {
-  interpretTciResponse,
-  type TciResponseReport,
-} from "@/lib/eeg/tci-response.functions";
+import { interpretTciResponse, type TciResponseReport } from "@/lib/eeg/tci-response.functions";
 import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
@@ -74,14 +71,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
-import {
-  useSeizureRiskAlerts,
-  type SeizureTrendAlert,
-} from "@/hooks/useSeizureRiskAlerts";
-import {
-  useDepthWindowAlerts,
-  type DepthWindowTransition,
-} from "@/hooks/useDepthWindowAlerts";
+import { useSeizureRiskAlerts, type SeizureTrendAlert } from "@/hooks/useSeizureRiskAlerts";
+import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDepthWindowAlerts";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail, type DsaMarker } from "@/components/monitor/DsaMarkerRail";
@@ -172,6 +163,21 @@ function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
 
+  /** Guards against state writes after the clinician navigates away mid-call. */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  /** One AI request at a time per panel; the watch timer must not overlap. */
+  const aiInFlight = useRef(false);
+  const tciInFlight = useRef(false);
+  /** Latest setter, so the start-up effect can stay a true mount-only effect. */
+  const setSettingsRef = useRef(monitor.setSettings);
+  setSettingsRef.current = monitor.setSettings;
+
   // Apply the locally saved depth calibration (if any) to the live estimator.
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
@@ -185,7 +191,7 @@ function Monitor() {
     setMode(prefs.mode);
     const cfg = MODES.find((m) => m.key === prefs.mode);
     const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
-    if (preset) monitor.setSettings({ ...preset.settings });
+    if (preset) setSettingsRef.current({ ...preset.settings });
     setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
     setMeta((prev) => ({
       ...prev,
@@ -664,7 +670,10 @@ function Monitor() {
         label: "Suppression time",
         value: formatDuration(Math.round(summary.suppressionSeconds)),
       },
-      { label: "Alerts", value: String(monitor.events.filter((e) => e.kind !== "annotation").length) },
+      {
+        label: "Alerts",
+        value: String(monitor.events.filter((e) => e.kind !== "annotation").length),
+      },
       { label: "Markers", value: String(markers.length) },
       { label: "TCI running", value: summariseInfusions(infusions) },
     ],
@@ -692,6 +701,10 @@ function Monitor() {
         if (!silent) toast.error("Sign in to use AI interpretation.");
         return;
       }
+      // A slow gateway call must not be overtaken by the surveillance timer:
+      // two in flight would race and the later reply would win arbitrarily.
+      if (aiInFlight.current) return;
+      aiInFlight.current = true;
       setAiLoading(true);
       setAiError(null);
       try {
@@ -714,6 +727,7 @@ function Monitor() {
           activeMode.label,
         );
         const result = await runInterpretation({ data: { digest } });
+        if (!mounted.current) return;
         setAiResult(result);
         setAiLastRunAt(Date.now());
         // Raise a toast only for problems we have not already surfaced.
@@ -734,10 +748,12 @@ function Monitor() {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "AI analysis failed.";
+        if (!mounted.current) return;
         setAiError(message);
         if (!silent) toast.error(message);
       } finally {
-        setAiLoading(false);
+        aiInFlight.current = false;
+        if (mounted.current) setAiLoading(false);
       }
     },
     [
@@ -768,6 +784,8 @@ function Monitor() {
       toast.error("Sign in to use AI interpretation.");
       return;
     }
+    if (tciInFlight.current) return;
+    tciInFlight.current = true;
     setTciLoading(true);
     setTciError(null);
     try {
@@ -784,13 +802,16 @@ function Monitor() {
           },
         },
       });
+      if (!mounted.current) return;
       setTciReport(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "AI analysis failed.";
+      if (!mounted.current) return;
       setTciError(message);
       toast.error(message);
     } finally {
-      setTciLoading(false);
+      tciInFlight.current = false;
+      if (mounted.current) setTciLoading(false);
     }
   }, [user, tciDigest, meta, activeMode.label, runTciInterpretation]);
 

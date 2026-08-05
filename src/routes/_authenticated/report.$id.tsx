@@ -210,8 +210,8 @@ function CaseReport() {
                 Depth-of-anaesthesia monitoring report — {s.case_code}
               </h1>
               <p className="mt-1 text-xs text-muted-foreground">
-                Anonymised record · Muse 2 frontal EEG · generated{" "}
-                {new Date().toLocaleString()} · decision support only, not a diagnostic device.
+                Anonymised record · Muse 2 frontal EEG · generated {new Date().toLocaleString()} ·
+                decision support only, not a diagnostic device.
               </p>
 
               <dl className="panel mt-4 grid grid-cols-2 gap-3 px-4 py-3 sm:grid-cols-4">
@@ -227,7 +227,10 @@ function CaseReport() {
                   value={s.age_years ? `${s.age_years} y` : s.age_band ? `${s.age_band} y` : ""}
                 />
                 <Field label="Sex" value={s.sex && s.sex !== "unknown" ? s.sex : ""} />
-                <Field label="Started" value={new Date(s.started_at ?? s.created_at).toLocaleString()} />
+                <Field
+                  label="Started"
+                  value={new Date(s.started_at ?? s.created_at).toLocaleString()}
+                />
                 <Field
                   label="Ended"
                   value={s.ended_at ? new Date(s.ended_at).toLocaleString() : "—"}
@@ -316,7 +319,11 @@ function CaseReport() {
                       tick={{ fontSize: 10 }}
                       stroke="var(--muted-foreground)"
                     />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10 }}
+                      stroke="var(--muted-foreground)"
+                    />
                     <ReferenceLine y={40} stroke="var(--chart-4)" strokeDasharray="4 4" />
                     <ReferenceLine y={60} stroke="var(--chart-4)" strokeDasharray="4 4" />
                     <Line
@@ -358,7 +365,11 @@ function CaseReport() {
                       tick={{ fontSize: 10 }}
                       stroke="var(--muted-foreground)"
                     />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 10 }}
+                      stroke="var(--muted-foreground)"
+                    />
                     <Line
                       type="monotone"
                       dataKey="sr"
@@ -381,15 +392,17 @@ function CaseReport() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Suppression ratio in percent; seizure score plotted on the same axis (0–1 scale,
-                low values expected).
+                Suppression ratio in percent; seizure score plotted on the same axis (0–1 scale, low
+                values expected).
               </p>
             </section>
 
             <section className="print-block print-page-break mt-5">
               <h2 className="text-sm font-semibold">Event and annotation log</h2>
               {markers.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">No events logged for this case.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No events logged for this case.
+                </p>
               ) : (
                 <table className="mt-2 w-full border-collapse text-sm">
                   <thead>

@@ -194,7 +194,9 @@ export function LimitsSheet({ controls }: { controls: CaseControls }) {
             max={10}
             step={1}
             value={[settings.seizureEpochs]}
-            onValueChange={([v = 0]) => onSettingsChange({ seizureEpochs: v }, `Seizure epochs ${v}`)}
+            onValueChange={([v = 0]) =>
+              onSettingsChange({ seizureEpochs: v }, `Seizure epochs ${v}`)
+            }
           />
         </Row>
       </Group>

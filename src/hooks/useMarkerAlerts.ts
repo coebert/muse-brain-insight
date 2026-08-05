@@ -27,11 +27,7 @@ function keyFor(e: HemiEvent, view: DsaView): string {
  * Real-time visual (and optionally audible) notifications for newly detected
  * burst-suppression and seizure markers, scoped to the active DSA view.
  */
-export function useMarkerAlerts(options: {
-  events: HemiEvent[];
-  view: DsaView;
-  enabled: boolean;
-}) {
+export function useMarkerAlerts(options: { events: HemiEvent[]; view: DsaView; enabled: boolean }) {
   const { events, view, enabled } = options;
   const [soundEnabled, setSoundEnabled] = useState(loadSoundPref);
   const seenRef = useRef<Set<string>>(new Set());

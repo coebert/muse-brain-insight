@@ -437,6 +437,13 @@ export class MuseClient implements EegSource {
   private samplesCb: SampleHandler | null = null;
   private stopping = false;
   private reconnecting = false;
+  /** Live notification subscriptions, so a reconnect can detach cleanly. */
+  private subscriptions: {
+    characteristic: BluetoothRemoteGATTCharacteristic;
+    listener: (event: Event) => void;
+  }[] = [];
+  /** Kept so stop() can detach it; the browser reuses BluetoothDevice objects. */
+  private disconnectListener: (() => void) | null = null;
   /** Exponential backoff, seconds, between reconnection attempts. */
   private static readonly RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
 
@@ -475,12 +482,29 @@ export class MuseClient implements EegSource {
     const device = this.device ?? (await requestMuseDevice());
     this.device = device;
     this.name = device.name ?? "Muse";
-    device.addEventListener("gattserverdisconnected", () => {
+    if (this.disconnectListener) {
+      device.removeEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.disconnectListener = () => {
       if (this.stopping) return;
       void this.attemptReconnect();
-    });
+    };
+    device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
     await this.attach();
+  }
+
+  /**
+   * Drops every notification listener added by a previous attach. Web
+   * Bluetooth hands back the same characteristic objects across GATT
+   * reconnects, so without this each dropout would add a second listener and
+   * the same samples would be written to the ring buffer twice.
+   */
+  private detachSubscriptions() {
+    for (const { characteristic, listener } of this.subscriptions) {
+      characteristic.removeEventListener("characteristicvaluechanged", listener);
+    }
+    this.subscriptions = [];
   }
 
   /** (Re)opens GATT and re-subscribes to the four electrode characteristics. */
@@ -488,20 +512,33 @@ export class MuseClient implements EegSource {
     const device = this.device;
     const onSamples = this.samplesCb;
     if (!device || !onSamples) throw new Error("The headband is no longer available.");
+    this.detachSubscriptions();
     const server = await device.gatt!.connect();
+    // stop() can land mid-handshake; abandon rather than resurrect the link.
+    if (this.stopping) throw new Error("Connection cancelled.");
     const service = await server.getPrimaryService(MUSE_SERVICE);
     this.control = await service.getCharacteristic(CONTROL_CHAR);
     await this.control.startNotifications();
 
     for (const channel of MUSE_CHANNELS) {
+      if (this.stopping) {
+        this.detachSubscriptions();
+        throw new Error("Connection cancelled.");
+      }
       const characteristic = await service.getCharacteristic(EEG_CHARS[channel]);
-      characteristic.addEventListener("characteristicvaluechanged", (event) => {
+      const listener = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (value && value.byteLength >= 20) onSamples(channel, decodeMusePacket(value));
-      });
+      };
+      characteristic.addEventListener("characteristicvaluechanged", listener);
+      this.subscriptions.push({ characteristic, listener });
       await characteristic.startNotifications();
     }
 
+    if (this.stopping) {
+      this.detachSubscriptions();
+      throw new Error("Connection cancelled.");
+    }
     await this.send("h"); // halt any existing stream
     await this.send(this.preset); // confirmed streaming preset
     await this.send("s"); // status
@@ -542,11 +579,16 @@ export class MuseClient implements EegSource {
 
   async stop() {
     this.stopping = true;
+    this.detachSubscriptions();
     try {
       await this.send("h");
     } catch {
       /* device may already be gone */
     }
+    if (this.device && this.disconnectListener) {
+      this.device.removeEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.disconnectListener = null;
     this.device?.gatt?.disconnect();
     this.device = null;
     this.control = null;

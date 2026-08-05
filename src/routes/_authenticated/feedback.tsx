@@ -22,10 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getFeedbackAnalytics,
-  type FeedbackBucket,
-} from "@/lib/eeg/alert-feedback.functions";
+import { getFeedbackAnalytics, type FeedbackBucket } from "@/lib/eeg/alert-feedback.functions";
 
 export const Route = createFileRoute("/_authenticated/feedback")({
   head: () => ({
@@ -89,7 +86,10 @@ function AccuracyBar({ b }: { b: FeedbackBucket }) {
       </div>
       <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
         <div className="h-full bg-marker" style={{ width: `${correctPct}%` }} />
-        <div className="h-full bg-critical" style={{ width: `${graded ? 100 - correctPct : 0}%` }} />
+        <div
+          className="h-full bg-critical"
+          style={{ width: `${graded ? 100 - correctPct : 0}%` }}
+        />
       </div>
     </div>
   );
@@ -164,8 +164,8 @@ function FeedbackAnalyticsPage() {
             <ThumbsUp className="h-4 w-4 text-marker" aria-hidden /> Alert feedback analytics
           </h1>
           <p className="text-xs text-muted-foreground">
-            How often clinicians agreed with the AI reviewer, by alert category, clinician and
-            model version.
+            How often clinicians agreed with the AI reviewer, by alert category, clinician and model
+            version.
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -173,18 +173,18 @@ function FeedbackAnalyticsPage() {
             <Link to="/performance">Model performance</Link>
           </Button>
           <div className="w-40">
-          <Select value={windowDays} onValueChange={setWindowDays}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {WINDOWS.map((w) => (
-                <SelectItem key={w.value} value={w.value}>
-                  {w.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={windowDays} onValueChange={setWindowDays}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WINDOWS.map((w) => (
+                  <SelectItem key={w.value} value={w.value}>
+                    {w.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </header>
@@ -216,9 +216,7 @@ function FeedbackAnalyticsPage() {
                 { label: "Agreement rate", value: pct(data.totals.accuracy) },
               ].map((t) => (
                 <div key={t.label} className="panel p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t.label}
-                  </p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{t.label}</p>
                   <p className="metric-value mt-1 text-2xl font-semibold">{t.value}</p>
                 </div>
               ))}
@@ -293,11 +291,7 @@ function FeedbackAnalyticsPage() {
                 buckets={data.byCategory}
                 empty="No categorised feedback yet."
               />
-              <BucketPanel
-                title="By severity"
-                buckets={data.bySeverity}
-                empty="No feedback yet."
-              />
+              <BucketPanel title="By severity" buckets={data.bySeverity} empty="No feedback yet." />
               <BucketPanel
                 title="By clinician"
                 buckets={data.byClinician}

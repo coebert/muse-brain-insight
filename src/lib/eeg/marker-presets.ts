@@ -12,7 +12,14 @@ export const MARKER_GROUPS: MarkerGroup[] = [
   {
     key: "airway",
     label: "Airway & access",
-    markers: ["Induction", "Laryngoscopy", "Intubation", "LMA inserted", "Extubation", "Line inserted"],
+    markers: [
+      "Induction",
+      "Laryngoscopy",
+      "Intubation",
+      "LMA inserted",
+      "Extubation",
+      "Line inserted",
+    ],
   },
   {
     key: "drugs",
@@ -62,14 +69,7 @@ export type MarkerMode = "anaesthesia" | "icu";
 
 /** Icon keys resolved to a lucide component by the quick-mark bar. */
 export type MarkerIconKey =
-  | "syringe"
-  | "scissors"
-  | "activity"
-  | "zap"
-  | "wind"
-  | "eye"
-  | "pause"
-  | "alert";
+  "syringe" | "scissors" | "activity" | "zap" | "wind" | "eye" | "pause" | "alert";
 
 /**
  * A one-tap marker template. `defaultBackdate` encodes how long after the

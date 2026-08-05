@@ -272,65 +272,65 @@ function HemiDsaPanelInner({
         </div>
       </div>
       <div className={cn("grid min-h-0 flex-1", dsaView === "bilateral" && "grid-rows-2")}>
-      {lanes.map((lane) => (
-        <div
-          key={lane.key}
-          className="flex min-h-0 flex-col border-b border-border/60 last:border-b-0"
-        >
-          {/* Lane header sits above the plot so nothing overlaps the heat map. */}
-          <div className="flex min-h-0 shrink-0 items-center gap-2 px-2 py-1">
-            <span
-              className={cn(
-                "metric-value min-w-0 truncate text-xs text-foreground",
-                !compact && "tracking-[0.12em] uppercase",
-              )}
-            >
-              {lane.side} · {lane.montage}
-            </span>
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              <HemiQualityBadge metrics={lane.metrics} compact />
-              <ParameterInfo parameter="sqi" />
+        {lanes.map((lane) => (
+          <div
+            key={lane.key}
+            className="flex min-h-0 flex-col border-b border-border/60 last:border-b-0"
+          >
+            {/* Lane header sits above the plot so nothing overlaps the heat map. */}
+            <div className="flex min-h-0 shrink-0 items-center gap-2 px-2 py-1">
+              <span
+                className={cn(
+                  "metric-value min-w-0 truncate text-xs text-foreground",
+                  !compact && "tracking-[0.12em] uppercase",
+                )}
+              >
+                {lane.side} · {lane.montage}
+              </span>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <HemiQualityBadge metrics={lane.metrics} compact />
+                <ParameterInfo parameter="sqi" />
+              </div>
             </div>
+            <LaneInteract view={view} windowSeconds={windowSeconds} onChange={setView}>
+              <DsaChart
+                frames={lane.frames}
+                windowSeconds={windowSeconds}
+                traces={lane.traces}
+                view={view}
+              />
+              {dsaView === "overlay" ? (
+                <div
+                  className={cn(
+                    "metric-value absolute right-2 z-10 flex rounded bg-background/70 text-xs",
+                    compact ? "bottom-7 gap-2 px-1.5 py-0.5" : "bottom-8 gap-3 px-2 py-1",
+                  )}
+                >
+                  <span className="flex items-center gap-1" style={{ color: LEFT_TRACE_COLOR }}>
+                    {compact ? null : (
+                      <span className="h-0.5 w-4" style={{ backgroundColor: LEFT_TRACE_COLOR }} />
+                    )}
+                    {compact ? "— L SEF95" : "L SEF95"}
+                  </span>
+                  <span className="flex items-center gap-1" style={{ color: RIGHT_TRACE_COLOR }}>
+                    {compact ? null : (
+                      <span className="h-0.5 w-4" style={{ backgroundColor: RIGHT_TRACE_COLOR }} />
+                    )}
+                    {compact ? "— R SEF95" : "R SEF95"}
+                  </span>
+                </div>
+              ) : null}
+              <HemiEventOverlay
+                events={hemiEvents}
+                side={lane.overlaySide}
+                elapsed={elapsed}
+                windowSeconds={windowSeconds}
+                compact={compact}
+                view={view}
+              />
+            </LaneInteract>
           </div>
-          <LaneInteract view={view} windowSeconds={windowSeconds} onChange={setView}>
-            <DsaChart
-              frames={lane.frames}
-              windowSeconds={windowSeconds}
-              traces={lane.traces}
-              view={view}
-            />
-          {dsaView === "overlay" ? (
-            <div
-              className={cn(
-                "metric-value absolute right-2 z-10 flex rounded bg-background/70 text-xs",
-                compact ? "bottom-7 gap-2 px-1.5 py-0.5" : "bottom-8 gap-3 px-2 py-1",
-              )}
-            >
-              <span className="flex items-center gap-1" style={{ color: LEFT_TRACE_COLOR }}>
-                {compact ? null : (
-                  <span className="h-0.5 w-4" style={{ backgroundColor: LEFT_TRACE_COLOR }} />
-                )}
-                {compact ? "— L SEF95" : "L SEF95"}
-              </span>
-              <span className="flex items-center gap-1" style={{ color: RIGHT_TRACE_COLOR }}>
-                {compact ? null : (
-                  <span className="h-0.5 w-4" style={{ backgroundColor: RIGHT_TRACE_COLOR }} />
-                )}
-                {compact ? "— R SEF95" : "R SEF95"}
-              </span>
-            </div>
-          ) : null}
-          <HemiEventOverlay
-            events={hemiEvents}
-            side={lane.overlaySide}
-            elapsed={elapsed}
-            windowSeconds={windowSeconds}
-            compact={compact}
-            view={view}
-          />
-          </LaneInteract>
-        </div>
-      ))}
+        ))}
       </div>
       <TciTimeline
         infusions={infusions}
