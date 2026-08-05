@@ -95,7 +95,6 @@ function ListField({
   );
 }
 
-
 /** Time field that accepts mm:ss and keeps the stored value in seconds. */
 function ClockInput({
   value,

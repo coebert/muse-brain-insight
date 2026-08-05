@@ -45,9 +45,10 @@ export const Route = createFileRoute("/_authenticated/trends")({
   // Deep links from case evidence: /trends?session=<id>&t=<seconds>
   validateSearch: (search: Record<string, unknown>) => ({
     session: typeof search["session"] === "string" ? search["session"] : undefined,
-    t: Number.isFinite(Number(search["t"])) && search["t"] !== undefined
-      ? Math.max(0, Math.round(Number(search["t"])))
-      : undefined,
+    t:
+      Number.isFinite(Number(search["t"])) && search["t"] !== undefined
+        ? Math.max(0, Math.round(Number(search["t"])))
+        : undefined,
   }),
   head: () => ({
     meta: [
