@@ -93,7 +93,7 @@ describe("alignSeries", () => {
 
   it("drops samples outside the tolerance", () => {
     const shifted = series([1, 2, 3]).map((p) => ({ ...p, t: p.t + 10 }));
-    expect(alignSeries(series([1, 2, 3]), shifted, 0.5)).toHaveLength(1);
+    expect(alignSeries(series([1, 2, 3]), shifted, 0.5)).toHaveLength(0);
   });
 
   it("applies a lag before matching", () => {
