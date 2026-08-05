@@ -7,8 +7,8 @@ describe("MarkSheet", () => {
   it("marks a preset at the current case time", () => {
     const onMark = vi.fn();
     render(<MarkSheet elapsed={600} onMark={onMark} onDone={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: "Intubated" }));
-    expect(onMark).toHaveBeenCalledWith("Intubated", 0);
+    fireEvent.click(screen.getByRole("button", { name: "Intubation" }));
+    expect(onMark).toHaveBeenCalledWith("Intubation", 0);
   });
 
   it("back-dates the marker by the selected offset", () => {
@@ -17,8 +17,8 @@ describe("MarkSheet", () => {
     render(<MarkSheet elapsed={600} onMark={onMark} onDone={onDone} />);
     fireEvent.click(screen.getByRole("button", { name: "−60s" }));
     expect(screen.getByText(/marks at/)).toHaveTextContent("09:00");
-    fireEvent.click(screen.getByRole("button", { name: "Intubated" }));
-    expect(onMark).toHaveBeenCalledWith("Intubated", 60);
+    fireEvent.click(screen.getByRole("button", { name: "Intubation" }));
+    expect(onMark).toHaveBeenCalledWith("Intubation", 60);
     expect(onDone).toHaveBeenCalled();
   });
 
