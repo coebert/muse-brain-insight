@@ -8,6 +8,7 @@ import {
   signalQuality,
   spectralEdge,
   type SignalQuality,
+  type Psd,
 } from "./dsp";
 import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
