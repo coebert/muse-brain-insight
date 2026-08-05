@@ -43,7 +43,9 @@ import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.funct
 
 export const Route = createFileRoute("/_authenticated/trends")({
   // Deep links from case evidence: /trends?session=<id>&t=<seconds>
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { session?: string | undefined; t?: number | undefined } => ({
     session: typeof search["session"] === "string" ? search["session"] : undefined,
     t:
       Number.isFinite(Number(search["t"])) && search["t"] !== undefined
