@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normaliseFacts, type CaseFacts, type CaseTimelinePoint } from "@/lib/eeg/case-facts";
+import { normaliseFeedback, patternKey, type PatternFeedback } from "@/lib/eeg/pattern-feedback";
 
 /** A stretch of one recording cited as support for a detail or pattern. */
 export interface EegCitation {
@@ -36,6 +37,8 @@ export interface CasePattern {
   suggestedAction: string;
   /** The exact EEG segments, across cases, the pattern rests on. */
   citations: EegCitation[];
+  /** Stable identity used to attach the clinician's verdict. */
+  patternKey?: string;
 }
 
 export interface CaseNoteInsights {
@@ -48,6 +51,8 @@ export interface CaseNoteInsights {
   recordingGaps: string[];
   limitations: string[];
   generatedAt: string;
+  /** Verdicts the clinician has already recorded on earlier patterns. */
+  feedback: PatternFeedback[];
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant working with an anaesthetist/intensivist who records EEG from a 4-channel frontal Muse 2 headband during general anaesthesia and ICU sedation.
@@ -60,12 +65,18 @@ Every key detail and every pattern you assert must be tied back to the recording
 
 Each case may also carry CONFIRMED STRUCTURED FIELDS that the clinician has already reviewed and corrected. Where those are present, treat them as the authoritative reading of the note: reuse their exact wording in keyDetails and riskFactors rather than re-deriving your own, and build patterns on them.
 
+You are also given PRIOR CLINICIAN FEEDBACK: patterns proposed before, each marked accepted, edited or rejected, often with the clinician's own reworded title/detail and a reason. Learn from it:
+- ACCEPTED: established for this clinician. Re-propose only if new cases strengthen or qualify it, and say what changed.
+- EDITED: their wording and framing are correct. Reuse their title and detail verbatim and build on that reading.
+- REJECTED: do not propose that pattern or a trivial rewording of it again. Apply the stated reason to related hypotheses, and revisit only if clearly stronger evidence has appeared — then say why the earlier objection no longer holds.
+
 Your job has two parts:
 1. Read each free-text summary and extract the key clinical details as short, structured, comparable facts (e.g. "frail elderly", "emergency laparotomy", "sepsis on noradrenaline", "slow emergence", "postoperative delirium", "propofol TCI Ce 2.4"). Normalise wording so the same concept reads the same way across cases. Then say in one sentence how the narrative squares with that case's recorded EEG numbers.
 2. Across all cases, look for NEW clinical patterns linking those extracted details to the EEG findings — for example a subgroup that suppresses at low doses, a diagnosis associated with high seizure scores, a drug or surgical event followed by a characteristic depth change, or a narrative feature that predicts slow emergence.
 
 Rules:
 - Only assert a pattern you can point to in at least two cases, and give the case codes. Say how strong it is: "emerging" (2 cases or weak), "moderate", "strong".
+- Prefer genuinely new patterns over restating ones already judged.
 - Never state a diagnosis and never invent numbers — cite only values present in the data given.
 - Be explicit that these are hypotheses from a small, uncontrolled, single-clinician frontal-montage dataset, not evidence.
 - British clinical English, concise and specific. Never repeat identifiable detail; if a note contains anything identifying, ignore it and flag it under recordingGaps.
