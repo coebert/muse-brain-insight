@@ -13,6 +13,8 @@ export interface PatientContext {
   clinicalFeatures: string[];
   context: string;
   notes: string;
+  /** Free-text case summary written by the clinician, if any. */
+  caseSummary?: string;
 }
 
 export interface FeatureDigest {
@@ -26,6 +28,8 @@ export interface FeatureDigest {
     clinicalFeatures: string[];
     clinicalContext: string;
     notes: string | null;
+    /** Clinician's free-text case summary, for narrative context. */
+    caseSummary: string | null;
   };
   suppression: {
     meanRatioPct: number;
@@ -190,6 +194,7 @@ export function buildFeatureDigest(
       clinicalFeatures: patient.clinicalFeatures,
       clinicalContext: patient.context,
       notes: patient.notes.trim() || null,
+      caseSummary: (patient.caseSummary ?? "").trim() || null,
     },
     suppression: {
       meanRatioPct: round(mean(epochs.map((e) => e.suppressionRatio)), 1),
