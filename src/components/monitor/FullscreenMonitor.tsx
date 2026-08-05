@@ -8,7 +8,8 @@ import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
 import { TrendLine } from "@/components/monitor/TrendLine";
-import { WaveformStrip } from "@/components/monitor/WaveformStrip";
+import { LiveWaveform } from "@/components/monitor/LiveWaveform";
+import type { WaveformStore } from "@/lib/eeg/waveform-store";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
@@ -31,7 +32,7 @@ interface Props {
   hemiLatest: HemiLatest | null;
   hemiEvents: HemiEvent[];
   latest: Epoch | null;
-  waveform: Float64Array;
+  waveformStore: WaveformStore;
   elapsed: number;
   sourceName: string;
   streaming: boolean;
@@ -54,7 +55,7 @@ export function FullscreenMonitor({
   hemiLatest,
   hemiEvents,
   latest,
-  waveform,
+  waveformStore,
   elapsed,
   sourceName,
   streaming,
@@ -202,8 +203,8 @@ export function FullscreenMonitor({
               </span>
             </div>
             <div className="h-[70px] sm:h-[90px] short:h-[60px]!">
-              <WaveformStrip
-                data={waveform}
+              <LiveWaveform
+                store={waveformStore}
                 suppressionThresholdUv={suppressionThresholdUv}
                 suppressed={latest?.isSuppressed ?? false}
               />
