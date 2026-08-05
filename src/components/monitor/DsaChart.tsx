@@ -9,7 +9,7 @@ const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
 const MARGIN_TIGHT = { top: 6, right: 12, bottom: 22, left: 26 };
 
 /** Pick a margin set that keeps the plot area usable at bedside sizes. */
-function marginsFor(widthCss: number, heightCss: number) {
+export function marginsFor(widthCss: number, heightCss: number) {
   const narrow = widthCss < 520;
   const short = heightCss < 190;
   return {
@@ -39,9 +39,25 @@ interface Props {
   dbMax?: number;
   /** Optional frequency traces (Hz) drawn on top of the heat map. */
   traces?: DsaTrace[] | undefined;
+  /**
+   * Visible slice of the history, expressed in seconds-ago at each edge.
+   * `from` is the left (older) edge, `to` the right (newer) edge.
+   * Defaults to the full window (`from: windowSeconds, to: 0`).
+   */
+  view?: { from: number; to: number } | undefined;
 }
 
-function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, traces }: Props) {
+function DsaChartInner({
+  epochs,
+  frames,
+  windowSeconds,
+  dbMin = -6,
+  dbMax = 26,
+  traces,
+  view,
+}: Props) {
+  const from = view ? view.from : windowSeconds;
+  const to = view ? view.to : 0;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   // Stable identity so the canvas only redraws when the data really changed.
@@ -90,6 +106,9 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
 
     const visible = spectra.slice(-windowSeconds);
     const bins = visible[visible.length - 1]?.length ?? 0;
+    const span = Math.max(1e-6, from - to);
+    /** Seconds-ago at a given pixel column inside the plot. */
+    const ageAt = (px: number) => from - (px / Math.max(1, plotW - 1)) * span;
 
     // Continuous heat map: interpolated in time and frequency so the display
     // reads as a smooth bedside-monitor spectrogram rather than 1 s stripes.
@@ -99,8 +118,8 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
         ctx,
         { x: margin.left, y: margin.top, w: plotW, h: plotH },
         (px) => {
-          // Right-aligned: newest column at the right edge.
-          const pos = (px / Math.max(1, plotW - 1)) * (windowSeconds - 1) - offset;
+          // Right edge = `to` seconds ago, left edge = `from` seconds ago.
+          const pos = windowSeconds - 1 - ageAt(px) - offset;
           const i = Math.floor(pos);
           return {
             lo: i >= 0 && i < visible.length ? visible[i]! : undefined,
@@ -126,8 +145,15 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
       const vals = tr.values.slice(-windowSeconds);
       if (vals.length < 2) continue;
       const offset = windowSeconds - vals.length;
-      const xFor = (i: number) =>
-        margin.left + ((i + offset) / Math.max(1, windowSeconds - 1)) * plotW;
+      const xFor = (i: number) => {
+        const age = windowSeconds - 1 - (i + offset);
+        return margin.left + ((from - age) / span) * plotW;
+      };
+      ctx.beginPath();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(margin.left, margin.top, plotW, plotH);
+      ctx.clip();
       ctx.beginPath();
       vals.forEach((v, i) => {
         const x = xFor(i);
@@ -141,6 +167,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
       ctx.shadowBlur = 3 * dpr;
       ctx.stroke();
       ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     // Band key lives in the right gutter so the heat map colours read true.
@@ -206,7 +233,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
     for (let i = 0; i <= xTicks; i++) {
       const frac = i / xTicks;
       const x = margin.left + frac * plotW;
-      const secondsAgo = Math.round((1 - frac) * windowSeconds);
+      const secondsAgo = Math.max(0, Math.round(from - frac * span));
       const label = secondsAgo === 0 ? "now" : `-${secondsAgo}s`;
       ctx.beginPath();
       ctx.moveTo(x, margin.top + plotH);
@@ -223,7 +250,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
       ctx.textBaseline = "top";
       ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
     }
-  }, [spectra, windowSeconds, dbMin, dbMax, traces, size]);
+  }, [spectra, windowSeconds, dbMin, dbMax, traces, size, from, to]);
 
   return (
     <canvas
