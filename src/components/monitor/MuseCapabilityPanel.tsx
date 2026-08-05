@@ -120,6 +120,8 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
     ["Battery", caps.batteryPercent == null ? "not reported" : `${caps.batteryPercent}%`],
   ];
 
+  const selectedPreset = caps.presets.find((p) => p.code === preset);
+
   return (
     <div className="space-y-3 rounded-md border border-border bg-card/60 p-3">
       <div className="flex items-center justify-between gap-2">
