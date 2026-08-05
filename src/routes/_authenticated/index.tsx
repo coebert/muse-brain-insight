@@ -170,6 +170,11 @@ function Monitor() {
   useEffect(() => {
     const prefs = loadCaseStartup();
     if (!prefs) return;
+    setMode(prefs.mode);
+    const cfg = MODES.find((m) => m.key === prefs.mode);
+    const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    if (preset) monitor.setSettings({ ...preset.settings });
+    setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
     setMeta((prev) => ({
       ...prev,
       context: prefs.context || prev.context,
@@ -190,6 +195,7 @@ function Monitor() {
   const [fullscreen, setFullscreen] = useState(false);
   const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [dim, setDim] = useState(false);
   const [saving, setSaving] = useState(false);
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   /** TCI pumps running for this clinical episode (several may run at once). */
@@ -350,6 +356,7 @@ function Monitor() {
       context: meta.context,
       location: meta.location,
       lastCaseCode: meta.caseCode.trim(),
+      mode,
     });
     setMarkers([]);
     setInfusions([]);
@@ -544,6 +551,10 @@ function Monitor() {
       acknowledge: (id) => {
         alarms.acknowledge(id);
         audit(`Alarm acknowledged (${id})`);
+        toast.success("Alarm acknowledged", {
+          duration: 10000,
+          action: { label: "Undo", onClick: () => alarms.unacknowledge(id) },
+        });
       },
       acknowledgeAll: () => {
         alarms.acknowledgeAll();
@@ -553,10 +564,13 @@ function Monitor() {
         alarms.acknowledgeSide(side);
         audit(`Alarms acknowledged (${side})`);
       },
+      unacknowledge: alarms.unacknowledge,
       pauseAudio: alarms.pauseAudio,
       resumeAudio: alarms.resumeAudio,
       setAudioEnabled: (on) => alarms.setAudioEnabled(on),
     },
+    dim,
+    onDimChange: setDim,
     handover: [
       { label: "Case time", value: formatClock(monitor.elapsed) },
       { label: "Mean SR", value: `${summary.meanSr.toFixed(0)} %` },
