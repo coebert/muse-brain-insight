@@ -32,6 +32,12 @@ import { useDsaViewPreference } from "@/lib/eeg/dsa-view-pref";
 import { FullscreenMonitor } from "@/components/monitor/FullscreenMonitor";
 import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
+import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
+import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
+import {
+  interpretTciResponse,
+  type TciResponseReport,
+} from "@/lib/eeg/tci-response.functions";
 import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
