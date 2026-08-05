@@ -2,9 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { DETECTION_PRESETS, matchPreset, type AnalysisSettings } from "@/lib/eeg/analysis";
+import { formatDuration } from "@/lib/eeg/format";
 
 interface Props {
   settings: AnalysisSettings;
+  /** Live burst-suppression readout shown against the limits below. */
+  suppression?: {
+    /** Current suppression ratio (%) over the configured window. */
+    ratio: number | null;
+    /** Peak suppression ratio (%) so far this case. */
+    maxRatio: number;
+    /** Cumulative suppressed time this case, in seconds. */
+    seconds: number;
+  };
   /** Applies a patch and records the reason in the case audit trail. */
   onApply: (patch: Partial<AnalysisSettings>, description: string) => void;
 }
@@ -41,12 +51,34 @@ function SliderRow({ label, value, min, max, step, current, hint, onChange }: Sl
 }
 
 /** Sensitivity presets and the individual detection / trend-alert limits. */
-export function DetectionThresholds({ settings, onApply }: Props) {
+export function DetectionThresholds({ settings, suppression, onApply }: Props) {
   const activePreset = matchPreset(settings);
 
   return (
     <div className="panel px-3 py-4 sm:px-4">
       <h2 className="text-sm font-semibold">Detection thresholds</h2>
+      {suppression ? (
+        <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              SR ({settings.srWindowSeconds}s)
+            </p>
+            <p className="metric-value text-sm">
+              {suppression.ratio == null ? "—" : `${suppression.ratio.toFixed(0)} %`}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Peak SR</p>
+            <p className="metric-value text-sm">{suppression.maxRatio.toFixed(0)} %</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Suppression time
+            </p>
+            <p className="metric-value text-sm">{formatDuration(suppression.seconds)}</p>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-3">
         <Label className="text-xs text-muted-foreground">Sensitivity preset</Label>
         <div className="mt-2 flex flex-wrap gap-2">

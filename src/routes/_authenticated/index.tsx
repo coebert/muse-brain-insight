@@ -1196,7 +1196,15 @@ function Monitor() {
                   </div>
                 </div>
 
-                <DetectionThresholds settings={monitor.settings} onApply={applySettings} />
+                <DetectionThresholds
+                  settings={monitor.settings}
+                  suppression={{
+                    ratio: latest ? latest.suppressionRatio : null,
+                    maxRatio: summary.maxSr,
+                    seconds: summary.suppressionSeconds,
+                  }}
+                  onApply={applySettings}
+                />
               </div>
             ) : null}
 
