@@ -20,7 +20,7 @@ export const PATTERN_TYPE_LABEL: Record<PatternType, string> = {
 };
 
 const RULES: [PatternType, RegExp][] = [
-  [/**/ "seizure", /seizur|ictal|epilept|spike|sharp|periodic discharge|status/i],
+  ["seizure", /seizur|ictal|epilept|spike|sharp|periodic discharge|status/i],
   ["suppression", /suppress|burst|isoelectric|bsr/i],
   ["depth", /depth|anaesthe|anesthe|sedat|emergen|awake|bis|openibis|sef|alpha ?power/i],
   ["drug", /propofol|remi|ketamine|alfentanil|bolus|infusion|tci|dose|dosing|opioid|midazolam|rocuronium/i],
