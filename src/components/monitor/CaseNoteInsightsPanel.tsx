@@ -4,6 +4,7 @@ import {
   Check,
   Crosshair,
   Lightbulb,
+  ListFilter,
   NotebookPen,
   Pencil,
   Sparkles,
@@ -14,7 +15,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   mineCaseNotes,
@@ -33,6 +42,15 @@ import {
   deletePatternFeedback,
   savePatternFeedback,
 } from "@/lib/eeg/pattern-feedback.functions";
+import {
+  cohortOptions,
+  DEFAULT_PATTERN_FILTERS,
+  matchesFilters,
+  PATTERN_TYPE_LABEL,
+  patternType,
+  type PatternFilters,
+  type PatternType,
+} from "@/lib/eeg/pattern-filters";
 import { cn } from "@/lib/utils";
 
 const STRENGTH_STYLES: Record<string, string> = {
@@ -233,9 +251,13 @@ function PatternVerdictControls({
  */
 export function CaseNoteInsightsPanel() {
   const run = useServerFn(mineCaseNotes);
+  const save = useServerFn(savePatternFeedback);
   const [result, setResult] = useState<CaseNoteInsights | null>(null);
   const [loading, setLoading] = useState(false);
   const [verdicts, setVerdicts] = useState<Record<string, PatternFeedback>>({});
+  const [filters, setFilters] = useState<PatternFilters>(DEFAULT_PATTERN_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function analyse() {
     setLoading(true);
@@ -243,6 +265,7 @@ export function CaseNoteInsightsPanel() {
       const res = await run({ data: { limit: 25 } });
       setResult(res);
       setVerdicts(Object.fromEntries(res.feedback.map((f) => [f.patternKey, f])));
+      setSelected([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not analyse your case notes.");
     } finally {
@@ -257,6 +280,54 @@ export function CaseNoteInsightsPanel() {
       else delete copy[key];
       return copy;
     });
+  }
+
+  const patterns = result?.patterns ?? [];
+  const keyed = patterns.map((p) => ({ p, key: p.patternKey || makePatternKey(p.title) }));
+  const visible = keyed.filter(({ p, key }) => matchesFilters(p, verdicts[key], filters));
+  const visibleKeys = visible.map((v) => v.key);
+  const selectedVisible = selected.filter((k) => visibleKeys.includes(k));
+  const allVisibleSelected = visibleKeys.length > 0 && selectedVisible.length === visibleKeys.length;
+
+  function toggle(key: string, on: boolean) {
+    setSelected((prev) => (on ? [...new Set([...prev, key])] : prev.filter((k) => k !== key)));
+  }
+
+  /** Record the same verdict on every selected, currently visible pattern. */
+  async function bulkRecord(verdict: "accepted" | "rejected") {
+    const targets = keyed.filter(({ key }) => selectedVisible.includes(key));
+    if (!targets.length) return;
+    setBulkBusy(true);
+    let done = 0;
+    try {
+      for (const { p, key } of targets) {
+        const res = await save({
+          data: {
+            patternKey: key,
+            verdict,
+            title: p.title,
+            detail: p.detail,
+            suggestedAction: p.suggestedAction ?? "",
+            caseCodes: p.caseCodes ?? [],
+            note: "",
+          },
+        });
+        updateVerdict(key, res.feedback);
+        done += 1;
+      }
+      setSelected([]);
+      toast.success(
+        `${verdict === "accepted" ? "Accepted" : "Rejected"} ${done} pattern${done === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `${err.message} (${done} saved before this)`
+          : "Could not save every decision.",
+      );
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   return (
@@ -286,13 +357,136 @@ export function CaseNoteInsightsPanel() {
             {result.casesAnalysed} reviewed · {new Date(result.generatedAt).toLocaleString()}
           </p>
 
-          {result.patterns.length ? (
+          {patterns.length ? (
             <div className="space-y-2">
               <h3 className="text-xs tracking-wide text-muted-foreground uppercase">
                 Candidate patterns
               </h3>
-              {result.patterns.map((p) => {
-                const key = p.patternKey || makePatternKey(p.title);
+
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-border px-2.5 py-2">
+                <Select
+                  value={filters.type}
+                  onValueChange={(v) =>
+                    setFilters((f) => ({ ...f, type: v as PatternType | "all" }))
+                  }
+                >
+                  <SelectTrigger className="h-9 w-[9.5rem] text-xs">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    {(Object.keys(PATTERN_TYPE_LABEL) as PatternType[]).map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {PATTERN_TYPE_LABEL[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.strength}
+                  onValueChange={(v) =>
+                    setFilters((f) => ({ ...f, strength: v as PatternFilters["strength"] }))
+                  }
+                >
+                  <SelectTrigger className="h-9 w-[9rem] text-xs">
+                    <SelectValue placeholder="Confidence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any confidence</SelectItem>
+                    <SelectItem value="strong">Strong</SelectItem>
+                    <SelectItem value="moderate">Moderate</SelectItem>
+                    <SelectItem value="emerging">Emerging</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.caseCode}
+                  onValueChange={(v) => setFilters((f) => ({ ...f, caseCode: v }))}
+                >
+                  <SelectTrigger className="h-9 w-[9rem] text-xs">
+                    <SelectValue placeholder="Cohort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All cases</SelectItem>
+                    {cohortOptions(patterns).map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.verdict}
+                  onValueChange={(v) =>
+                    setFilters((f) => ({ ...f, verdict: v as PatternFilters["verdict"] }))
+                  }
+                >
+                  <SelectTrigger className="h-9 w-[9rem] text-xs">
+                    <SelectValue placeholder="Decision" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any decision</SelectItem>
+                    <SelectItem value="undecided">Not yet decided</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="edited">Edited</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-9"
+                  onClick={() => setFilters(DEFAULT_PATTERN_FILTERS)}
+                >
+                  <ListFilter className="size-4" /> Reset
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2.5 py-2">
+                <label className="flex min-h-9 items-center gap-2 text-xs">
+                  <Checkbox
+                    checked={allVisibleSelected}
+                    disabled={!visibleKeys.length}
+                    onCheckedChange={(c) => setSelected(c === true ? visibleKeys : [])}
+                    aria-label="Select all shown patterns"
+                  />
+                  Select all shown
+                </label>
+                <span className="text-xs text-muted-foreground">
+                  {visible.length} of {patterns.length} shown · {selectedVisible.length} selected
+                </span>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    disabled={bulkBusy || !selectedVisible.length}
+                    onClick={() => void bulkRecord("accepted")}
+                  >
+                    <Check className="size-4 text-signal" /> Accept selected
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    disabled={bulkBusy || !selectedVisible.length}
+                    onClick={() => void bulkRecord("rejected")}
+                  >
+                    <X className="size-4 text-critical" /> Reject selected
+                  </Button>
+                </div>
+              </div>
+
+              {visible.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No patterns match these filters.
+                </p>
+              ) : null}
+
+              {visible.map(({ p, key }) => {
                 const fb = verdicts[key];
                 return (
                 <article
@@ -303,6 +497,11 @@ export function CaseNoteInsightsPanel() {
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-2">
+                    <Checkbox
+                      checked={selected.includes(key)}
+                      onCheckedChange={(c) => toggle(key, c === true)}
+                      aria-label={`Select pattern ${p.title}`}
+                    />
                     <Lightbulb className="size-4 text-caution" />
                     <h4 className="text-sm font-medium">
                       {fb?.verdict === "edited" && fb.title ? fb.title : p.title}
@@ -314,6 +513,9 @@ export function CaseNoteInsightsPanel() {
                       )}
                     >
                       {p.strength}
+                    </span>
+                    <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                      {PATTERN_TYPE_LABEL[patternType(p)]}
                     </span>
                   </div>
                   <p className="mt-1.5 text-sm text-muted-foreground">
