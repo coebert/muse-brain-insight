@@ -1,7 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normaliseFacts, type CaseFacts } from "@/lib/eeg/case-facts";
+import { normaliseFacts, type CaseFacts, type CaseTimelinePoint } from "@/lib/eeg/case-facts";
+
+/** A stretch of one recording cited as support for a detail or pattern. */
+export interface EegCitation {
+  sessionId: string;
+  caseCode: string;
+  startSeconds: number;
+  endSeconds: number;
+  /** What the EEG shows there, and which detail it supports. */
+  why: string;
+}
 
 export interface CaseNoteKeyDetails {
   sessionId: string;
@@ -12,6 +22,8 @@ export interface CaseNoteKeyDetails {
   riskFactors: string[];
   /** How the narrative squares with the recorded EEG metrics. */
   eegCorrelation: string;
+  /** Segments of this case's recording that back the details above. */
+  citations: EegCitation[];
 }
 
 export interface CasePattern {
@@ -22,6 +34,8 @@ export interface CasePattern {
   caseCodes: string[];
   /** What to check or do next to test the pattern. */
   suggestedAction: string;
+  /** The exact EEG segments, across cases, the pattern rests on. */
+  citations: EegCitation[];
 }
 
 export interface CaseNoteInsights {
@@ -40,6 +54,10 @@ const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant wor
 
 You are given a set of that clinician's own anonymised cases. Each case has: an anonymised case code, demographics and admission details, the clinician's FREE-TEXT case summary and notes, and the quantitative EEG summary actually recorded (suppression ratio and suppression time, seizure alerts, depth index, SEF95, duration).
 
+Each case also carries its recorded EEG TIMELINE: detections (burst suppression, isoelectric, seizure suspicion, signal loss) and clinician markers with start times in seconds from the beginning of that recording, plus the case duration.
+
+Every key detail and every pattern you assert must be tied back to the recording: cite the exact segments (sessionId, caseCode, startSeconds, endSeconds) that show it, with one short phrase saying what is visible there. Use only times that exist in the timeline given, inside the case duration, and never invent a segment. If nothing in the recording supports a claim, say so in the text and leave citations empty rather than inventing one.
+
 Each case may also carry CONFIRMED STRUCTURED FIELDS that the clinician has already reviewed and corrected. Where those are present, treat them as the authoritative reading of the note: reuse their exact wording in keyDetails and riskFactors rather than re-deriving your own, and build patterns on them.
 
 Your job has two parts:
@@ -53,8 +71,8 @@ Rules:
 - British clinical English, concise and specific. Never repeat identifiable detail; if a note contains anything identifying, ignore it and flag it under recordingGaps.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
-{"headline":string,"perCase":[{"sessionId":string,"caseCode":string,"keyDetails":[string],"riskFactors":[string],"eegCorrelation":string}],"patterns":[{"title":string,"detail":string,"strength":"emerging"|"moderate"|"strong","caseCodes":[string],"suggestedAction":string}],"recordingGaps":[string],"limitations":[string]}
-At most 8 key details and 5 risk factors per case, at most 6 patterns, at most 5 recordingGaps and 4 limitations. Keep each string under about 45 words.`;
+{"headline":string,"perCase":[{"sessionId":string,"caseCode":string,"keyDetails":[string],"riskFactors":[string],"eegCorrelation":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}]}],"patterns":[{"title":string,"detail":string,"strength":"emerging"|"moderate"|"strong","caseCodes":[string],"suggestedAction":string,"citations":[{"sessionId":string,"caseCode":string,"startSeconds":number,"endSeconds":number,"why":string}]}],"recordingGaps":[string],"limitations":[string]}
+At most 4 citations per case and 6 per pattern, at most 8 key details and 5 risk factors per case, at most 6 patterns, at most 5 recordingGaps and 4 limitations. Keep each string under about 45 words.`;
 
 interface SessionRow {
   id: string;
@@ -125,6 +143,32 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       }
     }
 
+    const timelines = new Map<string, CaseTimelinePoint[]>();
+    if (sessions.length) {
+      const { data: eventRows } = await context.supabase
+        .from("eeg_events")
+        .select("session_id, kind, severity, t_offset_seconds, duration_seconds, detail")
+        .eq("user_id", context.userId)
+        .in(
+          "session_id",
+          sessions.map((s) => s.id),
+        )
+        .order("t_offset_seconds", { ascending: true });
+      for (const row of eventRows ?? []) {
+        const list = timelines.get(row.session_id) ?? [];
+        if (list.length >= 60) continue;
+        const start = Math.round(Number(row.t_offset_seconds) || 0);
+        list.push({
+          kind: row.kind,
+          severity: row.severity,
+          startSeconds: start,
+          endSeconds: start + Math.round(Number(row.duration_seconds) || 0),
+          detail: row.detail ?? "",
+        });
+        timelines.set(row.session_id, list);
+      }
+    }
+
     const cases = sessions
       .map((s) => ({
         sessionId: s.id,
@@ -136,6 +180,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         admissionDiagnosis: open(s.admission_diagnosis),
         clinicalFeatures: s.clinical_features ?? [],
         confirmedFields: confirmed.get(s.id) ?? null,
+        eegTimeline: timelines.get(s.id) ?? [],
         caseSummaryFreeText: open(s.case_summary),
         notesFreeText: open(s.notes),
         eeg: {
