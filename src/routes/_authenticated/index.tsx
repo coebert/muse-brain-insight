@@ -114,51 +114,10 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Monitor,
 });
 
-type MonitorMode = "anaesthesia" | "icu";
-
-const MODES: {
-  key: MonitorMode;
-  label: string;
-  icon: typeof Stethoscope;
-  blurb: string;
-  presetKey: string;
-  context: string;
-}[] = [
-  {
-    key: "anaesthesia",
-    label: "Anaesthesia",
-    icon: Stethoscope,
-    blurb:
-      "Continuous DSA with spectral edge, suppression ratio and suppression time up front. Seizure detection runs conservatively in the background.",
-    presetKey: "anaesthesia",
-    context: "general_anaesthesia",
-  },
-  {
-    key: "icu",
-    label: "ICU",
-    icon: HeartPulse,
-    blurb:
-      "Seizure- and burst-suppression-led: sensitive ictal alerting, longer suppression window, seizure score and suppression burden shown first.",
-    presetKey: "icu",
-    context: "icu_sedation",
-  },
-];
-
 function Monitor() {
   const monitor = useEegMonitor();
   const { user } = useAuth();
 
-  /** Guards against state writes after the clinician navigates away mid-call. */
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  /** One AI request at a time per panel; the watch timer must not overlap. */
-  const aiInFlight = useRef(false);
-  const tciInFlight = useRef(false);
   /** Latest setter, so the start-up effect can stay a true mount-only effect. */
   const setSettingsRef = useRef(monitor.setSettings);
   setSettingsRef.current = monitor.setSettings;
@@ -174,10 +133,10 @@ function Monitor() {
     const prefs = loadCaseStartup();
     if (!prefs) return;
     setMode(prefs.mode);
-    const cfg = MODES.find((m) => m.key === prefs.mode);
-    const preset = cfg && DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
+    const cfg = modeConfig(prefs.mode);
+    const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
     if (preset) setSettingsRef.current({ ...preset.settings });
-    setWindowMinutes(prefs.mode === "icu" ? 30 : 10);
+    setWindowMinutes(defaultWindowMinutes(prefs.mode));
     setMeta((prev) => ({
       ...prev,
       context: prefs.context || prev.context,
@@ -204,16 +163,6 @@ function Monitor() {
   /** TCI pumps running for this clinical episode (several may run at once). */
   const [infusions, setInfusions] = useState<TciInfusion[]>([]);
   const [markerText, setMarkerText] = useState("");
-  const [aiResult, setAiResult] = useState<Interpretation | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiWatch, setAiWatch] = useState(false);
-  const [aiLastRunAt, setAiLastRunAt] = useState<number | null>(null);
-  /** AI reading of how the recorded TCI targets moved the EEG. */
-  const [tciReport, setTciReport] = useState<TciResponseReport | null>(null);
-  const [tciLoading, setTciLoading] = useState(false);
-  const [tciError, setTciError] = useState<string | null>(null);
-  const seenAlertIds = useRef<Set<string>>(new Set());
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
   /**
    * Stacked left/right DSAs, or one combined lane for faster scanning.
@@ -237,12 +186,24 @@ function Monitor() {
     [monitor.epochs, monitor.settings.srWindowSeconds, monitor.settings.seizureThreshold],
   );
   const icuMode = mode === "icu";
-  const activeMode = MODES.find((m) => m.key === mode)!;
+  const activeMode = modeConfig(mode);
 
   const allEvents = useMemo(
     () => [...monitor.events, ...markers].sort((a, b) => a.t - b.t),
     [monitor.events, markers],
   );
+
+  /** AI decision support for this case (session read + TCI dose–response). */
+  const ai = useCaseAi({
+    signedIn: Boolean(user),
+    epochs: monitor.epochs,
+    events: allEvents,
+    elapsed: monitor.elapsed,
+    meta,
+    infusions,
+    modeLabel: activeMode.label,
+    streaming,
+  });
 
   /** Trend alerts and clinician annotations drawn over the DSA lanes. */
   const dsaMarkerRail = useMemo<DsaMarker[]>(() => {
