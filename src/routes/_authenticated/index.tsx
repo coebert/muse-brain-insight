@@ -1414,11 +1414,17 @@ function Monitor() {
             </DialogDescription>
           </DialogHeader>
           <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
+          {bleSupported ? null : (
+            <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-muted-foreground">
+              This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
+              Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
+            </p>
+          )}
           <DialogFooter className="gap-2">
             <Button variant="secondary" onClick={() => void startCase("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
             </Button>
-            <Button onClick={() => void startCase("muse")}>
+            <Button disabled={!bleSupported} onClick={() => void startCase("muse")}>
               <Bluetooth className="size-4" /> Connect Muse 2
             </Button>
           </DialogFooter>
