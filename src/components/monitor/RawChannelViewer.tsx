@@ -20,6 +20,19 @@ export interface RawChannelViewerProps {
   epochs?: Epoch[];
   /** Detector events — seizure suspicions and burst-suppression episodes. */
   events?: DetectedEvent[];
+  /**
+   * Clinician annotations for the session. Ones written by this viewer are
+   * prefixed with the electrode name (e.g. `TP9 · twitching`).
+   */
+  markers?: DetectedEvent[];
+  /** Place a timestamped annotation against one electrode. */
+  onAnnotateChannel?: (channel: MuseChannel, tSeconds: number, text: string) => void;
+}
+
+/** Splits `TP9 · text` back into the electrode it was placed on. */
+function annotationChannel(detail: string): MuseChannel | null {
+  const match = /^(TP9|AF7|AF8|TP10)\s·\s/.exec(detail);
+  return match ? (match[1] as MuseChannel) : null;
 }
 
 /** A detection shaded over the raw traces. */
