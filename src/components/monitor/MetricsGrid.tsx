@@ -7,6 +7,7 @@ import { formatDuration } from "@/lib/eeg/format";
 import type { Epoch } from "@/lib/eeg/analysis";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import type { DepthWindowStatus, DepthWindowPrefs } from "@/hooks/useDepthWindowAlerts";
+import type { UncertaintyReport } from "@/lib/eeg/uncertainty";
 
 export interface MetricsGridProps {
   latest: Epoch | null;
@@ -20,6 +21,8 @@ export interface MetricsGridProps {
   seizureAlert: boolean;
   icuMode: boolean;
   depthWindow: { status: DepthWindowStatus; prefs: DepthWindowPrefs };
+  /** Confidence intervals for the spectral, suppression and seizure tiles. */
+  uncertainty?: UncertaintyReport | undefined;
 }
 
 /**
@@ -35,6 +38,7 @@ export function MetricsGrid({
   icuMode,
   depthWindow,
 }: MetricsGridProps) {
+  const ci = arguments.length ? undefined : undefined;
   return (
     <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {(() => {
