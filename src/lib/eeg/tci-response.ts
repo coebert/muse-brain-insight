@@ -171,12 +171,12 @@ export function buildTciResponseDigest(
           afterEpochs: after.length,
           deltas,
           followedBy: events
-            .filter((ev) => ev.tSeconds >= p.at && ev.tSeconds <= p.at + AFTER_WINDOW)
+            .filter((ev) => ev.t >= p.at && ev.t <= p.at + AFTER_WINDOW)
             .slice(0, 4)
             .map((ev) => ({
               kind: ev.kind,
               severity: String(ev.severity ?? ""),
-              tSeconds: Math.round(ev.tSeconds),
+              tSeconds: Math.round(ev.t),
               detail: ev.detail ?? "",
             })),
         };
