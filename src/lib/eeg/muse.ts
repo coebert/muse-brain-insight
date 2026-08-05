@@ -383,6 +383,38 @@ export function validateStreamingConfig(
   return { status, issues };
 }
 
+/**
+ * Picks the richest streaming mode the headband can actually deliver.
+ * Candidates are ranked by channel count (AUX before plain EEG) and only
+ * accepted if they clear validation; a mode whose only blockers are
+ * device-level (flat battery, old firmware) cannot be fixed by switching, so
+ * the recommended mode is returned instead.
+ */
+export function selectBestPreset(caps: MuseCapabilities): {
+  preset: string;
+  validation: StreamingValidation;
+  /** True when no preset clears validation — the remedy is on the device. */
+  deviceBlocked: boolean;
+} {
+  const candidates = [...caps.presets].sort((a, b) => {
+    if (a.code === caps.recommendedPreset) return -1;
+    if (b.code === caps.recommendedPreset) return 1;
+    return b.channels - a.channels;
+  });
+  for (const candidate of candidates) {
+    const validation = validateStreamingConfig(caps, candidate.code);
+    if (validation.status !== "blocked") {
+      return { preset: candidate.code, validation, deviceBlocked: false };
+    }
+  }
+  const fallback = caps.recommendedPreset || DEFAULT_MUSE_PRESET;
+  return {
+    preset: fallback,
+    validation: validateStreamingConfig(caps, fallback),
+    deviceBlocked: true,
+  };
+}
+
 export class MuseClient implements EegSource {
   name = "Muse";
   private device: BluetoothDevice | null = null;
