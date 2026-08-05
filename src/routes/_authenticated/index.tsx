@@ -327,6 +327,7 @@ function Monitor() {
     }
     setCaseOpen(false);
     setMarkers([]);
+    setInfusions([]);
     alarms.clearAll();
     setAiResult(null);
     seenAlertIds.current.clear();
