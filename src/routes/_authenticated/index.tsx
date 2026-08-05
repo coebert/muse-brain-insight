@@ -1415,7 +1415,7 @@ function Monitor() {
           </DialogHeader>
           <CaseFields meta={meta} onChange={setMeta} idPrefix="start" />
           {bleSupported ? null : (
-            <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-muted-foreground">
+            <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
               This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
               Bluefy; on desktop or Android use Chrome or Edge. The demo signal still works here.
             </p>
