@@ -5,6 +5,20 @@ import { DSA_STOPS, drawBandGutter, paintDsaHeatmap } from "@/lib/eeg/dsa-render
 
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
+/** Tightened margins for short/narrow lanes (phones, stacked bilateral view). */
+const MARGIN_TIGHT = { top: 6, right: 12, bottom: 22, left: 26 };
+
+/** Pick a margin set that keeps the plot area usable at bedside sizes. */
+function marginsFor(widthCss: number, heightCss: number) {
+  const narrow = widthCss < 520;
+  const short = heightCss < 190;
+  return {
+    top: short ? MARGIN_TIGHT.top : MARGIN_CSS.top,
+    right: narrow ? MARGIN_TIGHT.right : MARGIN_CSS.right,
+    bottom: short ? MARGIN_TIGHT.bottom : MARGIN_CSS.bottom,
+    left: narrow ? MARGIN_TIGHT.left : MARGIN_CSS.left,
+  };
+}
 
 /** A line drawn over the heat map, e.g. a per-hemisphere spectral edge. */
 export interface DsaTrace {
@@ -45,11 +59,14 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
 
     const w = canvas.width;
     const h = canvas.height;
+    const css = marginsFor(rect.width, rect.height);
+    const showGutter = css.right >= 40;
+    const showAxisTitles = css.left >= 40 && css.bottom >= 30;
     const margin = {
-      top: MARGIN_CSS.top * dpr,
-      right: MARGIN_CSS.right * dpr,
-      bottom: MARGIN_CSS.bottom * dpr,
-      left: MARGIN_CSS.left * dpr,
+      top: css.top * dpr,
+      right: css.right * dpr,
+      bottom: css.bottom * dpr,
+      left: css.left * dpr,
     };
     const plotW = Math.max(1, w - margin.left - margin.right);
     const plotH = Math.max(1, h - margin.top - margin.bottom);
@@ -114,14 +131,18 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
     }
 
     // Band key lives in the right gutter so the heat map colours read true.
-    drawBandGutter(ctx, {
-      left: margin.left,
-      plotW,
-      dpr,
-      yForHz,
-      minHz: DSA_MIN_HZ,
-      maxHz: DSA_MAX_HZ,
-    });
+    // On narrow lanes there is no room for it, so it is dropped rather than
+    // allowed to overlap the plot.
+    if (showGutter) {
+      drawBandGutter(ctx, {
+        left: margin.left,
+        plotW,
+        dpr,
+        yForHz,
+        minHz: DSA_MIN_HZ,
+        maxHz: DSA_MAX_HZ,
+      });
+    }
 
     // Frequency gridlines and y-axis labels.
     ctx.strokeStyle = "rgba(255,255,255,0.08)";
@@ -131,7 +152,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
-    const yTicks = [1, 5, 10, 15, 20, 25, 30];
+    const yTicks = plotH < 110 * dpr ? [5, 15, 25] : [1, 5, 10, 15, 20, 25, 30];
     for (const f of yTicks) {
       if (f < DSA_MIN_HZ || f > DSA_MAX_HZ) continue;
       const y = yForHz(f);
@@ -142,16 +163,18 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
       ctx.fillText(`${f}`, margin.left - 6 * dpr, y);
     }
 
-    // Y-axis title.
-    ctx.save();
-    ctx.translate(12 * dpr, margin.top + plotH / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.font = `600 ${11 * dpr}px "Inter", system-ui, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Frequency (Hz)", 0, 0);
-    ctx.restore();
+    // Y-axis title (dropped on narrow lanes where it would crowd the ticks).
+    if (showAxisTitles) {
+      ctx.save();
+      ctx.translate(12 * dpr, margin.top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.font = `600 ${11 * dpr}px "Inter", system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Frequency (Hz)", 0, 0);
+      ctx.restore();
+    }
 
     // X-axis: time. Right edge = now, left edge = -windowSeconds.
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
@@ -166,7 +189,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
 
-    const xTicks = 4;
+    const xTicks = plotW < 320 * dpr ? 2 : 4;
     for (let i = 0; i <= xTicks; i++) {
       const frac = i / xTicks;
       const x = margin.left + frac * plotW;
@@ -180,11 +203,13 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
     }
 
     // X-axis title.
-    ctx.font = `600 ${11 * dpr}px "Inter", system-ui, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.textAlign = "right";
-    ctx.textBaseline = "top";
-    ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
+    if (showAxisTitles) {
+      ctx.font = `600 ${11 * dpr}px "Inter", system-ui, sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "top";
+      ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
+    }
   }, [spectra, windowSeconds, dbMin, dbMax, traces]);
 
   return (
