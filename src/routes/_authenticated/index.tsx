@@ -42,6 +42,7 @@ import { buildFeatureDigest } from "@/lib/eeg/features";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
+import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
@@ -71,6 +72,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAlarms, type AlarmCondition } from "@/hooks/useAlarms";
 import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
+import {
+  useSeizureRiskAlerts,
+  type SeizureTrendAlert,
+} from "@/hooks/useSeizureRiskAlerts";
 import {
   useDepthWindowAlerts,
   type DepthWindowTransition,
