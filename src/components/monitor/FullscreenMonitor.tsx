@@ -6,7 +6,7 @@ import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
 import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import type { CaseControls } from "@/components/monitor/case-controls";
-import { quickMarkers } from "@/lib/eeg/marker-presets";
+import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { WaveformStrip } from "@/components/monitor/WaveformStrip";
 import { Button } from "@/components/ui/button";
@@ -182,19 +182,14 @@ export function FullscreenMonitor({
               onOpen={() => setSheet("tci")}
             />
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {quickMarkers(controls.mode).map((label) => (
-              <button
-                key={label}
-                type="button"
-                disabled={!controls.running}
-                onClick={() => controls.onMark(label)}
-                className="min-h-11 rounded-full border border-border px-3 text-xs font-medium text-foreground transition-colors hover:border-marker hover:text-marker disabled:opacity-40"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <QuickMarkBar
+            mode={controls.mode}
+            elapsed={controls.elapsed}
+            running={controls.running}
+            onMark={controls.onMark}
+            onMore={() => setSheet("mark")}
+            size="compact"
+          />
         </div>
       ) : null}
 
