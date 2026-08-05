@@ -128,6 +128,37 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
 
     const sessions = (rows ?? []) as SessionRow[];
 
+    // Verdicts the clinician has already given, so the AI stops repeating
+    // rejected ideas and adopts their rewording of accepted ones.
+    const feedback: PatternFeedback[] = [];
+    const { data: feedbackRows } = await context.supabase
+      .from("case_pattern_feedback")
+      .select("pattern_key, verdict, payload_sealed, updated_at")
+      .eq("user_id", context.userId)
+      .order("updated_at", { ascending: false })
+      .limit(60);
+    for (const row of feedbackRows ?? []) {
+      let payload: unknown = {};
+      if (row.payload_sealed) {
+        try {
+          payload = JSON.parse(open(row.payload_sealed) ?? "{}");
+        } catch {
+          payload = {};
+        }
+      }
+      feedback.push(
+        normaliseFeedback(
+          {
+            ...(payload as Record<string, unknown>),
+            patternKey: row.pattern_key,
+            verdict: row.verdict,
+            updatedAt: row.updated_at,
+          },
+          row.pattern_key,
+        ),
+      );
+    }
+
     // Clinician-confirmed structured fields take precedence over the model's
     // own reading of the same note.
     const confirmed = new Map<string, CaseFacts>();
@@ -217,6 +248,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         ],
         limitations: [],
         generatedAt: new Date().toISOString(),
+        feedback,
       };
     }
 
@@ -227,7 +259,21 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
           { role: "system", content: [{ type: "input_text", text: SYSTEM_PROMPT }] },
           {
             role: "user",
-            content: [{ type: "input_text", text: JSON.stringify({ cases }) }],
+            content: [
+              {
+                type: "input_text",
+                text: JSON.stringify({
+                  cases,
+                  priorClinicianFeedback: feedback.map((f) => ({
+                    verdict: f.verdict,
+                    title: f.title,
+                    detail: f.detail,
+                    clinicianNote: f.note,
+                    caseCodes: f.caseCodes,
+                  })),
+                }),
+              },
+            ],
           },
         ],
         stream: true,
@@ -251,9 +297,11 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       patterns: (Array.isArray(parsed.patterns) ? parsed.patterns : []).map((p) => ({
         ...p,
         citations: Array.isArray(p?.citations) ? p.citations : [],
+        patternKey: patternKey(p?.title ?? ""),
       })),
       recordingGaps: Array.isArray(parsed.recordingGaps) ? parsed.recordingGaps : [],
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
       generatedAt: new Date().toISOString(),
+      feedback,
     };
   });
