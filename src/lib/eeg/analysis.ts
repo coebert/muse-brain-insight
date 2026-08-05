@@ -13,8 +13,10 @@ import { spectralEntropies, type SpectralEntropy } from "./dsp";
 import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 import { CompositeIndexEstimator, type CompositeReading } from "./composite";
+import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
 
 export type { SignalQuality } from "./dsp";
+export type { SeizureEvidence } from "./seizure-evidence";
 export type { SpectralEntropy } from "./dsp";
 export type { DepthArtifactReport } from "./artifact";
 export type { CompositeReading } from "./composite";
