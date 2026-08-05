@@ -107,23 +107,14 @@ export function setActiveDepthCalibration(cal: DepthCalibration | null) {
 }
 
 export function isDefaultCalibration(cal: DepthCalibration): boolean {
-  const same = (a: Record<string, number>, b: Record<string, number>) =>
+  const same = (a: Record<string, number> | undefined, b: Record<string, number>) =>
     Object.keys(b).every((p) => Math.abs((a?.[p] ?? NaN) - b[p]!) < 1e-9);
   return (
+    same(cal.sedation, DEFAULT_DEPTH_CALIBRATION.sedation) &&
+    same(cal.general, DEFAULT_DEPTH_CALIBRATION.general) &&
     same(
-      cal.sedation as unknown as Record<string, number>,
-      DEFAULT_DEPTH_CALIBRATION.sedation as unknown as Record<string, number>,
-    ) &&
-    same(
-      cal.general as unknown as Record<string, number>,
-      DEFAULT_DEPTH_CALIBRATION.general as unknown as Record<string, number>,
-    ) &&
-    same(
-      (cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear) as unknown as Record<
-        string,
-        number
-      >,
-      DEFAULT_DEPTH_CALIBRATION.generalLinear as unknown as Record<string, number>,
+      cal.generalLinear ?? DEFAULT_DEPTH_CALIBRATION.generalLinear,
+      DEFAULT_DEPTH_CALIBRATION.generalLinear,
     )
   );
 }
