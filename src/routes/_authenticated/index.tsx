@@ -1171,8 +1171,15 @@ function Monitor() {
                   </div>
                 </div>
 
+                {/* Per-electrode raw EEG — live and scrubbable in review */}
+                <RawChannelViewer
+                  archive={monitor.rawArchive}
+                  streaming={streaming}
+                  contactOk={monitor.contactOk}
+                  channelQuality={monitor.channelQuality}
+                />
+
                 <DetectionThresholds
-                  settings={monitor.settings}
                   settings={monitor.settings}
                   suppression={{
                     ratio: latest ? latest.suppressionRatio : null,
