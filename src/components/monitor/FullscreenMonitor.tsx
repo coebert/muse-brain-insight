@@ -109,7 +109,7 @@ export function FullscreenMonitor({
   const depth = latest?.depth;
   const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";
   const srValue = latest?.suppressionRatio ?? 0;
-  const srTone: MetricTone = srValue >= 40 ? "critical" : srValue >= 10 ? "caution" : "signal";
+  const srTone: MetricTone = suppressionTone(latest ? srValue : null);
   const quality = latest?.quality;
   const qualityTone: MetricTone =
     quality?.grade === "poor" ? "critical" : quality?.grade === "fair" ? "caution" : "signal";

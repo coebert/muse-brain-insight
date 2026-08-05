@@ -59,8 +59,6 @@ import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDep
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
-import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
-import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
 import {
   MODES,
   defaultWindowMinutes,
@@ -375,15 +373,7 @@ function Monitor() {
     if (!caseRunning) return;
     alarms.sync(derived.alarmConditions, monitor.elapsed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    latest,
-    monitor.hemiLatest,
-    caseRunning,
-    icuMode,
-    monitor.dataGapSeconds,
-    reconnecting,
-    monitor.elapsed,
-  ]);
+  }, [derived.alarmConditions, caseRunning, monitor.elapsed]);
 
   function addMarker(label: string, backdateSeconds = 0) {
     const text = label.trim();
@@ -1033,7 +1023,7 @@ function Monitor() {
               latest={latest}
               summary={summary}
               srWindowSeconds={monitor.settings.srWindowSeconds}
-              srTone={srTone as MetricTone}
+              srTone={srTone}
               seizureAlert={seizureAlert}
               icuMode={icuMode}
               depthWindow={depthWindow}
