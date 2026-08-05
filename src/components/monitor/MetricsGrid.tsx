@@ -86,7 +86,11 @@ export function MetricsGrid({
               value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
               unit="%"
               tone={srTone}
-              hint={`Peak ${summary.maxSr.toFixed(0)} %`}
+              hint={
+                srCi
+                  ? `Peak ${summary.maxSr.toFixed(0)} % · 95 % CI ${srCi.low.toFixed(0)}–${srCi.high.toFixed(0)} %`
+                  : `Peak ${summary.maxSr.toFixed(0)} %`
+              }
               confidence={latest?.confidence.suppression}
             />
           ),
@@ -118,9 +122,12 @@ export function MetricsGrid({
                     : "default"
               }
               hint={
-                icuMode
+                (seizureCi
+                  ? `95 % CI ${seizureCi.low.toFixed(2)}–${seizureCi.high.toFixed(2)} · `
+                  : "") +
+                (icuMode
                   ? `${summary.seizureAlerts} event(s) — high sensitivity`
-                  : `${summary.seizureAlerts} event(s) — background watch`
+                  : `${summary.seizureAlerts} event(s) — background watch`)
               }
               pulse={seizureAlert && icuMode}
               confidence={latest?.confidence.seizure}
@@ -133,7 +140,11 @@ export function MetricsGrid({
               label="Spectral edge 95"
               value={latest ? latest.sef95.toFixed(1) : "—"}
               unit="Hz"
-              hint="Frequency below which 95 % of power sits"
+              hint={
+                sefCi
+                  ? `95 % CI ${sefCi.low.toFixed(1)}–${sefCi.high.toFixed(1)} Hz · 95 % of power below`
+                  : "Frequency below which 95 % of power sits"
+              }
               confidence={latest?.confidence.spectral}
             />
           ),
