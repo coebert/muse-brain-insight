@@ -179,6 +179,36 @@ export type Database = {
           },
         ]
       }
+      case_pattern_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          pattern_key: string
+          payload_sealed: string | null
+          updated_at: string
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pattern_key: string
+          payload_sealed?: string | null
+          updated_at?: string
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pattern_key?: string
+          payload_sealed?: string | null
+          updated_at?: string
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       depth_calibrations: {
         Row: {
           created_at: string

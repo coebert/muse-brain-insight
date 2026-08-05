@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { normaliseFacts, type CaseFacts, type CaseTimelinePoint } from "@/lib/eeg/case-facts";
+import { normaliseFeedback, patternKey, type PatternFeedback } from "@/lib/eeg/pattern-feedback";
 
 /** A stretch of one recording cited as support for a detail or pattern. */
 export interface EegCitation {
@@ -36,6 +37,8 @@ export interface CasePattern {
   suggestedAction: string;
   /** The exact EEG segments, across cases, the pattern rests on. */
   citations: EegCitation[];
+  /** Stable identity used to attach the clinician's verdict. */
+  patternKey?: string;
 }
 
 export interface CaseNoteInsights {
@@ -48,6 +51,8 @@ export interface CaseNoteInsights {
   recordingGaps: string[];
   limitations: string[];
   generatedAt: string;
+  /** Verdicts the clinician has already recorded on earlier patterns. */
+  feedback: PatternFeedback[];
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology research assistant working with an anaesthetist/intensivist who records EEG from a 4-channel frontal Muse 2 headband during general anaesthesia and ICU sedation.
@@ -60,12 +65,18 @@ Every key detail and every pattern you assert must be tied back to the recording
 
 Each case may also carry CONFIRMED STRUCTURED FIELDS that the clinician has already reviewed and corrected. Where those are present, treat them as the authoritative reading of the note: reuse their exact wording in keyDetails and riskFactors rather than re-deriving your own, and build patterns on them.
 
+You are also given PRIOR CLINICIAN FEEDBACK: patterns proposed before, each marked accepted, edited or rejected, often with the clinician's own reworded title/detail and a reason. Learn from it:
+- ACCEPTED: established for this clinician. Re-propose only if new cases strengthen or qualify it, and say what changed.
+- EDITED: their wording and framing are correct. Reuse their title and detail verbatim and build on that reading.
+- REJECTED: do not propose that pattern or a trivial rewording of it again. Apply the stated reason to related hypotheses, and revisit only if clearly stronger evidence has appeared — then say why the earlier objection no longer holds.
+
 Your job has two parts:
 1. Read each free-text summary and extract the key clinical details as short, structured, comparable facts (e.g. "frail elderly", "emergency laparotomy", "sepsis on noradrenaline", "slow emergence", "postoperative delirium", "propofol TCI Ce 2.4"). Normalise wording so the same concept reads the same way across cases. Then say in one sentence how the narrative squares with that case's recorded EEG numbers.
 2. Across all cases, look for NEW clinical patterns linking those extracted details to the EEG findings — for example a subgroup that suppresses at low doses, a diagnosis associated with high seizure scores, a drug or surgical event followed by a characteristic depth change, or a narrative feature that predicts slow emergence.
 
 Rules:
 - Only assert a pattern you can point to in at least two cases, and give the case codes. Say how strong it is: "emerging" (2 cases or weak), "moderate", "strong".
+- Prefer genuinely new patterns over restating ones already judged.
 - Never state a diagnosis and never invent numbers — cite only values present in the data given.
 - Be explicit that these are hypotheses from a small, uncontrolled, single-clinician frontal-montage dataset, not evidence.
 - British clinical English, concise and specific. Never repeat identifiable detail; if a note contains anything identifying, ignore it and flag it under recordingGaps.
@@ -116,6 +127,37 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const sessions = (rows ?? []) as SessionRow[];
+
+    // Verdicts the clinician has already given, so the AI stops repeating
+    // rejected ideas and adopts their rewording of accepted ones.
+    const feedback: PatternFeedback[] = [];
+    const { data: feedbackRows } = await context.supabase
+      .from("case_pattern_feedback")
+      .select("pattern_key, verdict, payload_sealed, updated_at")
+      .eq("user_id", context.userId)
+      .order("updated_at", { ascending: false })
+      .limit(60);
+    for (const row of feedbackRows ?? []) {
+      let payload: unknown = {};
+      if (row.payload_sealed) {
+        try {
+          payload = JSON.parse(open(row.payload_sealed) ?? "{}");
+        } catch {
+          payload = {};
+        }
+      }
+      feedback.push(
+        normaliseFeedback(
+          {
+            ...(payload as Record<string, unknown>),
+            patternKey: row.pattern_key,
+            verdict: row.verdict,
+            updatedAt: row.updated_at,
+          },
+          row.pattern_key,
+        ),
+      );
+    }
 
     // Clinician-confirmed structured fields take precedence over the model's
     // own reading of the same note.
@@ -206,6 +248,7 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
         ],
         limitations: [],
         generatedAt: new Date().toISOString(),
+        feedback,
       };
     }
 
@@ -216,7 +259,21 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
           { role: "system", content: [{ type: "input_text", text: SYSTEM_PROMPT }] },
           {
             role: "user",
-            content: [{ type: "input_text", text: JSON.stringify({ cases }) }],
+            content: [
+              {
+                type: "input_text",
+                text: JSON.stringify({
+                  cases,
+                  priorClinicianFeedback: feedback.map((f) => ({
+                    verdict: f.verdict,
+                    title: f.title,
+                    detail: f.detail,
+                    clinicianNote: f.note,
+                    caseCodes: f.caseCodes,
+                  })),
+                }),
+              },
+            ],
           },
         ],
         stream: true,
@@ -240,9 +297,11 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       patterns: (Array.isArray(parsed.patterns) ? parsed.patterns : []).map((p) => ({
         ...p,
         citations: Array.isArray(p?.citations) ? p.citations : [],
+        patternKey: patternKey(p?.title ?? ""),
       })),
       recordingGaps: Array.isArray(parsed.recordingGaps) ? parsed.recordingGaps : [],
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
       generatedAt: new Date().toISOString(),
+      feedback,
     };
   });
