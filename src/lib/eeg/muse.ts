@@ -19,6 +19,67 @@ const EEG_CHARS: Record<MuseChannel, string> = {
 
 export type SampleHandler = (channel: MuseChannel, samples: Float64Array) => void;
 
+/** A Muse streaming preset the clinician can confirm before the case starts. */
+export interface MusePreset {
+  /** Control command, e.g. "p21". */
+  code: string;
+  label: string;
+  detail: string;
+  channels: number;
+  sampleRate: number;
+  /** Presets that only exist on later firmware / Muse S hardware. */
+  requiresMuseS?: boolean;
+}
+
+/**
+ * Only presets that keep the four scalp electrodes at 256 Hz are offered —
+ * every downstream metric (DSA, SEF95, suppression ratio, depth index)
+ * assumes that geometry.
+ */
+export const MUSE_PRESETS: MusePreset[] = [
+  {
+    code: "p21",
+    label: "4-channel EEG (256 Hz)",
+    detail: "TP9, AF7, AF8, TP10 only. Lowest bandwidth and the most robust link.",
+    channels: 4,
+    sampleRate: 256,
+  },
+  {
+    code: "p20",
+    label: "4-channel EEG + AUX (256 Hz)",
+    detail: "Adds the auxiliary electrode channel; unused by the analysis but harmless.",
+    channels: 5,
+    sampleRate: 256,
+  },
+  {
+    code: "p50",
+    label: "Muse S: EEG + PPG (256 Hz)",
+    detail: "Muse S firmware only. Keeps the four scalp electrodes and enables PPG.",
+    channels: 4,
+    sampleRate: 256,
+    requiresMuseS: true,
+  },
+];
+
+export const DEFAULT_MUSE_PRESET = "p21";
+
+/** What the headband reported about itself before streaming was confirmed. */
+export interface MuseCapabilities {
+  deviceName: string;
+  /** e.g. "Muse-2" / "Muse-S", derived from the advertised name or hardware id. */
+  model: string;
+  firmwareVersion: string | null;
+  hardwareVersion: string | null;
+  buildNumber: string | null;
+  protocolVersion: string | null;
+  batteryPercent: number | null;
+  /** Presets this headband can be asked for. */
+  presets: MusePreset[];
+  recommendedPreset: string;
+  /** Raw control-channel replies, useful when a headband answers unexpectedly. */
+  raw: Record<string, unknown>;
+}
+
 /** Connection lifecycle reported to the UI so a dropout is never silent. */
 export type SourceState =
   | { kind: "connected" }
@@ -75,6 +136,104 @@ export async function requestMuseDevice(): Promise<BluetoothDevice> {
   }
 }
 
+/**
+ * The control characteristic answers in fragments: each notification is a
+ * length-prefixed ASCII chunk, and a reply is complete once the accumulated
+ * text parses as JSON.
+ */
+export function decodeControlChunk(data: DataView): string {
+  const length = Math.min(data.getUint8(0), data.byteLength - 1);
+  let text = "";
+  for (let i = 1; i <= length; i++) text += String.fromCharCode(data.getUint8(i));
+  return text;
+}
+
+function inferModel(name: string, hardware: string | null): string {
+  const source = `${name} ${hardware ?? ""}`.toLowerCase();
+  if (source.includes("muses") || /muse[-\s]?s/.test(source)) return "Muse S";
+  if (source.includes("2016")) return "Muse 2016";
+  if (source.includes("muse")) return "Muse 2";
+  return name || "Unknown headband";
+}
+
+/**
+ * Opens the headband, asks it who it is (`v1`) and how it is doing (`s`), then
+ * leaves the GATT link open so the confirmed configuration can start streaming
+ * without a second pairing prompt.
+ */
+export async function probeMuseDevice(device: BluetoothDevice): Promise<MuseCapabilities> {
+  const server = await device.gatt!.connect();
+  const service = await server.getPrimaryService(MUSE_SERVICE);
+  const control = await service.getCharacteristic(CONTROL_CHAR);
+  await control.startNotifications();
+
+  let buffer = "";
+  const replies: Record<string, unknown>[] = [];
+  const onValue = (event: Event) => {
+    const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
+    if (!value || value.byteLength === 0) return;
+    buffer += decodeControlChunk(value);
+    const end = buffer.lastIndexOf("}");
+    if (end === -1) return;
+    const start = buffer.indexOf("{");
+    if (start === -1) return;
+    try {
+      replies.push(JSON.parse(buffer.slice(start, end + 1)) as Record<string, unknown>);
+      buffer = buffer.slice(end + 1);
+    } catch {
+      /* still incomplete */
+    }
+  };
+  control.addEventListener("characteristicvaluechanged", onValue);
+
+  const send = async (command: string) => {
+    const encoded = new Uint8Array(command.length + 2);
+    encoded[0] = command.length + 1;
+    for (let i = 0; i < command.length; i++) encoded[i + 1] = command.charCodeAt(i);
+    encoded[command.length + 1] = 0x0a;
+    await control.writeValue(encoded);
+  };
+
+  try {
+    await send("h"); // make sure nothing is streaming while we ask questions
+    await send("v1"); // firmware / hardware identity
+    await send("s"); // status: battery, preset, serial
+    // Give the headband time to answer both queries.
+    await new Promise((r) => setTimeout(r, 1200));
+  } finally {
+    control.removeEventListener("characteristicvaluechanged", onValue);
+    try {
+      await control.stopNotifications();
+    } catch {
+      /* link may already be closing */
+    }
+  }
+
+  const merged: Record<string, unknown> = Object.assign({}, ...replies);
+  const str = (key: string): string | null => {
+    const value = merged[key];
+    return value === undefined || value === null ? null : String(value);
+  };
+  const name = device.name ?? "Muse";
+  const hardware = str("hw");
+  const model = inferModel(name, hardware);
+  const battery = Number(merged["bp"]);
+  const presets = MUSE_PRESETS.filter((p) => !p.requiresMuseS || model === "Muse S");
+
+  return {
+    deviceName: name,
+    model,
+    firmwareVersion: str("fw") ?? str("bn"),
+    hardwareVersion: hardware,
+    buildNumber: str("bn"),
+    protocolVersion: str("pv"),
+    batteryPercent: Number.isFinite(battery) ? Math.round(battery) : null,
+    presets,
+    recommendedPreset: DEFAULT_MUSE_PRESET,
+    raw: merged,
+  };
+}
+
 /** Muse packets carry 12 samples packed as 12-bit unsigned integers. */
 export function decodeMusePacket(data: DataView): Float64Array {
   const out = new Float64Array(12);
@@ -96,6 +255,7 @@ export function decodeMusePacket(data: DataView): Float64Array {
 export class MuseClient implements EegSource {
   name = "Muse";
   private device: BluetoothDevice | null = null;
+  private preset: string = DEFAULT_MUSE_PRESET;
   private control: BluetoothRemoteGATTCharacteristic | null = null;
   private disconnectCb: (() => void) | null = null;
   private stateCb: SourceStateHandler | null = null;
@@ -104,6 +264,15 @@ export class MuseClient implements EegSource {
   private reconnecting = false;
   /** Exponential backoff, seconds, between reconnection attempts. */
   private static readonly RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
+
+  /**
+   * A device and preset can be supplied when the clinician has already probed
+   * and confirmed the streaming configuration; otherwise the chooser opens.
+   */
+  constructor(options?: { device?: BluetoothDevice; preset?: string }) {
+    if (options?.device) this.device = options.device;
+    if (options?.preset) this.preset = options.preset;
+  }
 
   onDisconnect(cb: () => void) {
     this.disconnectCb = cb;
@@ -128,7 +297,7 @@ export class MuseClient implements EegSource {
     }
     this.stopping = false;
     this.samplesCb = onSamples;
-    const device = await requestMuseDevice();
+    const device = this.device ?? (await requestMuseDevice());
     this.device = device;
     this.name = device.name ?? "Muse";
     device.addEventListener("gattserverdisconnected", () => {
@@ -159,7 +328,7 @@ export class MuseClient implements EegSource {
     }
 
     await this.send("h"); // halt any existing stream
-    await this.send("p21"); // preset 21: 4 EEG channels, 256 Hz
+    await this.send(this.preset); // confirmed streaming preset
     await this.send("s"); // status
     await this.send("d"); // start data
   }
