@@ -233,8 +233,14 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       headline: parsed.headline ?? "Case notes reviewed.",
       casesAnalysed: sessions.length,
       notesAnalysed: cases.length,
-      perCase: Array.isArray(parsed.perCase) ? parsed.perCase : [],
-      patterns: Array.isArray(parsed.patterns) ? parsed.patterns : [],
+      perCase: (Array.isArray(parsed.perCase) ? parsed.perCase : []).map((c) => ({
+        ...c,
+        citations: Array.isArray(c?.citations) ? c.citations : [],
+      })),
+      patterns: (Array.isArray(parsed.patterns) ? parsed.patterns : []).map((p) => ({
+        ...p,
+        citations: Array.isArray(p?.citations) ? p.citations : [],
+      })),
       recordingGaps: Array.isArray(parsed.recordingGaps) ? parsed.recordingGaps : [],
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations : [],
       generatedAt: new Date().toISOString(),

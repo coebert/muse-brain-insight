@@ -162,3 +162,13 @@ export interface CaseFactsRecord {
   /** Detections and markers from the recording, for anchoring details. */
   timeline: CaseTimelinePoint[];
 }
+
+/** Parse "mm:ss" or "hh:mm:ss" (or plain seconds) into seconds. */
+export function parseClock(input: string): number | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(":").map((p) => Number(p));
+  if (parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
+  const total = parts.reduce((acc, n) => acc * 60 + n, 0);
+  return Number.isFinite(total) ? Math.round(total) : null;
+}
