@@ -43,8 +43,21 @@ interface Props {
 
 function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, traces }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   // Stable identity so the canvas only redraws when the data really changed.
   const spectra = useMemo(() => frames ?? (epochs ?? []).map((e) => e.spectrum), [frames, epochs]);
+
+  // Re-render on resize/orientation change so the responsive margins re-apply.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      const r = entry?.contentRect;
+      if (r) setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+    });
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -210,7 +223,7 @@ function DsaChartInner({ epochs, frames, windowSeconds, dbMin = -6, dbMax = 26, 
       ctx.textBaseline = "top";
       ctx.fillText("Time →", w - margin.right + 4 * dpr, margin.top + plotH + 22 * dpr);
     }
-  }, [spectra, windowSeconds, dbMin, dbMax, traces]);
+  }, [spectra, windowSeconds, dbMin, dbMax, traces, size]);
 
   return (
     <canvas
