@@ -39,6 +39,7 @@ import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
 import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
+import { RawChannelViewer } from "@/components/monitor/RawChannelViewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -1171,6 +1172,7 @@ function Monitor() {
                 </div>
 
                 <DetectionThresholds
+                  settings={monitor.settings}
                   settings={monitor.settings}
                   suppression={{
                     ratio: latest ? latest.suppressionRatio : null,
