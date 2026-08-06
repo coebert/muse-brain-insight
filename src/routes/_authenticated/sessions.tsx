@@ -98,7 +98,7 @@ function Sessions() {
                     .join(" · ")}
                 </span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {new Date(s.created_at).toLocaleString()}
+                  {formatWhen(s.started_at ?? s.created_at, s.ended_at)}
                 </span>
               </div>
               {s.admission_diagnosis ? (
@@ -117,6 +117,11 @@ function Sessions() {
                 </div>
               ) : null}
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Stat label="Started" value={formatStamp(s.started_at ?? s.created_at)} />
+                <Stat
+                  label="Ended"
+                  value={s.ended_at ? formatStamp(s.ended_at) : "—"}
+                />
                 <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
                 <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
                 <Stat label="Peak SR" value={`${(s.max_suppression_ratio ?? 0).toFixed(0)} %`} />
