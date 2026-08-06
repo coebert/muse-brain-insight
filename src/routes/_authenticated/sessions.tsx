@@ -4,7 +4,7 @@ import { AppNav } from "@/components/AppNav";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { unseal, downloadJson } from "@/lib/privacy";
 import { deleteSessionData, exportMyData } from "@/lib/privacy.functions";
 
@@ -122,7 +122,15 @@ function Sessions() {
                   label="Ended"
                   value={s.ended_at ? formatStamp(s.ended_at) : "—"}
                 />
-                <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
+                <Stat
+                  label="Case duration"
+                  value={
+                    s.ended_at
+                      ? formatCaseDuration(s.started_at ?? s.created_at, s.ended_at)
+                      : "In progress"
+                  }
+                  sub={`Monitored ${formatClock(s.duration_seconds ?? 0)}`}
+                />
                 <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
                 <Stat label="Peak SR" value={`${(s.max_suppression_ratio ?? 0).toFixed(0)} %`} />
                 <Stat label="Suppression time" value={formatDuration(s.suppression_seconds ?? 0)} />
