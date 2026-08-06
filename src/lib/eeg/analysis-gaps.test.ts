@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { EegAnalyzer, EPOCH_SECONDS } from "./analysis";
-import { MUSE_SAMPLE_RATE } from "./muse";
+import { MUSE_SAMPLE_RATE } from "./dsp";
 
 const FS = MUSE_SAMPLE_RATE;
 
