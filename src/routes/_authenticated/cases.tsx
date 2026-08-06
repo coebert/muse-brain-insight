@@ -175,7 +175,15 @@ function Cases() {
                     label="Last SR"
                     value={c.lastSr === null ? "—" : `${c.lastSr.toFixed(0)} %`}
                   />
-                  <Stat label="Monitored" value={formatClock(c.duration_seconds ?? 0)} />
+                  <Stat
+                    label="Case duration"
+                    value={
+                      c.ended_at
+                        ? formatCaseDuration(c.started_at ?? c.created_at, c.ended_at)
+                        : "In progress"
+                    }
+                    sub={`Monitored ${formatClock(c.duration_seconds ?? 0)}`}
+                  />
                   <Stat
                     label="Suppression time"
                     value={formatDuration(c.suppression_seconds ?? 0)}
