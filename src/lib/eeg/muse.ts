@@ -111,6 +111,11 @@ export interface EegSource {
   onDisconnect(cb: () => void): void;
   /** Optional: reports reconnection attempts while the case continues. */
   onState?(cb: SourceStateHandler): void;
+  /**
+   * Optional: clinician-triggered retry after the automatic attempts gave up.
+   * Resolves true when the link is back; the case and its data are untouched.
+   */
+  reconnect?(): Promise<boolean>;
 }
 
 export function isWebBluetoothAvailable(): boolean {
