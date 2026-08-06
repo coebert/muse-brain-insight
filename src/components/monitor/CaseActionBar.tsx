@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BellRing, ClipboardList, Gauge, MapPin, Syringe } from "lucide-react";
+import { BellRing, ClipboardList, Gauge, MapPin, NotebookPen, Syringe } from "lucide-react";
 
 import {
   Sheet,
@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { CaseFields } from "@/components/monitor/CaseFields";
 import { EventLog } from "@/components/monitor/EventLog";
 import { LimitsSheet } from "@/components/monitor/LimitsSheet";
 import { MarkSheet } from "@/components/monitor/MarkSheet";
@@ -18,7 +19,7 @@ import { tciModel } from "@/lib/eeg/tci";
 import { cn } from "@/lib/utils";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 
-export type CaseSheet = "mark" | "tci" | "limits" | "alarms" | "log" | null;
+export type CaseSheet = "mark" | "tci" | "limits" | "alarms" | "log" | "notes" | null;
 
 /**
  * Slim always-present bar giving one-thumb access to everything that gets
@@ -69,6 +70,7 @@ export function CaseActionBar({
     },
     { key: "log", label: "Log", icon: ClipboardList },
   ];
+  if (controls.caseNotes) items.push({ key: "notes", label: "Notes", icon: NotebookPen });
 
   return (
     <>
@@ -78,7 +80,12 @@ export function CaseActionBar({
           className,
         )}
       >
-        <div className="mx-auto grid max-w-[1500px] grid-cols-5">
+        <div
+          className={cn(
+            "mx-auto grid max-w-[1500px]",
+            controls.caseNotes ? "grid-cols-6" : "grid-cols-5",
+          )}
+        >
           {items.map((item) => {
             const Icon = item.icon;
             return (
@@ -204,6 +211,23 @@ export function CaseActionBar({
               <div className="rounded-lg border border-border">
                 <EventLog events={controls.events} />
               </div>
+            </>
+          ) : null}
+
+          {sheet === "notes" && controls.caseNotes ? (
+            <>
+              <SheetHeader className="px-0">
+                <SheetTitle>Case details &amp; notes</SheetTitle>
+                <SheetDescription>
+                  Add or amend free text at any point during the case — it is kept with the
+                  recording and saved when you file it. Never include identifiable details.
+                </SheetDescription>
+              </SheetHeader>
+              <CaseFields
+                meta={controls.caseNotes.meta}
+                onChange={controls.caseNotes.onChange}
+                idPrefix="live"
+              />
             </>
           ) : null}
         </SheetContent>
