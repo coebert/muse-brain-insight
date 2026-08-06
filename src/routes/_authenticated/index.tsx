@@ -436,6 +436,7 @@ function Monitor() {
     events: allEvents,
     infusions,
     onInfusionsChange: setInfusions,
+    caseNotes: { meta, onChange: setMeta },
     settings: monitor.settings,
     onSettingsChange: applySettings,
     limitsOffDefault,

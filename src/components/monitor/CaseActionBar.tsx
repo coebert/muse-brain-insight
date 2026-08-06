@@ -213,6 +213,23 @@ export function CaseActionBar({
               </div>
             </>
           ) : null}
+
+          {sheet === "notes" && controls.caseNotes ? (
+            <>
+              <SheetHeader className="px-0">
+                <SheetTitle>Case details &amp; notes</SheetTitle>
+                <SheetDescription>
+                  Add or amend free text at any point during the case — it is kept with the
+                  recording and saved when you file it. Never include identifiable details.
+                </SheetDescription>
+              </SheetHeader>
+              <CaseFields
+                meta={controls.caseNotes.meta}
+                onChange={controls.caseNotes.onChange}
+                idPrefix="live"
+              />
+            </>
+          ) : null}
         </SheetContent>
       </Sheet>
     </>
