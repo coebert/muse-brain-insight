@@ -326,6 +326,12 @@ export function useEegMonitor() {
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   const sourceRef = useRef<EegSource | null>(null);
+  /** Last successful connection request, so a manual retry can repeat it. */
+  const lastConnectRef = useRef<{
+    kind: SourceKind;
+    device?: BluetoothDevice;
+    preset?: string;
+  } | null>(null);
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const leftAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const rightAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
