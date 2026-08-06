@@ -2,6 +2,7 @@ import { Radio } from "lucide-react";
 
 import type { SignalQuality } from "@/lib/eeg/dsp";
 import type { DepthArtifactReport } from "@/lib/eeg/artifact";
+import type { SideDecision } from "@/lib/eeg/side-preference";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   depthArtifact?: DepthArtifactReport | null;
   /** Share of the depth spectral window currently rejected (0-1). */
   depthGatedFraction?: number | undefined;
+  /** Which hemisphere currently feeds depth index, SR and SEF95. */
+  analysisSource?: SideDecision | undefined;
 }
 
 const gradeClass: Record<SignalQuality["grade"], string> = {
@@ -52,6 +55,7 @@ export function SignalQualityPanel({
   usableFraction,
   depthArtifact,
   depthGatedFraction,
+  analysisSource,
 }: Props) {
   return (
     <div className="panel px-4 py-4">
@@ -69,6 +73,24 @@ export function SignalQualityPanel({
           {quality ? `${quality.grade} · ${(quality.score * 100).toFixed(0)} %` : "—"}
         </span>
       </div>
+
+      {analysisSource ? (
+        <p
+          className={cn(
+            "mt-2 rounded-md px-2 py-1 text-xs",
+            analysisSource.side
+              ? "bg-caution/10 text-caution"
+              : "bg-muted/50 text-muted-foreground",
+          )}
+        >
+          <span className="font-semibold">
+            {analysisSource.side
+              ? `Depth index, SR and SEF95 from the ${analysisSource.side} hemisphere`
+              : "Depth index, SR and SEF95 from both hemispheres"}
+          </span>
+          <span className="block">{analysisSource.reason}</span>
+        </p>
+      ) : null}
 
       {quality ? (
         <>
