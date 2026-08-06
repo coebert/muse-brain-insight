@@ -537,6 +537,10 @@ function useCaseSessionState() {
       toast.error("Add an anonymised case code first.");
       return;
     }
+    if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
+      toast.error("A case with that code is already filed — give this one a different code.");
+      return;
+    }
     setSaving(true);
     try {
       await saveSession(
@@ -548,6 +552,7 @@ function useCaseSessionState() {
         sessionStartedAtMs,
       );
       toast.success("Session saved to your records.");
+      setUsedCaseCodes(rememberCaseCode(meta.caseCode));
       setSaveOpen(false);
       setSaved(true);
       setCaseState("ended");
