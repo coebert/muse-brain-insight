@@ -1161,21 +1161,23 @@ function Monitor() {
         ) : null}
 
         {tab === "review" ? (
-          <BisAgreementPanel
-            digest={ai.bisDigest}
-            report={ai.bisReport}
-            loading={ai.bisLoading}
-            error={ai.bisError}
-            onRun={() => void ai.analyseBis()}
-          />
+          <div className="space-y-4">
+            <BisAgreementPanel
+              digest={ai.bisDigest}
+              report={ai.bisReport}
+              loading={ai.bisLoading}
+              error={ai.bisError}
+              onRun={() => void ai.analyseBis()}
+            />
 
-          <TciResponsePanel
-            digest={ai.tciDigest}
-            report={ai.tciReport}
-            loading={ai.tciLoading}
-            error={ai.tciError}
-            onRun={() => void ai.analyseTci()}
-          />
+            <TciResponsePanel
+              digest={ai.tciDigest}
+              report={ai.tciReport}
+              loading={ai.tciLoading}
+              error={ai.tciError}
+              onRun={() => void ai.analyseTci()}
+            />
+          </div>
         ) : null}
 
         {tab !== "monitor" ? (
