@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ, type Epoch } from "@/lib/eeg/analysis";
 import { DSA_STOPS, drawBandGutter, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
+import { alignSeries } from "@/lib/eeg/gaps";
 
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
@@ -64,7 +65,13 @@ function DsaChartInner({
   // Epochs are placed on a one-slot-per-second timeline so a dropout leaves a
   // real hole in the heat map instead of shifting later data left.
   const spectra = useMemo<(number[] | null)[]>(
-    () => frames ?? alignSeries(epochs ?? [], (e) => e.t, (e) => e.spectrum),
+    () =>
+      frames ??
+      alignSeries<Epoch, number[]>(
+        epochs ?? [],
+        (e) => e.t,
+        (e) => e.spectrum,
+      ),
     [frames, epochs],
   );
 
