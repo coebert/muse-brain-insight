@@ -90,13 +90,19 @@ function useCaseSessionState() {
     setWindowMinutes(defaultWindowMinutes(prefs.mode));
     setMeta((prev) => {
       const context = prefs.context || prev.context;
+      const used = loadUsedCaseCodes();
+      const carried = prev.caseCode || nextCaseCode(prefs.lastCaseCode);
       return {
         ...prev,
         context,
         location: prefs.location || prev.location,
         // Always arrive with a usable anonymised code: continue the clinician's
-        // own numbering if they have one, otherwise mint a fresh code.
-        caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode) || generateCaseCode(context),
+        // own numbering if they have one, otherwise mint a fresh code — never
+        // one that is already in the local archive.
+        caseCode:
+          carried && !isCaseCodeUsed(carried, used)
+            ? carried
+            : generateUniqueCaseCode(used, () => generateCaseCode(context)).code,
       };
     });
   }, []);
@@ -105,7 +111,14 @@ function useCaseSessionState() {
   // very first code here.
   useEffect(() => {
     setMeta((prev) =>
-      prev.caseCode ? prev : { ...prev, caseCode: generateCaseCode(prev.context) },
+      prev.caseCode
+        ? prev
+        : {
+            ...prev,
+            caseCode: generateUniqueCaseCode(loadUsedCaseCodes(), () =>
+              generateCaseCode(prev.context),
+            ).code,
+          },
     );
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
