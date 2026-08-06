@@ -608,6 +608,7 @@ function useCaseSessionState() {
     setMarkerText,
     meta,
     setMeta,
+    usedCaseCodes,
     dsaView,
     setDsaView,
     summary,
