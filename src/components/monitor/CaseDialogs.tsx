@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bluetooth, FlaskConical, Save } from "lucide-react";
+import { Bluetooth, FlaskConical, Save, Trash2 } from "lucide-react";
 
 import { CaseFields } from "@/components/monitor/CaseFields";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
@@ -41,6 +41,10 @@ interface Props {
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
   onEnd: (fileNow: boolean) => void;
+  discardOpen: boolean;
+  onDiscardOpenChange: (open: boolean) => void;
+  /** Destroys everything recorded for this case. */
+  onDiscard: () => void;
 }
 
 /** Start-case, file-case and end-case dialogs for the live monitor. */
@@ -66,6 +70,9 @@ export function CaseDialogs({
   endOpen,
   onEndOpenChange,
   onEnd,
+  discardOpen,
+  onDiscardOpenChange,
+  onDiscard,
 }: Props) {
   return (
     <>
@@ -143,8 +150,9 @@ export function CaseDialogs({
           <DialogHeader>
             <DialogTitle>End case {meta.caseCode ? `“${meta.caseCode}”` : ""}?</DialogTitle>
             <DialogDescription>
-              Streaming stops and the recording is closed. File it now to keep the trend, events and
-              alarm history — nothing is stored until you do.
+              Streaming stops and the recording is closed, but everything gathered stays in the app
+              — including if you move to another page. It is only deleted when you choose “Exit
+              without saving”.
             </DialogDescription>
           </DialogHeader>
           <p className="metric-value text-xs text-muted-foreground">
@@ -153,10 +161,34 @@ export function CaseDialogs({
           </p>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => onEnd(false)}>
-              End without filing
+              End and keep on screen
             </Button>
             <Button onClick={() => onEnd(true)}>
               <Save className="size-4" /> End and file case
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={discardOpen} onOpenChange={onDiscardOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exit without saving?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes everything gathered for this case — the spectral trend,
+              events, markers, TCI entries and BIS readings. It cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="metric-value text-xs text-muted-foreground">
+            {formatClock(elapsed)} · {epochCount} epochs · {eventCount} events · {markerCount}{" "}
+            markers
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => onDiscardOpenChange(false)}>
+              Keep the data
+            </Button>
+            <Button variant="destructive" onClick={onDiscard}>
+              <Trash2 className="size-4" /> Exit without saving
             </Button>
           </DialogFooter>
         </DialogContent>
