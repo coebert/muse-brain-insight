@@ -3,6 +3,7 @@ import type { AlarmSide } from "@/lib/eeg/alarms";
 import type { ActiveAlarm } from "@/hooks/useAlarms";
 import type { DepthWindowPrefs, DepthWindowStatus } from "@/hooks/useDepthWindowAlerts";
 import type { TciInfusion } from "@/lib/eeg/tci";
+import type { BisReading } from "@/lib/eeg/bis";
 import type { CaseMeta } from "@/lib/eeg/case-meta";
 
 /**
@@ -23,6 +24,10 @@ export interface CaseControls {
 
   infusions: TciInfusion[];
   onInfusionsChange: (next: TciInfusion[]) => void;
+
+  /** Values transcribed from a commercial BIS monitor running alongside. */
+  bisReadings: BisReading[];
+  onBisReadingsChange: (next: BisReading[]) => void;
 
   /** Live case details, so notes and the free-text summary can be written mid-case. */
   caseNotes?: { meta: CaseMeta; onChange: (next: CaseMeta) => void };
