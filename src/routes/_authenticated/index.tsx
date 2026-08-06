@@ -176,6 +176,7 @@ function Monitor() {
     srTone,
     seizureAlert,
     sessionStartedAtMs,
+    usedCaseCodes,
     dsaMarkerRail,
     ai,
     audit,
