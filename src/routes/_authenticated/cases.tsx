@@ -205,11 +205,12 @@ function Cases() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
       <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="metric-value mt-0.5 text-base">{value}</dd>
+      {sub ? <dd className="text-xs text-muted-foreground">{sub}</dd> : null}
     </div>
   );
 }
