@@ -193,6 +193,7 @@ export function BisAgreementPanel({
               { label: "Agreement", text: report.agreement },
               { label: "Bias", text: report.biasReading },
               { label: "Suppression", text: report.suppressionReading },
+              { label: "SEF", text: report.sefReading },
               { label: "Divergences", text: report.divergenceReading },
             ]
               .filter((s) => s.text)

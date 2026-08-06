@@ -300,5 +300,5 @@ export function summariseBis(readings: BisReading[]): string {
   const last = [...readings].sort((a, b) => a.at - b.at)[readings.length - 1]!;
   return `${readings.length} reading${readings.length === 1 ? "" : "s"} — last BIS ${last.bis}${
     last.sr != null ? ` (SR ${last.sr} %)` : ""
-  }`;
+  }${last.sef != null ? ` (SEF ${last.sef} Hz)` : ""}`;
 }
