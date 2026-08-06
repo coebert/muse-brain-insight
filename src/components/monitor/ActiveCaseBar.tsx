@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, AlertTriangle, CircleDot, Loader2, PlugZap, WifiOff } from "lucide-react";
+import { Activity, AlertTriangle, CircleDot, Loader2, PlugZap, RefreshCw, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
@@ -97,6 +98,7 @@ const DOT: Record<LiveStatus["tone"], string> = {
 export function ActiveCaseBar() {
   const { caseState, caseRunning, monitor, meta, hasUnfiledData } = useCaseSession();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [retrying, setRetrying] = useState(false);
 
   if (caseState === "idle" || pathname === "/") return null;
 
@@ -110,6 +112,9 @@ export function ActiveCaseBar() {
     epochs: monitor.epochs.length,
   });
   const Icon = live.icon;
+  // A dropped link never ends the case: offer a retry that keeps the data.
+  const canReconnect =
+    caseRunning && (monitor.status === "error" || monitor.status === "idle");
 
   return (
     <div
@@ -134,7 +139,26 @@ export function ActiveCaseBar() {
       <span className="hidden h-3 w-px bg-current/30 sm:block" />
       {meta.caseCode ? <span className="metric-value truncate">{meta.caseCode}</span> : null}
       <span className="metric-value">{formatClock(monitor.elapsed)}</span>
-      <Button asChild size="sm" variant="secondary" className="ml-auto min-h-8">
+      {canReconnect ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="ml-auto min-h-8"
+          disabled={retrying}
+          onClick={async () => {
+            setRetrying(true);
+            try {
+              await monitor.reconnect();
+            } finally {
+              setRetrying(false);
+            }
+          }}
+        >
+          <RefreshCw className={retrying ? "size-4 animate-spin" : "size-4"} />
+          {retrying ? "Reconnecting…" : "Reconnect"}
+        </Button>
+      ) : null}
+      <Button asChild size="sm" variant="secondary" className={cn("min-h-8", !canReconnect && "ml-auto")}>
         <Link to="/">Back to monitor</Link>
       </Button>
     </div>
