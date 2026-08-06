@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, AlertTriangle, CircleDot, Loader2, PlugZap, RefreshCw, WifiOff } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  CircleDot,
+  Loader2,
+  PlugZap,
+  Plus,
+  RefreshCw,
+  WifiOff,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
