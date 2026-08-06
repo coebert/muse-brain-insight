@@ -63,14 +63,14 @@ export function CaseFields({
         </div>
         <Input
           id={`${idPrefix}-code`}
-          className={cn("mt-1.5", duplicate && "border-alarm focus-visible:ring-alarm")}
+          className={cn("mt-1.5", duplicate && "border-critical focus-visible:ring-critical")}
           aria-invalid={duplicate}
           placeholder="e.g. GA-260806-K7QF"
           value={meta.caseCode}
           onChange={(e) => onChange({ ...meta, caseCode: e.target.value })}
         />
         {duplicate ? (
-          <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-alarm">
+          <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-critical">
             <AlertTriangle className="mt-px size-3.5 shrink-0" />
             This code is already used by a case in your archive. Change it or press “New code” —
             duplicates cannot be filed.
