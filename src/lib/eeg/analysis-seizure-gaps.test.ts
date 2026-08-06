@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EegAnalyzer, EPOCH_SECONDS, type Epoch, type ClinicalEvent } from "./analysis";
+import { EegAnalyzer, EPOCH_SECONDS, type Epoch, type DetectedEvent } from "./analysis";
 import { MUSE_SAMPLE_RATE } from "./dsp";
 
 const FS = MUSE_SAMPLE_RATE;
@@ -37,7 +37,7 @@ function ictalWindow(t0 = 0): Float64Array {
   return out;
 }
 
-function seizures(a: EegAnalyzer): ClinicalEvent[] {
+function seizures(a: EegAnalyzer): DetectedEvent[] {
   return a.events.filter((e) => e.kind === "seizure");
 }
 
