@@ -362,7 +362,8 @@ function useCaseSessionState() {
     setBisReadings([]);
     setMarkerText("");
     setChecklist({});
-    setMeta(EMPTY_CASE_META);
+    // The next case starts with a fresh anonymised code, never the discarded one.
+    setMeta({ ...EMPTY_CASE_META, caseCode: generateCaseCode(meta.context), context: meta.context });
     setSaved(false);
     setFullscreen(false);
     setCaseSheet(null);
