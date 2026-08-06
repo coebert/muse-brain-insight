@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { BellRing, ClipboardList, Gauge, MapPin, NotebookPen, Syringe } from "lucide-react";
+import {
+  Activity,
+  BellRing,
+  ClipboardList,
+  Gauge,
+  MapPin,
+  NotebookPen,
+  Syringe,
+} from "lucide-react";
 
 import {
   Sheet,
@@ -14,12 +22,13 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { LimitsSheet } from "@/components/monitor/LimitsSheet";
 import { MarkSheet } from "@/components/monitor/MarkSheet";
 import { TciPanel } from "@/components/monitor/TciPanel";
+import { BisPanel } from "@/components/monitor/BisPanel";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { tciModel } from "@/lib/eeg/tci";
 import { cn } from "@/lib/utils";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 
-export type CaseSheet = "mark" | "tci" | "limits" | "alarms" | "log" | "notes" | null;
+export type CaseSheet = "mark" | "tci" | "bis" | "limits" | "alarms" | "log" | "notes" | null;
 
 /**
  * Slim always-present bar giving one-thumb access to everything that gets
@@ -57,6 +66,12 @@ export function CaseActionBar({
       ...(livePumps.length ? { badge: String(livePumps.length) } : {}),
     },
     {
+      key: "bis",
+      label: "BIS",
+      icon: Activity,
+      ...(controls.bisReadings.length ? { badge: String(controls.bisReadings.length) } : {}),
+    },
+    {
       key: "limits",
       label: "Limits",
       icon: Gauge,
@@ -83,7 +98,7 @@ export function CaseActionBar({
         <div
           className={cn(
             "mx-auto grid max-w-[1500px]",
-            controls.caseNotes ? "grid-cols-6" : "grid-cols-5",
+            controls.caseNotes ? "grid-cols-7" : "grid-cols-6",
           )}
         >
           {items.map((item) => {
@@ -152,6 +167,27 @@ export function CaseActionBar({
                 onChange={controls.onInfusionsChange}
                 running={controls.running}
                 elapsed={controls.elapsed}
+                onMark={(detail) => controls.onMark(detail)}
+              />
+            </>
+          ) : null}
+
+          {sheet === "bis" ? (
+            <>
+              <SheetHeader className="px-0">
+                <SheetTitle>Commercial BIS reference</SheetTitle>
+                <SheetDescription>
+                  Enter what the BIS monitor is displaying. Readings are timestamped against the
+                  case clock and compared with the app's own depth index.
+                </SheetDescription>
+              </SheetHeader>
+              <BisPanel
+                readings={controls.bisReadings}
+                onChange={controls.onBisReadingsChange}
+                running={controls.running}
+                elapsed={controls.elapsed}
+                depthIndex={controls.live.depthIndex}
+                suppressionRatio={controls.live.suppressionRatio}
                 onMark={(detail) => controls.onMark(detail)}
               />
             </>

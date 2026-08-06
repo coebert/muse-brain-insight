@@ -16,6 +16,8 @@ function controlsStub(overrides: Partial<CaseControls> = {}): CaseControls {
     events: [],
     infusions: [],
     onInfusionsChange: vi.fn(),
+    bisReadings: [],
+    onBisReadingsChange: vi.fn(),
     settings: DEFAULT_SETTINGS,
     onSettingsChange: vi.fn(),
     limitsOffDefault: false,

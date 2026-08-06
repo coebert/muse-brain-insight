@@ -9,6 +9,11 @@ import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.funct
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
 import { interpretTciResponse, type TciResponseReport } from "@/lib/eeg/tci-response.functions";
+import { buildBisComparison, summariseBis, type BisReading } from "@/lib/eeg/bis";
+import {
+  interpretBisAgreement,
+  type BisAgreementReport,
+} from "@/lib/eeg/bis-agreement.functions";
 
 /** How often continuous surveillance re-reviews the case while streaming. */
 const WATCH_INTERVAL_MS = 180_000;
@@ -22,6 +27,8 @@ export interface UseCaseAiOptions {
   elapsed: number;
   meta: CaseMeta;
   infusions: TciInfusion[];
+  /** Values transcribed from a commercial BIS monitor running alongside. */
+  bisReadings: BisReading[];
   modeLabel: string;
   streaming: boolean;
 }
@@ -32,7 +39,17 @@ export interface UseCaseAiOptions {
  * calls are single-flight so a slow gateway reply cannot overtake a newer one.
  */
 export function useCaseAi(options: UseCaseAiOptions) {
-  const { signedIn, epochs, events, elapsed, meta, infusions, modeLabel, streaming } = options;
+  const {
+    signedIn,
+    epochs,
+    events,
+    elapsed,
+    meta,
+    infusions,
+    bisReadings,
+    modeLabel,
+    streaming,
+  } = options;
 
   const mounted = useRef(true);
   useEffect(() => {
@@ -44,6 +61,7 @@ export function useCaseAi(options: UseCaseAiOptions) {
 
   const sessionInFlight = useRef(false);
   const tciInFlight = useRef(false);
+  const bisInFlight = useRef(false);
   const seenAlertIds = useRef<Set<string>>(new Set());
 
   const [result, setResult] = useState<Interpretation | null>(null);
@@ -56,8 +74,13 @@ export function useCaseAi(options: UseCaseAiOptions) {
   const [tciLoading, setTciLoading] = useState(false);
   const [tciError, setTciError] = useState<string | null>(null);
 
+  const [bisReport, setBisReport] = useState<BisAgreementReport | null>(null);
+  const [bisLoading, setBisLoading] = useState(false);
+  const [bisError, setBisError] = useState<string | null>(null);
+
   const runInterpretation = useServerFn(interpretSession);
   const runTciInterpretation = useServerFn(interpretTciResponse);
+  const runBisInterpretation = useServerFn(interpretBisAgreement);
 
   const analyse = useCallback(
     async (silent = false) => {
@@ -84,7 +107,11 @@ export function useCaseAi(options: UseCaseAiOptions) {
             caseSummary: meta.caseSummary,
             // Give the interpreter the drug regimen running right now, so
             // depth and nociception findings are read in context.
-            notes: [meta.notes, `TCI in progress — ${summariseInfusions(infusions)}`]
+            notes: [
+              meta.notes,
+              `TCI in progress — ${summariseInfusions(infusions)}`,
+              `Commercial BIS reference — ${summariseBis(bisReadings)}`,
+            ]
               .filter(Boolean)
               .join(" | "),
           },
@@ -121,7 +148,17 @@ export function useCaseAi(options: UseCaseAiOptions) {
         if (mounted.current) setLoading(false);
       }
     },
-    [signedIn, epochs, events, elapsed, meta, infusions, modeLabel, runInterpretation],
+    [
+      signedIn,
+      epochs,
+      events,
+      elapsed,
+      meta,
+      infusions,
+      bisReadings,
+      modeLabel,
+      runInterpretation,
+    ],
   );
 
   const analyseRef = useRef(analyse);
@@ -169,6 +206,48 @@ export function useCaseAi(options: UseCaseAiOptions) {
     }
   }, [signedIn, tciDigest, meta, modeLabel, runTciInterpretation]);
 
+  /** Paired BIS vs app depth index, recomputed as readings and EEG accrue. */
+  const bisDigest = useMemo(
+    () => buildBisComparison(epochs, bisReadings, elapsed),
+    [epochs, bisReadings, elapsed],
+  );
+
+  const analyseBis = useCallback(async () => {
+    if (!signedIn) {
+      toast.error("Sign in to use AI interpretation.");
+      return;
+    }
+    if (bisInFlight.current) return;
+    bisInFlight.current = true;
+    setBisLoading(true);
+    setBisError(null);
+    try {
+      const next = await runBisInterpretation({
+        data: {
+          digest: bisDigest,
+          patient: {
+            ageYears: meta.ageYears,
+            sex: meta.sex,
+            admissionDiagnosis: meta.admissionDiagnosis,
+            clinicalFeatures: meta.clinicalFeatures,
+            context: meta.context,
+            mode: modeLabel,
+          },
+        },
+      });
+      if (!mounted.current) return;
+      setBisReport(next);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI analysis failed.";
+      if (!mounted.current) return;
+      setBisError(message);
+      toast.error(message);
+    } finally {
+      bisInFlight.current = false;
+      if (mounted.current) setBisLoading(false);
+    }
+  }, [signedIn, bisDigest, meta, modeLabel, runBisInterpretation]);
+
   // Continuous surveillance: re-review the session every few minutes.
   const epochCount = epochs.length;
   useEffect(() => {
@@ -196,6 +275,8 @@ export function useCaseAi(options: UseCaseAiOptions) {
     setError(null);
     setTciReport(null);
     setTciError(null);
+    setBisReport(null);
+    setBisError(null);
     seenAlertIds.current.clear();
   }, []);
 
@@ -212,6 +293,11 @@ export function useCaseAi(options: UseCaseAiOptions) {
     tciLoading,
     tciError,
     analyseTci,
+    bisDigest,
+    bisReport,
+    bisLoading,
+    bisError,
+    analyseBis,
     reset,
   };
 }

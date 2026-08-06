@@ -88,6 +88,9 @@ import { CHECKLIST_ITEMS, type ChecklistKey } from "@/components/monitor/PreCase
 import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
+import { summariseBis, type BisReading } from "@/lib/eeg/bis";
+import { BisPanel } from "@/components/monitor/BisPanel";
+import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { saveSession } from "@/lib/eeg/save";
 import { cn } from "@/lib/utils";
 
@@ -161,6 +164,8 @@ function Monitor() {
   const [markers, setMarkers] = useState<DetectedEvent[]>([]);
   /** TCI pumps running for this clinical episode (several may run at once). */
   const [infusions, setInfusions] = useState<TciInfusion[]>([]);
+  /** Values transcribed from a commercial BIS monitor running alongside. */
+  const [bisReadings, setBisReadings] = useState<BisReading[]>([]);
   const [markerText, setMarkerText] = useState("");
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
   /**
@@ -204,6 +209,7 @@ function Monitor() {
     elapsed: monitor.elapsed,
     meta,
     infusions,
+    bisReadings,
     modeLabel: activeMode.label,
     streaming,
   });
@@ -436,6 +442,8 @@ function Monitor() {
     events: allEvents,
     infusions,
     onInfusionsChange: setInfusions,
+    bisReadings,
+    onBisReadingsChange: setBisReadings,
     caseNotes: { meta, onChange: setMeta },
     settings: monitor.settings,
     onSettingsChange: applySettings,
@@ -490,6 +498,7 @@ function Monitor() {
       },
       { label: "Markers", value: String(markers.length) },
       { label: "TCI running", value: summariseInfusions(infusions) },
+      { label: "BIS reference", value: summariseBis(bisReadings) },
     ],
     live: derived.live,
   };
@@ -1027,6 +1036,15 @@ function Monitor() {
               </div>
 
               {/* Contemporaneous TCI pump entry (model + effect-site targets) */}
+              <BisPanel
+                readings={bisReadings}
+                onChange={setBisReadings}
+                running={caseRunning}
+                elapsed={monitor.elapsed}
+                depthIndex={derived.live.depthIndex}
+                suppressionRatio={derived.live.suppressionRatio}
+                onMark={addMarker}
+              />
               <TciPanel
                 infusions={infusions}
                 onChange={setInfusions}
@@ -1143,13 +1161,23 @@ function Monitor() {
         ) : null}
 
         {tab === "review" ? (
-          <TciResponsePanel
-            digest={ai.tciDigest}
-            report={ai.tciReport}
-            loading={ai.tciLoading}
-            error={ai.tciError}
-            onRun={() => void ai.analyseTci()}
-          />
+          <div className="space-y-4">
+            <BisAgreementPanel
+              digest={ai.bisDigest}
+              report={ai.bisReport}
+              loading={ai.bisLoading}
+              error={ai.bisError}
+              onRun={() => void ai.analyseBis()}
+            />
+
+            <TciResponsePanel
+              digest={ai.tciDigest}
+              report={ai.tciReport}
+              loading={ai.tciLoading}
+              error={ai.tciError}
+              onRun={() => void ai.analyseTci()}
+            />
+          </div>
         ) : null}
 
         {tab !== "monitor" ? (
