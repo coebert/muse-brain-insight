@@ -503,9 +503,10 @@ export function useEegMonitor() {
     return true;
   }, [connect]);
 
-  // Epoch analysis loop.
+  // Epoch analysis loop. It also runs while the link is down so the missing
+  // time is recorded as a gap rather than vanishing from the timeline.
   useEffect(() => {
-    if (status !== "streaming" && status !== "reconnecting") return;
+    if (status !== "streaming" && status !== "reconnecting" && status !== "error") return;
     const id = setInterval(() => {
       const anyBuffer = buffersRef.current[MUSE_CHANNELS[0]]!;
       if (anyBuffer.count < EPOCH_LEN) return;
@@ -529,7 +530,7 @@ export function useEegMonitor() {
               severity: "warning",
               t: t - gap,
               duration: gap,
-              detail: `No EEG received for ${Math.round(gap)} s — trend gap.`,
+              detail: `No EEG received for ${Math.round(gap)} s — marked as a data gap and excluded from analysis.`,
             },
           ];
         }
