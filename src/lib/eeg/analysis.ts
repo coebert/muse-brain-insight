@@ -289,6 +289,12 @@ export class EegAnalyzer {
   private lastEpochT: number | null = null;
   /** Epochs at or before this time still contain pre-gap samples. */
   private gapRecoveryUntilT = -Infinity;
+  /**
+   * Time of the first fully valid (non gap-affected) epoch since the last data
+   * gap. Episode boundaries are clamped to this so a back-dated start can never
+   * reach into missing EEG.
+   */
+  private firstValidEpochT: number | null = null;
 
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
@@ -325,6 +331,7 @@ export class EegAnalyzer {
     this.excludedGapSeconds = 0;
     this.lastEpochT = null;
     this.gapRecoveryUntilT = -Infinity;
+    this.firstValidEpochT = null;
     this.events.length = 0;
   }
 
@@ -345,9 +352,11 @@ export class EegAnalyzer {
       this.excludedGapSeconds += t - previousT;
       this.closeRunsAtGap(previousT);
       this.gapRecoveryUntilT = t + EPOCH_SECONDS - HOP_SECONDS;
+      this.firstValidEpochT = null;
     }
     const gapAffected = atGapEdge || t <= this.gapRecoveryUntilT;
     this.lastEpochT = t;
+    if (!gapAffected && this.firstValidEpochT === null) this.firstValidEpochT = t;
 
     const psd = precomputed ?? computePsd(window, this.fs);
     const spectrum: number[] = [];
@@ -500,7 +509,11 @@ export class EegAnalyzer {
         (1 - 0.6 * seizureEmgPenalty) *
         (isSuppressed ? 0.6 : 1),
     );
-    if (seizureScore >= this.settings.seizureThreshold) {
+    if (gapAffected) {
+      // Inside (or straddling) a gap: neither start, extend nor terminate an
+      // episode. The run was already closed at the last good sample by
+      // closeRunsAtGap, so there is nothing to score or emit here.
+    } else if (seizureScore >= this.settings.seizureThreshold) {
       this.consecutiveSeizureEpochs++;
       const run = this.seizureRun ?? {
         peakScore: 0,
@@ -524,7 +537,11 @@ export class EegAnalyzer {
       if (this.consecutiveSeizureEpochs >= this.settings.seizureEpochs) {
         seizureAlert = true;
         if (this.activeSeizureStart === null) {
-          this.activeSeizureStart = t - this.settings.seizureEpochs * HOP_SECONDS;
+          // Back-date the onset by the epochs that met threshold, but never
+          // past the first valid epoch after a gap.
+          const backDated = t - this.consecutiveSeizureEpochs * HOP_SECONDS;
+          const floorT = this.firstValidEpochT ?? backDated;
+          this.activeSeizureStart = Math.max(backDated, floorT);
         }
       }
     } else {
