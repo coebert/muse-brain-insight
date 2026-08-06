@@ -821,6 +821,7 @@ function Monitor() {
               usableFraction={summary.usableFraction}
               depthArtifact={latest?.depthArtifact ?? null}
               depthGatedFraction={latest?.depth.gatedFraction}
+              analysisSource={monitor.analysisSource}
             />
             <SqiTrend
               history={monitor.sqiHistory}
