@@ -377,6 +377,7 @@ export function useEegMonitor() {
   const stop = useCallback(async () => {
     await sourceRef.current?.stop();
     sourceRef.current = null;
+    lastConnectRef.current = null;
     setReconnectAttempt(null);
     setStatus("idle");
   }, []);
