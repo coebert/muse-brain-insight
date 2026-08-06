@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ, type Epoch } from "@/lib/eeg/analysis";
 import { DSA_STOPS, drawBandGutter, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
+import { alignSeries } from "@/lib/eeg/gaps";
 
 /** Margins in CSS pixels. The right margin leaves room for band labels. */
 const MARGIN_CSS = { top: 10, right: 60, bottom: 34, left: 48 };
@@ -61,7 +62,18 @@ function DsaChartInner({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   // Stable identity so the canvas only redraws when the data really changed.
-  const spectra = useMemo(() => frames ?? (epochs ?? []).map((e) => e.spectrum), [frames, epochs]);
+  // Epochs are placed on a one-slot-per-second timeline so a dropout leaves a
+  // real hole in the heat map instead of shifting later data left.
+  const spectra = useMemo<(number[] | null)[]>(
+    () =>
+      frames ??
+      alignSeries<Epoch, number[]>(
+        epochs ?? [],
+        (e) => e.t,
+        (e) => e.spectrum,
+      ),
+    [frames, epochs],
+  );
 
   // Re-render on resize/orientation change so the responsive margins re-apply.
   useEffect(() => {
@@ -105,7 +117,7 @@ function DsaChartInner({
     ctx.fillRect(0, 0, w, h);
 
     const visible = spectra.slice(-windowSeconds);
-    const bins = visible[visible.length - 1]?.length ?? 0;
+    const bins = [...visible].reverse().find((s) => s && s.length)?.length ?? 0;
     const span = Math.max(1e-6, from - to);
     /** Seconds-ago at a given pixel column inside the plot. */
     const ageAt = (px: number) => from - (px / Math.max(1, plotW - 1)) * span;
@@ -122,8 +134,8 @@ function DsaChartInner({
           const pos = windowSeconds - 1 - ageAt(px) - offset;
           const i = Math.floor(pos);
           return {
-            lo: i >= 0 && i < visible.length ? visible[i]! : undefined,
-            hi: i + 1 >= 0 && i + 1 < visible.length ? visible[i + 1]! : undefined,
+            lo: i >= 0 && i < visible.length ? (visible[i] ?? undefined) : undefined,
+            hi: i + 1 >= 0 && i + 1 < visible.length ? (visible[i + 1] ?? undefined) : undefined,
             f: pos - i,
           };
         },

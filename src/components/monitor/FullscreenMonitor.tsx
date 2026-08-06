@@ -12,6 +12,7 @@ import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import type { WaveformStore } from "@/lib/eeg/waveform-store";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import { alignSeries } from "@/lib/eeg/gaps";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
 import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
@@ -103,9 +104,35 @@ export function FullscreenMonitor({
     () => markers.map((m) => ({ t: m.t, label: m.detail, tone: "marker" as const })),
     [markers],
   );
-  const depthTrend = useMemo(() => visible.map((e) => e.depth.index), [visible]);
-  const srTrend = useMemo(() => visible.map((e) => e.suppressionRatio), [visible]);
-  const sefTrend = useMemo(() => visible.map((e) => e.sef95), [visible]);
+  // Trends are aligned to a per-second timeline: seconds with no epoch stay
+  // null so the line breaks over a dropout instead of joining across it.
+  const depthTrend = useMemo(
+    () =>
+      alignSeries<Epoch, number>(
+        visible,
+        (e) => e.t,
+        (e) => e.depth.index,
+      ),
+    [visible],
+  );
+  const srTrend = useMemo(
+    () =>
+      alignSeries<Epoch, number>(
+        visible,
+        (e) => e.t,
+        (e) => e.suppressionRatio,
+      ),
+    [visible],
+  );
+  const sefTrend = useMemo(
+    () =>
+      alignSeries<Epoch, number>(
+        visible,
+        (e) => e.t,
+        (e) => e.sef95,
+      ),
+    [visible],
+  );
 
   const depth = latest?.depth;
   const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";

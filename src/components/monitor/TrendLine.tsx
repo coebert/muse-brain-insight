@@ -1,5 +1,7 @@
 import { memo, useEffect, useRef } from "react";
 
+import { nullRuns } from "@/lib/eeg/gaps";
+
 interface Props {
   /** Values in plot order (oldest first). Null gaps are skipped. */
   values: (number | null)[];
@@ -63,6 +65,17 @@ function TrendLineInner({
     }
 
     if (values.length < 2) return;
+    // Shade stretches with no data so a break in the line reads as missing
+    // EEG rather than a flat or absent trend.
+    if (!transparent) {
+      const slotW = w / Math.max(1, values.length - 1);
+      ctx.fillStyle = "rgba(148,163,184,0.16)";
+      for (const [start, end] of nullRuns(values)) {
+        const x0 = start * slotW;
+        const x1 = Math.min(w, (end + 1) * slotW);
+        if (x1 - x0 > 0.5) ctx.fillRect(x0, 0, x1 - x0, h);
+      }
+    }
     ctx.strokeStyle = color;
     ctx.lineWidth = 2 * dpr;
     ctx.lineJoin = "round";
