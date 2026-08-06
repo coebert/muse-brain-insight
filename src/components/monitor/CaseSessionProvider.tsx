@@ -146,6 +146,9 @@ function useCaseSessionState() {
   const [bisReadings, setBisReadings] = useState<BisReading[]>([]);
   const [markerText, setMarkerText] = useState("");
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
+  /** Anonymised case codes already filed on this device (local archive). */
+  const [usedCaseCodes, setUsedCaseCodes] = useState<string[]>([]);
+  useEffect(() => setUsedCaseCodes(loadUsedCaseCodes()), []);
   /**
    * Stacked left/right DSAs, or one combined lane for faster scanning.
    * Remembered per device and per anonymised case code.
