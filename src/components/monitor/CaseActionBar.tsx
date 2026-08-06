@@ -188,6 +188,7 @@ export function CaseActionBar({
                 elapsed={controls.elapsed}
                 depthIndex={controls.live.depthIndex}
                 suppressionRatio={controls.live.suppressionRatio}
+                sef95={controls.live.sef95}
                 onMark={(detail) => controls.onMark(detail)}
               />
             </>

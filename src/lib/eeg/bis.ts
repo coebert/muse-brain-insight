@@ -21,6 +21,8 @@ export interface BisReading {
   bis: number;
   /** Displayed suppression ratio (%), when shown. */
   sr?: number | null;
+  /** Displayed spectral edge frequency, SEF95 (Hz), when shown. */
+  sef?: number | null;
   /** Displayed EMG (dB), when shown. */
   emg?: number | null;
   /** Displayed signal quality index (%), when shown. */
@@ -82,12 +84,16 @@ export interface BisPairedPoint {
   at: number;
   bis: number;
   bisSr: number | null;
+  /** SEF transcribed from the commercial monitor (Hz). */
+  bisSef: number | null;
   depthIndex: number | null;
   /** Depth index minus BIS (positive = app reads lighter). */
   difference: number | null;
   appSr: number | null;
   srDifference: number | null;
   sef95: number | null;
+  /** App SEF95 minus commercial SEF (Hz). */
+  sefDifference: number | null;
   /** App's own reliability verdict at that moment. */
   reliable: boolean;
   sqi: number | null;
@@ -125,6 +131,12 @@ export interface BisComparisonDigest {
     bias: number | null;
     meanAbsolute: number | null;
   };
+  /** Agreement between the app's SEF95 and the monitor's displayed SEF. */
+  sef: {
+    n: number;
+    bias: number | null;
+    meanAbsolute: number | null;
+  };
   /** Points where the two indices disagreed by more than 10. */
   divergences: {
     tSeconds: number;
@@ -152,16 +164,22 @@ export function pairBisReadings(
       const epoch = nearestEpoch(epochs, r.at, tolerance);
       const depthIndex = epoch?.depth.index ?? null;
       const appSr = epoch ? epoch.suppressionRatio : null;
+      const appSef = epoch?.sef95 ?? null;
       return {
         at: r.at,
         bis: r.bis,
         bisSr: r.sr ?? null,
+        bisSef: r.sef ?? null,
         depthIndex: round(depthIndex, 0),
         difference: depthIndex == null ? null : round(depthIndex - r.bis, 0),
         appSr: round(appSr, 1),
         srDifference:
           appSr == null || r.sr == null || !Number.isFinite(r.sr) ? null : round(appSr - r.sr, 1),
-        sef95: round(epoch?.sef95 ?? null, 1),
+        sef95: round(appSef, 1),
+        sefDifference:
+          appSef == null || r.sef == null || !Number.isFinite(r.sef)
+            ? null
+            : round(appSef - r.sef, 1),
         reliable: epoch ? epoch.depthReliability.reliable && !epoch.depth.held : false,
         sqi: round(epoch ? epoch.quality.score * 100 : null, 0),
         gapSeconds: epoch ? Math.round(Math.abs(epoch.t - r.at)) : null,
@@ -233,6 +251,13 @@ export function buildBisComparison(
     meanAbsolute: round(mean(srPairs.map((p) => Math.abs(p.srDifference!)))),
   };
 
+  const sefPairs = points.filter((p) => p.sefDifference != null);
+  const sef = {
+    n: sefPairs.length,
+    bias: round(mean(sefPairs.map((p) => p.sefDifference!))),
+    meanAbsolute: round(mean(sefPairs.map((p) => Math.abs(p.sefDifference!)))),
+  };
+
   const noteFor = new Map(readings.map((r) => [Math.round(r.at), r.note]));
   const divergences = usable
     .filter((p) => Math.abs(p.difference!) > 10)
@@ -261,6 +286,7 @@ export function buildBisComparison(
     metrics,
     bands,
     suppression,
+    sef,
     divergences,
     calibration: fitCalibration(pairs),
     points: usable.slice(-60),
@@ -274,5 +300,5 @@ export function summariseBis(readings: BisReading[]): string {
   const last = [...readings].sort((a, b) => a.at - b.at)[readings.length - 1]!;
   return `${readings.length} reading${readings.length === 1 ? "" : "s"} — last BIS ${last.bis}${
     last.sr != null ? ` (SR ${last.sr} %)` : ""
-  }`;
+  }${last.sef != null ? ` (SEF ${last.sef} Hz)` : ""}`;
 }

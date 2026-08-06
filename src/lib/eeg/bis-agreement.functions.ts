@@ -18,6 +18,7 @@ export interface BisAgreementReport {
   agreement: string;
   biasReading: string;
   suppressionReading: string;
+  sefReading: string;
   divergenceReading: string;
   findings: BisFinding[];
   /** Concrete, cautious suggestions for finessing the open depth model. */
@@ -28,14 +29,15 @@ export interface BisAgreementReport {
 
 const SYSTEM_PROMPT = `You are a clinical measurement-agreement analyst comparing an app's open, non-proprietary depth-of-anaesthesia index (an OpenIBIS-style index computed from a 4-channel frontal Muse 2 montage) against contemporaneous readings a clinician transcribed from a commercial BIS monitor on the same patient.
 
-You receive a JSON digest containing: each paired point (case-clock time, transcribed BIS, transcribed BIS suppression ratio, the app's depth index, the app's suppression ratio, SEF95, whether the app judged the epoch reliable, and its signal-quality score), Bland-Altman style agreement metrics (n, Pearson r, Lin's CCC, bias, SD, 95% limits of agreement, RMSE, MAE, % within 5 and 10 index points, OLS slope/intercept), per-depth-band bias (deep <40, surgical 40-60, light >60), suppression-ratio agreement, the largest divergences, and a least-squares gain/offset that would map the app index onto BIS.
+You receive a JSON digest containing: each paired point (case-clock time, transcribed BIS, transcribed BIS suppression ratio, the transcribed BIS spectral edge frequency (bisSef, Hz), the app's depth index, the app's suppression ratio, the app's SEF95, the SEF difference (app minus monitor), whether the app judged the epoch reliable, and its signal-quality score), Bland-Altman style agreement metrics (n, Pearson r, Lin's CCC, bias, SD, 95% limits of agreement, RMSE, MAE, % within 5 and 10 index points, OLS slope/intercept), per-depth-band bias (deep <40, surgical 40-60, light >60), suppression-ratio agreement, SEF agreement (n, bias, mean absolute difference in Hz), the largest divergences, and a least-squares gain/offset that would map the app index onto BIS.
 
 Interpret:
 - Agreement: quote r, CCC, bias and the limits of agreement. State plainly whether the app index could substitute for BIS at this sample size (it almost certainly cannot yet).
 - Bias direction: positive difference means the app reads LIGHTER than BIS. Say whether bias is uniform or depth-dependent using the per-band figures.
 - Suppression: compare suppression ratios directly — these are physiologically defined, so disagreement points to detection thresholds or montage, not to a proprietary scale.
+- SEF: compare the app's SEF95 with the monitor's displayed SEF. SEF is an open, physiologically defined spectral measure, so systematic disagreement points to filtering, montage placement, EMG contamination in the 20-45 Hz range, or the spectral window length rather than to a proprietary scale. Quote bias and mean absolute difference in Hz, and say what an offset of that size implies for the app's spectral pipeline.
 - Divergences: for each large divergence, weigh whether the app flagged the epoch unreliable, whether signal quality was low, EMG was likely, or the value was transcribed at a different instant to the BIS smoothing window (BIS uses a 15-30 s smoothing rate, so transient mismatch is expected).
-- Model tuning: suggest cautious, specific adjustments (e.g. applying the fitted gain/offset, revisiting the suppression amplitude floor, weighting a band differently), and say how many more paired points would be needed before trusting them.
+- Model tuning: suggest cautious, specific adjustments (e.g. applying the fitted gain/offset, revisiting the suppression amplitude floor, adjusting the high-frequency cutoff or EMG rejection where SEF is biased, weighting a band differently), and say how many more paired points would be needed before trusting them.
 
 Hard rules:
 - Never claim to reproduce BIS; it is a proprietary, undisclosed algorithm. Frame everything as agreement, not validation.
@@ -45,7 +47,7 @@ Hard rules:
 - Never state a diagnosis or a dosing instruction.
 
 Return ONLY minified JSON, no markdown, matching:
-{"headline":string,"agreement":string,"biasReading":string,"suppressionReading":string,"divergenceReading":string,"findings":[{"domain":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string],"tSeconds":number|null}],"modelSuggestions":[string],"limitations":[string]}`;
+{"headline":string,"agreement":string,"biasReading":string,"suppressionReading":string,"sefReading":string,"divergenceReading":string,"findings":[{"domain":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string],"tSeconds":number|null}],"modelSuggestions":[string],"limitations":[string]}`;
 
 function extractJson(text: string): BisAgreementReport {
   const cleaned = text
@@ -61,6 +63,7 @@ function extractJson(text: string): BisAgreementReport {
     agreement: parsed.agreement ?? "",
     biasReading: parsed.biasReading ?? "",
     suppressionReading: parsed.suppressionReading ?? "",
+    sefReading: parsed.sefReading ?? "",
     divergenceReading: parsed.divergenceReading ?? "",
     findings: Array.isArray(parsed.findings)
       ? parsed.findings

@@ -47,6 +47,8 @@ export interface LiveClinicalValues {
   depthIndex: number | null;
   suppressionRatio: number | null;
   seizureScore: number | null;
+  /** Spectral edge frequency 95 % (Hz). */
+  sef95: number | null;
   /** Signal quality index as a whole percentage. */
   sqi: number | null;
 }
@@ -98,6 +100,7 @@ export function deriveClinical(input: ClinicalDerivationInput): ClinicalDerivati
       depthIndex: latest?.depth.index ?? null,
       suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
       seizureScore: latest?.seizureScore ?? null,
+      sef95: latest?.sef95 ?? null,
       sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
     },
     srTone: suppressionTone(latest?.suppressionRatio ?? null),

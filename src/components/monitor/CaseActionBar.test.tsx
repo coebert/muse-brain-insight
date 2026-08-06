@@ -46,7 +46,7 @@ function controlsStub(overrides: Partial<CaseControls> = {}): CaseControls {
     dim: false,
     onDimChange: vi.fn(),
     handover: [{ label: "Case time", value: "05:00" }],
-    live: { depthIndex: 48, suppressionRatio: 0, seizureScore: 0.1, sqi: 88 },
+    live: { depthIndex: 48, suppressionRatio: 0, seizureScore: 0.1, sef95: 12.4, sqi: 88 },
     ...overrides,
   };
 }

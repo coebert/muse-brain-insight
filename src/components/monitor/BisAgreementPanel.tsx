@@ -101,6 +101,10 @@ export function BisAgreementPanel({
                 label="SR bias (app − BIS)"
                 value={digest.suppression.n ? num(digest.suppression.bias, 1, " %") : "—"}
               />
+              <Stat
+                label="SEF bias (app − BIS)"
+                value={digest.sef.n ? num(digest.sef.bias, 1, " Hz") : "—"}
+              />
             </div>
 
             <div>
@@ -189,6 +193,7 @@ export function BisAgreementPanel({
               { label: "Agreement", text: report.agreement },
               { label: "Bias", text: report.biasReading },
               { label: "Suppression", text: report.suppressionReading },
+              { label: "SEF", text: report.sefReading },
               { label: "Divergences", text: report.divergenceReading },
             ]
               .filter((s) => s.text)

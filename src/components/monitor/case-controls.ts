@@ -79,6 +79,7 @@ export interface CaseControls {
     depthIndex: number | null;
     suppressionRatio: number | null;
     seizureScore: number | null;
+    sef95: number | null;
     sqi: number | null;
   };
 }

@@ -28,6 +28,7 @@ export function BisPanel({
   elapsed,
   depthIndex,
   suppressionRatio,
+  sef95,
   onMark,
 }: {
   readings: BisReading[];
@@ -36,11 +37,13 @@ export function BisPanel({
   elapsed: number;
   depthIndex: number | null;
   suppressionRatio: number | null;
+  sef95?: number | null;
   onMark: (detail: string) => void;
 }) {
   const [device, setDevice] = useState<string>(BIS_DEVICES[0]);
   const [bis, setBis] = useState<number>(50);
   const [sr, setSr] = useState<string>("");
+  const [sef, setSef] = useState<string>("");
   const [emg, setEmg] = useState<string>("");
   const [sqi, setSqi] = useState<string>("");
   const [note, setNote] = useState<string>("");
@@ -71,6 +74,7 @@ export function BisPanel({
       at: elapsed,
       bis: value,
       sr: parsed(sr),
+      sef: parsed(sef),
       emg: parsed(emg),
       sqi: parsed(sqi),
       device,
@@ -79,9 +83,10 @@ export function BisPanel({
     commit([...readings, reading].sort((a, b) => a.at - b.at), `BIS ${value} logged`);
     const delta = depthIndex == null ? "" : ` (app ${depthIndex.toFixed(0)})`;
     onMark(
-      `BIS reference — ${device}: BIS ${value}${reading.sr != null ? `, SR ${reading.sr} %` : ""}${delta}`,
+      `BIS reference — ${device}: BIS ${value}${reading.sr != null ? `, SR ${reading.sr} %` : ""}${reading.sef != null ? `, SEF ${reading.sef} Hz` : ""}${delta}`,
     );
     setSr("");
+    setSef("");
     setEmg("");
     setSqi("");
     setNote("");
@@ -152,7 +157,7 @@ export function BisPanel({
           </Button>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
           <label className="text-[11px] text-muted-foreground">
             BIS value
             <Input
@@ -171,6 +176,18 @@ export function BisPanel({
               value={sr}
               placeholder="—"
               onChange={(e) => setSr(e.target.value)}
+              className="mt-1 h-10"
+            />
+          </label>
+          <label className="text-[11px] text-muted-foreground">
+            SEF Hz{sef95 != null ? ` (app ${sef95.toFixed(1)})` : ""}
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              value={sef}
+              placeholder="—"
+              onChange={(e) => setSef(e.target.value)}
               className="mt-1 h-10"
             />
           </label>
@@ -230,6 +247,9 @@ export function BisPanel({
                 <span className="font-semibold">BIS {r.bis}</span>
                 {r.sr != null ? (
                   <span className="text-muted-foreground">SR {r.sr} %</span>
+                ) : null}
+                {r.sef != null ? (
+                  <span className="text-muted-foreground">SEF {r.sef} Hz</span>
                 ) : null}
                 {r.emg != null ? (
                   <span className="text-muted-foreground">EMG {r.emg} dB</span>

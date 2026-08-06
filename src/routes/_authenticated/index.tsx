@@ -721,6 +721,7 @@ function Monitor() {
                 elapsed={monitor.elapsed}
                 depthIndex={derived.live.depthIndex}
                 suppressionRatio={derived.live.suppressionRatio}
+                sef95={derived.live.sef95}
                 onMark={addMarker}
               />
               <TciPanel
