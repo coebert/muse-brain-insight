@@ -22,6 +22,8 @@ export interface FeatureDigest {
   mode: string;
   durationSeconds: number;
   epochCount: number;
+  /** Epochs discarded because they straddle a data gap. */
+  excludedGapEpochs: number;
   patient: {
     ageYears: number | null;
     sex: string | null;
@@ -204,7 +206,11 @@ export function buildFeatureDigest(
     suppression: {
       meanRatioPct: round(mean(epochs.map((e) => e.suppressionRatio)), 1),
       maxRatioPct: round(Math.max(0, ...epochs.map((e) => e.suppressionRatio)), 1),
-      suppressionSeconds: round(mean(epochs.map((e) => e.epochSuppression)) * elapsed, 1),
+      // Summed over analysed epochs (1 s hop) so gap seconds add nothing.
+      suppressionSeconds: round(
+        epochs.reduce((a, e) => a + e.epochSuppression, 0),
+        1,
+      ),
       longestSuppressionSeconds: round(Math.max(0, ...suppressionEvents.map((e) => e.duration)), 1),
       burstSuppressionEvents: suppressionEvents.length,
       isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
