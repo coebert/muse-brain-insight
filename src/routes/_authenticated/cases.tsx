@@ -8,6 +8,8 @@ import { CaseNoteInsightsPanel } from "@/components/monitor/CaseNoteInsightsPane
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
+import { TimeZoneControl } from "@/components/TimeZoneControl";
 import { unseal } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/cases")({
@@ -58,6 +60,7 @@ interface CaseRow {
 }
 
 function Cases() {
+  const { zone } = useTimeZonePreference();
   const { data, isLoading } = useQuery({
     queryKey: ["case_handover"],
     queryFn: async (): Promise<CaseRow[]> => {
@@ -119,6 +122,7 @@ function Cases() {
           Most recent cases first — what the incoming clinician needs to see: last depth index,
           suppression burden and alerts still needing a decision.
         </p>
+        <TimeZoneControl className="mt-3" />
 
         <div className="mt-5">
           <CaseFactsEditor />
@@ -162,7 +166,7 @@ function Cases() {
                     ) : null}
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="size-3.5" />
-                      {new Date(c.created_at).toLocaleString()}
+                      {formatStampInZone(c.started_at ?? c.created_at, zone)}
                     </span>
                   </div>
                 </div>

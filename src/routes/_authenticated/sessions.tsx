@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppNav } from "@/components/AppNav";
+import { TimeZoneControl } from "@/components/TimeZoneControl";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatRangeInZone, formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
 import { unseal, downloadJson } from "@/lib/privacy";
 import { deleteSessionData, exportMyData } from "@/lib/privacy.functions";
 
@@ -38,6 +40,7 @@ const CONTEXT_LABELS: Record<string, string> = {
 };
 
 function Sessions() {
+  const { zone } = useTimeZonePreference();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["eeg_sessions"],
     queryFn: async () => {
@@ -73,6 +76,7 @@ function Sessions() {
         <p className="mt-1 text-sm text-muted-foreground">
           Anonymised records only — identified by the case code you entered at save time.
         </p>
+        <TimeZoneControl className="mt-3" />
 
         <div className="mt-5 space-y-3">
           {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
@@ -98,7 +102,7 @@ function Sessions() {
                     .join(" · ")}
                 </span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {formatWhen(s.started_at ?? s.created_at, s.ended_at)}
+                  {formatRangeInZone(s.started_at ?? s.created_at, s.ended_at, zone)}
                 </span>
               </div>
               {s.admission_diagnosis ? (
@@ -117,10 +121,13 @@ function Sessions() {
                 </div>
               ) : null}
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <Stat label="Started" value={formatStamp(s.started_at ?? s.created_at)} />
+                <Stat
+                  label="Started"
+                  value={formatStampInZone(s.started_at ?? s.created_at, zone)}
+                />
                 <Stat
                   label="Ended"
-                  value={s.ended_at ? formatStamp(s.ended_at) : "—"}
+                  value={s.ended_at ? formatStampInZone(s.ended_at, zone) : "—"}
                 />
                 <Stat
                   label="Case duration"
@@ -178,25 +185,3 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-/** Date and time of day, e.g. "6 Aug 2026, 09:12". */
-function formatStamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** Header stamp: start date and time, with the finish time when known. */
-function formatWhen(startIso: string, endIso: string | null): string {
-  const start = formatStamp(startIso);
-  if (!endIso) return start;
-  const end = new Date(endIso);
-  if (Number.isNaN(end.getTime())) return start;
-  const endTime = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  return `${start} – ${endTime}`;
-}
