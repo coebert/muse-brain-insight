@@ -185,25 +185,3 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-/** Date and time of day, e.g. "6 Aug 2026, 09:12". */
-function formatStamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/** Header stamp: start date and time, with the finish time when known. */
-function formatWhen(startIso: string, endIso: string | null): string {
-  const start = formatStamp(startIso);
-  if (!endIso) return start;
-  const end = new Date(endIso);
-  if (Number.isNaN(end.getTime())) return start;
-  const endTime = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  return `${start} – ${endTime}`;
-}
