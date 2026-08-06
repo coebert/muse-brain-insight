@@ -944,6 +944,7 @@ function Monitor() {
       <CaseDialogs
         meta={meta}
         onMetaChange={setMeta}
+        usedCaseCodes={usedCaseCodes}
         signedIn={Boolean(user)}
         epochCount={monitor.epochs.length}
         eventCount={allEvents.length}
