@@ -60,6 +60,7 @@ interface CaseRow {
 }
 
 function Cases() {
+  const { zone } = useTimeZonePreference();
   const { data, isLoading } = useQuery({
     queryKey: ["case_handover"],
     queryFn: async (): Promise<CaseRow[]> => {
@@ -121,6 +122,7 @@ function Cases() {
           Most recent cases first — what the incoming clinician needs to see: last depth index,
           suppression burden and alerts still needing a decision.
         </p>
+        <TimeZoneControl className="mt-3" />
 
         <div className="mt-5">
           <CaseFactsEditor />
