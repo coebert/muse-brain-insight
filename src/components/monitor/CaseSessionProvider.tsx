@@ -514,6 +514,7 @@ function useCaseSessionState() {
         allEvents,
         summary,
         monitor.elapsed,
+        sessionStartedAtMs,
       );
       toast.success("Session saved to your records.");
       setSaveOpen(false);
