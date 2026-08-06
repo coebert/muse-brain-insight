@@ -325,6 +325,11 @@ function useCaseSessionState() {
       toast.error("Give the case an anonymised code first.");
       return;
     }
+    if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
+      toast.error("That case code is already used in your archive — press “New code”.");
+      setCaseOpen(true);
+      return;
+    }
     // Never silently overwrite an unfiled recording.
     if (caseState === "ended" && hasUnfiledData) {
       toast.error("File the previous case first, or exit it without saving.");
