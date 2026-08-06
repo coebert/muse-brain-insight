@@ -191,12 +191,3 @@ function formatWhen(startIso: string, endIso: string | null): string {
   const endTime = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   return `${start} – ${endTime}`;
 }
-
-function StatUnused({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
-      <dd className="metric-value mt-0.5 text-sm">{value}</dd>
-    </div>
-  );
-}
