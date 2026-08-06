@@ -38,6 +38,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 
@@ -190,6 +191,28 @@ function Trends() {
     [epochs.data],
   );
   const times = useMemo(() => rows.map((r) => r.t), [rows]);
+
+  /** Stretches with no stored epochs — never plotted through. */
+  const gaps = useMemo(() => detectGaps(times), [times]);
+  /**
+   * Chart data with an explicit blank row either side of every gap, so the
+   * lines break over missing EEG instead of interpolating across it.
+   */
+  const chartRows = useMemo(
+    () =>
+      withGapRows(rows, (t) => ({
+        t,
+        depth: null,
+        sef95: null,
+        sr: null,
+        seizure: null,
+        cIndex: null,
+        nIndex: null,
+        entropy: null,
+        suppressed: 0,
+      })),
+    [rows],
+  );
 
   /** Per-epoch completeness record used to flag alert windows with missing EEG. */
   const coverageEpochs = useMemo<CoverageEpoch[]>(
@@ -440,6 +463,9 @@ function Trends() {
                 {selected.age_band ? ` · ${selected.age_band} y` : ""}
                 {selected.sex && selected.sex !== "unknown" ? ` · ${selected.sex}` : ""} ·{" "}
                 {rows.length} epochs
+                {gaps.length
+                  ? ` · ${gaps.length} data gap${gaps.length === 1 ? "" : "s"} (${formatDuration(Math.round(totalGapSeconds(gaps)))} missing)`
+                  : " · no data gaps"}
               </p>
             ) : null}
 
@@ -546,7 +572,7 @@ function Trends() {
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
               <TrendPanel title="Suppression ratio (%)" hint="burst-suppression burden">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={rows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                  <AreaChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                     <XAxis
                       dataKey="t"
@@ -571,7 +597,6 @@ function Trends() {
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -579,7 +604,7 @@ function Trends() {
 
               <TrendPanel title="SEF95 (Hz)" hint="spectral edge frequency">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                  <LineChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                     <XAxis
                       dataKey="t"
@@ -601,7 +626,6 @@ function Trends() {
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -609,7 +633,7 @@ function Trends() {
 
               <TrendPanel title="Depth index" hint="target band 40–60">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                  <LineChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                     <XAxis
                       dataKey="t"
@@ -633,7 +657,6 @@ function Trends() {
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                     <Line
                       type="monotone"
@@ -643,7 +666,6 @@ function Trends() {
                       strokeDasharray="4 3"
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                     <Line
                       type="monotone"
@@ -653,7 +675,6 @@ function Trends() {
                       strokeDasharray="2 3"
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -664,7 +685,7 @@ function Trends() {
                 hint="seizure score on 0–1 scale ×100"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
+                  <LineChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                     <XAxis
                       dataKey="t"
@@ -686,7 +707,6 @@ function Trends() {
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                     <Line
                       type="monotone"
@@ -698,7 +718,6 @@ function Trends() {
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
-                      connectNulls
                     />
                   </LineChart>
                 </ResponsiveContainer>
