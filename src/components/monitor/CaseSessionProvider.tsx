@@ -568,6 +568,21 @@ function useCaseSessionState() {
   const hasUnfiledData =
     !saved && (monitor.epochs.length > 0 || allEvents.length > 0 || markers.length > 0);
 
+  /** Opens the start-case dialog, guarding against unfiled or running cases. */
+  function requestNewCase() {
+    if (caseRunning) {
+      toast.info("End the current case before starting a new one.");
+      setEndOpen(true);
+      return;
+    }
+    if (caseState === "ended" && hasUnfiledData) {
+      toast.warning("File or discard the previous case before starting a new one.");
+      setDiscardOpen(true);
+      return;
+    }
+    setCaseOpen(true);
+  }
+
   return {
     monitor,
     user,
