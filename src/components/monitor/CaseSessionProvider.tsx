@@ -652,6 +652,7 @@ function useCaseSessionState() {
     startCase,
     endCase,
     discardCase,
+    requestNewCase,
     addMarker,
     addMarkerAt,
     limitsOffDefault,
