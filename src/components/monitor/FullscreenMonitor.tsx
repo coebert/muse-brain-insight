@@ -12,6 +12,7 @@ import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import type { WaveformStore } from "@/lib/eeg/waveform-store";
 import { Button } from "@/components/ui/button";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import { alignSeries } from "@/lib/eeg/gaps";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
 import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
