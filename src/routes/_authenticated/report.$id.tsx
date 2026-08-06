@@ -235,6 +235,14 @@ function CaseReport() {
                   label="Ended"
                   value={s.ended_at ? new Date(s.ended_at).toLocaleString() : "—"}
                 />
+                <Field
+                  label="Case duration"
+                  value={
+                    s.ended_at
+                      ? formatCaseDuration(s.started_at ?? s.created_at, s.ended_at)
+                      : "In progress"
+                  }
+                />
               </dl>
 
               {s.admission_diagnosis ? (
