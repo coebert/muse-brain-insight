@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppNav } from "@/components/AppNav";
 import { TimeZoneControl } from "@/components/TimeZoneControl";
+import { CaseNotes } from "@/components/sessions/CaseNotes";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,7 +144,14 @@ function Sessions() {
                 <Stat label="Suppression time" value={formatDuration(s.suppression_seconds ?? 0)} />
                 <Stat label="Seizure events" value={String(s.seizure_alerts ?? 0)} />
               </dl>
-              {s.notes ? <p className="mt-3 text-sm text-muted-foreground">{s.notes}</p> : null}
+              <CaseNotes
+                sessionId={s.id}
+                notes={s.notes ?? null}
+                startedAt={s.started_at ?? s.created_at}
+                endedAt={s.ended_at ?? null}
+                zone={zone}
+                onSaved={() => void refetch()}
+              />
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-9">
                   <Link to="/report/$id" params={{ id: s.id }}>
