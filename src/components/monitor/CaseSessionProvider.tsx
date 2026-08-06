@@ -473,7 +473,7 @@ function useCaseSessionState() {
     onInfusionsChange: setInfusions,
     bisReadings,
     onBisReadingsChange: setBisReadings,
-    caseNotes: { meta, onChange: setMeta },
+    caseNotes: { meta, onChange: setMeta, usedCaseCodes },
     settings: monitor.settings,
     onSettingsChange: applySettings,
     limitsOffDefault,
