@@ -79,14 +79,14 @@ export function describeLiveStatus(input: {
 const TONE: Record<LiveStatus["tone"], string> = {
   live: "border-signal/40 bg-signal/10 text-signal",
   warn: "border-caution/40 bg-caution/10 text-caution",
-  bad: "border-alarm/40 bg-alarm/10 text-alarm",
+  bad: "border-destructive/40 bg-destructive/10 text-destructive",
   idle: "border-border bg-muted/40 text-muted-foreground",
 };
 
 const DOT: Record<LiveStatus["tone"], string> = {
   live: "bg-signal",
   warn: "bg-caution",
-  bad: "bg-alarm",
+  bad: "bg-destructive",
   idle: "bg-muted-foreground",
 };
 
