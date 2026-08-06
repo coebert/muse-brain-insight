@@ -34,7 +34,6 @@ export function TimeZoneControl({ className }: { className?: string }) {
       </span>
       <Select value={preference} onValueChange={setPreference}>
         <SelectTrigger
-          size="sm"
           className="h-8 w-[15rem] text-xs"
           aria-label="Timezone used to display case times"
         >
