@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -9,6 +10,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
+import { Button } from "@/components/ui/button";
+import { generateCaseCode } from "@/lib/eeg/case-startup";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,14 +30,29 @@ export function CaseFields({
   return (
     <div className="space-y-3">
       <div>
-        <Label htmlFor={`${idPrefix}-code`}>Anonymised case code</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={`${idPrefix}-code`}>Anonymised case code</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() => onChange({ ...meta, caseCode: generateCaseCode(meta.context) })}
+          >
+            <RefreshCw className="size-3.5" /> New code
+          </Button>
+        </div>
         <Input
           id={`${idPrefix}-code`}
           className="mt-1.5"
-          placeholder="e.g. GA-2026-014"
+          placeholder="e.g. GA-260806-K7QF"
           value={meta.caseCode}
           onChange={(e) => onChange({ ...meta, caseCode: e.target.value })}
         />
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Generated automatically and contains no patient identifiers — overwrite it if your unit
+          uses its own numbering.
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

@@ -51,3 +51,36 @@ export function nextCaseCode(previous: string): string {
   const next = String(Number(digits) + 1).padStart(digits.length, "0");
   return `${prefix}${next}`;
 }
+
+const CONTEXT_PREFIX: Record<string, string> = {
+  general_anaesthesia: "GA",
+  icu_sedation: "ICU",
+  procedural_sedation: "PS",
+  other: "CT",
+};
+
+/** Ambiguity-free alphabet: no I, O, 0, 1. */
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * A fresh anonymised code that carries no patient identifier: context prefix,
+ * the date the case was opened, and a random suffix, e.g. "GA-260806-K7QF".
+ * The random part means two clinicians opening cases on the same day on
+ * different devices will not collide, and nothing about the code can be
+ * traced back to the patient.
+ */
+export function generateCaseCode(
+  context: string,
+  now: Date = new Date(),
+  random: () => number = Math.random,
+): string {
+  const prefix = CONTEXT_PREFIX[context] ?? "CT";
+  const yy = String(now.getFullYear() % 100).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  let suffix = "";
+  for (let i = 0; i < 4; i += 1) {
+    suffix += ALPHABET[Math.floor(random() * ALPHABET.length) % ALPHABET.length];
+  }
+  return `${prefix}-${yy}${mm}${dd}-${suffix}`;
+}
