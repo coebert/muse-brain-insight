@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { DSA_MAX_HZ, DSA_MIN_HZ } from "@/lib/eeg/analysis";
 import { drawBandGutter, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
+import { spansGap } from "@/lib/eeg/gaps";
 import { formatClock } from "@/lib/eeg/format";
 
 const MARGIN_CSS = { top: 10, right: 60, bottom: 36, left: 48 };
