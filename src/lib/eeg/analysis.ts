@@ -193,6 +193,11 @@ export interface Epoch {
   depthArtifact: DepthArtifactReport;
   /** qCON/qNOX-style composite consciousness and nociception indices. */
   composite: CompositeReading;
+  /**
+   * True when this epoch's window straddles a data gap (or is the gap itself).
+   * Such epochs are excluded from suppression, seizure and depth analyses.
+   */
+  gapAffected: boolean;
 }
 
 export interface MetricConfidence {
