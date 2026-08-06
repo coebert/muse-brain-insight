@@ -44,7 +44,7 @@ function Sessions() {
       const { data, error } = await supabase
         .from("eeg_sessions")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("started_at", { ascending: false });
       if (error) throw error;
       return unseal(data, ["case_code", "location", "notes", "admission_diagnosis"]);
     },
@@ -98,7 +98,7 @@ function Sessions() {
                     .join(" · ")}
                 </span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {new Date(s.created_at).toLocaleString()}
+                  {formatWhen(s.started_at ?? s.created_at, s.ended_at)}
                 </span>
               </div>
               {s.admission_diagnosis ? (
@@ -117,6 +117,11 @@ function Sessions() {
                 </div>
               ) : null}
               <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Stat label="Started" value={formatStamp(s.started_at ?? s.created_at)} />
+                <Stat
+                  label="Ended"
+                  value={s.ended_at ? formatStamp(s.ended_at) : "—"}
+                />
                 <Stat label="Duration" value={formatClock(s.duration_seconds ?? 0)} />
                 <Stat label="Mean SR" value={`${(s.mean_suppression_ratio ?? 0).toFixed(0)} %`} />
                 <Stat label="Peak SR" value={`${(s.max_suppression_ratio ?? 0).toFixed(0)} %`} />
@@ -162,4 +167,27 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dd className="metric-value mt-0.5 text-sm">{value}</dd>
     </div>
   );
+}
+
+/** Date and time of day, e.g. "6 Aug 2026, 09:12". */
+function formatStamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Header stamp: start date and time, with the finish time when known. */
+function formatWhen(startIso: string, endIso: string | null): string {
+  const start = formatStamp(startIso);
+  if (!endIso) return start;
+  const end = new Date(endIso);
+  if (Number.isNaN(end.getTime())) return start;
+  const endTime = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${start} – ${endTime}`;
 }
