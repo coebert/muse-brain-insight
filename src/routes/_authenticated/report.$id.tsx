@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
+import { TimeZoneControl } from "@/components/TimeZoneControl";
 
 export const Route = createFileRoute("/_authenticated/report/$id")({
   head: () => ({
@@ -210,9 +212,11 @@ function CaseReport() {
                 Depth-of-anaesthesia monitoring report — {s.case_code}
               </h1>
               <p className="mt-1 text-xs text-muted-foreground">
-                Anonymised record · Muse 2 frontal EEG · generated {new Date().toLocaleString()} ·
-                decision support only, not a diagnostic device.
+                Anonymised record · Muse 2 frontal EEG · generated{" "}
+                {formatStampInZone(new Date(), zone)} · all times shown in {zoneAbbreviation} (
+                {zoneOffsetLabel}), stored in UTC · decision support only, not a diagnostic device.
               </p>
+              <TimeZoneControl className="mt-2 print:hidden" />
 
               <dl className="panel mt-4 grid grid-cols-2 gap-3 px-4 py-3 sm:grid-cols-4">
                 <Field label="Case code" value={s.case_code ?? ""} />
@@ -229,11 +233,11 @@ function CaseReport() {
                 <Field label="Sex" value={s.sex && s.sex !== "unknown" ? s.sex : ""} />
                 <Field
                   label="Started"
-                  value={new Date(s.started_at ?? s.created_at).toLocaleString()}
+                  value={formatStampInZone(s.started_at ?? s.created_at, zone)}
                 />
                 <Field
                   label="Ended"
-                  value={s.ended_at ? new Date(s.ended_at).toLocaleString() : "—"}
+                  value={s.ended_at ? formatStampInZone(s.ended_at, zone) : "—"}
                 />
                 <Field
                   label="Case duration"
