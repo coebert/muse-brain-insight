@@ -1,4 +1,5 @@
-import { RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
 import { Button } from "@/components/ui/button";
 import { generateCaseCode } from "@/lib/eeg/case-startup";
+import { generateUniqueCaseCode, isCaseCodeUsed } from "@/lib/eeg/case-code-registry";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,11 +24,28 @@ export function CaseFields({
   meta,
   onChange,
   idPrefix = "case",
+  usedCaseCodes = [],
 }: {
   meta: CaseMeta;
   onChange: (next: CaseMeta) => void;
   idPrefix?: string;
+  /** Codes already filed on this device — used to block duplicates. */
+  usedCaseCodes?: string[];
 }) {
+  const duplicate = isCaseCodeUsed(meta.caseCode, usedCaseCodes);
+
+  function reroll() {
+    const result = generateUniqueCaseCode(usedCaseCodes, () => generateCaseCode(meta.context));
+    onChange({ ...meta, caseCode: result.code });
+    if (!result.unique) {
+      toast.warning("Could not mint a unique code — edit it before filing the case.");
+    } else if (result.collisions > 0) {
+      toast.warning(
+        `That code was already used on this device — generated ${result.code} instead.`,
+      );
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div>
@@ -37,18 +56,26 @@ export function CaseFields({
             size="sm"
             variant="ghost"
             className="h-7 gap-1 px-2 text-xs"
-            onClick={() => onChange({ ...meta, caseCode: generateCaseCode(meta.context) })}
+            onClick={reroll}
           >
             <RefreshCw className="size-3.5" /> New code
           </Button>
         </div>
         <Input
           id={`${idPrefix}-code`}
-          className="mt-1.5"
+          className={cn("mt-1.5", duplicate && "border-critical focus-visible:ring-critical")}
+          aria-invalid={duplicate}
           placeholder="e.g. GA-260806-K7QF"
           value={meta.caseCode}
           onChange={(e) => onChange({ ...meta, caseCode: e.target.value })}
         />
+        {duplicate ? (
+          <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-critical">
+            <AlertTriangle className="mt-px size-3.5 shrink-0" />
+            This code is already used by a case in your archive. Change it or press “New code” —
+            duplicates cannot be filed.
+          </p>
+        ) : null}
         <p className="mt-1 text-[11px] text-muted-foreground">
           Generated automatically and contains no patient identifiers — overwrite it if your unit
           uses its own numbering.

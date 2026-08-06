@@ -34,6 +34,12 @@ import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
 import { CHECKLIST_ITEMS } from "@/components/monitor/PreCaseChecklist";
 import { generateCaseCode, loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
+import {
+  generateUniqueCaseCode,
+  isCaseCodeUsed,
+  loadUsedCaseCodes,
+  rememberCaseCode,
+} from "@/lib/eeg/case-code-registry";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { summariseBis, type BisReading } from "@/lib/eeg/bis";
@@ -84,13 +90,19 @@ function useCaseSessionState() {
     setWindowMinutes(defaultWindowMinutes(prefs.mode));
     setMeta((prev) => {
       const context = prefs.context || prev.context;
+      const used = loadUsedCaseCodes();
+      const carried = prev.caseCode || nextCaseCode(prefs.lastCaseCode);
       return {
         ...prev,
         context,
         location: prefs.location || prev.location,
         // Always arrive with a usable anonymised code: continue the clinician's
-        // own numbering if they have one, otherwise mint a fresh code.
-        caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode) || generateCaseCode(context),
+        // own numbering if they have one, otherwise mint a fresh code — never
+        // one that is already in the local archive.
+        caseCode:
+          carried && !isCaseCodeUsed(carried, used)
+            ? carried
+            : generateUniqueCaseCode(used, () => generateCaseCode(context)).code,
       };
     });
   }, []);
@@ -99,7 +111,14 @@ function useCaseSessionState() {
   // very first code here.
   useEffect(() => {
     setMeta((prev) =>
-      prev.caseCode ? prev : { ...prev, caseCode: generateCaseCode(prev.context) },
+      prev.caseCode
+        ? prev
+        : {
+            ...prev,
+            caseCode: generateUniqueCaseCode(loadUsedCaseCodes(), () =>
+              generateCaseCode(prev.context),
+            ).code,
+          },
     );
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
@@ -127,6 +146,9 @@ function useCaseSessionState() {
   const [bisReadings, setBisReadings] = useState<BisReading[]>([]);
   const [markerText, setMarkerText] = useState("");
   const [meta, setMeta] = useState<CaseMeta>(EMPTY_CASE_META);
+  /** Anonymised case codes already filed on this device (local archive). */
+  const [usedCaseCodes, setUsedCaseCodes] = useState<string[]>([]);
+  useEffect(() => setUsedCaseCodes(loadUsedCaseCodes()), []);
   /**
    * Stacked left/right DSAs, or one combined lane for faster scanning.
    * Remembered per device and per anonymised case code.
@@ -303,6 +325,11 @@ function useCaseSessionState() {
       toast.error("Give the case an anonymised code first.");
       return;
     }
+    if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
+      toast.error("That case code is already used in your archive — press “New code”.");
+      setCaseOpen(true);
+      return;
+    }
     // Never silently overwrite an unfiled recording.
     if (caseState === "ended" && hasUnfiledData) {
       toast.error("File the previous case first, or exit it without saving.");
@@ -363,7 +390,11 @@ function useCaseSessionState() {
     setMarkerText("");
     setChecklist({});
     // The next case starts with a fresh anonymised code, never the discarded one.
-    setMeta({ ...EMPTY_CASE_META, caseCode: generateCaseCode(meta.context), context: meta.context });
+    setMeta({
+      ...EMPTY_CASE_META,
+      caseCode: generateUniqueCaseCode(usedCaseCodes, () => generateCaseCode(meta.context)).code,
+      context: meta.context,
+    });
     setSaved(false);
     setFullscreen(false);
     setCaseSheet(null);
@@ -442,7 +473,7 @@ function useCaseSessionState() {
     onInfusionsChange: setInfusions,
     bisReadings,
     onBisReadingsChange: setBisReadings,
-    caseNotes: { meta, onChange: setMeta },
+    caseNotes: { meta, onChange: setMeta, usedCaseCodes },
     settings: monitor.settings,
     onSettingsChange: applySettings,
     limitsOffDefault,
@@ -506,6 +537,10 @@ function useCaseSessionState() {
       toast.error("Add an anonymised case code first.");
       return;
     }
+    if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
+      toast.error("A case with that code is already filed — give this one a different code.");
+      return;
+    }
     setSaving(true);
     try {
       await saveSession(
@@ -517,6 +552,7 @@ function useCaseSessionState() {
         sessionStartedAtMs,
       );
       toast.success("Session saved to your records.");
+      setUsedCaseCodes(rememberCaseCode(meta.caseCode));
       setSaveOpen(false);
       setSaved(true);
       setCaseState("ended");
@@ -572,6 +608,7 @@ function useCaseSessionState() {
     setMarkerText,
     meta,
     setMeta,
+    usedCaseCodes,
     dsaView,
     setDsaView,
     summary,

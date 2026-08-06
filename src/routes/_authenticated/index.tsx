@@ -176,6 +176,7 @@ function Monitor() {
     srTone,
     seizureAlert,
     sessionStartedAtMs,
+    usedCaseCodes,
     dsaMarkerRail,
     ai,
     audit,
@@ -944,6 +945,7 @@ function Monitor() {
       <CaseDialogs
         meta={meta}
         onMetaChange={setMeta}
+        usedCaseCodes={usedCaseCodes}
         signedIn={Boolean(user)}
         epochCount={monitor.epochs.length}
         eventCount={allEvents.length}
