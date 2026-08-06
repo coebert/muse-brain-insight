@@ -123,8 +123,9 @@ export function analyseMarkers(
   const markers = events.filter((e) => e.kind === "annotation").sort((a, b) => a.t - b.t);
 
   return markers.map((m) => {
-    const pre = epochs.filter((e) => e.t >= m.t - before && e.t < m.t);
-    const post = epochs.filter((e) => e.t > m.t && e.t <= m.t + after);
+    // Gap seconds are excluded from both comparison windows.
+    const pre = epochs.filter((e) => !e.gapAffected && e.t >= m.t - before && e.t < m.t);
+    const post = epochs.filter((e) => !e.gapAffected && e.t > m.t && e.t <= m.t + after);
     const deltas: MarkerMetricDelta[] = METRICS.map((metric) => {
       const b = round(
         mean(pick(pre, metric)),
@@ -175,7 +176,7 @@ export function buildMarkerPhases(epochs: Epoch[], events: DetectedEvent[]): Mar
   for (let i = 0; i < bounds.length - 1; i++) {
     const start = bounds[i]!;
     const end = bounds[i + 1]!;
-    const seg = epochs.filter((e) => e.t >= start && e.t < end);
+    const seg = epochs.filter((e) => !e.gapAffected && e.t >= start && e.t < end);
     if (seg.length < 2) continue;
     phases.push({
       fromLabel: labels[i] ?? "segment",

@@ -126,3 +126,10 @@ export function withGapRows<T extends { t: number }>(
   }
   return out;
 }
+/**
+ * Drops epochs whose window straddles a data gap. Every suppression, seizure
+ * and trend computation runs on the result so missing EEG is never analysed.
+ */
+export function analysable<T extends { gapAffected?: boolean }>(items: T[]): T[] {
+  return items.filter((item) => !item.gapAffected);
+}

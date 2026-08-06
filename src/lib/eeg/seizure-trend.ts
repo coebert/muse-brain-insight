@@ -135,7 +135,7 @@ export function computeSeizureTrend(epochs: Epoch[], prefs: SeizureTrendPrefs): 
   if (!epochs.length) return EMPTY_TREND;
   const last = epochs[epochs.length - 1]!;
   const from = last.t - prefs.trendWindowSeconds;
-  const usable = epochs.filter((e) => e.t >= from && e.quality.score >= prefs.minQuality);
+  const usable = epochs.filter((e) => e.t >= from && !e.gapAffected && e.quality.score >= prefs.minQuality);
   if (usable.length < 2) return { ...EMPTY_TREND, latest: last.seizureScore, t: last.t };
 
   // Exponential smoothing keeps single noisy epochs from tripping the alert

@@ -141,7 +141,8 @@ function recent(epochs: Epoch[], seconds: number): Epoch[] {
   if (!epochs.length) return [];
   const last = epochs[epochs.length - 1]!;
   const cutoff = last.t - seconds;
-  return epochs.filter((e) => e.t >= cutoff);
+  // Gap-affected epochs never enter an uncertainty window.
+  return epochs.filter((e) => e.t >= cutoff && !e.gapAffected);
 }
 
 function emptyAssessment(
