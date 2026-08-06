@@ -8,6 +8,7 @@ import {
   Maximize2,
   Moon,
   MoreVertical,
+  Plus,
   SignalLow,
   Sun,
   Save,
