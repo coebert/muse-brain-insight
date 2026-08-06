@@ -18,7 +18,7 @@ import { DsaLegend } from "@/components/monitor/DsaChart";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
-import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 
 export const Route = createFileRoute("/_authenticated/report/$id")({
   head: () => ({
@@ -234,6 +234,14 @@ function CaseReport() {
                 <Field
                   label="Ended"
                   value={s.ended_at ? new Date(s.ended_at).toLocaleString() : "—"}
+                />
+                <Field
+                  label="Case duration"
+                  value={
+                    s.ended_at
+                      ? formatCaseDuration(s.started_at ?? s.created_at, s.ended_at)
+                      : "In progress"
+                  }
                 />
               </dl>
 

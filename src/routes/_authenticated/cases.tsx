@@ -7,7 +7,7 @@ import { CaseFactsEditor } from "@/components/monitor/CaseFactsEditor";
 import { CaseNoteInsightsPanel } from "@/components/monitor/CaseNoteInsightsPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { unseal } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/cases")({
@@ -44,6 +44,7 @@ interface CaseRow {
   context: string | null;
   location: string | null;
   created_at: string;
+  started_at: string | null;
   ended_at: string | null;
   duration_seconds: number | null;
   mean_suppression_ratio: number | null;
@@ -175,7 +176,15 @@ function Cases() {
                     label="Last SR"
                     value={c.lastSr === null ? "—" : `${c.lastSr.toFixed(0)} %`}
                   />
-                  <Stat label="Monitored" value={formatClock(c.duration_seconds ?? 0)} />
+                  <Stat
+                    label="Case duration"
+                    value={
+                      c.ended_at
+                        ? formatCaseDuration(c.started_at ?? c.created_at, c.ended_at)
+                        : "In progress"
+                    }
+                    sub={`Monitored ${formatClock(c.duration_seconds ?? 0)}`}
+                  />
                   <Stat
                     label="Suppression time"
                     value={formatDuration(c.suppression_seconds ?? 0)}
@@ -205,11 +214,12 @@ function Cases() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
       <dt className="text-xs tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="metric-value mt-0.5 text-base">{value}</dd>
+      {sub ? <dd className="text-xs text-muted-foreground">{sub}</dd> : null}
     </div>
   );
 }
