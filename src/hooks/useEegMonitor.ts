@@ -30,9 +30,11 @@ import {
 } from "@/lib/eeg/muse";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
+import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 
 export type { WaveformStore } from "@/lib/eeg/waveform-store";
 export type { RawArchive } from "@/lib/eeg/raw-archive";
+export type { SideDecision } from "@/lib/eeg/side-preference";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
@@ -335,6 +337,13 @@ export function useEegMonitor() {
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const leftAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const rightAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
+  /** Chooses which hemisphere feeds the primary depth/SR/SEF metrics. */
+  const sidePreferenceRef = useRef(new SidePreference());
+  const [analysisSource, setAnalysisSource] = useState<SideDecision>({
+    side: null,
+    advantage: 0,
+    reason: "Both hemispheres usable — primary metrics use the four-electrode average",
+  });
   const startedAtRef = useRef<number>(0);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
@@ -386,6 +395,12 @@ export function useEegMonitor() {
     analyzerRef.current.reset();
     leftAnalyzerRef.current.reset();
     rightAnalyzerRef.current.reset();
+    sidePreferenceRef.current.reset();
+    setAnalysisSource({
+      side: null,
+      advantage: 0,
+      reason: "Both hemispheres usable — primary metrics use the four-electrode average",
+    });
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
     dispatch({ type: "reset" });
