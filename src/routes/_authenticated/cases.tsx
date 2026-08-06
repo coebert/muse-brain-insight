@@ -7,7 +7,7 @@ import { CaseFactsEditor } from "@/components/monitor/CaseFactsEditor";
 import { CaseNoteInsightsPanel } from "@/components/monitor/CaseNoteInsightsPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { unseal } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/cases")({
@@ -44,6 +44,7 @@ interface CaseRow {
   context: string | null;
   location: string | null;
   created_at: string;
+  started_at: string | null;
   ended_at: string | null;
   duration_seconds: number | null;
   mean_suppression_ratio: number | null;
