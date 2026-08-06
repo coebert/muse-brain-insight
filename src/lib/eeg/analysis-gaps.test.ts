@@ -6,7 +6,14 @@ const FS = MUSE_SAMPLE_RATE;
 
 /** Flat, isoelectric window (well under the suppression amplitude floor). */
 function suppressedWindow(): Float64Array {
-  return new Float64Array(Math.round(FS * EPOCH_SECONDS));
+  const n = Math.round(FS * EPOCH_SECONDS);
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / FS;
+    // ~2 µV p-p mixed noise: isoelectric by amplitude but not a dead flatline.
+    out[i] = 0.8 * Math.sin(2 * Math.PI * 9 * t) + 0.4 * Math.sin(2 * Math.PI * 21 * t);
+  }
+  return out;
 }
 
 /** Ordinary mixed-frequency EEG at a plausible amplitude. */
@@ -40,6 +47,8 @@ describe("EegAnalyzer data gaps", () => {
     expect(resumed.seizureScore).toBe(0);
     // Windows still containing pre-gap samples stay excluded.
     expect(a.analyze(suppressedWindow(), 101).gapAffected).toBe(true);
+    expect(a.analyze(suppressedWindow(), 102).gapAffected).toBe(true);
+    expect(a.analyze(suppressedWindow(), 103).gapAffected).toBe(true);
     expect(a.analyze(suppressedWindow(), 104).gapAffected).toBe(false);
   });
 
@@ -59,8 +68,11 @@ describe("EegAnalyzer data gaps", () => {
   it("keeps the suppression ratio based only on recorded epochs", () => {
     const a = new EegAnalyzer();
     for (let t = 0; t < 30; t++) a.analyze(suppressedWindow(), t);
+    const beforeGap = a.analyze(suppressedWindow(), 30);
+    expect(beforeGap.suppressionRatio).toBeGreaterThan(90);
+    // After a dropout longer than the SR window nothing recorded remains, so
+    // the ratio restarts from real data instead of carrying stale epochs.
     const afterGap = a.analyze(activeWindow(), 400);
-    // The gap contributes no zero-suppression filler epochs.
-    expect(afterGap.suppressionRatio).toBeGreaterThan(90);
+    expect(afterGap.suppressionRatio).toBe(0);
   });
 });
