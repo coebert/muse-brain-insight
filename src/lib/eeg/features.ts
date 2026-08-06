@@ -1,3 +1,4 @@
+import { analysable } from "./gaps";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import {
   analyseMarkers,
@@ -175,6 +176,9 @@ export function buildFeatureDigest(
   elapsed: number,
   mode: string,
 ): FeatureDigest {
+  // Seconds lost to a dropped headband are excluded from every aggregate.
+  const gapEpochs = epochs.filter((e) => e.gapAffected).length;
+  epochs = analysable(epochs);
   const third = Math.max(1, Math.floor(epochs.length / 3));
   const first = epochs.slice(0, third);
   const last = epochs.slice(-third);
@@ -187,6 +191,7 @@ export function buildFeatureDigest(
     mode,
     durationSeconds: round(elapsed, 0),
     epochCount: epochs.length,
+    excludedGapEpochs: gapEpochs,
     patient: {
       ageYears: age !== null && Number.isFinite(age) ? Math.round(age) : null,
       sex: patient.sex || null,
