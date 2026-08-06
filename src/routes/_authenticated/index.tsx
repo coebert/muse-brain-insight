@@ -370,8 +370,13 @@ function Monitor() {
           <TciStatusStrip infusions={infusions} onOpen={() => setCaseSheet("tci")} />
         ) : null}
         {monitor.error ? (
-          <div className="panel border-critical/60 px-4 py-3 text-sm text-critical">
-            {monitor.error}
+          <div className="panel flex flex-wrap items-center gap-3 border-critical/60 px-4 py-3 text-sm text-critical">
+            <span className="min-w-0 flex-1">{monitor.error}</span>
+            {caseState === "running" ? (
+              <Button size="sm" variant="secondary" onClick={() => void monitor.reconnect()}>
+                Reconnect headband
+              </Button>
+            ) : null}
           </div>
         ) : null}
 

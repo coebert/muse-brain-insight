@@ -111,6 +111,11 @@ export interface EegSource {
   onDisconnect(cb: () => void): void;
   /** Optional: reports reconnection attempts while the case continues. */
   onState?(cb: SourceStateHandler): void;
+  /**
+   * Optional: clinician-triggered retry after the automatic attempts gave up.
+   * Resolves true when the link is back; the case and its data are untouched.
+   */
+  reconnect?(): Promise<boolean>;
 }
 
 export function isWebBluetoothAvailable(): boolean {
@@ -571,9 +576,39 @@ export class MuseClient implements EegSource {
     if (!this.stopping) {
       this.stateCb?.({
         kind: "lost",
-        reason: "The headband did not come back after five reconnection attempts.",
+        reason:
+          "The headband did not come back after five automatic attempts — the case and its data are kept; tap Reconnect to try again.",
       });
       this.disconnectCb?.();
+    }
+  }
+
+  /**
+   * Manual retry. The device handle and every subscription target are kept
+   * after a lost link, so this re-opens GATT on the same headband without
+   * ending the case or clearing anything already recorded.
+   */
+  async reconnect(): Promise<boolean> {
+    if (this.reconnecting) return false;
+    this.stopping = false;
+    if (!this.device || !this.samplesCb) return false;
+    this.reconnecting = true;
+    this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: 1 });
+    try {
+      await this.attach();
+      this.reconnecting = false;
+      this.stateCb?.({ kind: "connected" });
+      return true;
+    } catch (e) {
+      this.reconnecting = false;
+      this.stateCb?.({
+        kind: "lost",
+        reason:
+          e instanceof Error
+            ? `Reconnection failed: ${e.message}`
+            : "Reconnection failed — check the headband is on and in range.",
+      });
+      return false;
     }
   }
 
