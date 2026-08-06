@@ -15,6 +15,7 @@ import { DepthIndexEstimator, type DepthReading } from "./depth";
 import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
+import { spansGap } from "./gaps";
 
 export type { SignalQuality } from "./dsp";
 export type { SeizureEvidence } from "./seizure-evidence";
@@ -284,8 +285,15 @@ export class EegAnalyzer {
   private depthGate = new DepthArtifactGate();
   private compositeEstimator = new CompositeIndexEstimator();
 
+  /** Last analysed epoch time, used to spot discontinuities in the stream. */
+  private lastEpochT: number | null = null;
+  /** Epochs at or before this time still contain pre-gap samples. */
+  private gapRecoveryUntilT = -Infinity;
+
   /** Cumulative isoelectric time in seconds. */
   suppressionSeconds = 0;
+  /** Seconds of missing EEG excluded from every analysis. */
+  excludedGapSeconds = 0;
   readonly events: DetectedEvent[] = [];
 
   constructor(settings: AnalysisSettings = DEFAULT_SETTINGS, fs = MUSE_SAMPLE_RATE) {
@@ -314,6 +322,9 @@ export class EegAnalyzer {
     this.depthGate.reset();
     this.compositeEstimator.reset();
     this.suppressionSeconds = 0;
+    this.excludedGapSeconds = 0;
+    this.lastEpochT = null;
+    this.gapRecoveryUntilT = -Infinity;
     this.events.length = 0;
   }
 
@@ -323,6 +334,21 @@ export class EegAnalyzer {
    * a paired FFT), avoiding a second transform of the same window.
    */
   analyze(window: Float64Array, t: number, precomputed?: Psd): Epoch {
+    // --- data-gap handling ---------------------------------------------------
+    // Missing EEG must never be analysed or interpolated across: any episode in
+    // progress is closed at the last good sample, and the epochs whose window
+    // still straddles the gap are excluded from suppression, seizure and depth
+    // computations.
+    const previousT = this.lastEpochT;
+    const atGapEdge = previousT != null && spansGap(previousT, t, HOP_SECONDS);
+    if (atGapEdge && previousT != null) {
+      this.excludedGapSeconds += t - previousT;
+      this.closeRunsAtGap(previousT);
+      this.gapRecoveryUntilT = t + EPOCH_SECONDS - HOP_SECONDS;
+    }
+    const gapAffected = atGapEdge || t <= this.gapRecoveryUntilT;
+    this.lastEpochT = t;
+
     const psd = precomputed ?? computePsd(window, this.fs);
     const spectrum: number[] = [];
     for (let k = 0; k < psd.freqs.length; k++) {
@@ -371,9 +397,9 @@ export class EegAnalyzer {
     }
     const epochSuppression = segs ? suppressedSegs / segs : 0;
     const artifact = maxP2p > 500 || quality.grade === "poor";
-    const isSuppressed = !artifact && epochSuppression >= 0.5;
+    const isSuppressed = !artifact && !gapAffected && epochSuppression >= 0.5;
 
-    if (!artifact) {
+    if (!artifact && !gapAffected) {
       this.suppressionHistory.push({ t, fraction: epochSuppression });
       this.suppressionSeconds += epochSuppression * HOP_SECONDS;
     }
@@ -406,7 +432,7 @@ export class EegAnalyzer {
     // --- burst-suppression burden alerts -----------------------------------
     // Fires once on crossing the configured suppression ratio, then again each
     // time the burden worsens by a further step.
-    if (!artifact) {
+    if (!artifact && !gapAffected) {
       if (!this.bsrAlerted && suppressionRatio >= this.settings.bsrAlertPercent) {
         this.bsrAlerted = true;
         this.lastBsrAlertValue = suppressionRatio;
@@ -445,7 +471,7 @@ export class EegAnalyzer {
     const ictalFraction = totalPower > 0 ? ictalBand / totalPower : 0;
 
     let seizureScore = 0;
-    if (!artifact && !isSuppressed && maxP2p > this.settings.suppressionThresholdUv * 2) {
+    if (!artifact && !gapAffected && !isSuppressed && maxP2p > this.settings.suppressionThresholdUv * 2) {
       seizureScore =
         0.45 * rhythmic +
         0.3 * Math.min(1, Math.max(0, (llRatio - 1.6) / 2.4)) +
@@ -453,7 +479,7 @@ export class EegAnalyzer {
       seizureScore = Math.min(1, seizureScore);
     }
 
-    if (!artifact && !isSuppressed && seizureScore < 0.4) {
+    if (!artifact && !gapAffected && !isSuppressed && seizureScore < 0.4) {
       this.lineLengthBaseline.push(ll);
       if (this.lineLengthBaseline.length > 300) this.lineLengthBaseline.shift();
     }
@@ -538,14 +564,17 @@ export class EegAnalyzer {
     const depth = this.depthEstimator.update(
       prep.signal,
       this.fs,
-      { usable: depthArtifact.usable && !artifact, reasons: depthArtifact.reasons },
+      {
+        usable: depthArtifact.usable && !artifact && !gapAffected,
+        reasons: gapAffected ? [...depthArtifact.reasons, "data gap"] : depthArtifact.reasons,
+      },
       HOP_SECONDS,
     );
 
     // --- depth index change alerts ------------------------------------------
     // Only trend on ungated values so the artefact "hold" does not read as a
     // real change; a cooldown of one trend window prevents alert storms.
-    if (!depth.held && typeof depth.index === "number" && Number.isFinite(depth.index)) {
+    if (!gapAffected && !depth.held && typeof depth.index === "number" && Number.isFinite(depth.index)) {
       this.depthHistory.push({ t, value: depth.index });
     }
     const depthCutoff = t - this.settings.depthTrendSeconds;
@@ -681,6 +710,61 @@ export class EegAnalyzer {
       depthReliability,
       depthArtifact,
       composite,
+      gapAffected,
     };
+  }
+
+  /**
+   * Ends any suppression or seizure episode at the last sample before a gap so
+   * durations never include missing time, and drops trend state that would
+   * otherwise be compared across the gap.
+   */
+  private closeRunsAtGap(endT: number) {
+    if (this.activeSuppressionStart !== null) {
+      const duration = endT - this.activeSuppressionStart;
+      if (duration >= 5) {
+        this.events.push({
+          kind: "burst_suppression",
+          severity: duration >= 30 ? "critical" : "warning",
+          t: this.activeSuppressionStart,
+          duration,
+          detail: `Suppression for ${duration.toFixed(0)} s — episode closed at a data gap`,
+        });
+      }
+      this.activeSuppressionStart = null;
+    }
+
+    if (this.activeSeizureStart !== null) {
+      const duration = endT - this.activeSeizureStart;
+      const run = this.seizureRun;
+      this.events.push({
+        kind: "seizure",
+        severity: duration >= 10 ? "critical" : "warning",
+        t: this.activeSeizureStart,
+        duration,
+        detail: `Rhythmic ictal-appearing activity for ${duration.toFixed(0)} s — episode closed at a data gap`,
+        evidence: run
+          ? buildSeizureEvidence({
+              peakScore: run.peakScore,
+              threshold: this.settings.seizureThreshold,
+              epochsRequired: this.settings.seizureEpochs,
+              epochsObserved: run.epochs,
+              rhythmicity: run.rhythmicity,
+              lineLengthRatio: run.lineLengthRatio,
+              ictalFraction: run.ictalFraction,
+              signalQuality: run.epochs ? run.qualitySum / run.epochs : 0,
+              emgIndex: run.maxEmg,
+              confidence: run.minConfidence,
+              durationSeconds: duration,
+            })
+          : undefined,
+      });
+      this.activeSeizureStart = null;
+    }
+    this.consecutiveSeizureEpochs = 0;
+    this.seizureRun = null;
+    // Depth trending and poor-quality runs must not span the gap either.
+    this.depthHistory = [];
+    this.poorQualityStart = null;
   }
 }
