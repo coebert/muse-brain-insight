@@ -42,7 +42,7 @@ function epoch(t: number, depth: number, sr = 0): Epoch {
     } as Epoch["depth"],
     depthArtifact: {} as Epoch["depthArtifact"],
     composite: { cIndex: null, nIndex: null } as Epoch["composite"],
-  } as Epoch;
+  } as unknown as Epoch;
 }
 
 const readings = (values: [number, number][]): BisReading[] =>
