@@ -101,6 +101,10 @@ export function BisAgreementPanel({
                 label="SR bias (app − BIS)"
                 value={digest.suppression.n ? num(digest.suppression.bias, 1, " %") : "—"}
               />
+              <Stat
+                label="SEF bias (app − BIS)"
+                value={digest.sef.n ? num(digest.sef.bias, 1, " Hz") : "—"}
+              />
             </div>
 
             <div>
