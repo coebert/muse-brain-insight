@@ -551,8 +551,6 @@ export function useEegMonitor() {
         }
       }
 
-      const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
-
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
       // Channels are rated in pairs: two real spectra come out of one complex
@@ -576,6 +574,43 @@ export function useEegMonitor() {
         contact[ca] = !qa.flat && qa.grade !== "poor";
         contact[cb] = !qb.flat && qb.grade !== "poor";
       }
+
+      // --- primary analysis source -------------------------------------------
+      // Depth index, suppression ratio and SEF95 come from the four-electrode
+      // average unless one hemisphere is clearly cleaner, in which case that
+      // side alone drives them so a bad electrode pair cannot degrade them.
+      const sideQuality = (group: MuseChannel[]): SideQuality => {
+        const grades = group.map((c) => quality[c]);
+        return {
+          score: grades.length ? Math.min(...grades.map((q) => q?.score ?? 0)) : 0,
+          flat: group.every((c) => quality[c]?.flat ?? false),
+          grade: grades.some((q) => q?.grade === "poor")
+            ? "poor"
+            : grades.some((q) => q?.grade === "fair")
+              ? "fair"
+              : "good",
+        };
+      };
+      const decision =
+        channelRef.current === "average"
+          ? sidePreferenceRef.current.update(
+              sideQuality(LEFT_CHANNELS),
+              sideQuality(RIGHT_CHANNELS),
+            )
+          : {
+              side: null,
+              advantage: 0,
+              reason: `Single electrode (${channelRef.current}) selected — primary metrics use it directly`,
+            };
+      setAnalysisSource((prev) =>
+        prev.side === decision.side && Math.abs(prev.advantage - decision.advantage) < 0.02
+          ? prev
+          : decision,
+      );
+      const primarySignal = decision.side
+        ? groupSignal(decision.side === "left" ? LEFT_CHANNELS : RIGHT_CHANNELS, EPOCH_LEN)
+        : activeSignal(EPOCH_LEN);
+      const epoch = analyzerRef.current.analyze(primarySignal, t);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
