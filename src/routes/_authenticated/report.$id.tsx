@@ -78,6 +78,11 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 function CaseReport() {
   const { id } = Route.useParams();
+  const {
+    zone,
+    abbreviation: zoneAbbreviation,
+    offsetLabel: zoneOffsetLabel,
+  } = useTimeZonePreference();
 
   const session = useQuery({
     queryKey: ["eeg_sessions", "report", id],
