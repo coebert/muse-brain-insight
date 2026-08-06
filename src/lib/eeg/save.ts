@@ -63,6 +63,8 @@ export async function saveSession(
   events: DetectedEvent[],
   summary: { meanSr: number; maxSr: number; suppressionSeconds: number; seizureAlerts: number },
   elapsed: number,
+  /** Wall-clock time the case actually started, in ms since epoch. */
+  startedAtMs?: number,
 ) {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -86,6 +88,12 @@ export async function saveSession(
   });
   const [sealedCase, sealedLocation, sealedNotes, sealedDiagnosis, sealedSummary] =
     sealed as (string | null)[];
+
+  // Record when the case actually ran, not when it happened to be filed.
+  const startedAt = new Date(
+    startedAtMs && Number.isFinite(startedAtMs) ? startedAtMs : Date.now() - elapsed * 1000,
+  );
+  const endedAt = new Date(startedAt.getTime() + Math.max(0, elapsed) * 1000);
 
   const session = await write(() =>
     supabase
@@ -113,7 +121,8 @@ export async function saveSession(
         max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
         suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
         seizure_alerts: summary.seizureAlerts,
-        ended_at: new Date().toISOString(),
+        started_at: startedAt.toISOString(),
+        ended_at: endedAt.toISOString(),
       })
       .select("id")
       .single(),
