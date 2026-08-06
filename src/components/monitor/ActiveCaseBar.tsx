@@ -105,7 +105,7 @@ const DOT: Record<LiveStatus["tone"], string> = {
  * another page, with one tap back to the monitor.
  */
 export function ActiveCaseBar() {
-  const { caseState, caseRunning, monitor, meta, hasUnfiledData } = useCaseSession();
+  const { caseState, caseRunning, monitor, meta, hasUnfiledData, requestNewCase } = useCaseSession();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [retrying, setRetrying] = useState(false);
 
