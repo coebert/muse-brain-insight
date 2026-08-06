@@ -737,13 +737,7 @@ export class EegAnalyzer {
     if (this.activeSeizureStart !== null) {
       const duration = endT - this.activeSeizureStart;
       const run = this.seizureRun;
-      this.events.push({
-        kind: "seizure",
-        severity: duration >= 10 ? "critical" : "warning",
-        t: this.activeSeizureStart,
-        duration,
-        detail: `Rhythmic ictal-appearing activity for ${duration.toFixed(0)} s — episode closed at a data gap`,
-        evidence: run
+      const evidence = run
           ? buildSeizureEvidence({
               peakScore: run.peakScore,
               threshold: this.settings.seizureThreshold,
@@ -757,7 +751,14 @@ export class EegAnalyzer {
               confidence: run.minConfidence,
               durationSeconds: duration,
             })
-          : undefined,
+        : undefined;
+      this.events.push({
+        kind: "seizure",
+        severity: duration >= 10 ? "critical" : "warning",
+        t: this.activeSeizureStart,
+        duration,
+        detail: `Rhythmic ictal-appearing activity for ${duration.toFixed(0)} s — episode closed at a data gap`,
+        ...(evidence ? { evidence } : {}),
       });
       this.activeSeizureStart = null;
     }
