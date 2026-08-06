@@ -163,7 +163,7 @@ export function pairBisReadings(
           appSr == null || r.sr == null || !Number.isFinite(r.sr) ? null : round(appSr - r.sr, 1),
         sef95: round(epoch?.sef95 ?? null, 1),
         reliable: epoch ? epoch.depthReliability.reliable && !epoch.depth.held : false,
-        sqi: round(epoch ? epoch.quality.sqi * 100 : null, 0),
+        sqi: round(epoch ? epoch.quality.score * 100 : null, 0),
         gapSeconds: epoch ? Math.round(Math.abs(epoch.t - r.at)) : null,
       } satisfies BisPairedPoint;
     });
