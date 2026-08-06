@@ -821,6 +821,7 @@ export function useEegMonitor() {
     channelQuality,
     summary,
     reconnectAttempt,
+    analysisSource,
     dataGapSeconds,
     addEvent,
     connect,
