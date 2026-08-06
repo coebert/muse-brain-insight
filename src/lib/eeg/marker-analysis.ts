@@ -123,8 +123,9 @@ export function analyseMarkers(
   const markers = events.filter((e) => e.kind === "annotation").sort((a, b) => a.t - b.t);
 
   return markers.map((m) => {
-    const pre = epochs.filter((e) => e.t >= m.t - before && e.t < m.t);
-    const post = epochs.filter((e) => e.t > m.t && e.t <= m.t + after);
+    // Gap seconds are excluded from both comparison windows.
+    const pre = epochs.filter((e) => !e.gapAffected && e.t >= m.t - before && e.t < m.t);
+    const post = epochs.filter((e) => !e.gapAffected && e.t > m.t && e.t <= m.t + after);
     const deltas: MarkerMetricDelta[] = METRICS.map((metric) => {
       const b = round(
         mean(pick(pre, metric)),
