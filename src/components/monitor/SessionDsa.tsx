@@ -84,6 +84,11 @@ export function SessionDsa({
           const f = tB > tA ? Math.max(0, Math.min(1, (t - tA) / (tB - tA))) : 0;
           const loSpec = spectra[before];
           const hiSpec = spectra[after];
+          // Never blend across missing EEG: a dropout is painted as backdrop
+          // rather than a smooth ramp between the epochs either side of it.
+          if (after !== before && spansGap(tA, tB)) {
+            return { lo: undefined, hi: undefined, f: 0 };
+          }
           return {
             lo: loSpec && loSpec.length ? loSpec : undefined,
             hi: hiSpec && hiSpec.length ? hiSpec : undefined,
