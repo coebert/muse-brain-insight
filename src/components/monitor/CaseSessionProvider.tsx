@@ -33,7 +33,7 @@ import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
 import { CHECKLIST_ITEMS } from "@/components/monitor/PreCaseChecklist";
-import { loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
+import { generateCaseCode, loadCaseStartup, nextCaseCode, saveCaseStartup } from "@/lib/eeg/case-startup";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { summariseBis, type BisReading } from "@/lib/eeg/bis";
