@@ -19,6 +19,8 @@ import { formatClock } from "@/lib/eeg/format";
 interface Props {
   meta: CaseMeta;
   onMetaChange: (meta: CaseMeta) => void;
+  /** Case codes already filed on this device; duplicates are blocked. */
+  usedCaseCodes: string[];
   signedIn: boolean;
   epochCount: number;
   eventCount: number;
@@ -51,6 +53,7 @@ interface Props {
 export function CaseDialogs({
   meta,
   onMetaChange,
+  usedCaseCodes,
   signedIn,
   epochCount,
   eventCount,
@@ -87,7 +90,12 @@ export function CaseDialogs({
           </DialogHeader>
           {signedIn ? (
             <>
-              <CaseFields meta={meta} onChange={onMetaChange} idPrefix="save" />
+              <CaseFields
+                meta={meta}
+                onChange={onMetaChange}
+                usedCaseCodes={usedCaseCodes}
+                idPrefix="save"
+              />
               <p className="metric-value text-xs text-muted-foreground">
                 {epochCount} epochs · {formatClock(elapsed)} · {eventCount} events ({markerCount}{" "}
                 clinician markers)
@@ -121,7 +129,12 @@ export function CaseDialogs({
               and can be filed at the end without retyping anything.
             </DialogDescription>
           </DialogHeader>
-          <CaseFields meta={meta} onChange={onMetaChange} idPrefix="start" />
+          <CaseFields
+            meta={meta}
+            onChange={onMetaChange}
+            usedCaseCodes={usedCaseCodes}
+            idPrefix="start"
+          />
           <PreCaseChecklist checked={checklist} onToggle={onToggleChecklist} />
           {bleSupported ? null : (
             <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
