@@ -30,7 +30,12 @@ export interface CaseControls {
   onBisReadingsChange: (next: BisReading[]) => void;
 
   /** Live case details, so notes and the free-text summary can be written mid-case. */
-  caseNotes?: { meta: CaseMeta; onChange: (next: CaseMeta) => void };
+  caseNotes?: {
+    meta: CaseMeta;
+    onChange: (next: CaseMeta) => void;
+    /** Codes already filed locally, so duplicates can be flagged mid-case. */
+    usedCaseCodes?: string[];
+  };
 
   settings: AnalysisSettings;
   onSettingsChange: (patch: Partial<AnalysisSettings>, description: string) => void;
