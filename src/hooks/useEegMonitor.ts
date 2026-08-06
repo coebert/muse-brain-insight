@@ -420,9 +420,10 @@ export function useEegMonitor() {
               })
             : new SimulatedSource();
         source.onDisconnect(() => {
-          setStatus("idle");
+          // The case keeps running: hold the source so a manual retry can
+          // re-open the same headband without losing anything recorded.
+          setStatus("error");
           setReconnectAttempt(null);
-          setError("The headband disconnected and could not be recovered.");
         });
         source.onState?.((state) => {
           if (state.kind === "reconnecting") {
@@ -452,6 +453,11 @@ export function useEegMonitor() {
           rawArchiveRef.current.push(ch, filtered, MUSE_SAMPLE_RATE);
         });
         sourceRef.current = source;
+        lastConnectRef.current = {
+          kind,
+          ...(options?.device ? { device: options.device } : {}),
+          ...(options?.preset ? { preset: options.preset } : {}),
+        };
         setSourceName(source.name);
         if (!options?.preserveTimeline) reset();
         lastSampleAtRef.current = Date.now();
@@ -463,6 +469,38 @@ export function useEegMonitor() {
     },
     [reset],
   );
+
+  /**
+   * Clinician-triggered reconnection. Never resets the timeline: the trend,
+   * events, markers and raw archive from the case so far are preserved.
+   */
+  const reconnect = useCallback(async (): Promise<boolean> => {
+    const source = sourceRef.current;
+    setError(null);
+    if (source?.reconnect) {
+      setStatus("reconnecting");
+      const ok = await source.reconnect();
+      if (ok) {
+        lastSampleAtRef.current = Date.now();
+        setStatus("streaming");
+        setReconnectAttempt(null);
+        return true;
+      }
+      setStatus("error");
+      setError("Reconnection failed — check the headband is on, charged and in range.");
+      return false;
+    }
+    const last = lastConnectRef.current;
+    if (!last) return false;
+    await sourceRef.current?.stop();
+    sourceRef.current = null;
+    await connect(last.kind, {
+      preserveTimeline: true,
+      ...(last.device ? { device: last.device } : {}),
+      ...(last.preset ? { preset: last.preset } : {}),
+    });
+    return true;
+  }, [connect]);
 
   // Epoch analysis loop.
   useEffect(() => {
@@ -734,6 +772,7 @@ export function useEegMonitor() {
     dataGapSeconds,
     addEvent,
     connect,
+    reconnect,
     stop,
     reset,
   };
