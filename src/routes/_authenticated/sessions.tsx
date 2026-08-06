@@ -44,7 +44,7 @@ function Sessions() {
       const { data, error } = await supabase
         .from("eeg_sessions")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("started_at", { ascending: false });
       if (error) throw error;
       return unseal(data, ["case_code", "location", "notes", "admission_diagnosis"]);
     },
