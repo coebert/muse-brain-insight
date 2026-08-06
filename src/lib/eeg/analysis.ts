@@ -471,7 +471,12 @@ export class EegAnalyzer {
     const ictalFraction = totalPower > 0 ? ictalBand / totalPower : 0;
 
     let seizureScore = 0;
-    if (!artifact && !gapAffected && !isSuppressed && maxP2p > this.settings.suppressionThresholdUv * 2) {
+    if (
+      !artifact &&
+      !gapAffected &&
+      !isSuppressed &&
+      maxP2p > this.settings.suppressionThresholdUv * 2
+    ) {
       seizureScore =
         0.45 * rhythmic +
         0.3 * Math.min(1, Math.max(0, (llRatio - 1.6) / 2.4)) +
@@ -574,7 +579,12 @@ export class EegAnalyzer {
     // --- depth index change alerts ------------------------------------------
     // Only trend on ungated values so the artefact "hold" does not read as a
     // real change; a cooldown of one trend window prevents alert storms.
-    if (!gapAffected && !depth.held && typeof depth.index === "number" && Number.isFinite(depth.index)) {
+    if (
+      !gapAffected &&
+      !depth.held &&
+      typeof depth.index === "number" &&
+      Number.isFinite(depth.index)
+    ) {
       this.depthHistory.push({ t, value: depth.index });
     }
     const depthCutoff = t - this.settings.depthTrendSeconds;
@@ -738,19 +748,19 @@ export class EegAnalyzer {
       const duration = endT - this.activeSeizureStart;
       const run = this.seizureRun;
       const evidence = run
-          ? buildSeizureEvidence({
-              peakScore: run.peakScore,
-              threshold: this.settings.seizureThreshold,
-              epochsRequired: this.settings.seizureEpochs,
-              epochsObserved: run.epochs,
-              rhythmicity: run.rhythmicity,
-              lineLengthRatio: run.lineLengthRatio,
-              ictalFraction: run.ictalFraction,
-              signalQuality: run.epochs ? run.qualitySum / run.epochs : 0,
-              emgIndex: run.maxEmg,
-              confidence: run.minConfidence,
-              durationSeconds: duration,
-            })
+        ? buildSeizureEvidence({
+            peakScore: run.peakScore,
+            threshold: this.settings.seizureThreshold,
+            epochsRequired: this.settings.seizureEpochs,
+            epochsObserved: run.epochs,
+            rhythmicity: run.rhythmicity,
+            lineLengthRatio: run.lineLengthRatio,
+            ictalFraction: run.ictalFraction,
+            signalQuality: run.epochs ? run.qualitySum / run.epochs : 0,
+            emgIndex: run.maxEmg,
+            confidence: run.minConfidence,
+            durationSeconds: duration,
+          })
         : undefined;
       this.events.push({
         kind: "seizure",
