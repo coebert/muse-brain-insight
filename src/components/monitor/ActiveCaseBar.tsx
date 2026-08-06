@@ -167,7 +167,12 @@ export function ActiveCaseBar() {
           {retrying ? "Reconnecting…" : "Reconnect"}
         </Button>
       ) : null}
-      <Button asChild size="sm" variant="secondary" className={cn("min-h-8", !canReconnect && "ml-auto")}>
+      {caseState === "ended" ? (
+        <Button size="sm" variant="secondary" className="min-h-8" onClick={() => requestNewCase()}>
+          <Plus className="size-4" /> New case
+        </Button>
+      ) : null}
+      <Button asChild size="sm" variant="secondary" className={cn("min-h-8", caseState !== "ended" && !canReconnect && "ml-auto")}>
         <Link to="/">Back to monitor</Link>
       </Button>
     </div>
