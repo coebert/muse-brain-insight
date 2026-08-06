@@ -3,6 +3,7 @@ import type { AlarmSide } from "@/lib/eeg/alarms";
 import type { ActiveAlarm } from "@/hooks/useAlarms";
 import type { DepthWindowPrefs, DepthWindowStatus } from "@/hooks/useDepthWindowAlerts";
 import type { TciInfusion } from "@/lib/eeg/tci";
+import type { CaseMeta } from "@/lib/eeg/case-meta";
 
 /**
  * Everything a clinician can touch during a live case, gathered into one
@@ -22,6 +23,9 @@ export interface CaseControls {
 
   infusions: TciInfusion[];
   onInfusionsChange: (next: TciInfusion[]) => void;
+
+  /** Live case details, so notes and the free-text summary can be written mid-case. */
+  caseNotes?: { meta: CaseMeta; onChange: (next: CaseMeta) => void };
 
   settings: AnalysisSettings;
   onSettingsChange: (patch: Partial<AnalysisSettings>, description: string) => void;
