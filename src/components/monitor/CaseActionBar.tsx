@@ -262,6 +262,7 @@ export function CaseActionBar({
               <CaseFields
                 meta={controls.caseNotes.meta}
                 onChange={controls.caseNotes.onChange}
+                usedCaseCodes={controls.caseNotes.usedCaseCodes ?? []}
                 idPrefix="live"
               />
             </>
