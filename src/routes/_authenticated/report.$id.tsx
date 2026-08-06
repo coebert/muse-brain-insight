@@ -18,7 +18,7 @@ import { DsaLegend } from "@/components/monitor/DsaChart";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
-import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 
 export const Route = createFileRoute("/_authenticated/report/$id")({
   head: () => ({
