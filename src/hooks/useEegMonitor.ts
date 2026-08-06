@@ -30,9 +30,11 @@ import {
 } from "@/lib/eeg/muse";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
+import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 
 export type { WaveformStore } from "@/lib/eeg/waveform-store";
 export type { RawArchive } from "@/lib/eeg/raw-archive";
+export type { SideDecision } from "@/lib/eeg/side-preference";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
 export type SourceKind = "muse" | "simulated";
@@ -335,6 +337,13 @@ export function useEegMonitor() {
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const leftAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const rightAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
+  /** Chooses which hemisphere feeds the primary depth/SR/SEF metrics. */
+  const sidePreferenceRef = useRef(new SidePreference());
+  const [analysisSource, setAnalysisSource] = useState<SideDecision>({
+    side: null,
+    advantage: 0,
+    reason: "Both hemispheres usable — primary metrics use the four-electrode average",
+  });
   const startedAtRef = useRef<number>(0);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
@@ -386,6 +395,12 @@ export function useEegMonitor() {
     analyzerRef.current.reset();
     leftAnalyzerRef.current.reset();
     rightAnalyzerRef.current.reset();
+    sidePreferenceRef.current.reset();
+    setAnalysisSource({
+      side: null,
+      advantage: 0,
+      reason: "Both hemispheres usable — primary metrics use the four-electrode average",
+    });
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
     dispatch({ type: "reset" });
@@ -536,8 +551,6 @@ export function useEegMonitor() {
         }
       }
 
-      const epoch = analyzerRef.current.analyze(activeSignal(EPOCH_LEN), t);
-
       const contact: Record<string, boolean> = {};
       const quality: Record<string, SignalQuality> = {};
       // Channels are rated in pairs: two real spectra come out of one complex
@@ -561,6 +574,43 @@ export function useEegMonitor() {
         contact[ca] = !qa.flat && qa.grade !== "poor";
         contact[cb] = !qb.flat && qb.grade !== "poor";
       }
+
+      // --- primary analysis source -------------------------------------------
+      // Depth index, suppression ratio and SEF95 come from the four-electrode
+      // average unless one hemisphere is clearly cleaner, in which case that
+      // side alone drives them so a bad electrode pair cannot degrade them.
+      const sideQuality = (group: MuseChannel[]): SideQuality => {
+        const grades = group.map((c) => quality[c]);
+        return {
+          score: grades.length ? Math.min(...grades.map((q) => q?.score ?? 0)) : 0,
+          flat: group.every((c) => quality[c]?.flat ?? false),
+          grade: grades.some((q) => q?.grade === "poor")
+            ? "poor"
+            : grades.some((q) => q?.grade === "fair")
+              ? "fair"
+              : "good",
+        };
+      };
+      const decision =
+        channelRef.current === "average"
+          ? sidePreferenceRef.current.update(
+              sideQuality(LEFT_CHANNELS),
+              sideQuality(RIGHT_CHANNELS),
+            )
+          : {
+              side: null,
+              advantage: 0,
+              reason: `Single electrode (${channelRef.current}) selected — primary metrics use it directly`,
+            };
+      setAnalysisSource((prev) =>
+        prev.side === decision.side && Math.abs(prev.advantage - decision.advantage) < 0.02
+          ? prev
+          : decision,
+      );
+      const primarySignal = decision.side
+        ? groupSignal(decision.side === "left" ? LEFT_CHANNELS : RIGHT_CHANNELS, EPOCH_LEN)
+        : activeSignal(EPOCH_LEN);
+      const epoch = analyzerRef.current.analyze(primarySignal, t);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
@@ -771,6 +821,7 @@ export function useEegMonitor() {
     channelQuality,
     summary,
     reconnectAttempt,
+    analysisSource,
     dataGapSeconds,
     addEvent,
     connect,
