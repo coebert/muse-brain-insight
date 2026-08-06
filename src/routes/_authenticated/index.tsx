@@ -8,6 +8,7 @@ import {
   Maximize2,
   Moon,
   MoreVertical,
+  Plus,
   SignalLow,
   Sun,
   Save,
@@ -189,6 +190,7 @@ function Monitor() {
     startCase,
     endCase,
     discardCase,
+    requestNewCase,
     addMarker,
     addMarkerAt,
     caseControls,
@@ -322,31 +324,41 @@ function Monitor() {
                 </DropdownMenu>
               </>
             ) : (
-              <>
+            <>
+              {caseState === "ended" ? (
+                <Button
+                  size="sm"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => requestNewCase()}
+                >
+                  <Plus className="size-4" /> New case
+                </Button>
+              ) : (
                 <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setCaseOpen(true)}>
                   <Bluetooth className="size-4" /> Start case
                 </Button>
-                {caseState === "ended" && monitor.epochs.length ? (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 sm:flex-none"
-                      onClick={() => setSaveOpen(true)}
-                    >
-                      <Save className="size-4" /> File case
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 text-critical hover:text-critical sm:flex-none"
-                      onClick={() => setDiscardOpen(true)}
-                    >
-                      <Trash2 className="size-4" /> Exit without saving
-                    </Button>
-                  </>
-                ) : null}
-              </>
+              )}
+              {caseState === "ended" && monitor.epochs.length ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => setSaveOpen(true)}
+                  >
+                    <Save className="size-4" /> File case
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 text-critical hover:text-critical sm:flex-none"
+                    onClick={() => setDiscardOpen(true)}
+                  >
+                    <Trash2 className="size-4" /> Exit without saving
+                  </Button>
+                </>
+              ) : null}
+            </>
             )}
             {user ? (
               <AppNav showBrand={false} compact />

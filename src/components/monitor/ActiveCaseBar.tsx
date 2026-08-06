@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, AlertTriangle, CircleDot, Loader2, PlugZap, RefreshCw, WifiOff } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  CircleDot,
+  Loader2,
+  PlugZap,
+  Plus,
+  RefreshCw,
+  WifiOff,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
@@ -96,7 +105,7 @@ const DOT: Record<LiveStatus["tone"], string> = {
  * another page, with one tap back to the monitor.
  */
 export function ActiveCaseBar() {
-  const { caseState, caseRunning, monitor, meta, hasUnfiledData } = useCaseSession();
+  const { caseState, caseRunning, monitor, meta, hasUnfiledData, requestNewCase } = useCaseSession();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [retrying, setRetrying] = useState(false);
 
@@ -158,7 +167,12 @@ export function ActiveCaseBar() {
           {retrying ? "Reconnecting…" : "Reconnect"}
         </Button>
       ) : null}
-      <Button asChild size="sm" variant="secondary" className={cn("min-h-8", !canReconnect && "ml-auto")}>
+      {caseState === "ended" ? (
+        <Button size="sm" variant="secondary" className="min-h-8" onClick={() => requestNewCase()}>
+          <Plus className="size-4" /> New case
+        </Button>
+      ) : null}
+      <Button asChild size="sm" variant="secondary" className={cn("min-h-8", caseState !== "ended" && !canReconnect && "ml-auto")}>
         <Link to="/">Back to monitor</Link>
       </Button>
     </div>
