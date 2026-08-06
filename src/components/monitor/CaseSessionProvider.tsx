@@ -82,12 +82,25 @@ function useCaseSessionState() {
     const preset = DETECTION_PRESETS.find((p) => p.key === cfg.presetKey);
     if (preset) setSettingsRef.current({ ...preset.settings });
     setWindowMinutes(defaultWindowMinutes(prefs.mode));
-    setMeta((prev) => ({
-      ...prev,
-      context: prefs.context || prev.context,
-      location: prefs.location || prev.location,
-      caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode),
-    }));
+    setMeta((prev) => {
+      const context = prefs.context || prev.context;
+      return {
+        ...prev,
+        context,
+        location: prefs.location || prev.location,
+        // Always arrive with a usable anonymised code: continue the clinician's
+        // own numbering if they have one, otherwise mint a fresh code.
+        caseCode: prev.caseCode || nextCaseCode(prefs.lastCaseCode) || generateCaseCode(context),
+      };
+    });
+  }, []);
+
+  // A brand-new device/session has no stored preferences at all, so mint the
+  // very first code here.
+  useEffect(() => {
+    setMeta((prev) =>
+      prev.caseCode ? prev : { ...prev, caseCode: generateCaseCode(prev.context) },
+    );
   }, []);
   const [windowMinutes, setWindowMinutes] = useState(10);
   const [mode, setMode] = useState<MonitorMode>("anaesthesia");
