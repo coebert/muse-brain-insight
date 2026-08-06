@@ -189,6 +189,7 @@ function Monitor() {
     startCase,
     endCase,
     discardCase,
+    requestNewCase,
     addMarker,
     addMarkerAt,
     caseControls,
