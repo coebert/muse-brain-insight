@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { BisPairedChart } from "@/components/monitor/BisPairedChart";
+import { BisBlandAltmanChart } from "@/components/monitor/BisBlandAltmanChart";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import {
   clearBisAlignment,
@@ -201,6 +202,8 @@ export function BisDriftPanel() {
             ) : null}
 
             <BisPairedChart series={data?.series ?? []} />
+
+            <BisBlandAltmanChart series={data?.series ?? []} />
 
             {review ? (
               <div className="space-y-2 border-t border-border pt-3">
