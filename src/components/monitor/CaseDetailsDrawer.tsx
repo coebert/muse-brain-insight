@@ -4,6 +4,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import type { SessionCoverage } from "@/lib/eeg/coverage";
 import type { Epoch } from "@/lib/eeg/analysis";
+import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
+import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 import { cn } from "@/lib/utils";
 
 export interface CaseDetailsDrawerProps {
@@ -20,6 +22,7 @@ export interface CaseDetailsDrawerProps {
   connectionError?: string | null | undefined;
   reconnectAttempt?: number | undefined;
   dataGapSeconds?: number | undefined;
+  channelCompleteness?: ChannelCompleteness[] | undefined;
 }
 
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -53,6 +56,7 @@ export function CaseDetailsDrawer({
   connectionError,
   reconnectAttempt,
   dataGapSeconds,
+  channelCompleteness,
 }: CaseDetailsDrawerProps) {
   const latest = epochs.length ? epochs[epochs.length - 1]! : null;
   const seizureAlerts = epochs.filter((e) => e.seizureAlert).length;
@@ -82,6 +86,13 @@ export function CaseDetailsDrawer({
       tone: "warn",
       text: `${((poorEpochs / epochs.length) * 100).toFixed(0)}% of epochs graded poor signal quality`,
     });
+  for (const c of channelCompleteness ?? []) {
+    if (c.epochs > 0 && c.level !== "ok")
+      flags.push({
+        tone: c.level === "poor" ? "bad" : "warn",
+        text: `${c.channel} (${c.side}) usable for only ${(c.usableFraction * 100).toFixed(0)}% of the case${c.note ? ` — ${c.note.toLowerCase()}` : ""}`,
+      });
+  }
   if (latest?.depthReliability && latest.depthReliability.reliable === false)
     flags.push({
       tone: "warn",
@@ -114,6 +125,12 @@ export function CaseDetailsDrawer({
             <Metric label="Seizure score" value={num(latest?.seizureScore, 2)} sub={`${seizureAlerts} alert epochs`} />
             <Metric label="Signal quality" value={num(latest ? latest.quality.score * 100 : null, 0, " %")} sub={latest?.quality?.grade ?? "—"} />
           </div>
+
+          <ChannelCompletenessPanel
+            rows={channelCompleteness ?? []}
+            streamFraction={coverage.fraction}
+            streamMissingSeconds={coverage.missingSeconds}
+          />
 
           <div className="panel border border-border px-3 py-2 text-xs text-muted-foreground">
             <p>Source: {sourceName ?? "—"}</p>

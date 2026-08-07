@@ -467,6 +467,7 @@ function Monitor() {
               connectionError={monitor.error}
               reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
               dataGapSeconds={monitor.dataGapSeconds}
+              channelCompleteness={monitor.channelCompleteness}
             />
 
             {/* Density spectral array */}
