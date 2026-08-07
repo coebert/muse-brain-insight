@@ -33,6 +33,7 @@ import { createRawArchive } from "@/lib/eeg/raw-archive";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 import {
   accumulateChannelQuality,
+  channelStatePoint,
   emptyChannelTallies,
   summariseChannelCompleteness,
   type ChannelCompleteness,
@@ -157,6 +158,13 @@ function compactHemi(list: HemiSpectra[]): HemiSpectra[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
+function compactChannelStates(list: ChannelStatePoint[]): ChannelStatePoint[] {
+  if (list.length <= MAX_EPOCHS) return list;
+  const keepFrom = list.length - FULL_RES_EPOCHS;
+  const older = list.slice(0, keepFrom).filter((_, i) => i % 2 === 0);
+  return [...older, ...list.slice(keepFrom)];
+}
+
 function compactSqi(list: SqiPoint[]): SqiPoint[] {
   if (list.length <= MAX_EPOCHS) return list;
   const keepFrom = list.length - FULL_RES_EPOCHS;
@@ -248,6 +256,8 @@ interface StreamState {
   channelQuality: Record<string, SignalQuality>;
   /** Per-electrode completeness rows for the whole case. */
   channelCompleteness: ChannelCompleteness[];
+  /** Per-electrode state/noise samples over the case, for the timeline view. */
+  channelStateHistory: ChannelStatePoint[];
   dataGapSeconds: number;
 }
 
@@ -262,6 +272,7 @@ const INITIAL_STREAM: StreamState = {
   contactOk: {},
   channelQuality: {},
   channelCompleteness: [],
+  channelStateHistory: [],
   dataGapSeconds: 0,
 };
 
@@ -281,6 +292,7 @@ type StreamAction =
       contactOk: Record<string, boolean>;
       channelQuality: Record<string, SignalQuality>;
       channelCompleteness: ChannelCompleteness[];
+      channelState: ChannelStatePoint;
     };
 
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
@@ -305,6 +317,7 @@ function streamReducer(state: StreamState, action: StreamAction): StreamState {
         contactOk: action.contactOk,
         channelQuality: action.channelQuality,
         channelCompleteness: action.channelCompleteness,
+        channelStateHistory: compactChannelStates([...state.channelStateHistory, action.channelState]),
       };
   }
 }
@@ -327,6 +340,7 @@ export function useEegMonitor() {
     contactOk,
     channelQuality,
     channelCompleteness,
+    channelStateHistory,
     dataGapSeconds,
   } = stream;
   // The live trace bypasses React state — see waveform-store.
@@ -772,6 +786,7 @@ export function useEegMonitor() {
           accumulateChannelQuality(channelTalliesRef.current, quality),
           HOP_SECONDS,
         ),
+        channelState: channelStatePoint(t, quality),
       });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
