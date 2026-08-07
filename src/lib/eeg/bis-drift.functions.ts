@@ -194,19 +194,32 @@ export const getBisDrift = createServerFn({ method: "GET" })
     // and a fitted correction that is both safe and materially better than
     // what is already applied.
     const fit = analysis.fit;
+    const knotShift = fit
+      ? Math.max(
+          0,
+          ...fit.knots.map((k) => {
+            const prev = active?.knots.find((a) => a.x === k.x)?.dy ?? 0;
+            return Math.abs(prev - k.dy);
+          }),
+        )
+      : 0;
     const worthReplacing =
       !active ||
       Math.abs(fit ? fit.biasAfter : 0) + 1 < Math.abs(analysis.bias ?? 0) ||
       Math.abs((active.gain ?? 1) - (fit?.gain ?? 1)) > 0.05 ||
-      Math.abs((active.offset ?? 0) - (fit?.offset ?? 0)) > 3;
+      Math.abs((active.offset ?? 0) - (fit?.offset ?? 0)) > 3 ||
+      // COEBIS also refreshes when only the per-band finessing has moved.
+      knotShift > 1.5 ||
+      (fit != null && fit.n >= active.nPoints * 1.25 + 10);
 
     if (
       fit &&
       fitIsSafe(fit) &&
       analysis.readiness.points.have >= analysis.readiness.points.need &&
       analysis.readiness.sessions.have >= analysis.readiness.sessions.need &&
-      analysis.readiness.biasSignificant &&
-      Math.abs(analysis.bias ?? 0) >= 3 &&
+      // Once COEBIS exists it keeps refining on new data; the first activation
+      // still needs a clear, meaningful systematic offset.
+      (active != null || (analysis.readiness.biasSignificant && Math.abs(analysis.bias ?? 0) >= 3)) &&
       worthReplacing
     ) {
       await context.supabase
@@ -219,6 +232,8 @@ export const getBisDrift = createServerFn({ method: "GET" })
           user_id: context.userId,
           gain: fit.gain,
           offset: fit.offset,
+          knots: fit.knots,
+          model_version: "coebis-2",
           n_points: fit.n,
           n_sessions: fit.sessions,
           bias_before: fit.biasBefore,
@@ -227,7 +242,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
           mae_after: fit.maeAfter,
           auto_applied: true,
           is_active: true,
-          note: `Fitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`,
+          note: `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`,
         })
         .select(ALIGNMENT_COLUMNS)
         .single();
@@ -247,7 +262,13 @@ export const getBisDrift = createServerFn({ method: "GET" })
       bis: Number(p.bis.toFixed(1)),
       raw: Number(p.appIndex.toFixed(1)),
       corrected: active
-        ? Number(alignIndex(p.appIndex, { gain: active.gain, offset: active.offset }).toFixed(1))
+        ? Number(
+            alignIndex(p.appIndex, {
+              gain: active.gain,
+              offset: active.offset,
+              knots: active.knots,
+            }).toFixed(1),
+          )
         : null,
       reliable: p.reliable,
       recordedAt: p.recordedAt,
