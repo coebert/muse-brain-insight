@@ -855,6 +855,7 @@ export function useEegMonitor() {
     contactOk,
     channelQuality,
     channelCompleteness,
+    channelStateHistory,
     summary,
     reconnectAttempt,
     analysisSource,
