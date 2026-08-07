@@ -168,7 +168,7 @@ function EvidenceEditor({
         <div className="flex items-center gap-1.5">
           {record.timeline.length ? (
             <Select value="" onValueChange={(v) => addFromTimeline(Number(v))}>
-              <SelectTrigger className="h-8 w-[190px] text-xs">
+              <SelectTrigger className="h-8 w-full min-w-0 text-xs sm:w-[190px]">
                 <SelectValue placeholder="Add from recording" />
               </SelectTrigger>
               <SelectContent>
