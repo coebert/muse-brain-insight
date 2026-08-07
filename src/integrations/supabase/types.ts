@@ -280,8 +280,10 @@ export type Database = {
           gain: number
           id: string
           is_active: boolean
+          knots: Json
           mae_after: number | null
           mae_before: number | null
+          model_version: string
           n_points: number
           n_sessions: number
           note: string | null
@@ -296,8 +298,10 @@ export type Database = {
           gain: number
           id?: string
           is_active?: boolean
+          knots?: Json
           mae_after?: number | null
           mae_before?: number | null
+          model_version?: string
           n_points: number
           n_sessions: number
           note?: string | null
@@ -312,8 +316,10 @@ export type Database = {
           gain?: number
           id?: string
           is_active?: boolean
+          knots?: Json
           mae_after?: number | null
           mae_before?: number | null
+          model_version?: string
           n_points?: number
           n_sessions?: number
           note?: string | null
