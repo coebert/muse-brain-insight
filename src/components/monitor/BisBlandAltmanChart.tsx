@@ -88,16 +88,34 @@ export function BisBlandAltmanChart({
       : null;
   const knotCount = active?.knots?.length ?? 0;
 
-  const { rawPoints, coebisPoints, raw, coebis, rawTrend, coebisTrend } = useMemo(() => {
+  const {
+    rawPoints,
+    coebisPoints,
+    raw,
+    coebis,
+    rawTrend,
+    coebisTrend,
+    rawInliers,
+    rawOutliers,
+    coebisInliers,
+    coebisOutliers,
+  } = useMemo(() => {
     const tail = series.slice(-n);
     const toPoints = (get: (p: BisDriftSeriesPoint) => number | null) =>
       tail
         .map((p) => {
           const v = get(p);
           if (v == null) return null;
-          return { x: (v + p.bis) / 2, y: v - p.bis, bis: p.bis, value: v };
+          return {
+            x: (v + p.bis) / 2,
+            y: v - p.bis,
+            bis: p.bis,
+            value: v,
+            recordedAt: p.recordedAt,
+            i: p.i,
+          };
         })
-        .filter((p): p is { x: number; y: number; bis: number; value: number } => p !== null);
+        .filter((p): p is BaPoint => p !== null);
 
     const toPairs = (get: (p: BisDriftSeriesPoint) => number | null): AlignedPair[] =>
       tail
@@ -109,13 +127,30 @@ export function BisBlandAltmanChart({
 
     const rawPts = toPoints((p) => p.raw);
     const corrPts = toPoints((p) => p.corrected);
+    const rawMetrics = rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null;
+    const corrMetrics = corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null;
+    const split = (pts: BaPoint[], lo: number | null | undefined, hi: number | null | undefined) => {
+      if (lo == null || hi == null || !Number.isFinite(lo) || !Number.isFinite(hi)) {
+        return { inliers: pts, outliers: [] as BaPoint[] };
+      }
+      return {
+        inliers: pts.filter((p) => p.y >= lo && p.y <= hi),
+        outliers: pts.filter((p) => p.y < lo || p.y > hi),
+      };
+    };
+    const rawSplit = split(rawPts, rawMetrics?.loaLower, rawMetrics?.loaUpper);
+    const corrSplit = split(corrPts, corrMetrics?.loaLower, corrMetrics?.loaUpper);
     return {
       rawPoints: rawPts,
       coebisPoints: corrPts,
-      raw: rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null,
-      coebis: corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null,
+      raw: rawMetrics,
+      coebis: corrMetrics,
       rawTrend: fitTrend(rawPts),
       coebisTrend: fitTrend(corrPts),
+      rawInliers: rawSplit.inliers,
+      rawOutliers: rawSplit.outliers,
+      coebisInliers: corrSplit.inliers,
+      coebisOutliers: corrSplit.outliers,
     };
   }, [series, n]);
 
