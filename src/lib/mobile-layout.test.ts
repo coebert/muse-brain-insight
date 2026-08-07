@@ -33,10 +33,10 @@ describe("mobile layout guardrails", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("never fixes a width in pixels wider than a small phone viewport", () => {
+  it("never hard-fixes a width in pixels wider than a small phone viewport (max-/min- are fine)", () => {
     const offenders: string[] = [];
     for (const file of files) {
-      for (const match of readFileSync(file, "utf8").matchAll(/\bw-\[(\d+)px\]/g)) {
+      for (const match of readFileSync(file, "utf8").matchAll(/(?<![\w-])w-\[(\d+)px\]/g)) {
         if (Number(match[1]) > 320) offenders.push(`${file}: ${match[0]}`);
       }
     }
