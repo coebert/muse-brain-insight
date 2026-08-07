@@ -31,6 +31,12 @@ import {
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
+import {
+  accumulateChannelQuality,
+  emptyChannelTallies,
+  summariseChannelCompleteness,
+  type ChannelCompleteness,
+} from "@/lib/eeg/channel-completeness";
 
 export type { WaveformStore } from "@/lib/eeg/waveform-store";
 export type { RawArchive } from "@/lib/eeg/raw-archive";
@@ -240,6 +246,8 @@ interface StreamState {
   elapsed: number;
   contactOk: Record<string, boolean>;
   channelQuality: Record<string, SignalQuality>;
+  /** Per-electrode completeness rows for the whole case. */
+  channelCompleteness: ChannelCompleteness[];
   dataGapSeconds: number;
 }
 
@@ -253,6 +261,7 @@ const INITIAL_STREAM: StreamState = {
   elapsed: 0,
   contactOk: {},
   channelQuality: {},
+  channelCompleteness: [],
   dataGapSeconds: 0,
 };
 
@@ -271,6 +280,7 @@ type StreamAction =
       sqi: SqiPoint;
       contactOk: Record<string, boolean>;
       channelQuality: Record<string, SignalQuality>;
+      channelCompleteness: ChannelCompleteness[];
     };
 
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
@@ -294,6 +304,7 @@ function streamReducer(state: StreamState, action: StreamAction): StreamState {
         sqiHistory: compactSqi([...state.sqiHistory, action.sqi]),
         contactOk: action.contactOk,
         channelQuality: action.channelQuality,
+        channelCompleteness: action.channelCompleteness,
       };
   }
 }
@@ -315,6 +326,7 @@ export function useEegMonitor() {
     elapsed,
     contactOk,
     channelQuality,
+    channelCompleteness,
     dataGapSeconds,
   } = stream;
   // The live trace bypasses React state — see waveform-store.
@@ -339,6 +351,8 @@ export function useEegMonitor() {
   const rightAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   /** Chooses which hemisphere feeds the primary depth/SR/SEF metrics. */
   const sidePreferenceRef = useRef(new SidePreference());
+  // Per-electrode completeness tallies for the current case.
+  const channelTalliesRef = useRef(emptyChannelTallies());
   const [analysisSource, setAnalysisSource] = useState<SideDecision>({
     side: null,
     advantage: 0,
@@ -403,6 +417,7 @@ export function useEegMonitor() {
     });
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
+    channelTalliesRef.current = emptyChannelTallies();
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
     rawArchiveRef.current.reset();
@@ -753,6 +768,10 @@ export function useEegMonitor() {
         sqi: point,
         contactOk: contact,
         channelQuality: quality,
+        channelCompleteness: summariseChannelCompleteness(
+          accumulateChannelQuality(channelTalliesRef.current, quality),
+          HOP_SECONDS,
+        ),
       });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
@@ -819,6 +838,7 @@ export function useEegMonitor() {
     elapsed,
     contactOk,
     channelQuality,
+    channelCompleteness,
     summary,
     reconnectAttempt,
     analysisSource,

@@ -95,6 +95,7 @@ import { BisPanel } from "@/components/monitor/BisPanel";
 import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
+import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -467,6 +468,7 @@ function Monitor() {
               connectionError={monitor.error}
               reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
               dataGapSeconds={monitor.dataGapSeconds}
+              channelCompleteness={monitor.channelCompleteness}
             />
 
             {/* Density spectral array */}
@@ -850,6 +852,7 @@ function Monitor() {
               depthGatedFraction={latest?.depth.gatedFraction}
               analysisSource={monitor.analysisSource}
             />
+            <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
             <SqiTrend
               history={monitor.sqiHistory}
               bilateral={dsaView !== "combined"}

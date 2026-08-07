@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Activity, CheckCircle2, ChevronRight, CircleSlash, Clock, FileCheck, Radio } from "lucide-react";
 
 import { CaseDetailsDrawer } from "@/components/monitor/CaseDetailsDrawer";
+import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
@@ -20,6 +21,7 @@ export interface CaseStatusWidgetProps {
   connectionError?: string | null | undefined;
   reconnectAttempt?: number | undefined;
   dataGapSeconds?: number | undefined;
+  channelCompleteness?: ChannelCompleteness[] | undefined;
 }
 
 const STATUS: Record<CaseStatusWidgetProps["caseState"], { label: string; Icon: typeof Activity; tone: keyof typeof TONE }> = {
@@ -69,6 +71,7 @@ export function CaseStatusWidget({
   connectionError,
   reconnectAttempt,
   dataGapSeconds,
+  channelCompleteness,
 }: CaseStatusWidgetProps) {
   const [open, setOpen] = useState(false);
   const status = STATUS[caseState];
@@ -166,6 +169,7 @@ export function CaseStatusWidget({
       connectionError={connectionError}
       reconnectAttempt={reconnectAttempt}
       dataGapSeconds={dataGapSeconds}
+      channelCompleteness={channelCompleteness}
     />
     </>
   );
