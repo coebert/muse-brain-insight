@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Activity,
   BellRing,
+  MoreHorizontal,
   ClipboardList,
   Gauge,
   MapPin,
@@ -87,6 +88,13 @@ export function CaseActionBar({
   ];
   if (controls.caseNotes) items.push({ key: "notes", label: "Notes", icon: NotebookPen });
 
+  // Mobile keeps only the actions reached mid-case in one thumb; the rest move
+  // behind "More" so no cell is narrower than a fingertip.
+  const PRIMARY = new Set(["mark", "alarms", "log"]);
+  const secondary = items.filter((i) => !PRIMARY.has(i.key));
+  const secondaryBadges = secondary.filter((i) => i.badge).length;
+  const [moreOpen, setMoreOpen] = useState(false);
+
   return (
     <>
       <div
@@ -97,38 +105,90 @@ export function CaseActionBar({
       >
         <div
           className={cn(
-            "mx-auto grid max-w-[1500px]",
-            controls.caseNotes ? "grid-cols-7" : "grid-cols-6",
+            "mx-auto grid max-w-[1500px] grid-cols-4",
+            controls.caseNotes ? "sm:grid-cols-7" : "sm:grid-cols-6",
           )}
         >
           {items.map((item) => {
             const Icon = item.icon;
+            const primary = PRIMARY.has(item.key);
             return (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => setSheet(item.key)}
-                className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className={cn(
+                  "relative min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+                  primary ? "flex" : "hidden sm:flex",
+                )}
               >
-                <Icon className="size-5" />
+                <span className="relative">
+                  <Icon className="size-5" />
+                  {item.badge ? (
+                    <span
+                      className={cn(
+                        "absolute -top-1.5 -right-2.5 min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold",
+                        item.key === "alarms"
+                          ? "bg-critical text-background"
+                          : "bg-signal text-background",
+                      )}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </span>
                 {item.label}
-                {item.badge ? (
-                  <span
-                    className={cn(
-                      "absolute top-1.5 right-[22%] min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold",
-                      item.key === "alarms"
-                        ? "bg-critical text-background"
-                        : "bg-signal text-background",
-                    )}
-                  >
-                    {item.badge}
-                  </span>
-                ) : null}
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+          >
+            <span className="relative">
+              <MoreHorizontal className="size-5" />
+              {secondaryBadges ? (
+                <span className="absolute -top-1.5 -right-2.5 size-2 rounded-full bg-signal" />
+              ) : null}
+            </span>
+            More
+          </button>
         </div>
       </div>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+          <SheetHeader className="px-0">
+            <SheetTitle>More case actions</SheetTitle>
+            <SheetDescription>Everything else available during this case.</SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-2 pb-4">
+            {secondary.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setSheet(item.key);
+                  }}
+                  className="flex min-h-14 items-center gap-3 rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:border-signal/60 hover:bg-signal/5"
+                >
+                  <Icon className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge ? (
+                    <span className="metric-value rounded-full bg-muted px-2 py-0.5 text-xs">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={sheet !== null} onOpenChange={(v) => (v ? null : setSheet(null))}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
