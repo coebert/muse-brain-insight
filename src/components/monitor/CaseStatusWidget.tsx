@@ -1,4 +1,7 @@
-import { Activity, CheckCircle2, CircleSlash, Clock, FileCheck, PlayCircle, Radio } from "lucide-react";
+import { useState } from "react";
+import { Activity, CheckCircle2, ChevronRight, CircleSlash, Clock, FileCheck, Radio } from "lucide-react";
+
+import { CaseDetailsDrawer } from "@/components/monitor/CaseDetailsDrawer";
 
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
@@ -13,6 +16,10 @@ export interface CaseStatusWidgetProps {
   sourceName?: string | null;
   streaming?: boolean;
   reconnecting?: boolean;
+  analysisSource?: string | null;
+  connectionError?: string | null;
+  reconnectAttempt?: number;
+  dataGapSeconds?: number;
 }
 
 const STATUS: Record<CaseStatusWidgetProps["caseState"], { label: string; Icon: typeof Activity; tone: keyof typeof TONE }> = {
@@ -58,7 +65,12 @@ export function CaseStatusWidget({
   sourceName,
   streaming,
   reconnecting,
+  analysisSource,
+  connectionError,
+  reconnectAttempt,
+  dataGapSeconds,
 }: CaseStatusWidgetProps) {
+  const [open, setOpen] = useState(false);
   const status = STATUS[caseState];
   const Icon = status.Icon;
   const coverage = assessSessionCoverage(toCoverageEpochs(epochs), elapsedSeconds);
@@ -73,12 +85,16 @@ export function CaseStatusWidget({
         : status.label;
 
   return (
-    <section
+    <>
+    <button
       className={cn(
-        "panel flex flex-col gap-3 border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        "panel flex w-full flex-col gap-3 border px-3 py-3 text-left transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between sm:px-4",
         TONE[status.tone],
       )}
-      aria-label="Case status"
+      aria-label="Case status — open case details"
+      aria-haspopup="dialog"
+      type="button"
+      onClick={() => setOpen(true)}
     >
       <div className="flex min-w-0 items-center gap-3">
         <div className="relative flex size-9 shrink-0 items-center justify-center rounded-full border border-current/30 bg-background/60">
@@ -132,7 +148,25 @@ export function CaseStatusWidget({
             </div>
           </div>
         </div>
+        <ChevronRight className="hidden size-4 opacity-60 sm:block" aria-hidden />
       </div>
-    </section>
+    </button>
+
+    <CaseDetailsDrawer
+      open={open}
+      onOpenChange={setOpen}
+      caseState={caseState}
+      statusLabel={statusLabel}
+      elapsedSeconds={elapsedSeconds}
+      epochs={epochs}
+      coverage={coverage}
+      caseCode={caseCode}
+      sourceName={sourceName}
+      analysisSource={analysisSource}
+      connectionError={connectionError}
+      reconnectAttempt={reconnectAttempt}
+      dataGapSeconds={dataGapSeconds}
+    />
+    </>
   );
 }
