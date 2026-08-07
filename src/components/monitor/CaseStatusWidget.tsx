@@ -8,6 +8,7 @@ import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
 import { cn } from "@/lib/utils";
 import type { Epoch } from "@/lib/eeg/analysis";
+import type { MonitorJumpTarget } from "@/lib/monitor-jump";
 
 export interface CaseStatusWidgetProps {
   caseState: "idle" | "running" | "ended";
@@ -22,6 +23,8 @@ export interface CaseStatusWidgetProps {
   reconnectAttempt?: number | undefined;
   dataGapSeconds?: number | undefined;
   channelCompleteness?: ChannelCompleteness[] | undefined;
+  /** Jump from a drawer metric/flag to the matching monitor panel. */
+  onJump?: ((target: MonitorJumpTarget) => void) | undefined;
 }
 
 const STATUS: Record<CaseStatusWidgetProps["caseState"], { label: string; Icon: typeof Activity; tone: keyof typeof TONE }> = {
@@ -72,6 +75,7 @@ export function CaseStatusWidget({
   reconnectAttempt,
   dataGapSeconds,
   channelCompleteness,
+  onJump,
 }: CaseStatusWidgetProps) {
   const [open, setOpen] = useState(false);
   const status = STATUS[caseState];
@@ -170,6 +174,14 @@ export function CaseStatusWidget({
       reconnectAttempt={reconnectAttempt}
       dataGapSeconds={dataGapSeconds}
       channelCompleteness={channelCompleteness}
+      onJump={
+        onJump
+          ? (target) => {
+              setOpen(false);
+              onJump(target);
+            }
+          : undefined
+      }
     />
     </>
   );
