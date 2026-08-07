@@ -5,6 +5,7 @@ import { Activity, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { BisPairedChart } from "@/components/monitor/BisPairedChart";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import {
   clearBisAlignment,
@@ -199,6 +200,8 @@ export function BisDriftPanel() {
                 automatically once the evidence thresholds above are met.
               </p>
             ) : null}
+
+            <BisPairedChart series={data?.series ?? []} />
 
             {review ? (
               <div className="space-y-2 border-t border-border pt-3">
