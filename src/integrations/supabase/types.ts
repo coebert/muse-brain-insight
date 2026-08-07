@@ -141,6 +141,68 @@ export type Database = {
           },
         ]
       }
+      bis_paired_points: {
+        Row: {
+          app_index: number
+          app_sef: number | null
+          app_sr: number | null
+          at_seconds: number
+          bis: number
+          bis_sef: number | null
+          bis_sr: number | null
+          context: string | null
+          device: string | null
+          id: string
+          recorded_at: string
+          reliable: boolean
+          session_id: string | null
+          sqi: number | null
+          user_id: string
+        }
+        Insert: {
+          app_index: number
+          app_sef?: number | null
+          app_sr?: number | null
+          at_seconds: number
+          bis: number
+          bis_sef?: number | null
+          bis_sr?: number | null
+          context?: string | null
+          device?: string | null
+          id?: string
+          recorded_at?: string
+          reliable?: boolean
+          session_id?: string | null
+          sqi?: number | null
+          user_id: string
+        }
+        Update: {
+          app_index?: number
+          app_sef?: number | null
+          app_sr?: number | null
+          at_seconds?: number
+          bis?: number
+          bis_sef?: number | null
+          bis_sr?: number | null
+          context?: string | null
+          device?: string | null
+          id?: string
+          recorded_at?: string
+          reliable?: boolean
+          session_id?: string | null
+          sqi?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bis_paired_points_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_note_facts: {
         Row: {
           confirmed: boolean
@@ -206,6 +268,57 @@ export type Database = {
           updated_at?: string
           user_id?: string
           verdict?: string
+        }
+        Relationships: []
+      }
+      depth_bis_alignments: {
+        Row: {
+          auto_applied: boolean
+          bias_after: number | null
+          bias_before: number | null
+          created_at: string
+          gain: number
+          id: string
+          is_active: boolean
+          mae_after: number | null
+          mae_before: number | null
+          n_points: number
+          n_sessions: number
+          note: string | null
+          offset: number
+          user_id: string
+        }
+        Insert: {
+          auto_applied?: boolean
+          bias_after?: number | null
+          bias_before?: number | null
+          created_at?: string
+          gain: number
+          id?: string
+          is_active?: boolean
+          mae_after?: number | null
+          mae_before?: number | null
+          n_points: number
+          n_sessions: number
+          note?: string | null
+          offset: number
+          user_id: string
+        }
+        Update: {
+          auto_applied?: boolean
+          bias_after?: number | null
+          bias_before?: number | null
+          created_at?: string
+          gain?: number
+          id?: string
+          is_active?: boolean
+          mae_after?: number | null
+          mae_before?: number | null
+          n_points?: number
+          n_sessions?: number
+          note?: string | null
+          offset?: number
+          user_id?: string
         }
         Relationships: []
       }

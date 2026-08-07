@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { useCaseAi } from "@/hooks/useCaseAi";
@@ -29,6 +30,7 @@ import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
+import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
@@ -42,7 +44,8 @@ import {
 } from "@/lib/eeg/case-code-registry";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
-import { summariseBis, type BisReading } from "@/lib/eeg/bis";
+import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
+import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
@@ -77,6 +80,16 @@ function useCaseSessionState() {
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
+
+  // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
+  // live index reflects any correction the app has already earned the right to
+  // make.
+  useEffect(() => {
+    void syncBisAlignment();
+  }, []);
+
+  /** Files paired BIS/app values for the cross-case drift watch. */
+  const fileBisPoints = useServerFn(recordBisPoints);
 
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
@@ -543,7 +556,7 @@ function useCaseSessionState() {
     }
     setSaving(true);
     try {
-      await saveSession(
+      const sessionId = await saveSession(
         { ...meta, deviceName: monitor.sourceName },
         monitor.epochs,
         allEvents,
@@ -551,6 +564,39 @@ function useCaseSessionState() {
         monitor.elapsed,
         sessionStartedAtMs,
       );
+      // File the paired commercial-BIS values so the pooled drift watch can
+      // keep tracking (and correcting) any systematic offset across cases.
+      if (bisReadings.length) {
+        const paired = pairBisReadings(monitor.epochs, bisReadings)
+          .filter((p) => p.depthIndex != null)
+          .map((p) => ({
+            at: p.at,
+            bis: p.bis,
+            bisSr: p.bisSr,
+            bisSef: p.bisSef,
+            appIndex: p.depthIndex!,
+            appSr: p.appSr,
+            appSef: p.sef95,
+            reliable: p.reliable,
+            sqi: p.sqi,
+          }));
+        if (paired.length) {
+          try {
+            await fileBisPoints({
+              data: {
+                sessionId,
+                context: meta.context,
+                device: bisReadings.find((r) => r.device)?.device ?? null,
+                points: paired,
+              },
+            });
+          } catch {
+            // The case itself is saved; a failed comparison upload must not
+            // look like a lost record.
+            toast.warning("Case saved, but the BIS comparison values could not be filed.");
+          }
+        }
+      }
       toast.success("Session saved to your records.");
       setUsedCaseCodes(rememberCaseCode(meta.caseCode));
       setSaveOpen(false);

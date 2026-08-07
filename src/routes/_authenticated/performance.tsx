@@ -18,6 +18,7 @@ import { ArrowLeft, Gauge, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
+import { BisDriftPanel } from "@/components/monitor/BisDriftPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
@@ -288,6 +289,8 @@ function ModelPerformancePage() {
             <ConfidenceMeter models={data.reliabilityByModel} />
 
             <CalibrationPanel performance={data} />
+
+            <BisDriftPanel />
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">

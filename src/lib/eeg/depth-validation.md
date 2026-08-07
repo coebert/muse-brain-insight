@@ -134,3 +134,22 @@ during emergence occasionally tripping the EMG surge test.
 
 Reproduce with `scripts/depth-validation/contaminate.py` (writes `art_*.csv`)
 then `bun scripts/depth-validation/harness_art.ts out.json gated|raw [sess|art]`.
+
+## Alignment against a commercial BIS monitor (`src/lib/eeg/bis-drift.ts`)
+
+Paired points (transcribed BIS value + the app's contemporaneous index) are
+filed with each saved case and pooled across all cases. The pooled watch
+reports the mean offset (app − BIS) with a 95 % confidence interval, per-depth-
+band offsets and the offset over the most recent 60 readings.
+
+Once there are ≥ 30 paired readings across ≥ 3 cases, the offset is
+statistically clear (CI excludes zero) and ≥ 3 index points, the app fits
+`BIS ≈ gain × index + offset` by least squares — shrunk toward the identity by
+`n/(n+40)` — and activates it automatically, provided gain stays within
+0.6–1.6, |offset| ≤ 30 and mean absolute error improves by ≥ 1 index point.
+
+The correction is a monotone affine map of the *finished* index only. The
+published openibis subparameters, mixer constants and suppression branch are
+untouched, so the calibration and validation figures above still describe the
+underlying model. The correction can be removed at any time from the model
+performance screen.
