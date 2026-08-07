@@ -203,7 +203,7 @@ export function BisDriftPanel() {
 
             <BisPairedChart series={data?.series ?? []} />
 
-            <BisBlandAltmanChart series={data?.series ?? []} />
+            <BisBlandAltmanChart series={data?.series ?? []} active={data?.active ?? null} />
 
             {review ? (
               <div className="space-y-2 border-t border-border pt-3">
