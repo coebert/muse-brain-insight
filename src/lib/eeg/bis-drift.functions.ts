@@ -232,7 +232,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
           user_id: context.userId,
           gain: fit.gain,
           offset: fit.offset,
-          knots: fit.knots,
+          knots: fit.knots.map((k) => ({ x: k.x, dy: k.dy })) as unknown as Record<string, number>[],
           model_version: "coebis-2",
           n_points: fit.n,
           n_sessions: fit.sessions,
