@@ -48,8 +48,19 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
       "Frontal EMG, eye movements, diathermy and electrode movement all inflate the index; ketamine, nitrous oxide and dexmedetomidine break the usual dose–index relationship. There is a 15–30 s processing lag, so it lags rapid boluses. The tile is marked Unreliable or Degraded and held at the last valid value when artefact gating triggers — never titrate on a held or low-confidence number alone.",
     range: "Target 40–60 for general anaesthesia; >60 light; <40 deep.",
   },
+  coebis: {
+    title: "COEBIS (app-learned index)",
+    summary:
+      "The app's own depth index: the published OpenIBIS value passed through a correction the app fits and continuously refines from your paired commercial BIS readings.",
+    significance:
+      "Interpreted on the same 0–100 scale as a commercial monitor, so the familiar 40–60 general-anaesthesia window applies. Where OpenIBIS from a frontal Muse montage sits systematically higher or lower than the bedside monitor, COEBIS removes that offset — and, once enough data exists in each depth range, corrects light and deep ranges separately. OpenIBIS is always shown alongside it so you can see how much correction is being applied.",
+    physiology:
+      "COEBIS adds no new physiology: it is a monotone recalibration of the OpenIBIS mixer output (beta ratio, SynchFastSlow, slow wave and burst-suppression terms), so the underlying signal interpretation is unchanged.",
+    reliability:
+      "Only as good as the paired readings it has learned from. Until at least 30 readings across 3 cases exist, no model is fitted and the tile stays blank. Corrections are shrunk toward no change on small samples, gain and offset are bounded, and each per-range adjustment is capped at 8 index points. It inherits every artefact limitation of OpenIBIS, and remains uncalibrated against clinical endpoints — a trend, not a titration target.",
+    range: "Target 40–60 for general anaesthesia, as for BIS.",
+  },
   sr: {
-*** placeholder
     title: "Suppression ratio (BSR)",
     summary: "Percentage of the recent window in which the EEG is isoelectric (suppressed).",
     significance:
