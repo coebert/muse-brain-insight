@@ -4,7 +4,16 @@ import { channelStatePoint, channelStateRuns } from "@/lib/eeg/channel-completen
 import type { SignalQuality } from "@/lib/eeg/dsp";
 
 function q(grade: SignalQuality["grade"], flat = false, emgIndex = 0.1): SignalQuality {
-  return { score: grade === "good" ? 0.9 : grade === "fair" ? 0.6 : 0.2, grade, flat, emgIndex, clipping: 0, drift: 0, reasons: [] } as SignalQuality;
+  return {
+    score: grade === "good" ? 0.9 : grade === "fair" ? 0.6 : 0.2,
+    grade,
+    clipFraction: 0,
+    emgIndex,
+    jumpRate: 0,
+    amplitudeUv: flat ? 0 : 40,
+    flat,
+    reasons: [],
+  };
 }
 
 describe("channel state timeline", () => {
