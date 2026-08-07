@@ -179,8 +179,7 @@ export function BisDriftPanel() {
                   {data.active.nPoints} readings across {data.active.nSessions} cases on{" "}
                   {new Date(data.active.createdAt).toLocaleDateString()}. Mean absolute error{" "}
                   {data.active.maeBefore?.toFixed(1) ?? "—"} →{" "}
-                  {data.active.maeAfter?.toFixed(1) ?? "—"} index points. Applied to the displayed
-                  depth index only; the published OpenIBIS subparameters are unchanged.
+                  {data.active.maeAfter?.toFixed(1) ?? "—"} index points. Shown as the COEBIS tile; the OpenIBIS number is always displayed alongside it, unchanged.
                 </p>
                 <Button
                   size="sm"
