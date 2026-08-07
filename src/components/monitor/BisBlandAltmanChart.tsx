@@ -181,17 +181,17 @@ export function BisBlandAltmanChart({ series }: { series: BisDriftSeriesPoint[] 
           </p>
           <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">Bias</p>
+              <p className="text-[11px] text-muted-foreground uppercase">Bias</p>
               <p className="metric-value text-sm">{f(raw?.bias)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">95 % LOA</p>
+              <p className="text-[11px] text-muted-foreground uppercase">95 % LOA</p>
               <p className="metric-value text-sm">
                 {f(raw?.loaLower)} to {f(raw?.loaUpper)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase">Paired</p>
+              <p className="text-[11px] text-muted-foreground uppercase">Paired</p>
               <p className="metric-value text-sm">{raw?.n ?? 0}</p>
             </div>
           </div>
@@ -204,17 +204,17 @@ export function BisBlandAltmanChart({ series }: { series: BisDriftSeriesPoint[] 
             </p>
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">Bias</p>
+                <p className="text-[11px] text-muted-foreground uppercase">Bias</p>
                 <p className="metric-value text-sm">{f(coebis.bias)}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">95 % LOA</p>
+                <p className="text-[11px] text-muted-foreground uppercase">95 % LOA</p>
                 <p className="metric-value text-sm">
                   {f(coebis.loaLower)} to {f(coebis.loaUpper)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">Paired</p>
+                <p className="text-[11px] text-muted-foreground uppercase">Paired</p>
                 <p className="metric-value text-sm">{coebis.n}</p>
               </div>
             </div>
