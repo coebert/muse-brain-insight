@@ -54,8 +54,8 @@ function estimateWidth(label: string): number {
  * cover the spectrogram; overflow markers keep their tick but drop the chip.
  */
 function layout(markers: DsaMarker[], elapsed: number, windowSeconds: number, width: number, maxRows: number) {
-  const rowsTop: number[][] = [];
-  const rowsBottom: number[][] = [];
+  const rowsTop: Array<Array<[number, number]>> = [];
+  const rowsBottom: Array<Array<[number, number]>> = [];
   const out: Placed[] = [];
 
   const visible = markers
@@ -81,7 +81,7 @@ function layout(markers: DsaMarker[], elapsed: number, windowSeconds: number, wi
       const clash = occupied.some(([s, e]) => start < e + GAP_PX && end + GAP_PX > s);
       if (!clash) {
         row = r;
-        rows[r] = [...occupied, [start, end] as unknown as number[]] as number[][] as never;
+        rows[r] = [...occupied, [start, end]];
         break;
       }
     }
@@ -151,9 +151,10 @@ function DsaMarkerRailInner({
                 fontSize: 10,
                 height: 15,
                 width: p.width,
-                [p.flip ? "right" : "left"]: 2,
-                [p.m.top ? "top" : "bottom"]:
-                  (p.m.top ? TOP_OFFSET : BOTTOM_OFFSET) + p.row * ROW_H,
+                ...(p.flip ? { right: 2 } : { left: 2 }),
+                ...(p.m.top
+                  ? { top: TOP_OFFSET + p.row * ROW_H }
+                  : { bottom: BOTTOM_OFFSET + p.row * ROW_H }),
               }}
               title={p.m.label}
             >
