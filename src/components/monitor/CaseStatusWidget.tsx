@@ -16,10 +16,10 @@ export interface CaseStatusWidgetProps {
   sourceName?: string | null;
   streaming?: boolean;
   reconnecting?: boolean;
-  analysisSource?: string | null;
-  connectionError?: string | null;
-  reconnectAttempt?: number;
-  dataGapSeconds?: number;
+  analysisSource?: string | null | undefined;
+  connectionError?: string | null | undefined;
+  reconnectAttempt?: number | undefined;
+  dataGapSeconds?: number | undefined;
 }
 
 const STATUS: Record<CaseStatusWidgetProps["caseState"], { label: string; Icon: typeof Activity; tone: keyof typeof TONE }> = {

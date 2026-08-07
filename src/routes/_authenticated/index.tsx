@@ -463,9 +463,9 @@ function Monitor() {
               sourceName={monitor.sourceName}
               streaming={streaming}
               reconnecting={reconnecting}
-              analysisSource={monitor.analysisSource}
+              analysisSource={monitor.analysisSource?.side ?? null}
               connectionError={monitor.error}
-              reconnectAttempt={monitor.reconnectAttempt}
+              reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
               dataGapSeconds={monitor.dataGapSeconds}
             />
 
@@ -848,7 +848,7 @@ function Monitor() {
               usableFraction={summary.usableFraction}
               depthArtifact={latest?.depthArtifact ?? null}
               depthGatedFraction={latest?.depth.gatedFraction}
-              analysisSource={monitor.analysisSource}
+              analysisSource={monitor.analysisSource?.side ?? null}
             />
             <SqiTrend
               history={monitor.sqiHistory}

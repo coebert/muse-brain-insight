@@ -14,12 +14,12 @@ export interface CaseDetailsDrawerProps {
   elapsedSeconds: number;
   epochs: Epoch[];
   coverage: SessionCoverage;
-  caseCode?: string | null;
-  sourceName?: string | null;
-  analysisSource?: string | null;
-  connectionError?: string | null;
-  reconnectAttempt?: number;
-  dataGapSeconds?: number;
+  caseCode?: string | null | undefined;
+  sourceName?: string | null | undefined;
+  analysisSource?: string | null | undefined;
+  connectionError?: string | null | undefined;
+  reconnectAttempt?: number | undefined;
+  dataGapSeconds?: number | undefined;
 }
 
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
