@@ -25,6 +25,8 @@ export interface CaseStatusWidgetProps {
   channelCompleteness?: ChannelCompleteness[] | undefined;
   /** Jump from a drawer metric/flag to the matching monitor panel. */
   onJump?: ((target: MonitorJumpTarget) => void) | undefined;
+  /** Record an acknowledgement/note for an error flag on the case timeline. */
+  onRecordNote?: ((text: string) => void) | undefined;
 }
 
 const STATUS: Record<CaseStatusWidgetProps["caseState"], { label: string; Icon: typeof Activity; tone: keyof typeof TONE }> = {
@@ -76,6 +78,7 @@ export function CaseStatusWidget({
   dataGapSeconds,
   channelCompleteness,
   onJump,
+  onRecordNote,
 }: CaseStatusWidgetProps) {
   const [open, setOpen] = useState(false);
   const status = STATUS[caseState];
@@ -174,6 +177,7 @@ export function CaseStatusWidget({
       reconnectAttempt={reconnectAttempt}
       dataGapSeconds={dataGapSeconds}
       channelCompleteness={channelCompleteness}
+      onRecordNote={onRecordNote}
       onJump={
         onJump
           ? (target) => {

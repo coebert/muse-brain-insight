@@ -465,6 +465,7 @@ function Monitor() {
             <div id="mon-status" className="scroll-mt-24 rounded-lg transition-shadow">
             <CaseStatusWidget
               onJump={jumpTo}
+              onRecordNote={(text) => addMarkerAt(text, monitor.elapsed)}
               caseState={caseState}
               elapsedSeconds={monitor.elapsed}
               epochs={monitor.epochs}
