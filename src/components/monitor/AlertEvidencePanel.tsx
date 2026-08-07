@@ -126,19 +126,19 @@ export function AlertEvidencePanel({
         <Microscope className="h-3 w-3" aria-hidden />
         Why this alert · {items.length} contributing feature{items.length === 1 ? "" : "s"}
         {qualityFlags.length ? (
-          <span className="metric-value rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[9px] normal-case tracking-normal">
+          <span className="metric-value rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[11px] normal-case tracking-normal">
             {qualityFlags.length} quality flag{qualityFlags.length > 1 ? "s" : ""}
           </span>
         ) : null}
         {influenceMeta && influence?.adjustment !== "none" ? (
           <span
-            className={`metric-value rounded-full border px-1.5 py-0.5 text-[9px] normal-case tracking-normal ${influenceMeta.className}`}
+            className={`metric-value rounded-full border px-1.5 py-0.5 text-[11px] normal-case tracking-normal ${influenceMeta.className}`}
           >
             {influenceMeta.label}
           </span>
         ) : null}
         {tuning && (tuning.originalConfidence || tuning.originalSeverity) ? (
-          <span className="metric-value rounded-full border border-marker/40 bg-marker/10 px-1.5 py-0.5 text-[9px] normal-case tracking-normal text-marker">
+          <span className="metric-value rounded-full border border-marker/40 bg-marker/10 px-1.5 py-0.5 text-[11px] normal-case tracking-normal text-marker">
             Auto-tuned
           </span>
         ) : null}

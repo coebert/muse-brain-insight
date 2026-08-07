@@ -120,7 +120,7 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="panel w-full max-w-sm px-6 py-7">
         <Link to="/" className="flex items-center gap-2">
           <Activity className="size-5 text-signal" />

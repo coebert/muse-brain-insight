@@ -229,17 +229,17 @@ export function MuseCapabilityPanel({ onConfirm, disabled }: Props) {
           <p className="text-xs font-medium">Selected streaming parameters</p>
           <dl className="mt-2 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
             <div className="rounded bg-background/60 p-2">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Mode</dt>
+              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Mode</dt>
               <dd className="text-sm font-semibold">{selectedPreset.label}</dd>
             </div>
             <div className="rounded bg-background/60 p-2">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Sample rate
               </dt>
               <dd className="text-sm font-semibold">{selectedPreset.sampleRate} Hz</dd>
             </div>
             <div className="rounded bg-background/60 p-2">
-              <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Channels
               </dt>
               <dd className="text-sm font-semibold">{selectedPreset.channels}</dd>

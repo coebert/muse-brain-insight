@@ -264,7 +264,7 @@ export function SeizureRiskPanel({
                               Caveats: {a.assessment.caveats.join("; ")}
                             </p>
                           ) : null}
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground">
                             Decision support only — not a diagnosis.
                           </p>
                         </div>
@@ -324,7 +324,7 @@ function Setting({
         onValueChange={([v]) => onChange(v ?? current)}
         aria-label={label}
       />
-      <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
     </div>
   );
 }

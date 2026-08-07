@@ -138,7 +138,7 @@ export function CaseStatusWidget({
           <Clock className="size-4 opacity-70" />
           <div>
             <p className="metric-value text-base leading-none">{formatClock(elapsedSeconds)}</p>
-            <p className="text-[10px] uppercase tracking-wide opacity-70">Duration</p>
+            <p className="text-[11px] uppercase tracking-wide opacity-70">Duration</p>
           </div>
         </div>
 
@@ -151,7 +151,7 @@ export function CaseStatusWidget({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <p className="metric-value text-base leading-none">{(fraction * 100).toFixed(0)}%</p>
-              <p className="text-[10px] uppercase tracking-wide opacity-70">Completeness</p>
+              <p className="text-[11px] uppercase tracking-wide opacity-70">Completeness</p>
             </div>
             <div className="mt-1.5 h-1.5 w-full min-w-[80px] overflow-hidden rounded-full bg-background/60">
               <div

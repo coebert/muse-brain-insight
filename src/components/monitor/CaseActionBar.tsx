@@ -127,7 +127,7 @@ export function CaseActionBar({
                   {item.badge ? (
                     <span
                       className={cn(
-                        "absolute -top-1.5 -right-2.5 min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold",
+                        "absolute -top-1.5 -right-2.5 min-w-4 rounded-full px-1 text-[11px] leading-4 font-semibold",
                         item.key === "alarms"
                           ? "bg-critical text-background"
                           : "bg-signal text-background",

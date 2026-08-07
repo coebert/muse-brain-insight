@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { nullRuns } from "@/lib/eeg/gaps";
 
@@ -13,6 +13,12 @@ interface Props {
   height?: number;
   /** Skip the opaque backdrop when layering a second trend on top. */
   transparent?: boolean;
+  /** Short unit shown in the tap-to-inspect readout, e.g. "Hz" or "%". */
+  unit?: string;
+  /** Decimal places used by the tap-to-inspect readout. */
+  precision?: number;
+  /** Disable the tap/hover readout (for layered overlay traces). */
+  inspectable?: boolean;
 }
 
 /** Compact canvas trend line used by the fullscreen monitor. */
@@ -24,8 +30,12 @@ function TrendLineInner({
   band,
   height = 90,
   transparent = false,
+  unit,
+  precision = 0,
+  inspectable = true,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [probe, setProbe] = useState<{ x: number; value: number | null } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -98,7 +108,57 @@ function TrendLineInner({
     ctx.stroke();
   }, [values, min, max, color, band, transparent]);
 
-  return <canvas ref={canvasRef} className="block h-full w-full" style={{ height }} />;
+  const inspect = useCallback(
+    (clientX: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas || values.length === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)));
+      const index = Math.round(ratio * (values.length - 1));
+      const value = values[index];
+      setProbe({
+        x: ratio * rect.width,
+        value: value == null || !Number.isFinite(value) ? null : value,
+      });
+    },
+    [values],
+  );
+
+  return (
+    <div className="relative" style={{ height }}>
+      <canvas
+        ref={canvasRef}
+        className="block h-full w-full touch-none"
+        style={{ height }}
+        onPointerDown={inspectable ? (e) => inspect(e.clientX) : undefined}
+        onPointerMove={
+          inspectable
+            ? (e) => {
+                if (e.pointerType === "mouse" || e.buttons > 0) inspect(e.clientX);
+              }
+            : undefined
+        }
+        onPointerLeave={inspectable ? () => setProbe(null) : undefined}
+        onPointerUp={inspectable ? () => setProbe(null) : undefined}
+      />
+      {inspectable && probe ? (
+        <>
+          <div
+            className="pointer-events-none absolute inset-y-0 w-px bg-foreground/40"
+            style={{ left: probe.x }}
+          />
+          <div
+            className="pointer-events-none absolute top-1 -translate-x-1/2 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-foreground"
+            style={{
+              left: `clamp(1.75rem, ${probe.x}px, calc(100% - 1.75rem))`,
+            }}
+          >
+            {probe.value == null ? "no data" : `${probe.value.toFixed(precision)}${unit ? ` ${unit}` : ""}`}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 export const TrendLine = memo(TrendLineInner);

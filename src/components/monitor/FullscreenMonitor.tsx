@@ -274,6 +274,7 @@ export function FullscreenMonitor({
                   max={100}
                   band={[40, 60]}
                   color="rgb(56,214,175)"
+                  unit=""
                 />
               </div>
             </div>
@@ -287,7 +288,14 @@ export function FullscreenMonitor({
                 </span>
               </div>
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">
-                <TrendLine values={sefTrend} min={0} max={30} color="rgb(120,200,90)" />
+                <TrendLine
+                  values={sefTrend}
+                  min={0}
+                  max={30}
+                  color="rgb(120,200,90)"
+                  unit="Hz"
+                  precision={1}
+                />
                 <div className="pointer-events-none absolute inset-0">
                   <TrendLine
                     values={srTrend}
@@ -295,6 +303,7 @@ export function FullscreenMonitor({
                     max={100}
                     color="rgb(245,190,40)"
                     transparent
+                    inspectable={false}
                   />
                 </div>
               </div>

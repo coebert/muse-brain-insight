@@ -65,7 +65,7 @@ function ChannelNotes({
             style={{ left: `${((n.t - from) / span) * 100}%` }}
             title={`${n.text} · ${formatClock(n.t)}`}
           >
-            <span className="absolute bottom-0.5 left-0.5 max-w-[140px] truncate rounded bg-primary/20 px-1 text-[9px] text-primary">
+            <span className="absolute bottom-0.5 left-0.5 max-w-[140px] truncate rounded bg-primary/20 px-1 text-[11px] text-primary">
               {n.text}
             </span>
           </div>
@@ -143,7 +143,7 @@ function DetectionBands({
           >
             {showLabels ? (
               <span
-                className="metric-value absolute left-0.5 top-0.5 whitespace-nowrap text-[9px] font-semibold"
+                className="metric-value absolute left-0.5 top-0.5 whitespace-nowrap text-[11px] font-semibold"
                 style={{ color: style.text }}
               >
                 {o.label}
@@ -447,15 +447,15 @@ export function RawChannelViewer({
                     aria-hidden
                   />
                   <span className="metric-value text-xs font-semibold">{channel}</span>
-                  <span className="metric-value text-[10px] text-muted-foreground">
+                  <span className="metric-value text-[11px] text-muted-foreground">
                     {SIDE_OF[channel]}
                   </span>
                 </div>
-                <p className="text-[10px] leading-tight text-muted-foreground">
+                <p className="text-[11px] leading-tight text-muted-foreground">
                   {CHANNEL_SITES[channel]}
                 </p>
                 {q ? (
-                  <p className="metric-value text-[10px] text-muted-foreground">
+                  <p className="metric-value text-[11px] text-muted-foreground">
                     SQI {(q.score * 100).toFixed(0)}% · {q.grade}
                   </p>
                 ) : null}
@@ -530,7 +530,7 @@ export function RawChannelViewer({
           </Button>
         </div>
       ) : onAnnotateChannel ? (
-        <p className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground sm:px-4">
+        <p className="border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground sm:px-4">
           Click any trace to place a timestamped annotation on that electrode — saved with the
           session.
         </p>
@@ -549,7 +549,7 @@ export function RawChannelViewer({
               }}
             />
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <span
                 className="inline-block h-2 w-3 rounded-[2px]"

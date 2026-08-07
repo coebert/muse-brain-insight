@@ -85,7 +85,7 @@ function MetricCardInner({
           {label}
           {info ? <ParameterInfo parameter={info} /> : null}
           {unreliable ? (
-            <span className="rounded-sm bg-critical/15 px-1 py-px text-[9px] tracking-normal text-critical">
+            <span className="rounded-sm bg-critical/15 px-1 py-px text-[11px] tracking-normal text-critical">
               unreliable
             </span>
           ) : null}
@@ -134,7 +134,7 @@ function MetricCardInner({
       {unreliable || degraded ? (
         <p
           className={cn(
-            "mt-1 inline-flex rounded-sm px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.14em] uppercase",
+            "mt-1 inline-flex rounded-sm px-1.5 py-0.5 text-[11px] font-semibold tracking-[0.14em] uppercase",
             unreliable ? "bg-critical/15 text-critical" : "bg-caution/15 text-caution",
           )}
         >
