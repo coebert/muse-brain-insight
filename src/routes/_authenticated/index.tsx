@@ -94,6 +94,7 @@ import { summariseBis, type BisReading } from "@/lib/eeg/bis";
 import { BisPanel } from "@/components/monitor/BisPanel";
 import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
+import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -454,6 +455,16 @@ function Monitor() {
 
         {tab === "monitor" ? (
           <>
+            <CaseStatusWidget
+              caseState={caseState}
+              elapsedSeconds={monitor.elapsed}
+              epochs={monitor.epochs}
+              caseCode={meta.caseCode}
+              sourceName={monitor.sourceName}
+              streaming={streaming}
+              reconnecting={reconnecting}
+            />
+
             {/* Density spectral array */}
             <section className="panel overflow-hidden">
               <div className="flex flex-col gap-2 border-b border-border px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:px-4">
