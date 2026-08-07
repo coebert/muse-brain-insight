@@ -49,6 +49,12 @@ export interface DepthReading {
   gateReasons: string[];
   /** A fitted BIS alignment was applied to the index. */
   bisAligned?: boolean;
+  /**
+   * COEBIS — the app's own continuously refitted index, derived from the
+   * published OpenIBIS value by the correction learned from paired readings
+   * against a commercial monitor. Null until a model has been fitted.
+   */
+  coebis?: number | null;
 }
 
 export type DepthState =
@@ -108,9 +114,40 @@ let activeCalibration: DepthCalibration = DEFAULT_DEPTH_CALIBRATION;
 export interface BisAlignment {
   gain: number;
   offset: number;
+  /**
+   * Residual corrections at fixed points on the aligned scale, applied after
+   * the affine map and linearly interpolated between knots. This is what lets
+   * COEBIS finesse regions (e.g. light vs deep) where a single straight-line
+   * correction still disagrees with the monitor.
+   */
+  knots?: BisKnot[];
   /** Paired readings the map was fitted on. */
   n: number;
   fittedAt: string;
+}
+
+/** One residual correction: at aligned index `x`, add `dy`. */
+export interface BisKnot {
+  x: number;
+  dy: number;
+}
+
+/** Linear interpolation of the knot corrections, flat outside the range. */
+export function knotCorrection(x: number, knots: BisKnot[] | undefined): number {
+  if (!knots || !knots.length) return 0;
+  const sorted = [...knots].sort((a, b) => a.x - b.x);
+  if (x <= sorted[0]!.x) return sorted[0]!.dy;
+  const last = sorted[sorted.length - 1]!;
+  if (x >= last.x) return last.dy;
+  for (let i = 1; i < sorted.length; i++) {
+    const a = sorted[i - 1]!;
+    const b = sorted[i]!;
+    if (x <= b.x) {
+      const t = (x - a.x) / (b.x - a.x || 1);
+      return a.dy + t * (b.dy - a.dy);
+    }
+  }
+  return last.dy;
 }
 
 let activeBisAlignment: BisAlignment | null = null;
@@ -126,7 +163,20 @@ export function setActiveBisAlignment(alignment: BisAlignment | null) {
 /** Map a raw index onto the aligned scale, clamped to 0–100. */
 export function applyBisAlignment(index: number, alignment = activeBisAlignment): number {
   if (!alignment) return index;
-  return clamp(alignment.gain * index + alignment.offset, 0, 100);
+  const affine = alignment.gain * index + alignment.offset;
+  return clamp(affine + knotCorrection(affine, alignment.knots), 0, 100);
+}
+
+/**
+ * COEBIS: the proprietary index. Returns null when no model has been fitted
+ * yet, so the UI can say so rather than mirroring OpenIBIS silently.
+ */
+export function computeCoebis(
+  openIbis: number | null,
+  alignment = activeBisAlignment,
+): number | null {
+  if (openIbis == null || !alignment) return null;
+  return Math.round(applyBisAlignment(openIbis, alignment));
 }
 
 export function getActiveDepthCalibration(): DepthCalibration {
