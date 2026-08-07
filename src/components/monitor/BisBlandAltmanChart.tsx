@@ -24,6 +24,7 @@ const f = (v: number | null | undefined, d = 1) =>
 
 interface TrendFit {
   slope: number;
+  slope: number;
   intercept: number;
   r2: number;
   line: { x: number; y: number }[];
