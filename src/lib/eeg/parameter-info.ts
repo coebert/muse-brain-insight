@@ -49,6 +49,7 @@ export const PARAMETER_INFO: Record<ParameterInfoKey, ParameterInfo> = {
     range: "Target 40–60 for general anaesthesia; >60 light; <40 deep.",
   },
   sr: {
+*** placeholder
     title: "Suppression ratio (BSR)",
     summary: "Percentage of the recent window in which the EEG is isoelectric (suppressed).",
     significance:
