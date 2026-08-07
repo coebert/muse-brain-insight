@@ -94,6 +94,7 @@ import { summariseBis, type BisReading } from "@/lib/eeg/bis";
 import { BisPanel } from "@/components/monitor/BisPanel";
 import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
+import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
