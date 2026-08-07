@@ -132,3 +132,56 @@ export function summariseChannelCompleteness(
     };
   });
 }
+
+/** Coarse per-electrode state used by the completeness/noise timeline. */
+export type ChannelState = "good" | "fair" | "poor" | "flat" | "missing";
+
+/** One timeline sample: every electrode's state and EMG load at time `t`. */
+export interface ChannelStatePoint {
+  /** Seconds from case start. */
+  t: number;
+  states: Record<MuseChannel, ChannelState>;
+  /** EMG contamination 0–1 per electrode. */
+  emg: Record<MuseChannel, number>;
+}
+
+/** Builds one timeline sample from a hop's per-channel quality read-outs. */
+export function channelStatePoint(
+  t: number,
+  quality: Record<string, SignalQuality | undefined>,
+): ChannelStatePoint {
+  const states = {} as Record<MuseChannel, ChannelState>;
+  const emg = {} as Record<MuseChannel, number>;
+  for (const channel of MUSE_CHANNELS) {
+    const q = quality[channel];
+    states[channel] = !q ? "missing" : q.flat ? "flat" : q.grade === "good" ? "good" : q.grade === "fair" ? "fair" : "poor";
+    emg[channel] = q?.emgIndex ?? 0;
+  }
+  return { t, states, emg };
+}
+
+/** Contiguous run of one state for a single electrode. */
+export interface ChannelStateRun {
+  state: ChannelState;
+  startSeconds: number;
+  endSeconds: number;
+}
+
+/** Collapses a timeline into per-electrode runs for compact rendering. */
+export function channelStateRuns(
+  history: ChannelStatePoint[],
+  channel: MuseChannel,
+  hopSeconds: number,
+): ChannelStateRun[] {
+  const runs: ChannelStateRun[] = [];
+  for (const point of history) {
+    const state = point.states[channel] ?? "missing";
+    const last = runs[runs.length - 1];
+    if (last && last.state === state && Math.abs(last.endSeconds - point.t) <= hopSeconds * 1.5) {
+      last.endSeconds = point.t + hopSeconds;
+    } else {
+      runs.push({ state, startSeconds: point.t, endSeconds: point.t + hopSeconds });
+    }
+  }
+  return runs;
+}
