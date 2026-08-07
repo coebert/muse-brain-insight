@@ -189,11 +189,12 @@ export function CaseDetailsDrawer({
   const windowSeconds = 300;
   const cutoff = (latest?.t ?? 0) - windowSeconds;
   let cumulative = 0;
-  const windowed: { suppression: number; quality: number | null }[] = [];
+  const windowed: { t: number; suppression: number; quality: number | null }[] = [];
   for (const e of epochs) {
     cumulative += e.epochSuppression * cadence;
     if (e.t >= cutoff) {
       windowed.push({
+        t: e.t,
         suppression: cumulative,
         quality: e.gapAffected ? null : e.quality.score * 100,
       });
@@ -206,7 +207,7 @@ export function CaseDetailsDrawer({
   const qualityTrend = trend.map((p) => p.quality);
   const suppressionDelta =
     suppressionTrend.length > 1 ? suppressionTrend[suppressionTrend.length - 1]! - suppressionTrend[0]! : 0;
-  const trendMinutes = Math.min(windowSeconds, Math.max(0, (latest?.t ?? 0) - (windowed[0]?.suppression != null ? cutoff : 0)));
+  const trendSeconds = windowed.length > 1 ? windowed[windowed.length - 1]!.t - windowed[0]!.t : 0;
 
   const flags: { key: string; tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
   if (connectionError) flags.push({ key: "connection", tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
@@ -313,7 +314,7 @@ export function CaseDetailsDrawer({
               </div>
               <Sparkline values={suppressionTrend} className="text-caution" />
               <div className="text-[10px] text-muted-foreground">
-                Cumulative · last {Math.round(trendMinutes / 60) || 1} min
+                Cumulative · last {Math.max(1, Math.round(trendSeconds / 60))} min
               </div>
             </div>
             <div className="panel border border-border px-3 py-2">
