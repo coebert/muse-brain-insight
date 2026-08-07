@@ -240,6 +240,8 @@ interface StreamState {
   elapsed: number;
   contactOk: Record<string, boolean>;
   channelQuality: Record<string, SignalQuality>;
+  /** Per-electrode completeness rows for the whole case. */
+  channelCompleteness: ChannelCompleteness[];
   dataGapSeconds: number;
 }
 
@@ -253,6 +255,7 @@ const INITIAL_STREAM: StreamState = {
   elapsed: 0,
   contactOk: {},
   channelQuality: {},
+  channelCompleteness: [],
   dataGapSeconds: 0,
 };
 
@@ -271,6 +274,7 @@ type StreamAction =
       sqi: SqiPoint;
       contactOk: Record<string, boolean>;
       channelQuality: Record<string, SignalQuality>;
+      channelCompleteness: ChannelCompleteness[];
     };
 
 function streamReducer(state: StreamState, action: StreamAction): StreamState {
@@ -294,6 +298,7 @@ function streamReducer(state: StreamState, action: StreamAction): StreamState {
         sqiHistory: compactSqi([...state.sqiHistory, action.sqi]),
         contactOk: action.contactOk,
         channelQuality: action.channelQuality,
+        channelCompleteness: action.channelCompleteness,
       };
   }
 }
@@ -315,6 +320,7 @@ export function useEegMonitor() {
     elapsed,
     contactOk,
     channelQuality,
+    channelCompleteness,
     dataGapSeconds,
   } = stream;
   // The live trace bypasses React state — see waveform-store.
@@ -753,6 +759,10 @@ export function useEegMonitor() {
         sqi: point,
         contactOk: contact,
         channelQuality: quality,
+        channelCompleteness: summariseChannelCompleteness(
+          accumulateChannelQuality(channelTalliesRef.current, quality),
+          HOP_SECONDS,
+        ),
       });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
@@ -819,6 +829,7 @@ export function useEegMonitor() {
     elapsed,
     contactOk,
     channelQuality,
+    channelCompleteness,
     summary,
     reconnectAttempt,
     analysisSource,

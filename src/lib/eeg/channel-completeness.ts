@@ -103,7 +103,6 @@ export function summariseChannelCompleteness(
   return MUSE_CHANNELS.map((channel) => {
     const t = tallies[channel];
     const n = Math.max(0, t.epochs);
-    const usable = n ? (n - t.flat - t.poor + Math.min(t.flat, 0)) / n : 0;
     const usableFraction = n ? Math.max(0, Math.min(1, (n - Math.max(t.poor, t.flat)) / n)) : 0;
     const flatFraction = n ? t.flat / n : 0;
     const poorFraction = n ? t.poor / n : 0;
@@ -117,7 +116,6 @@ export function summariseChannelCompleteness(
     else if (flatFraction > 0.2) note = `Flat/off-head for ${(flatFraction * 100).toFixed(0)}% of the case`;
     else if (poorFraction > 0.2) note = `Noisy for ${(poorFraction * 100).toFixed(0)}% of the case`;
     else if (meanEmg > 0.4) note = "High muscle contamination";
-    void usable;
     return {
       channel,
       side: SIDE[channel],
