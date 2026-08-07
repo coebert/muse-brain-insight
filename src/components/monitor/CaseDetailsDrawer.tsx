@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, MessageSquarePlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -27,6 +30,36 @@ export interface CaseDetailsDrawerProps {
   channelCompleteness?: ChannelCompleteness[] | undefined;
   /** Jump to the monitor panel behind a metric or flag. */
   onJump?: ((target: MonitorJumpTarget) => void) | undefined;
+  /** Record an acknowledgement/note on the case timeline. */
+  onRecordNote?: ((text: string) => void) | undefined;
+}
+
+interface FlagAck {
+  atIso: string;
+  note?: string;
+}
+
+/** Acknowledgements are kept per case so they survive drawer close/reopen. */
+function ackStorageKey(caseCode?: string | null) {
+  return `ct-flag-ack:${caseCode || "current"}`;
+}
+
+function readAcks(caseCode?: string | null): Record<string, FlagAck> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(ackStorageKey(caseCode));
+    return raw ? (JSON.parse(raw) as Record<string, FlagAck>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAcks(caseCode: string | null | undefined, acks: Record<string, FlagAck>) {
+  try {
+    window.localStorage.setItem(ackStorageKey(caseCode), JSON.stringify(acks));
+  } catch {
+    /* storage unavailable — acknowledgements stay in memory for this session */
+  }
 }
 
 function Metric({
@@ -90,7 +123,38 @@ export function CaseDetailsDrawer({
   dataGapSeconds,
   channelCompleteness,
   onJump,
+  onRecordNote,
 }: CaseDetailsDrawerProps) {
+  const [acks, setAcks] = useState<Record<string, FlagAck>>({});
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  // Load stored acknowledgements whenever the drawer opens for a case.
+  useEffect(() => {
+    if (!open) return;
+    setAcks(readAcks(caseCode));
+    setNoteFor(null);
+    setNoteDraft("");
+  }, [open, caseCode]);
+
+  const saveAck = (key: string, label: string, note?: string) => {
+    const entry: FlagAck = { atIso: new Date().toISOString(), ...(note ? { note } : {}) };
+    setAcks((prev) => {
+      const next = { ...prev, [key]: { ...prev[key], ...entry } };
+      writeAcks(caseCode, next);
+      return next;
+    });
+    onRecordNote?.(note ? `Flag noted — ${label}: ${note}` : `Flag acknowledged — ${label}`);
+  };
+
+  const clearAck = (key: string) =>
+    setAcks((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      writeAcks(caseCode, next);
+      return next;
+    });
+
   const live = open && caseState === "running";
   // Re-render once a second while the case runs so elapsed time, the freshness
   // age and every derived metric below stay current without closing the drawer.
@@ -115,28 +179,31 @@ export function CaseDetailsDrawer({
   const poorEpochs = epochs.filter((e) => e.quality.grade === "poor").length;
   const suppressionSeconds = epochs.reduce((a, e) => a + e.epochSuppression * (coverage.cadenceSeconds || 1), 0);
 
-  const flags: { tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
-  if (connectionError) flags.push({ tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
+  const flags: { key: string; tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
+  if (connectionError) flags.push({ key: "connection", tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
   if (reconnectAttempt && reconnectAttempt > 0)
-    flags.push({ tone: "warn", text: `Reconnecting to headband (attempt ${reconnectAttempt})`, target: "status" });
+    flags.push({ key: "reconnecting", tone: "warn", text: `Reconnecting to headband (attempt ${reconnectAttempt})`, target: "status" });
   if (coverage.level !== "ok")
     flags.push({
+      key: "completeness",
       tone: coverage.level === "insufficient" ? "bad" : "warn",
       text: `Data completeness ${(coverage.fraction * 100).toFixed(0)}% — ${formatDuration(coverage.missingSeconds)} missing`,
       target: "channels",
     });
   if (coverage.worstGapSeconds > 0)
     flags.push({
+      key: "worst-gap",
       tone: "warn",
       text: `Longest gap ${formatDuration(coverage.worstGapSeconds)} at ${formatClock(coverage.worstGapAtSeconds)}`,
       target: "dsa",
     });
   if (coverage.missingMetrics.length)
-    flags.push({ tone: "warn", text: `Metrics absent for most of the case: ${coverage.missingMetrics.join(", ")}`, target: "metrics" });
+    flags.push({ key: "missing-metrics", tone: "warn", text: `Metrics absent for most of the case: ${coverage.missingMetrics.join(", ")}`, target: "metrics" });
   if (dataGapSeconds && dataGapSeconds > 0)
-    flags.push({ tone: "warn", text: `Live stream gap of ${formatDuration(dataGapSeconds)}`, target: "dsa" });
+    flags.push({ key: "stream-gap", tone: "warn", text: `Live stream gap of ${formatDuration(dataGapSeconds)}`, target: "dsa" });
   if (epochs.length && poorEpochs / epochs.length > 0.25)
     flags.push({
+      key: "poor-epochs",
       tone: "warn",
       text: `${((poorEpochs / epochs.length) * 100).toFixed(0)}% of epochs graded poor signal quality`,
       target: "signal-quality",
@@ -144,6 +211,7 @@ export function CaseDetailsDrawer({
   for (const c of channelCompleteness ?? []) {
     if (c.epochs > 0 && c.level !== "ok")
       flags.push({
+        key: `channel-${c.channel}`,
         tone: c.level === "poor" ? "bad" : "warn",
         text: `${c.channel} (${c.side}) usable for only ${(c.usableFraction * 100).toFixed(0)}% of the case${c.note ? ` — ${c.note.toLowerCase()}` : ""}`,
         target: "raw",
@@ -151,6 +219,7 @@ export function CaseDetailsDrawer({
   }
   if (latest?.depthReliability && latest.depthReliability.reliable === false)
     flags.push({
+      key: "depth-unreliable",
       tone: "warn",
       text: `Depth index currently unreliable${latest.depthReliability.reasons?.length ? ` — ${latest.depthReliability.reasons.join(", ")}` : ""}`,
       target: "signal-quality",
