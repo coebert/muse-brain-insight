@@ -54,7 +54,7 @@ function AssessmentCard({ a }: { a: AssessmentUncertainty }) {
           <span className="truncate">{a.label}</span>
           <ParameterInfo parameter={INFO_KEY[a.key]} />
         </p>
-        <Badge variant="outline" className={cn("shrink-0 text-[10px]", band.cls)}>
+        <Badge variant="outline" className={cn("shrink-0 text-[11px]", band.cls)}>
           {(a.confidence * 100).toFixed(0)} %
         </Badge>
       </div>
@@ -72,7 +72,7 @@ function AssessmentCard({ a }: { a: AssessmentUncertainty }) {
       </p>
 
       <div className="mt-2">
-        <div className="flex items-center justify-between text-[10px] tracking-wide text-muted-foreground uppercase">
+        <div className="flex items-center justify-between text-[11px] tracking-wide text-muted-foreground uppercase">
           <span className="flex items-center gap-1.5">
             Model confidence
             <ParameterInfo parameter="confidence" />

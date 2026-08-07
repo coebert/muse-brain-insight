@@ -16,7 +16,7 @@ interface SparklineProps {
 export function Sparkline({ values, className, min, max, height = 28 }: SparklineProps) {
   const nums = values.filter((v): v is number => v != null && Number.isFinite(v));
   if (nums.length < 2) {
-    return <div style={{ height }} className="flex items-center text-[10px] text-muted-foreground">Collecting…</div>;
+    return <div style={{ height }} className="flex items-center text-[11px] text-muted-foreground">Collecting…</div>;
   }
   const lo = min ?? Math.min(...nums);
   const hi = max ?? Math.max(...nums);

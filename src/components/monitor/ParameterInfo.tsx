@@ -52,7 +52,7 @@ export function ParameterInfo({ parameter, className, size = "sm" }: ParameterIn
             <Section title="Underlying physiology" body={info.physiology} />
             <Section title="Reliability & pitfalls" body={info.reliability} />
             {info.range ? <Section title="Typical range" body={info.range} /> : null}
-            <p className="border-t border-border pt-2 text-[10px] text-muted-foreground/80">
+            <p className="border-t border-border pt-2 text-[11px] text-muted-foreground/80">
               Decision support only — from a 4-electrode frontal montage. Not a certified medical
               device; correlate with the raw EEG and the clinical picture.
             </p>
@@ -66,7 +66,7 @@ export function ParameterInfo({ parameter, className, size = "sm" }: ParameterIn
 function Section({ title, body }: { title: string; body: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
         {title}
       </p>
       <p className="mt-0.5 text-foreground/90">{body}</p>

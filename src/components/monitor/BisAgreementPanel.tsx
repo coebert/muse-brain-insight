@@ -15,7 +15,7 @@ const CONFIDENCE_TONE: Record<string, string> = {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="rounded-md bg-muted/40 px-2.5 py-2">
-      <p className="text-[10px] tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
       <p className={cn("metric-value text-sm", tone)}>{value}</p>
     </div>
   );
@@ -118,7 +118,7 @@ export function BisAgreementPanel({
                     <p className="metric-value text-sm">
                       {b.n ? `${(b.bias ?? 0) > 0 ? "+" : ""}${num(b.bias, 1)}` : "—"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {b.n ? `n = ${b.n} · |diff| ${num(b.meanAbsolute, 1)}` : "no readings"}
                     </p>
                   </div>
@@ -160,7 +160,7 @@ export function BisAgreementPanel({
                         {d.difference}
                       </span>
                       {!d.reliable ? (
-                        <span className="rounded-full bg-caution/15 px-1.5 text-[10px] text-caution">
+                        <span className="rounded-full bg-caution/15 px-1.5 text-[11px] text-caution">
                           app unreliable
                         </span>
                       ) : null}
@@ -214,21 +214,21 @@ export function BisAgreementPanel({
                       <span className="font-semibold">{f.domain}</span>
                       <span
                         className={cn(
-                          "rounded-full px-1.5 text-[10px]",
+                          "rounded-full px-1.5 text-[11px]",
                           CONFIDENCE_TONE[f.confidence] ?? CONFIDENCE_TONE["low"],
                         )}
                       >
                         {f.confidence} confidence
                       </span>
                       {f.tSeconds != null ? (
-                        <span className="metric-value text-[10px] opacity-80">
+                        <span className="metric-value text-[11px] opacity-80">
                           {formatClock(f.tSeconds)}
                         </span>
                       ) : null}
                     </div>
                     <p className="mt-1">{f.detail}</p>
                     {f.supporting.length ? (
-                      <p className="mt-1 text-[10px] text-muted-foreground">
+                      <p className="mt-1 text-[11px] text-muted-foreground">
                         {f.supporting.join(" · ")}
                       </p>
                     ) : null}
@@ -251,7 +251,7 @@ export function BisAgreementPanel({
             ) : null}
 
             {report.limitations.length ? (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 Limitations: {report.limitations.join(" · ")}
               </p>
             ) : null}

@@ -70,7 +70,7 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
           Channel state over time
           <ParameterInfo parameter="sqi" />
         </h3>
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           {(Object.keys(STATE_STYLE) as ChannelState[]).map((s) => (
             <span key={s} className="inline-flex items-center gap-1">
               <span className="inline-block size-2 rounded-sm" style={{ background: STATE_STYLE[s].fill }} />
@@ -88,7 +88,7 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
         <div className="space-y-1.5">
           {lanes.map((lane) => (
             <div key={lane.channel} className="flex items-center gap-2">
-              <span className="w-20 shrink-0 font-mono text-[10px] text-muted-foreground">{SIDE_LABEL[lane.channel]}</span>
+              <span className="w-20 shrink-0 font-mono text-[11px] text-muted-foreground">{SIDE_LABEL[lane.channel]}</span>
               <div
                 className="relative h-7 flex-1 overflow-hidden rounded-sm border border-border bg-muted/20"
                 onMouseLeave={() => setHover(null)}
@@ -135,7 +135,7 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
           <div className="flex items-center gap-2">
             <span className="w-20 shrink-0" />
             <div className="relative flex-1">
-              <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
+              <div className="flex justify-between font-mono text-[11px] text-muted-foreground">
                 {ticks.map((t, i) => (
                   <span key={i}>{formatClock(Math.round(t))}</span>
                 ))}
@@ -143,7 +143,7 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
             </div>
           </div>
 
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             {hover
               ? `${SIDE_LABEL[hover.channel]} · ${STATE_STYLE[hover.state].label} from ${formatClock(Math.round(hover.t))} · EMG ${(hover.emg * 100).toFixed(0)}%`
               : "Thin line = EMG/muscle contamination (higher line = more noise). Hover a band for details."}

@@ -81,7 +81,7 @@ function Metric({
 }) {
   const body = (
     <>
-      <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
         {label}
         {target && onJump ? <ArrowRight className="size-3 opacity-70" aria-hidden /> : null}
       </p>
@@ -313,7 +313,7 @@ export function CaseDetailsDrawer({
                 <span className="text-xs tabular-nums">+{formatDuration(Math.round(suppressionDelta))}</span>
               </div>
               <Sparkline values={suppressionTrend} className="text-caution" />
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground">
                 Cumulative · last {Math.max(1, Math.round(trendSeconds / 60))} min
               </div>
             </div>
@@ -323,7 +323,7 @@ export function CaseDetailsDrawer({
                 <span className="text-xs tabular-nums">{num(latest ? latest.quality.score * 100 : null, 0, " %")}</span>
               </div>
               <Sparkline values={qualityTrend} className="text-signal" min={0} max={100} />
-              <div className="text-[10px] text-muted-foreground">0–100% · gaps shown as breaks</div>
+              <div className="text-[11px] text-muted-foreground">0–100% · gaps shown as breaks</div>
             </div>
           </div>
 

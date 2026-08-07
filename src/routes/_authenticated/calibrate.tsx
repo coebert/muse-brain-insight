@@ -267,7 +267,7 @@ function Calibrate() {
   const currentMetrics = samples.length ? evaluate(samples, active) : null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
           <div className="flex items-center gap-2">

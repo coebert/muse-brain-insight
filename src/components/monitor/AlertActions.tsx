@@ -143,7 +143,7 @@ export function AlertActions({ alert, sessionId, context }: Props) {
                     : r.action}
                   {r.override_stance && r.override_stance !== "agree" ? (
                     <span
-                      className={`ml-1 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${
+                      className={`ml-1 rounded-full px-1.5 py-0.5 text-[11px] uppercase tracking-wide ${
                         STANCE_CLASS[r.override_stance] ?? "bg-muted"
                       }`}
                     >

@@ -64,7 +64,7 @@ export function ChannelCompletenessPanel({
             <li key={r.channel} className="text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-12 shrink-0 font-mono text-[11px]">{r.channel}</span>
-                <span className="w-10 shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span className="w-10 shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground">
                   {r.side}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/50">
@@ -85,7 +85,7 @@ export function ChannelCompletenessPanel({
                   />
                 )}
               </div>
-              <p className="mt-0.5 pl-[5.5rem] text-[10px] text-muted-foreground">
+              <p className="mt-0.5 pl-[5.5rem] text-[11px] text-muted-foreground">
                 {r.note ? `${r.note} · ` : ""}
                 flat {pct(r.flatFraction)} · noisy {pct(r.poorFraction)} · EMG {pct(r.meanEmg)}
                 {r.worstRunSeconds > 0 ? ` · worst run ${formatDuration(r.worstRunSeconds)}` : ""}

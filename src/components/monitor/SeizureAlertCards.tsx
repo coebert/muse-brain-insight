@@ -90,7 +90,7 @@ export function SeizureAlertCards({
             </h3>
             <span
               className={cn(
-                "metric-value rounded border px-1.5 py-px text-[10px] tracking-[0.08em] uppercase",
+                "metric-value rounded border px-1.5 py-px text-[11px] tracking-[0.08em] uppercase",
                 ongoing
                   ? "border-critical/50 bg-critical/15 text-critical"
                   : "border-border bg-muted/30 text-muted-foreground",

@@ -106,7 +106,7 @@ export function QuickMarkBar({
             <Icon className="size-3.5 shrink-0" aria-hidden />
             <span className="whitespace-nowrap">{template.label}</span>
             {template.defaultBackdate ? (
-              <span className="metric-value text-[10px] text-muted-foreground">
+              <span className="metric-value text-[11px] text-muted-foreground">
                 −{template.defaultBackdate}s
               </span>
             ) : null}

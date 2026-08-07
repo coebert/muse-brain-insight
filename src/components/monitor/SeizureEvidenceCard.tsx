@@ -37,7 +37,7 @@ export function SeizureConfidenceChip({
   return (
     <span
       className={cn(
-        "metric-value inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-px text-[10px] tracking-[0.08em] uppercase",
+        "metric-value inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-px text-[11px] tracking-[0.08em] uppercase",
         tone.chip,
         className,
       )}
@@ -127,7 +127,7 @@ export function SeizureEvidenceCard({ evidence }: { evidence: SeizureEvidence })
           </dl>
 
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
               Interpret with care
             </p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
@@ -137,7 +137,7 @@ export function SeizureEvidenceCard({ evidence }: { evidence: SeizureEvidence })
             </ul>
           </div>
 
-          <p className={cn("text-[10px]", tone.text)}>
+          <p className={cn("text-[11px]", tone.text)}>
             Confidence reflects signal quality and baseline maturity, not diagnostic certainty —
             decision support only.
           </p>
@@ -150,7 +150,7 @@ export function SeizureEvidenceCard({ evidence }: { evidence: SeizureEvidence })
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] tracking-[0.1em] uppercase">{label}</dt>
+      <dt className="text-[11px] tracking-[0.1em] uppercase">{label}</dt>
       <dd className="metric-value truncate text-foreground/90">{value}</dd>
     </div>
   );

@@ -133,10 +133,10 @@ function SqiTrendInner({ history, bilateral = true, threshold, className }: Prop
                 />
               ) : null}
             </svg>
-            <span className="pointer-events-none absolute top-0 left-1 text-[10px] text-muted-foreground">
+            <span className="pointer-events-none absolute top-0 left-1 text-[11px] text-muted-foreground">
               100 %
             </span>
-            <span className="pointer-events-none absolute bottom-0 left-1 text-[10px] text-muted-foreground">
+            <span className="pointer-events-none absolute bottom-0 left-1 text-[11px] text-muted-foreground">
               0 %
             </span>
           </div>

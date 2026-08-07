@@ -446,7 +446,7 @@ export function SessionAlertTimeline({
                               : "Acknowledged"}
                         </span>
                         <span
-                          className={`rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide ${
+                          className={`rounded-full px-1.5 py-0.5 text-[11px] uppercase tracking-wide ${
                             STANCE_CLASS[a.override_stance ?? "agree"] ?? "bg-muted"
                           }`}
                         >

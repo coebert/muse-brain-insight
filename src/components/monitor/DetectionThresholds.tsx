@@ -60,7 +60,7 @@ export function DetectionThresholds({ settings, suppression, onApply }: Props) {
       {suppression ? (
         <div className="mt-3 grid grid-cols-1 gap-2 rounded-md sm:grid-cols-3 border border-border bg-muted/30 px-3 py-2">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
               SR ({settings.srWindowSeconds}s)
             </p>
             <p className="metric-value text-sm">
@@ -68,11 +68,11 @@ export function DetectionThresholds({ settings, suppression, onApply }: Props) {
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Peak SR</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Peak SR</p>
             <p className="metric-value text-sm">{suppression.maxRatio.toFixed(0)} %</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Suppression time
             </p>
             <p className="metric-value text-sm">{formatDuration(suppression.seconds)}</p>
