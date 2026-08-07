@@ -174,13 +174,66 @@ export function BisBlandAltmanChart({ series }: { series: BisDriftSeriesPoint[] 
         </ResponsiveContainer>
       </div>
 
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-md border border-border bg-muted/30 p-2.5">
+          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            OpenIBIS (pre-correction)
+          </p>
+          <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase">Bias</p>
+              <p className="metric-value text-sm">{f(raw?.bias)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase">95 % LOA</p>
+              <p className="metric-value text-sm">
+                {f(raw?.loaLower)} to {f(raw?.loaUpper)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase">Paired</p>
+              <p className="metric-value text-sm">{raw?.n ?? 0}</p>
+            </div>
+          </div>
+        </div>
+
+        {coebis && coebisPoints.length >= 3 ? (
+          <div className="rounded-md border border-border bg-muted/30 p-2.5">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              COEBIS
+            </p>
+            <div className="mt-1.5 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase">Bias</p>
+                <p className="metric-value text-sm">{f(coebis.bias)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase">95 % LOA</p>
+                <p className="metric-value text-sm">
+                  {f(coebis.loaLower)} to {f(coebis.loaUpper)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase">Paired</p>
+                <p className="metric-value text-sm">{coebis.n}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-md border border-border bg-muted/30 p-2.5">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              COEBIS
+            </p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              No active correction for this window. COEBIS appears once a fitted model is active and
+              enough corrected paired readings are available.
+            </p>
+          </div>
+        )}
+      </div>
+
       <p className="text-[11px] text-muted-foreground">
-        OpenIBIS bias {f(raw?.bias)} index points (95 % limits {f(raw?.loaLower)} to{" "}
-        {f(raw?.loaUpper)}) over {raw?.n ?? 0} paired readings
-        {coebis
-          ? ` · COEBIS bias ${f(coebis.bias)} (limits ${f(coebis.loaLower)} to ${f(coebis.loaUpper)})`
-          : ""}
-        . Positive values mean the app reads lighter than the monitor. A bias away from zero is a
+        Positive values mean the app reads lighter than the monitor. A bias away from zero is a
         systematic offset; wide limits mean the disagreement varies case to case.
       </p>
     </div>
