@@ -479,6 +479,7 @@ function Monitor() {
               reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
               dataGapSeconds={monitor.dataGapSeconds}
               channelCompleteness={monitor.channelCompleteness}
+              channelStateHistory={monitor.channelStateHistory}
             />
             </div>
 
