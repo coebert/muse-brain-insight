@@ -382,6 +382,38 @@ export function BisBlandAltmanChart({
         )}
       </div>
 
+      {rawOutliers.length || (overlay && coebisOutliers.length) ? (
+        <div className="rounded-md border border-critical/40 bg-critical/5 p-2.5">
+          <p className="text-[11px] font-semibold tracking-wide text-critical uppercase">
+            Readings outside the 95 % limits of agreement
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {[
+              ...rawOutliers.map((p) => ({ ...p, label: "OpenIBIS" })),
+              ...(overlay ? coebisOutliers.map((p) => ({ ...p, label: "COEBIS" })) : []),
+            ]
+              .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+              .slice(-12)
+              .map((p) => (
+                <li
+                  key={`${p.label}-${p.i}`}
+                  className="flex flex-wrap items-baseline justify-between gap-2 text-[11px]"
+                >
+                  <span className="text-muted-foreground">{formatStamp(p.recordedAt)}</span>
+                  <span className="text-foreground">
+                    {p.label} {f(p.value)} vs BIS {f(p.bis)} ({p.y >= 0 ? "+" : ""}
+                    {f(p.y)})
+                  </span>
+                </li>
+              ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            These paired readings sit beyond the limits of agreement for the selected window; check
+            the case notes and signal quality around those times before trusting them.
+          </p>
+        </div>
+      ) : null}
+
       <p className="text-[11px] text-muted-foreground">
         Positive values mean the app reads lighter than the monitor. A bias away from zero is a
         systematic offset; wide limits mean the disagreement varies case to case. A trend slope away
