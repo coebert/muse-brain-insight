@@ -457,6 +457,7 @@ function Monitor() {
 
         {tab === "monitor" ? (
           <>
+            <div id="mon-status" className="scroll-mt-24 rounded-lg transition-shadow">
             <CaseStatusWidget
               onJump={jumpTo}
               caseState={caseState}
@@ -472,6 +473,7 @@ function Monitor() {
               dataGapSeconds={monitor.dataGapSeconds}
               channelCompleteness={monitor.channelCompleteness}
             />
+            </div>
 
             {/* Density spectral array */}
             <section id="mon-dsa" className="panel overflow-hidden scroll-mt-24 transition-shadow">
