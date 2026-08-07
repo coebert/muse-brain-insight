@@ -5,6 +5,7 @@ import { streamGatewayText } from "@/lib/eeg/gateway.server";
 import {
   analyseBisDrift,
   fitIsSafe,
+  alignIndex,
   type BisDriftAnalysis,
   type BisDriftPoint,
 } from "@/lib/eeg/bis-drift";
@@ -24,12 +25,28 @@ export interface ActiveAlignment {
   note: string | null;
 }
 
+/** One point of the side-by-side comparison series, oldest first. */
+export interface BisDriftSeriesPoint {
+  /** Position in the pooled series (1 = oldest shown). */
+  i: number;
+  bis: number;
+  /** Open index as published, before any fitted correction. */
+  raw: number;
+  /** Open index after the active correction, when one is applied. */
+  corrected: number | null;
+  reliable: boolean;
+  recordedAt: string;
+  sessionId: string | null;
+}
+
 export interface BisDriftReport {
   analysis: BisDriftAnalysis;
   active: ActiveAlignment | null;
   /** An adjustment was fitted and activated during this call. */
   justApplied: boolean;
   history: ActiveAlignment[];
+  /** Most recent paired readings for the side-by-side chart, oldest first. */
+  series: BisDriftSeriesPoint[];
 }
 
 interface AlignmentRow {
@@ -211,7 +228,23 @@ export const getBisDrift = createServerFn({ method: "GET" })
       analysis = analyseBisDrift(points, active);
     }
 
-    return { analysis, active, justApplied, history: history.slice(0, 10) };
+    const usable = points.filter(
+      (p) => Number.isFinite(p.bis) && Number.isFinite(p.appIndex),
+    );
+    const tail = usable.slice(-200);
+    const series: BisDriftSeriesPoint[] = tail.map((p, i) => ({
+      i: i + 1,
+      bis: Number(p.bis.toFixed(1)),
+      raw: Number(p.appIndex.toFixed(1)),
+      corrected: active
+        ? Number(alignIndex(p.appIndex, { gain: active.gain, offset: active.offset }).toFixed(1))
+        : null,
+      reliable: p.reliable,
+      recordedAt: p.recordedAt,
+      sessionId: p.sessionId,
+    }));
+
+    return { analysis, active, justApplied, history: history.slice(0, 10), series };
   });
 
 /** Turn the automatic correction off and go back to the published scale. */
