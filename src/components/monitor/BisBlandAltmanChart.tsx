@@ -22,8 +22,16 @@ const WINDOWS = [30, 60, 120, 200] as const;
 const f = (v: number | null | undefined, d = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 
+interface BaPoint {
+  x: number;
+  y: number;
+  bis: number;
+  value: number;
+  recordedAt: string;
+  i: number;
+}
+
 interface TrendFit {
-  slope: number;
   slope: number;
   intercept: number;
   r2: number;
