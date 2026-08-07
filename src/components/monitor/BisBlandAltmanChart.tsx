@@ -22,6 +22,12 @@ const WINDOWS = [30, 60, 120, 200] as const;
 const f = (v: number | null | undefined, d = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 
+const formatStamp = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+};
+
 interface BaPoint {
   x: number;
   y: number;
