@@ -16,6 +16,7 @@
 
 import { pearson } from "./correlation";
 import { BIS_BANDS } from "./bis";
+import { knotCorrection, type BisKnot } from "./depth";
 
 /** One pooled comparison point, from any case. */
 export interface BisDriftPoint {
@@ -42,6 +43,8 @@ export interface BisDriftBand {
 export interface BisAlignmentFit {
   gain: number;
   offset: number;
+  /** Residual corrections that finesse the affine map, COEBIS model v2. */
+  knots: BisKnot[];
   /** Points the fit was made on. */
   n: number;
   sessions: number;
@@ -110,9 +113,51 @@ const round = (v: number | null, dp = 2): number | null =>
   v == null || !Number.isFinite(v) ? null : Number(v.toFixed(dp));
 
 /** Apply an alignment to a raw index, clamped to the 0–100 scale. */
-export function alignIndex(index: number, fit: { gain: number; offset: number }): number {
-  const v = fit.gain * index + fit.offset;
+export function alignIndex(
+  index: number,
+  fit: { gain: number; offset: number; knots?: BisKnot[] },
+): number {
+  const affine = fit.gain * index + fit.offset;
+  const v = affine + knotCorrection(affine, fit.knots);
   return Math.min(100, Math.max(0, v));
+}
+
+/** Positions on the aligned scale where COEBIS learns a residual correction. */
+export const KNOT_POSITIONS = [20, 30, 40, 50, 60, 70, 80];
+/** Half-width of the neighbourhood pooled for each knot. */
+const KNOT_WINDOW = 10;
+/** Shrinkage sample size for the residual corrections. */
+const KNOT_SHRINK_K = 15;
+/** No knot may move the index by more than this. */
+export const MAX_KNOT_CORRECTION = 8;
+
+/**
+ * Fit the residual corrections that turn the straight-line alignment into the
+ * COEBIS model: for each knot, the shrunk mean residual (BIS − aligned index)
+ * of nearby points. With few points near a knot the correction collapses to
+ * zero, so sparse depth ranges are left on the affine map.
+ */
+export function fitCoebisKnots(
+  points: BisDriftPoint[],
+  affine: { gain: number; offset: number },
+): BisKnot[] {
+  const mapped = points.map((p) => ({
+    x: affine.gain * p.appIndex + affine.offset,
+    r: p.bis - (affine.gain * p.appIndex + affine.offset),
+  }));
+  const knots: BisKnot[] = [];
+  for (const x of KNOT_POSITIONS) {
+    const near = mapped.filter((m) => Math.abs(m.x - x) <= KNOT_WINDOW);
+    if (near.length < 5) {
+      knots.push({ x, dy: 0 });
+      continue;
+    }
+    const m = near.reduce((s, v) => s + v.r, 0) / near.length;
+    const lambda = near.length / (near.length + KNOT_SHRINK_K);
+    const dy = Math.max(-MAX_KNOT_CORRECTION, Math.min(MAX_KNOT_CORRECTION, lambda * m));
+    knots.push({ x, dy: Number(dy.toFixed(2)) });
+  }
+  return knots;
 }
 
 /**
@@ -139,11 +184,13 @@ export function fitAlignment(points: BisDriftPoint[]): BisAlignmentFit | null {
   const gain = 1 + lambda * (rawGain - 1);
   const offset = lambda * rawOffset + (1 - lambda) * 0;
 
+  const knots = fitCoebisKnots(points, { gain, offset });
   const before = xs.map((x, i) => x - ys[i]!);
-  const after = xs.map((x, i) => alignIndex(x, { gain, offset }) - ys[i]!);
+  const after = xs.map((x, i) => alignIndex(x, { gain, offset, knots }) - ys[i]!);
   return {
     gain: Number(gain.toFixed(4)),
     offset: Number(offset.toFixed(3)),
+    knots,
     n: points.length,
     sessions: new Set(points.map((p) => p.sessionId ?? "unfiled")).size,
     biasBefore: round(mean(before))!,
