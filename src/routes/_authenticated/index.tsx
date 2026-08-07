@@ -463,6 +463,10 @@ function Monitor() {
               sourceName={monitor.sourceName}
               streaming={streaming}
               reconnecting={reconnecting}
+              analysisSource={monitor.analysisSource?.side ?? null}
+              connectionError={monitor.error}
+              reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
+              dataGapSeconds={monitor.dataGapSeconds}
             />
 
             {/* Density spectral array */}
