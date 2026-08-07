@@ -112,7 +112,7 @@ export function CaseDetailsDrawer({
             <Metric label="Suppression ratio" value={num(latest?.suppressionRatio, 0, " %")} />
             <Metric label="Suppression time" value={formatDuration(Math.round(suppressionSeconds))} />
             <Metric label="Seizure score" value={num(latest?.seizureScore, 2)} sub={`${seizureAlerts} alert epochs`} />
-            <Metric label="Signal quality" value={num(latest?.quality?.score, 0, " %")} sub={latest?.quality?.grade ?? "—"} />
+            <Metric label="Signal quality" value={num(latest ? latest.quality.score * 100 : null, 0, " %")} sub={latest?.quality?.grade ?? "—"} />
           </div>
 
           <div className="panel border border-border px-3 py-2 text-xs text-muted-foreground">
