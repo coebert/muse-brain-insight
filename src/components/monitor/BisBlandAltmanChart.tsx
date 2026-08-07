@@ -264,7 +264,15 @@ export function BisBlandAltmanChart({
                 <ReferenceLine y={raw.loaLower} stroke="var(--caution)" strokeDasharray="4 3" />
               </>
             ) : null}
-            <Scatter name="OpenIBIS − BIS" data={rawPoints} fill="var(--caution)" />
+            <Scatter name="OpenIBIS − BIS" data={rawInliers} fill="var(--caution)" />
+            {rawOutliers.length ? (
+              <Scatter
+                name="Outside 95 % LOA"
+                data={rawOutliers}
+                fill="var(--critical)"
+                shape="cross"
+              />
+            ) : null}
             {rawTrend ? (
               <Scatter
                 name="OpenIBIS trend"
@@ -277,7 +285,15 @@ export function BisBlandAltmanChart({
               />
             ) : null}
             {overlay ? (
-              <Scatter name="COEBIS − BIS" data={coebisPoints} fill="var(--signal)" />
+              <Scatter name="COEBIS − BIS" data={coebisInliers} fill="var(--signal)" />
+            ) : null}
+            {overlay && coebisOutliers.length ? (
+              <Scatter
+                name="COEBIS outside 95 % LOA"
+                data={coebisOutliers}
+                fill="var(--critical)"
+                shape="diamond"
+              />
             ) : null}
             {overlay && coebisTrend ? (
               <Scatter
