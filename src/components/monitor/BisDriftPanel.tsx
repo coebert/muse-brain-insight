@@ -26,9 +26,9 @@ const VERDICT_TONE: Record<string, string> = {
 const VERDICT_LABEL: Record<string, string> = {
   insufficient: "No data yet",
   watching: "Watching",
-  aligned: "No correction needed",
-  adjust: "Correction fitted",
-  adjustment_active: "Correction active",
+  aligned: "COEBIS tracking BIS",
+  adjust: "COEBIS model fitted",
+  adjustment_active: "COEBIS active",
 };
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string | undefined }) {
@@ -75,7 +75,7 @@ export function BisDriftPanel() {
       await syncBisAlignment();
     },
     onSuccess: () => {
-      toast.success("Correction removed — the index is back on the published scale.");
+      toast.success("COEBIS model removed — only the published OpenIBIS index is shown.");
       void queryClient.invalidateQueries({ queryKey: ["bis-drift"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -98,7 +98,7 @@ export function BisDriftPanel() {
     <section className="panel overflow-hidden">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2.5">
         <Activity className="h-4 w-4 text-signal" aria-hidden />
-        <h2 className="text-sm font-semibold">BIS drift watch (all cases)</h2>
+        <h2 className="text-sm font-semibold">COEBIS model / BIS drift watch (all cases)</h2>
         {a ? (
           <span
             className={cn(
@@ -171,7 +171,7 @@ export function BisDriftPanel() {
             {data?.active ? (
               <div className="rounded-md border border-border px-3 py-2 text-xs">
                 <p className="font-semibold">
-                  Active correction — BIS ≈ {data.active.gain.toFixed(3)} × index{" "}
+                  Active COEBIS model — BIS ≈ {data.active.gain.toFixed(3)} × index{" "}
                   {data.active.offset >= 0 ? "+" : "−"} {Math.abs(data.active.offset).toFixed(1)}
                 </p>
                 <p className="mt-1 text-muted-foreground">
@@ -189,7 +189,7 @@ export function BisDriftPanel() {
                   disabled={clearMutation.isPending}
                   onClick={() => clearMutation.mutate()}
                 >
-                  Remove correction
+                  Remove COEBIS model
                 </Button>
               </div>
             ) : a.fit ? (
