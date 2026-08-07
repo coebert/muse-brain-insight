@@ -47,6 +47,8 @@ export interface DepthReading {
   gatedFraction: number;
   /** Why the current epoch was rejected, empty when accepted. */
   gateReasons: string[];
+  /** A fitted BIS alignment was applied to the index. */
+  bisAligned?: boolean;
 }
 
 export type DepthState =
@@ -97,6 +99,35 @@ export const DEFAULT_DEPTH_CALIBRATION: DepthCalibration = {
 };
 
 let activeCalibration: DepthCalibration = DEFAULT_DEPTH_CALIBRATION;
+
+/**
+ * Affine map fitted from pooled comparisons with a commercial BIS monitor
+ * (see bis-drift.ts). Applied to the finished index only — the published
+ * openibis subparameters and mixer constants are never altered.
+ */
+export interface BisAlignment {
+  gain: number;
+  offset: number;
+  /** Paired readings the map was fitted on. */
+  n: number;
+  fittedAt: string;
+}
+
+let activeBisAlignment: BisAlignment | null = null;
+
+export function getActiveBisAlignment(): BisAlignment | null {
+  return activeBisAlignment;
+}
+
+export function setActiveBisAlignment(alignment: BisAlignment | null) {
+  activeBisAlignment = alignment;
+}
+
+/** Map a raw index onto the aligned scale, clamped to 0–100. */
+export function applyBisAlignment(index: number, alignment = activeBisAlignment): number {
+  if (!alignment) return index;
+  return clamp(alignment.gain * index + alignment.offset, 0, 100);
+}
 
 export function getActiveDepthCalibration(): DepthCalibration {
   return activeCalibration;
@@ -415,7 +446,8 @@ export class DepthIndexEstimator {
     // Deeply suppressed records have no usable spectrum: fall back to the
     // pure suppression branch rather than reporting nothing.
     const fallback = bsr >= 50 ? mixed.bsrScore : null;
-    const rawValue = valid ? clamp(mixed.index, 0, 100) : fallback;
+    const unaligned = valid ? clamp(mixed.index, 0, 100) : fallback;
+    const rawValue = unaligned == null ? null : applyBisAlignment(unaligned);
 
     const components: DepthComponents = {
       betaRatio: c1,
@@ -440,6 +472,7 @@ export class DepthIndexEstimator {
       heldSeconds: this.heldEpochs * epochSeconds,
       gatedFraction,
       gateReasons: gate.reasons ?? [],
+      bisAligned: activeBisAlignment != null,
     };
   }
 
