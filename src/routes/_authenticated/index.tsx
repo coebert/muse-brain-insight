@@ -95,6 +95,7 @@ import { BisPanel } from "@/components/monitor/BisPanel";
 import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
+import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { cn } from "@/lib/utils";
 
@@ -457,6 +458,7 @@ function Monitor() {
         {tab === "monitor" ? (
           <>
             <CaseStatusWidget
+              onJump={jumpTo}
               caseState={caseState}
               elapsedSeconds={monitor.elapsed}
               epochs={monitor.epochs}
@@ -472,7 +474,7 @@ function Monitor() {
             />
 
             {/* Density spectral array */}
-            <section className="panel overflow-hidden">
+            <section id="mon-dsa" className="panel overflow-hidden scroll-mt-24 transition-shadow">
               <div className="flex flex-col gap-2 border-b border-border px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:px-4">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                   <h1 className="text-sm font-semibold">Density spectral array · bilateral</h1>
@@ -778,6 +780,7 @@ function Monitor() {
             ) : null}
 
             {/* Metrics */}
+            <div id="mon-metrics" className="scroll-mt-24 rounded-lg transition-shadow">
             <MetricsGrid
               uncertainty={uncertainty}
               latest={latest}
@@ -788,6 +791,8 @@ function Monitor() {
               icuMode={icuMode}
               depthWindow={depthWindow}
             />
+
+            </div>
 
             <AssessmentConfidencePanel report={uncertainty} />
 
@@ -805,7 +810,7 @@ function Monitor() {
 
             {/* Event rail — the last few entries stay visible beside the trace. */}
             {caseState !== "idle" ? (
-              <div className="panel px-3 py-2.5 sm:px-4">
+              <div id="mon-events" className="panel scroll-mt-24 px-3 py-2.5 transition-shadow sm:px-4">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Recent events
@@ -843,6 +848,7 @@ function Monitor() {
 
         {tab === "signal" ? (
           <div className="space-y-4">
+            <div id="mon-signal-quality" className="scroll-mt-24 rounded-lg transition-shadow">
             <SignalQualityPanel
               quality={latest?.quality ?? null}
               channels={MUSE_CHANNELS}
@@ -852,7 +858,10 @@ function Monitor() {
               depthGatedFraction={latest?.depth.gatedFraction}
               analysisSource={monitor.analysisSource}
             />
-            <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
+            </div>
+            <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
+              <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
+            </div>
             <SqiTrend
               history={monitor.sqiHistory}
               bilateral={dsaView !== "combined"}
@@ -931,6 +940,7 @@ function Monitor() {
                 </div>
 
                 {/* Per-electrode raw EEG — live and scrubbable in review */}
+                <div id="mon-raw" className="scroll-mt-24 rounded-lg transition-shadow">
                 <RawChannelViewer
                   archive={monitor.rawArchive}
                   streaming={streaming}
@@ -944,6 +954,9 @@ function Monitor() {
                   }
                 />
 
+                </div>
+
+                <div id="mon-thresholds" className="scroll-mt-24 rounded-lg transition-shadow">
                 <DetectionThresholds
                   settings={monitor.settings}
                   suppression={{
@@ -953,10 +966,11 @@ function Monitor() {
                   }}
                   onApply={applySettings}
                 />
+                </div>
               </div>
             ) : null}
 
-            <div className="panel overflow-hidden">
+            <div id="mon-event-log" className="panel scroll-mt-24 overflow-hidden transition-shadow">
               <div className="border-b border-border px-4 py-2.5">
                 <h2 className="text-sm font-semibold">Event log</h2>
               </div>
