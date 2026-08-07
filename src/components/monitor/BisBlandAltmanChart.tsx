@@ -22,6 +22,45 @@ const WINDOWS = [30, 60, 120, 200] as const;
 const f = (v: number | null | undefined, d = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 
+interface TrendFit {
+  slope: number;
+  intercept: number;
+  r2: number;
+  line: { x: number; y: number }[];
+}
+
+/** Least-squares fit of difference on mean, to expose proportional bias. */
+function fitTrend(pts: { x: number; y: number }[]): TrendFit | null {
+  if (pts.length < 3) return null;
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let sxx = 0;
+  let sxy = 0;
+  let syy = 0;
+  for (const p of pts) {
+    sxx += (p.x - mx) ** 2;
+    sxy += (p.x - mx) * (p.y - my);
+    syy += (p.y - my) ** 2;
+  }
+  if (sxx <= 0) return null;
+  const slope = sxy / sxx;
+  const intercept = my - slope * mx;
+  const r2 = syy <= 0 ? 0 : (sxy * sxy) / (sxx * syy);
+  const xs = pts.map((p) => p.x);
+  const x0 = Math.min(...xs);
+  const x1 = Math.max(...xs);
+  return {
+    slope,
+    intercept,
+    r2,
+    line: [
+      { x: x0, y: intercept + slope * x0 },
+      { x: x1, y: intercept + slope * x1 },
+    ],
+  };
+}
+
 /**
  * Bland-Altman agreement plot for the last N paired readings: the mean of the
  * two methods on x, their difference on y, with bias and 95 % limits of
@@ -75,6 +114,8 @@ export function BisBlandAltmanChart({
       coebisPoints: corrPts,
       raw: rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null,
       coebis: corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null,
+      rawTrend: fitTrend(rawPts),
+      coebisTrend: fitTrend(corrPts),
     };
   }, [series, n]);
 
