@@ -28,7 +28,9 @@ export function ParameterInfo({ parameter, className, size = "sm" }: ParameterIn
           aria-label={`About ${info.title}`}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "inline-flex shrink-0 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-signal hover:text-signal focus-visible:ring-1 focus-visible:ring-signal focus-visible:outline-none",
+            // The visible dot stays small, but a transparent pseudo-element widens the
+            // tap target to ~44px so it is reachable with a thumb at the bedside.
+            "relative inline-flex shrink-0 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors before:absolute before:-inset-3 before:content-[''] hover:border-signal hover:text-signal focus-visible:ring-1 focus-visible:ring-signal focus-visible:outline-none",
             size === "sm" ? "h-4 w-4" : "h-5 w-5",
             className,
           )}
