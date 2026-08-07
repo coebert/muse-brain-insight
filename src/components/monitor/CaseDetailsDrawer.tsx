@@ -184,6 +184,30 @@ export function CaseDetailsDrawer({
   const poorEpochs = epochs.filter((e) => e.quality.grade === "poor").length;
   const suppressionSeconds = epochs.reduce((a, e) => a + e.epochSuppression * (coverage.cadenceSeconds || 1), 0);
 
+  // Last-few-minutes trends for the drawer sparklines.
+  const cadence = coverage.cadenceSeconds || 1;
+  const windowSeconds = 300;
+  const cutoff = (latest?.t ?? 0) - windowSeconds;
+  let cumulative = 0;
+  const windowed: { suppression: number; quality: number | null }[] = [];
+  for (const e of epochs) {
+    cumulative += e.epochSuppression * cadence;
+    if (e.t >= cutoff) {
+      windowed.push({
+        suppression: cumulative,
+        quality: e.gapAffected ? null : e.quality.score * 100,
+      });
+    }
+  }
+  const maxPoints = 60;
+  const stride = Math.max(1, Math.ceil(windowed.length / maxPoints));
+  const trend = windowed.filter((_, i) => i % stride === 0);
+  const suppressionTrend = trend.map((p) => p.suppression);
+  const qualityTrend = trend.map((p) => p.quality);
+  const suppressionDelta =
+    suppressionTrend.length > 1 ? suppressionTrend[suppressionTrend.length - 1]! - suppressionTrend[0]! : 0;
+  const trendMinutes = Math.min(windowSeconds, Math.max(0, (latest?.t ?? 0) - (windowed[0]?.suppression != null ? cutoff : 0)));
+
   const flags: { key: string; tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
   if (connectionError) flags.push({ key: "connection", tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
   if (reconnectAttempt && reconnectAttempt > 0)
@@ -279,6 +303,27 @@ export function CaseDetailsDrawer({
             <Metric label="Suppression time" value={formatDuration(Math.round(suppressionSeconds))} target="metrics" onJump={onJump} />
             <Metric label="Seizure score" value={num(latest?.seizureScore, 2)} sub={`${seizureAlerts} alert epochs`} target="events" onJump={onJump} />
             <Metric label="Signal quality" value={num(latest ? latest.quality.score * 100 : null, 0, " %")} sub={latest?.quality?.grade ?? "—"} target="signal-quality" onJump={onJump} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="panel border border-border px-3 py-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Suppression time</span>
+                <span className="text-xs tabular-nums">+{formatDuration(Math.round(suppressionDelta))}</span>
+              </div>
+              <Sparkline values={suppressionTrend} className="text-caution" />
+              <div className="text-[10px] text-muted-foreground">
+                Cumulative · last {Math.round(trendMinutes / 60) || 1} min
+              </div>
+            </div>
+            <div className="panel border border-border px-3 py-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Signal quality</span>
+                <span className="text-xs tabular-nums">{num(latest ? latest.quality.score * 100 : null, 0, " %")}</span>
+              </div>
+              <Sparkline values={qualityTrend} className="text-signal" min={0} max={100} />
+              <div className="text-[10px] text-muted-foreground">0–100% · gaps shown as breaks</div>
+            </div>
           </div>
 
           {onJump ? (
