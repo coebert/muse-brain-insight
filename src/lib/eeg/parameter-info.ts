@@ -20,6 +20,7 @@ export interface ParameterInfo {
 
 export type ParameterInfoKey =
   | "depth"
+  | "coebis"
   | "sr"
   | "suppressionTime"
   | "seizure"
