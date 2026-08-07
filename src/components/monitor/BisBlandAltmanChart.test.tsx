@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { BisBlandAltmanChart } from "./BisBlandAltmanChart";
 import type { BisDriftSeriesPoint } from "@/lib/eeg/bis-drift.functions";
+
+beforeAll(() => {
+  global.ResizeObserver = vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  }));
+});
 
 function point(overrides: Partial<BisDriftSeriesPoint> = {}): BisDriftSeriesPoint {
   return {
