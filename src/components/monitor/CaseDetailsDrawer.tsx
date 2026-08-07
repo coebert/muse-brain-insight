@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -90,7 +91,26 @@ export function CaseDetailsDrawer({
   channelCompleteness,
   onJump,
 }: CaseDetailsDrawerProps) {
+  const live = open && caseState === "running";
+  // Re-render once a second while the case runs so elapsed time, the freshness
+  // age and every derived metric below stay current without closing the drawer.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!live) return;
+    setNowMs(Date.now());
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [live]);
+
   const latest = epochs.length ? epochs[epochs.length - 1]! : null;
+
+  // Track when the last epoch actually landed, to show data freshness.
+  const stampRef = useRef<{ key: string; at: number }>({ key: "", at: Date.now() });
+  const updateKey = `${epochs.length}:${latest?.t ?? -1}`;
+  if (stampRef.current.key !== updateKey) stampRef.current = { key: updateKey, at: Date.now() };
+  const ageSeconds = Math.max(0, Math.round((nowMs - stampRef.current.at) / 1000));
+  const stale = live && ageSeconds > 8;
+
   const seizureAlerts = epochs.filter((e) => e.seizureAlert).length;
   const poorEpochs = epochs.filter((e) => e.quality.grade === "poor").length;
   const suppressionSeconds = epochs.reduce((a, e) => a + e.epochSuppression * (coverage.cadenceSeconds || 1), 0);
@@ -141,7 +161,29 @@ export function CaseDetailsDrawer({
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Case details</SheetTitle>
-          <SheetDescription>
+          <SheetDescription className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px]",
+                live
+                  ? stale
+                    ? "border-caution/50 bg-caution/10 text-caution"
+                    : "border-signal/50 bg-signal/10 text-signal"
+                  : "border-border text-muted-foreground",
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full bg-current",
+                  live && !stale ? "animate-pulse" : "",
+                )}
+              />
+              {live
+                ? ageSeconds < 2
+                  ? "Live · updating"
+                  : `Live · updated ${ageSeconds}s ago`
+                : "Snapshot"}
+            </span>
             {statusLabel}
             {caseCode ? ` · ${caseCode}` : ""}
           </SheetDescription>
