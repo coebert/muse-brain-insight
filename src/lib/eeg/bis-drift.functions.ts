@@ -14,6 +14,8 @@ export interface ActiveAlignment {
   id: string;
   gain: number;
   offset: number;
+  knots: { x: number; dy: number }[];
+  modelVersion: string;
   nPoints: number;
   nSessions: number;
   maeBefore: number | null;
@@ -32,7 +34,7 @@ export interface BisDriftSeriesPoint {
   bis: number;
   /** Open index as published, before any fitted correction. */
   raw: number;
-  /** Open index after the active correction, when one is applied. */
+  /** COEBIS: the open index after the active proprietary correction. */
   corrected: number | null;
   reliable: boolean;
   recordedAt: string;
@@ -63,6 +65,8 @@ interface AlignmentRow {
   is_active: boolean;
   created_at: string;
   note: string | null;
+  knots?: unknown;
+  model_version?: string | null;
 }
 
 const num = (v: number | string | null): number | null =>
@@ -73,6 +77,12 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
     id: row.id,
     gain: num(row.gain) ?? 1,
     offset: num(row.offset) ?? 0,
+    knots: Array.isArray(row.knots)
+      ? (row.knots as { x: number; dy: number }[])
+          .map((k) => ({ x: Number(k.x), dy: Number(k.dy) }))
+          .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
+      : [],
+    modelVersion: row.model_version ?? "coebis-1",
     nPoints: row.n_points,
     nSessions: row.n_sessions,
     biasBefore: num(row.bias_before),
@@ -86,7 +96,7 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
 }
 
 const ALIGNMENT_COLUMNS =
-  'id, gain, "offset", n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
+  'id, gain, "offset", knots, model_version, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
 
 /** File the paired BIS/app values from a case so the pooled watch can use them. */
 export const recordBisPoints = createServerFn({ method: "POST" })
