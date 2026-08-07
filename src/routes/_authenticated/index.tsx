@@ -200,6 +200,11 @@ function Monitor() {
     handleSave,
   } = session;
 
+  const jumpTo = (target: MonitorJumpTarget) => {
+    const { tab: targetTab, id } = MONITOR_JUMP[target];
+    setTab(targetTab);
+    focusMonitorSection(id);
+  };
 
   return (
     <div className="min-h-screen bg-background">
