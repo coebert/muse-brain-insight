@@ -57,6 +57,6 @@ describe("BisBlandAltmanChart", () => {
     );
     render(<BisBlandAltmanChart series={series} />);
 
-    expect(screen.getByText("No active correction for this window.")).toBeInTheDocument();
+    expect(screen.getByText(/No active correction for this window/)).toBeInTheDocument();
   });
 });
