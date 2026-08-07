@@ -30,7 +30,7 @@ const VERDICT_LABEL: Record<string, string> = {
   adjustment_active: "Correction active",
 };
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string | undefined }) {
   return (
     <div className="rounded-md bg-muted/40 px-2.5 py-2">
       <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
