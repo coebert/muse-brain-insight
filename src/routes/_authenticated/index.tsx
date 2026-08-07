@@ -241,7 +241,7 @@ function Monitor() {
           </div>
           <span
             className={cn(
-              "metric-value rounded-full border px-2.5 py-0.5 text-xs short:hidden md:short:inline",
+              "metric-value hidden rounded-full border px-2.5 py-0.5 text-xs sm:inline short:hidden md:short:inline",
               reconnecting
                 ? "border-caution/60 text-caution"
                 : streaming
@@ -263,7 +263,7 @@ function Monitor() {
             </span>
           ) : null}
           {meta.caseCode && caseState !== "idle" ? (
-            <span className="metric-value truncate rounded bg-muted px-2 py-0.5 text-xs">
+            <span className="metric-value hidden truncate rounded bg-muted px-2 py-0.5 text-xs sm:inline">
               {meta.caseCode}
             </span>
           ) : null}
@@ -310,18 +310,21 @@ function Monitor() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 sm:flex-none"
+                  className="hidden flex-1 sm:inline-flex sm:flex-none"
                   onClick={() => setFullscreen(true)}
                 >
                   <Maximize2 className="size-4" /> Monitor view
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" aria-label="More case actions">
+                    <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" aria-label="More case actions">
                       <MoreVertical className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="sm:hidden" onSelect={() => setFullscreen(true)}>
+                      <Maximize2 className="size-4" /> Monitor view
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
                       <Save className="size-4" /> File now
                     </DropdownMenuItem>
@@ -360,11 +363,31 @@ function Monitor() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex-1 text-critical hover:text-critical sm:flex-none"
+                    className="hidden flex-1 text-critical hover:text-critical sm:inline-flex sm:flex-none"
                     onClick={() => setDiscardOpen(true)}
                   >
                     <Trash2 className="size-4" /> Exit without saving
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-11 sm:hidden"
+                        aria-label="More case actions"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-critical"
+                        onSelect={() => setDiscardOpen(true)}
+                      >
+                        <Trash2 className="size-4" /> Exit without saving
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
               ) : null}
             </>
@@ -380,7 +403,7 @@ function Monitor() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 sm:px-4">
+      <main className="mx-auto max-w-[1500px] space-y-4 px-3 py-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-4 sm:pb-8">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground short:hidden">
           <span className="metric-value rounded-full bg-signal/10 px-2 py-0.5 text-xs text-signal">
             {activeMode.label} mode
