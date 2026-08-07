@@ -78,6 +78,32 @@ export function MetricsGrid({
               reliabilityReasons={latest?.depthReliability.reasons}
             />
           ),
+          coebis: (
+            <MetricTile
+              key="coebis"
+              info="coebis"
+              label="COEBIS"
+              value={latest?.depth.coebis != null ? String(latest.depth.coebis) : "—"}
+              hint={
+                latest?.depth.coebis != null
+                  ? `App-learned index · OpenIBIS ${latest.depth.index ?? "—"}`
+                  : "Learning — needs paired commercial BIS readings"
+              }
+              tone={
+                latest?.depth.coebis == null || latest.depth.held
+                  ? "default"
+                  : latest.depth.coebis < 40
+                    ? "caution"
+                    : latest.depth.coebis > 60
+                      ? "caution"
+                      : "signal"
+              }
+              confidence={latest?.confidence.depth}
+              unreliable={latest ? !latest.depthReliability.reliable : false}
+              degraded={latest?.depthReliability.level === "degraded"}
+              reliabilityReasons={latest?.depthReliability.reasons}
+            />
+          ),
           sr: (
             <MetricTile
               key="sr"
@@ -254,6 +280,7 @@ export function MetricsGrid({
               "sr",
               "time",
               "depth",
+              "coebis",
               "cindex",
               "sef",
               "entropy",
@@ -264,6 +291,7 @@ export function MetricsGrid({
             ]
           : [
               "depth",
+              "coebis",
               "cindex",
               "nindex",
               "sef",
