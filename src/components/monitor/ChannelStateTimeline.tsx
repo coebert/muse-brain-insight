@@ -68,7 +68,7 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Channel state over time
-          <ParameterInfo parameter="signalQuality" />
+          <ParameterInfo parameter="sqi" />
         </h3>
         <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
           {(Object.keys(STATE_STYLE) as ChannelState[]).map((s) => (
