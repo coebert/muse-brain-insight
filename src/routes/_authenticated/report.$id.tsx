@@ -421,7 +421,8 @@ function CaseReport() {
                   No events logged for this case.
                 </p>
               ) : (
-                <table className="mt-2 w-full border-collapse text-sm">
+                <div className="mt-2 -mx-1 overflow-x-auto px-1">
+                <table className="w-full min-w-[420px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs tracking-wide text-muted-foreground uppercase">
                       <th className="py-1.5 pr-2">Time</th>
@@ -451,6 +452,7 @@ function CaseReport() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </section>
 
