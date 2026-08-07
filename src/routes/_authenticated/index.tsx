@@ -97,6 +97,7 @@ import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
+import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -478,6 +479,7 @@ function Monitor() {
               reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
               dataGapSeconds={monitor.dataGapSeconds}
               channelCompleteness={monitor.channelCompleteness}
+              channelStateHistory={monitor.channelStateHistory}
             />
             </div>
 
@@ -870,6 +872,7 @@ function Monitor() {
             <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
               <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
             </div>
+            <ChannelStateTimeline history={monitor.channelStateHistory} />
             <SqiTrend
               history={monitor.sqiHistory}
               bilateral={dsaView !== "combined"}

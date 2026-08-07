@@ -9,6 +9,8 @@ import { formatClock, formatDuration } from "@/lib/eeg/format";
 import type { SessionCoverage } from "@/lib/eeg/coverage";
 import type { Epoch } from "@/lib/eeg/analysis";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
+import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
+import type { ChannelStatePoint } from "@/lib/eeg/channel-completeness";
 import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 import { cn } from "@/lib/utils";
 import { MONITOR_JUMP, type MonitorJumpTarget } from "@/lib/monitor-jump";
@@ -28,6 +30,7 @@ export interface CaseDetailsDrawerProps {
   reconnectAttempt?: number | undefined;
   dataGapSeconds?: number | undefined;
   channelCompleteness?: ChannelCompleteness[] | undefined;
+  channelStateHistory?: ChannelStatePoint[] | undefined;
   /** Jump to the monitor panel behind a metric or flag. */
   onJump?: ((target: MonitorJumpTarget) => void) | undefined;
   /** Record an acknowledgement/note on the case timeline. */
@@ -122,6 +125,7 @@ export function CaseDetailsDrawer({
   reconnectAttempt,
   dataGapSeconds,
   channelCompleteness,
+  channelStateHistory,
   onJump,
   onRecordNote,
 }: CaseDetailsDrawerProps) {
@@ -292,6 +296,8 @@ export function CaseDetailsDrawer({
             streamFraction={coverage.fraction}
             streamMissingSeconds={coverage.missingSeconds}
           />
+
+          <ChannelStateTimeline history={channelStateHistory ?? []} />
 
           <div className="panel border border-border px-3 py-2 text-xs text-muted-foreground">
             <p>Source: {sourceName ?? "—"}</p>

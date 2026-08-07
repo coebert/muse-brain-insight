@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Activity, CheckCircle2, ChevronRight, CircleSlash, Clock, FileCheck, Radio } from "lucide-react";
 
 import { CaseDetailsDrawer } from "@/components/monitor/CaseDetailsDrawer";
+import type { ChannelStatePoint } from "@/lib/eeg/channel-completeness";
 import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -23,6 +24,7 @@ export interface CaseStatusWidgetProps {
   reconnectAttempt?: number | undefined;
   dataGapSeconds?: number | undefined;
   channelCompleteness?: ChannelCompleteness[] | undefined;
+  channelStateHistory?: ChannelStatePoint[] | undefined;
   /** Jump from a drawer metric/flag to the matching monitor panel. */
   onJump?: ((target: MonitorJumpTarget) => void) | undefined;
   /** Record an acknowledgement/note for an error flag on the case timeline. */
@@ -77,6 +79,7 @@ export function CaseStatusWidget({
   reconnectAttempt,
   dataGapSeconds,
   channelCompleteness,
+  channelStateHistory,
   onJump,
   onRecordNote,
 }: CaseStatusWidgetProps) {
@@ -177,6 +180,7 @@ export function CaseStatusWidget({
       reconnectAttempt={reconnectAttempt}
       dataGapSeconds={dataGapSeconds}
       channelCompleteness={channelCompleteness}
+      channelStateHistory={channelStateHistory}
       onRecordNote={onRecordNote}
       onJump={
         onJump
