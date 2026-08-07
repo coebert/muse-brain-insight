@@ -10,6 +10,7 @@ import type { SessionCoverage } from "@/lib/eeg/coverage";
 import type { Epoch } from "@/lib/eeg/analysis";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
+import { Sparkline } from "@/components/monitor/Sparkline";
 import type { ChannelStatePoint } from "@/lib/eeg/channel-completeness";
 import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 import { cn } from "@/lib/utils";
