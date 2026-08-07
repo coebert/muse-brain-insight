@@ -22,6 +22,45 @@ const WINDOWS = [30, 60, 120, 200] as const;
 const f = (v: number | null | undefined, d = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 
+interface TrendFit {
+  slope: number;
+  intercept: number;
+  r2: number;
+  line: { x: number; y: number }[];
+}
+
+/** Least-squares fit of difference on mean, to expose proportional bias. */
+function fitTrend(pts: { x: number; y: number }[]): TrendFit | null {
+  if (pts.length < 3) return null;
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let sxx = 0;
+  let sxy = 0;
+  let syy = 0;
+  for (const p of pts) {
+    sxx += (p.x - mx) ** 2;
+    sxy += (p.x - mx) * (p.y - my);
+    syy += (p.y - my) ** 2;
+  }
+  if (sxx <= 0) return null;
+  const slope = sxy / sxx;
+  const intercept = my - slope * mx;
+  const r2 = syy <= 0 ? 0 : (sxy * sxy) / (sxx * syy);
+  const xs = pts.map((p) => p.x);
+  const x0 = Math.min(...xs);
+  const x1 = Math.max(...xs);
+  return {
+    slope,
+    intercept,
+    r2,
+    line: [
+      { x: x0, y: intercept + slope * x0 },
+      { x: x1, y: intercept + slope * x1 },
+    ],
+  };
+}
+
 /**
  * Bland-Altman agreement plot for the last N paired readings: the mean of the
  * two methods on x, their difference on y, with bias and 95 % limits of
@@ -49,7 +88,7 @@ export function BisBlandAltmanChart({
       : null;
   const knotCount = active?.knots?.length ?? 0;
 
-  const { rawPoints, coebisPoints, raw, coebis } = useMemo(() => {
+  const { rawPoints, coebisPoints, raw, coebis, rawTrend, coebisTrend } = useMemo(() => {
     const tail = series.slice(-n);
     const toPoints = (get: (p: BisDriftSeriesPoint) => number | null) =>
       tail
@@ -75,6 +114,8 @@ export function BisBlandAltmanChart({
       coebisPoints: corrPts,
       raw: rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null,
       coebis: corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null,
+      rawTrend: fitTrend(rawPts),
+      coebisTrend: fitTrend(corrPts),
     };
   }, [series, n]);
 
@@ -180,8 +221,30 @@ export function BisBlandAltmanChart({
               </>
             ) : null}
             <Scatter name="OpenIBIS − BIS" data={rawPoints} fill="var(--caution)" />
+            {rawTrend ? (
+              <Scatter
+                name="OpenIBIS trend"
+                data={rawTrend.line}
+                fill="transparent"
+                line={{ stroke: "var(--caution)", strokeWidth: 2 }}
+                shape={() => <g />}
+                legendType="line"
+                isAnimationActive={false}
+              />
+            ) : null}
             {overlay ? (
               <Scatter name="COEBIS − BIS" data={coebisPoints} fill="var(--signal)" />
+            ) : null}
+            {overlay && coebisTrend ? (
+              <Scatter
+                name="COEBIS trend"
+                data={coebisTrend.line}
+                fill="transparent"
+                line={{ stroke: "var(--signal)", strokeWidth: 2 }}
+                shape={() => <g />}
+                legendType="line"
+                isAnimationActive={false}
+              />
             ) : null}
           </ScatterChart>
         </ResponsiveContainer>
@@ -208,6 +271,9 @@ export function BisBlandAltmanChart({
               <p className="metric-value text-sm">{raw?.n ?? 0}</p>
             </div>
           </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Trend: slope {f(rawTrend?.slope, 3)} per index point, R² {f(rawTrend?.r2, 2)}
+          </p>
         </div>
 
         {coebis && coebisPoints.length >= 3 ? (
@@ -231,6 +297,9 @@ export function BisBlandAltmanChart({
                 <p className="metric-value text-sm">{coebis.n}</p>
               </div>
             </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Trend: slope {f(coebisTrend?.slope, 3)} per index point, R² {f(coebisTrend?.r2, 2)}
+            </p>
           </div>
         ) : (
           <div className="rounded-md border border-border bg-muted/30 p-2.5">
@@ -255,7 +324,9 @@ export function BisBlandAltmanChart({
 
       <p className="text-[11px] text-muted-foreground">
         Positive values mean the app reads lighter than the monitor. A bias away from zero is a
-        systematic offset; wide limits mean the disagreement varies case to case.
+        systematic offset; wide limits mean the disagreement varies case to case. A trend slope away
+        from zero means proportional bias — the disagreement grows with depth — and R² shows how
+        much of the scatter that trend explains.
       </p>
     </div>
   );
