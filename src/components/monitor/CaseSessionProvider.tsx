@@ -87,6 +87,9 @@ function useCaseSessionState() {
     void syncBisAlignment();
   }, []);
 
+  /** Files paired BIS/app values for the cross-case drift watch. */
+  const fileBisPoints = useServerFn(recordBisPoints);
+
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
   useEffect(() => {
