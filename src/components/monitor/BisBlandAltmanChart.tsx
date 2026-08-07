@@ -14,7 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { agreementMetrics, type AlignedPair } from "@/lib/eeg/agreement";
-import type { BisDriftSeriesPoint } from "@/lib/eeg/bis-drift.functions";
+import type { ActiveAlignment, BisDriftSeriesPoint } from "@/lib/eeg/bis-drift.functions";
 import { cn } from "@/lib/utils";
 
 const WINDOWS = [30, 60, 120, 200] as const;
@@ -31,10 +31,23 @@ const f = (v: number | null | undefined, d = 1) =>
  * OpenIBIS (pre-correction) is always plotted; COEBIS is overlaid once a
  * learned correction is active, so the shift in bias is visible directly.
  */
-export function BisBlandAltmanChart({ series }: { series: BisDriftSeriesPoint[] }) {
+export function BisBlandAltmanChart({
+  series,
+  active,
+}: {
+  series: BisDriftSeriesPoint[];
+  active?: ActiveAlignment | null;
+}) {
   const [n, setN] = useState<number>(60);
   const [showCoebis, setShowCoebis] = useState(true);
   const hasCorrection = series.some((p) => p.corrected != null);
+
+  const fittedAt = active?.createdAt ? new Date(active.createdAt) : null;
+  const fittedLabel =
+    fittedAt && !Number.isNaN(fittedAt.getTime())
+      ? `${fittedAt.toLocaleDateString()} at ${fittedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+      : null;
+  const knotCount = active?.knots?.length ?? 0;
 
   const { rawPoints, coebisPoints, raw, coebis } = useMemo(() => {
     const tail = series.slice(-n);
@@ -222,11 +235,19 @@ export function BisBlandAltmanChart({ series }: { series: BisDriftSeriesPoint[] 
         ) : (
           <div className="rounded-md border border-border bg-muted/30 p-2.5">
             <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              COEBIS
+              COEBIS — not shown for this window
             </p>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
-              No active correction for this window. COEBIS appears once a fitted model is active and
-              enough corrected paired readings are available.
+              {!active
+                ? "No COEBIS model has been fitted yet. The knots are fitted automatically once enough paired readings across enough cases show a clear, consistent offset; until then only the OpenIBIS index is plotted."
+                : coebisPoints.length === 0
+                  ? `A COEBIS model is active, but none of the last ${n} paired readings carry a corrected value, so there is nothing to plot here.`
+                  : `A COEBIS model is active, but only ${coebisPoints.length} of the last ${n} paired readings carry a corrected value; at least 3 are needed for bias and limits of agreement.`}
+            </p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {fittedLabel
+                ? `Knots last fitted ${fittedLabel} (${knotCount} ${knotCount === 1 ? "knot" : "knots"}, model ${active?.modelVersion ?? "—"}, from ${active?.nPoints ?? 0} readings across ${active?.nSessions ?? 0} cases).`
+                : "Knots have never been fitted."}
             </p>
           </div>
         )}
