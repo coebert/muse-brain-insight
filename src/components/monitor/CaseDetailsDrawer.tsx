@@ -83,7 +83,10 @@ export function CaseDetailsDrawer({
       text: `${((poorEpochs / epochs.length) * 100).toFixed(0)}% of epochs graded poor signal quality`,
     });
   if (latest?.depthReliability && latest.depthReliability.reliable === false)
-    flags.push({ tone: "warn", text: `Depth index currently unreliable${latest.depthReliability.reason ? ` — ${latest.depthReliability.reason}` : ""}` });
+    flags.push({
+      tone: "warn",
+      text: `Depth index currently unreliable${latest.depthReliability.reasons?.length ? ` — ${latest.depthReliability.reasons.join(", ")}` : ""}`,
+    });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
