@@ -496,8 +496,8 @@ export class DepthIndexEstimator {
     // Deeply suppressed records have no usable spectrum: fall back to the
     // pure suppression branch rather than reporting nothing.
     const fallback = bsr >= 50 ? mixed.bsrScore : null;
-    const unaligned = valid ? clamp(mixed.index, 0, 100) : fallback;
-    const rawValue = unaligned == null ? null : applyBisAlignment(unaligned);
+    // `index` is always the published OpenIBIS value — never corrected.
+    const rawValue = valid ? clamp(mixed.index, 0, 100) : fallback;
 
     const components: DepthComponents = {
       betaRatio: c1,
@@ -510,6 +510,7 @@ export class DepthIndexEstimator {
     };
 
     const index = rawValue == null ? null : Math.round(rawValue);
+    const coebis = computeCoebis(rawValue);
     const gatedFraction = this.psdHistory.length
       ? this.psdHistory.filter((r) => r == null).length / this.psdHistory.length
       : 1;
@@ -523,6 +524,7 @@ export class DepthIndexEstimator {
       gatedFraction,
       gateReasons: gate.reasons ?? [],
       bisAligned: activeBisAlignment != null,
+      coebis,
     };
   }
 
