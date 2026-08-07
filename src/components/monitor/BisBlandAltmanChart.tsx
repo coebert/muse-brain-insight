@@ -22,6 +22,21 @@ const WINDOWS = [30, 60, 120, 200] as const;
 const f = (v: number | null | undefined, d = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(d);
 
+const formatStamp = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+};
+
+interface BaPoint {
+  x: number;
+  y: number;
+  bis: number;
+  value: number;
+  recordedAt: string;
+  i: number;
+}
+
 interface TrendFit {
   slope: number;
   intercept: number;
@@ -88,16 +103,34 @@ export function BisBlandAltmanChart({
       : null;
   const knotCount = active?.knots?.length ?? 0;
 
-  const { rawPoints, coebisPoints, raw, coebis, rawTrend, coebisTrend } = useMemo(() => {
+  const {
+    rawPoints,
+    coebisPoints,
+    raw,
+    coebis,
+    rawTrend,
+    coebisTrend,
+    rawInliers,
+    rawOutliers,
+    coebisInliers,
+    coebisOutliers,
+  } = useMemo(() => {
     const tail = series.slice(-n);
     const toPoints = (get: (p: BisDriftSeriesPoint) => number | null) =>
       tail
         .map((p) => {
           const v = get(p);
           if (v == null) return null;
-          return { x: (v + p.bis) / 2, y: v - p.bis, bis: p.bis, value: v };
+          return {
+            x: (v + p.bis) / 2,
+            y: v - p.bis,
+            bis: p.bis,
+            value: v,
+            recordedAt: p.recordedAt,
+            i: p.i,
+          };
         })
-        .filter((p): p is { x: number; y: number; bis: number; value: number } => p !== null);
+        .filter((p): p is BaPoint => p !== null);
 
     const toPairs = (get: (p: BisDriftSeriesPoint) => number | null): AlignedPair[] =>
       tail
@@ -109,13 +142,30 @@ export function BisBlandAltmanChart({
 
     const rawPts = toPoints((p) => p.raw);
     const corrPts = toPoints((p) => p.corrected);
+    const rawMetrics = rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null;
+    const corrMetrics = corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null;
+    const split = (pts: BaPoint[], lo: number | null | undefined, hi: number | null | undefined) => {
+      if (lo == null || hi == null || !Number.isFinite(lo) || !Number.isFinite(hi)) {
+        return { inliers: pts, outliers: [] as BaPoint[] };
+      }
+      return {
+        inliers: pts.filter((p) => p.y >= lo && p.y <= hi),
+        outliers: pts.filter((p) => p.y < lo || p.y > hi),
+      };
+    };
+    const rawSplit = split(rawPts, rawMetrics?.loaLower, rawMetrics?.loaUpper);
+    const corrSplit = split(corrPts, corrMetrics?.loaLower, corrMetrics?.loaUpper);
     return {
       rawPoints: rawPts,
       coebisPoints: corrPts,
-      raw: rawPts.length >= 3 ? agreementMetrics(toPairs((p) => p.raw)) : null,
-      coebis: corrPts.length >= 3 ? agreementMetrics(toPairs((p) => p.corrected)) : null,
+      raw: rawMetrics,
+      coebis: corrMetrics,
       rawTrend: fitTrend(rawPts),
       coebisTrend: fitTrend(corrPts),
+      rawInliers: rawSplit.inliers,
+      rawOutliers: rawSplit.outliers,
+      coebisInliers: corrSplit.inliers,
+      coebisOutliers: corrSplit.outliers,
     };
   }, [series, n]);
 
@@ -220,7 +270,15 @@ export function BisBlandAltmanChart({
                 <ReferenceLine y={raw.loaLower} stroke="var(--caution)" strokeDasharray="4 3" />
               </>
             ) : null}
-            <Scatter name="OpenIBIS − BIS" data={rawPoints} fill="var(--caution)" />
+            <Scatter name="OpenIBIS − BIS" data={rawInliers} fill="var(--caution)" />
+            {rawOutliers.length ? (
+              <Scatter
+                name="Outside 95 % LOA"
+                data={rawOutliers}
+                fill="var(--critical)"
+                shape="cross"
+              />
+            ) : null}
             {rawTrend ? (
               <Scatter
                 name="OpenIBIS trend"
@@ -233,7 +291,15 @@ export function BisBlandAltmanChart({
               />
             ) : null}
             {overlay ? (
-              <Scatter name="COEBIS − BIS" data={coebisPoints} fill="var(--signal)" />
+              <Scatter name="COEBIS − BIS" data={coebisInliers} fill="var(--signal)" />
+            ) : null}
+            {overlay && coebisOutliers.length ? (
+              <Scatter
+                name="COEBIS outside 95 % LOA"
+                data={coebisOutliers}
+                fill="var(--critical)"
+                shape="diamond"
+              />
             ) : null}
             {overlay && coebisTrend ? (
               <Scatter
@@ -321,6 +387,38 @@ export function BisBlandAltmanChart({
           </div>
         )}
       </div>
+
+      {rawOutliers.length || (overlay && coebisOutliers.length) ? (
+        <div className="rounded-md border border-critical/40 bg-critical/5 p-2.5">
+          <p className="text-[11px] font-semibold tracking-wide text-critical uppercase">
+            Readings outside the 95 % limits of agreement
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {[
+              ...rawOutliers.map((p) => ({ ...p, label: "OpenIBIS" })),
+              ...(overlay ? coebisOutliers.map((p) => ({ ...p, label: "COEBIS" })) : []),
+            ]
+              .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+              .slice(-12)
+              .map((p) => (
+                <li
+                  key={`${p.label}-${p.i}`}
+                  className="flex flex-wrap items-baseline justify-between gap-2 text-[11px]"
+                >
+                  <span className="text-muted-foreground">{formatStamp(p.recordedAt)}</span>
+                  <span className="text-foreground">
+                    {p.label} {f(p.value)} vs BIS {f(p.bis)} ({p.y >= 0 ? "+" : ""}
+                    {f(p.y)})
+                  </span>
+                </li>
+              ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            These paired readings sit beyond the limits of agreement for the selected window; check
+            the case notes and signal quality around those times before trusting them.
+          </p>
+        </div>
+      ) : null}
 
       <p className="text-[11px] text-muted-foreground">
         Positive values mean the app reads lighter than the monitor. A bias away from zero is a
