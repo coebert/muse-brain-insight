@@ -120,23 +120,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
     return { inserted: rows.length };
   });
 
-async function loadPoints(supabase: {
-  from: (t: string) => {
-    select: (c: string) => {
-      order: (
-        c: string,
-        o: { ascending: boolean },
-      ) => { limit: (n: number) => PromiseLike<{ data: unknown; error: { message: string } | null }> };
-    };
-  };
-}): Promise<BisDriftPoint[]> {
-  const { data, error } = await supabase
-    .from("bis_paired_points")
-    .select("at_seconds, bis, app_index, session_id, reliable, sqi, recorded_at, context")
-    .order("recorded_at", { ascending: true })
-    .limit(5000);
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+function toDriftPoints(rows: Record<string, unknown>[]): BisDriftPoint[] {
+  return rows.map((r) => ({
     at: Number(r["at_seconds"]),
     bis: Number(r["bis"]),
     appIndex: Number(r["app_index"]),
@@ -157,9 +142,13 @@ async function loadPoints(supabase: {
 export const getBisDrift = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<BisDriftReport> => {
-    const points = await loadPoints(
-      context.supabase as unknown as Parameters<typeof loadPoints>[0],
-    );
+    const { data: pointRows, error: pointsError } = await context.supabase
+      .from("bis_paired_points")
+      .select("at_seconds, bis, app_index, session_id, reliable, sqi, recorded_at, context")
+      .order("recorded_at", { ascending: true })
+      .limit(5000);
+    if (pointsError) throw new Error(pointsError.message);
+    const points = toDriftPoints((pointRows ?? []) as unknown as Record<string, unknown>[]);
 
     const { data: rows, error } = await context.supabase
       .from("depth_bis_alignments")
