@@ -552,7 +552,7 @@ function useCaseSessionState() {
     }
     setSaving(true);
     try {
-      await saveSession(
+      const sessionId = await saveSession(
         { ...meta, deviceName: monitor.sourceName },
         monitor.epochs,
         allEvents,
@@ -560,6 +560,39 @@ function useCaseSessionState() {
         monitor.elapsed,
         sessionStartedAtMs,
       );
+      // File the paired commercial-BIS values so the pooled drift watch can
+      // keep tracking (and correcting) any systematic offset across cases.
+      if (bisReadings.length) {
+        const paired = pairBisReadings(monitor.epochs, bisReadings)
+          .filter((p) => p.depthIndex != null)
+          .map((p) => ({
+            at: p.at,
+            bis: p.bis,
+            bisSr: p.bisSr,
+            bisSef: p.bisSef,
+            appIndex: p.depthIndex!,
+            appSr: p.appSr,
+            appSef: p.sef95,
+            reliable: p.reliable,
+            sqi: p.sqi,
+          }));
+        if (paired.length) {
+          try {
+            await fileBisPoints({
+              data: {
+                sessionId,
+                context: meta.context,
+                device: bisReadings.find((r) => r.device)?.device ?? null,
+                points: paired,
+              },
+            });
+          } catch {
+            // The case itself is saved; a failed comparison upload must not
+            // look like a lost record.
+            toast.warning("Case saved, but the BIS comparison values could not be filed.");
+          }
+        }
+      }
       toast.success("Session saved to your records.");
       setUsedCaseCodes(rememberCaseCode(meta.caseCode));
       setSaveOpen(false);
