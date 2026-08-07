@@ -165,7 +165,7 @@ export function TciTimeline({
               <text
                 x={2}
                 y={y0 + rowH / 2 + 3}
-                className={cn("fill-muted-foreground", compact ? "text-[8px]" : "text-[11px]")}
+                className={cn("fill-muted-foreground", compact ? "text-[11px]" : "text-[11px]")}
                 style={{ fontSize: compact ? 8 : 9 }}
               >
                 {row.label.slice(0, compact ? 10 : 16)}
