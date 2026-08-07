@@ -316,7 +316,7 @@ export function FullscreenMonitor({
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <MetricCard
               size="bedside"
-              label="Depth index"
+              label="Depth index (OpenIBIS)"
               info="depth"
               value={depth?.index != null ? String(depth.index) : "—"}
               hint={
@@ -325,6 +325,21 @@ export function FullscreenMonitor({
                     ? `Held ${depth.heldSeconds.toFixed(0)} s`
                     : DEPTH_STATE_LABEL[depth.state]
                   : "Awaiting data"
+              }
+              tone={dTone}
+              unreliable={latest ? !latest.depthReliability.reliable : false}
+            />
+          </div>
+          <div className="col-span-2 lg:col-span-1 short:col-span-1!">
+            <MetricCard
+              size="bedside"
+              label="COEBIS"
+              info="coebis"
+              value={depth?.coebis != null ? String(depth.coebis) : "—"}
+              hint={
+                depth?.coebis != null
+                  ? `App-learned · OpenIBIS ${depth.index ?? "—"}`
+                  : "Learning from paired BIS"
               }
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
