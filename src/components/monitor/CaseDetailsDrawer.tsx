@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, MessageSquarePlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -27,6 +30,36 @@ export interface CaseDetailsDrawerProps {
   channelCompleteness?: ChannelCompleteness[] | undefined;
   /** Jump to the monitor panel behind a metric or flag. */
   onJump?: ((target: MonitorJumpTarget) => void) | undefined;
+  /** Record an acknowledgement/note on the case timeline. */
+  onRecordNote?: ((text: string) => void) | undefined;
+}
+
+interface FlagAck {
+  atIso: string;
+  note?: string;
+}
+
+/** Acknowledgements are kept per case so they survive drawer close/reopen. */
+function ackStorageKey(caseCode?: string | null) {
+  return `ct-flag-ack:${caseCode || "current"}`;
+}
+
+function readAcks(caseCode?: string | null): Record<string, FlagAck> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(ackStorageKey(caseCode));
+    return raw ? (JSON.parse(raw) as Record<string, FlagAck>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAcks(caseCode: string | null | undefined, acks: Record<string, FlagAck>) {
+  try {
+    window.localStorage.setItem(ackStorageKey(caseCode), JSON.stringify(acks));
+  } catch {
+    /* storage unavailable — acknowledgements stay in memory for this session */
+  }
 }
 
 function Metric({
@@ -90,7 +123,38 @@ export function CaseDetailsDrawer({
   dataGapSeconds,
   channelCompleteness,
   onJump,
+  onRecordNote,
 }: CaseDetailsDrawerProps) {
+  const [acks, setAcks] = useState<Record<string, FlagAck>>({});
+  const [noteFor, setNoteFor] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  // Load stored acknowledgements whenever the drawer opens for a case.
+  useEffect(() => {
+    if (!open) return;
+    setAcks(readAcks(caseCode));
+    setNoteFor(null);
+    setNoteDraft("");
+  }, [open, caseCode]);
+
+  const saveAck = (key: string, label: string, note?: string) => {
+    const entry: FlagAck = { atIso: new Date().toISOString(), ...(note ? { note } : {}) };
+    setAcks((prev) => {
+      const next = { ...prev, [key]: { ...prev[key], ...entry } };
+      writeAcks(caseCode, next);
+      return next;
+    });
+    onRecordNote?.(note ? `Flag noted — ${label}: ${note}` : `Flag acknowledged — ${label}`);
+  };
+
+  const clearAck = (key: string) =>
+    setAcks((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      writeAcks(caseCode, next);
+      return next;
+    });
+
   const live = open && caseState === "running";
   // Re-render once a second while the case runs so elapsed time, the freshness
   // age and every derived metric below stay current without closing the drawer.
@@ -115,28 +179,31 @@ export function CaseDetailsDrawer({
   const poorEpochs = epochs.filter((e) => e.quality.grade === "poor").length;
   const suppressionSeconds = epochs.reduce((a, e) => a + e.epochSuppression * (coverage.cadenceSeconds || 1), 0);
 
-  const flags: { tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
-  if (connectionError) flags.push({ tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
+  const flags: { key: string; tone: "warn" | "bad"; text: string; target?: MonitorJumpTarget }[] = [];
+  if (connectionError) flags.push({ key: "connection", tone: "bad", text: `Connection error: ${connectionError}`, target: "status" });
   if (reconnectAttempt && reconnectAttempt > 0)
-    flags.push({ tone: "warn", text: `Reconnecting to headband (attempt ${reconnectAttempt})`, target: "status" });
+    flags.push({ key: "reconnecting", tone: "warn", text: `Reconnecting to headband (attempt ${reconnectAttempt})`, target: "status" });
   if (coverage.level !== "ok")
     flags.push({
+      key: "completeness",
       tone: coverage.level === "insufficient" ? "bad" : "warn",
       text: `Data completeness ${(coverage.fraction * 100).toFixed(0)}% — ${formatDuration(coverage.missingSeconds)} missing`,
       target: "channels",
     });
   if (coverage.worstGapSeconds > 0)
     flags.push({
+      key: "worst-gap",
       tone: "warn",
       text: `Longest gap ${formatDuration(coverage.worstGapSeconds)} at ${formatClock(coverage.worstGapAtSeconds)}`,
       target: "dsa",
     });
   if (coverage.missingMetrics.length)
-    flags.push({ tone: "warn", text: `Metrics absent for most of the case: ${coverage.missingMetrics.join(", ")}`, target: "metrics" });
+    flags.push({ key: "missing-metrics", tone: "warn", text: `Metrics absent for most of the case: ${coverage.missingMetrics.join(", ")}`, target: "metrics" });
   if (dataGapSeconds && dataGapSeconds > 0)
-    flags.push({ tone: "warn", text: `Live stream gap of ${formatDuration(dataGapSeconds)}`, target: "dsa" });
+    flags.push({ key: "stream-gap", tone: "warn", text: `Live stream gap of ${formatDuration(dataGapSeconds)}`, target: "dsa" });
   if (epochs.length && poorEpochs / epochs.length > 0.25)
     flags.push({
+      key: "poor-epochs",
       tone: "warn",
       text: `${((poorEpochs / epochs.length) * 100).toFixed(0)}% of epochs graded poor signal quality`,
       target: "signal-quality",
@@ -144,6 +211,7 @@ export function CaseDetailsDrawer({
   for (const c of channelCompleteness ?? []) {
     if (c.epochs > 0 && c.level !== "ok")
       flags.push({
+        key: `channel-${c.channel}`,
         tone: c.level === "poor" ? "bad" : "warn",
         text: `${c.channel} (${c.side}) usable for only ${(c.usableFraction * 100).toFixed(0)}% of the case${c.note ? ` — ${c.note.toLowerCase()}` : ""}`,
         target: "raw",
@@ -151,6 +219,7 @@ export function CaseDetailsDrawer({
   }
   if (latest?.depthReliability && latest.depthReliability.reliable === false)
     flags.push({
+      key: "depth-unreliable",
       tone: "warn",
       text: `Depth index currently unreliable${latest.depthReliability.reasons?.length ? ` — ${latest.depthReliability.reasons.join(", ")}` : ""}`,
       target: "signal-quality",
@@ -238,17 +307,27 @@ export function CaseDetailsDrawer({
               </p>
             ) : (
               <ul className="space-y-1.5">
-                {flags.map((f, i) => {
+                {flags.map((f) => {
                   const jumpable = Boolean(f.target && onJump);
+                  const ack = acks[f.key];
+                  const editing = noteFor === f.key;
                   const className = cn(
-                    "flex w-full items-start gap-2 rounded-md border px-3 py-2 text-left text-xs",
-                    f.tone === "bad"
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-caution/40 bg-caution/10 text-caution",
+                    "flex w-full items-start gap-2 px-3 py-2 text-left text-xs",
+                    f.tone === "bad" ? "text-destructive" : "text-caution",
                     jumpable && "transition-colors hover:brightness-125",
                   );
                   return (
-                    <li key={i}>
+                    <li
+                      key={f.key}
+                      className={cn(
+                        "rounded-md border",
+                        ack
+                          ? "border-border bg-muted/30 opacity-80"
+                          : f.tone === "bad"
+                            ? "border-destructive/40 bg-destructive/10"
+                            : "border-caution/40 bg-caution/10",
+                      )}
+                    >
                       {jumpable ? (
                         <button
                           type="button"
@@ -267,6 +346,81 @@ export function CaseDetailsDrawer({
                         <div className={className}>
                           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                           <span>{f.text}</span>
+                        </div>
+                      )}
+
+                      {ack ? (
+                        <div className="border-t border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 font-medium text-signal">
+                            <Check className="size-3" aria-hidden /> Acknowledged{" "}
+                            {new Date(ack.atIso).toLocaleTimeString()}
+                          </span>
+                          {ack.note ? <p className="mt-0.5 whitespace-pre-wrap text-foreground">{ack.note}</p> : null}
+                        </div>
+                      ) : null}
+
+                      {editing ? (
+                        <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
+                          <Textarea
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            rows={2}
+                            autoFocus
+                            placeholder="Note for this issue (e.g. electrode re-seated, artefact from diathermy)"
+                            className="text-xs"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                saveAck(f.key, f.text, noteDraft.trim() || undefined);
+                                setNoteFor(null);
+                                setNoteDraft("");
+                              }}
+                            >
+                              Save note
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setNoteFor(null);
+                                setNoteDraft("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 border-t border-border/60 px-3 py-1.5">
+                          {ack ? (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => clearAck(f.key)}>
+                              Undo acknowledge
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 text-xs"
+                              onClick={() => saveAck(f.key, f.text)}
+                            >
+                              <Check className="size-3" aria-hidden /> Acknowledge
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => {
+                              setNoteFor(f.key);
+                              setNoteDraft(ack?.note ?? "");
+                            }}
+                          >
+                            <MessageSquarePlus className="size-3" aria-hidden /> {ack?.note ? "Edit note" : "Add note"}
+                          </Button>
                         </div>
                       )}
                     </li>
