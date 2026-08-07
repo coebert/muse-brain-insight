@@ -37,6 +37,7 @@ import {
   emptyChannelTallies,
   summariseChannelCompleteness,
   type ChannelCompleteness,
+  type ChannelStatePoint,
 } from "@/lib/eeg/channel-completeness";
 
 export type { WaveformStore } from "@/lib/eeg/waveform-store";
