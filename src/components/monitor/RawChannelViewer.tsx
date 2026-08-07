@@ -514,7 +514,7 @@ export function RawChannelViewer({
               if (e.key === "Escape") setPending(null);
             }}
             placeholder="Annotation (e.g. electrode lifted, facial twitching)"
-            className="h-9 min-w-[180px] flex-1 text-xs"
+            className="h-9 w-full min-w-0 flex-1 text-xs sm:min-w-[180px]"
             aria-label={`Annotation for ${pending.channel}`}
           />
           <Button size="sm" className="min-h-9 text-xs" onClick={commitAnnotation}>
@@ -579,7 +579,7 @@ export function RawChannelViewer({
           {formatClock(traces.from)} – {formatClock(traces.to)}
           {live && streaming ? " · live" : " · review"}
         </span>
-        <div className="min-w-[180px] flex-1">
+        <div className="w-full min-w-0 flex-1 sm:min-w-[180px]">
           <Slider
             aria-label="Scrub raw EEG"
             min={0}

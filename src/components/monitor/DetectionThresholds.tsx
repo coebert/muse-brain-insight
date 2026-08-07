@@ -58,7 +58,7 @@ export function DetectionThresholds({ settings, suppression, onApply }: Props) {
     <div className="panel px-3 py-4 sm:px-4">
       <h2 className="text-sm font-semibold">Detection thresholds</h2>
       {suppression ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 rounded-md sm:grid-cols-3 border border-border bg-muted/30 px-3 py-2">
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               SR ({settings.srWindowSeconds}s)
