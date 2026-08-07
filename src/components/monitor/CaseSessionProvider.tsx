@@ -29,6 +29,7 @@ import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
+import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
@@ -42,7 +43,8 @@ import {
 } from "@/lib/eeg/case-code-registry";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
-import { summariseBis, type BisReading } from "@/lib/eeg/bis";
+import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
+import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
@@ -76,6 +78,13 @@ function useCaseSessionState() {
   // Apply the locally saved depth calibration (if any) to the live estimator.
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
+  }, []);
+
+  // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
+  // live index reflects any correction the app has already earned the right to
+  // make.
+  useEffect(() => {
+    void syncBisAlignment();
   }, []);
 
   // Start-up speed: reuse the last context and location, and suggest the next
