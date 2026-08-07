@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { useCaseAi } from "@/hooks/useCaseAi";
