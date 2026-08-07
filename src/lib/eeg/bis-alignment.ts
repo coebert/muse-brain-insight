@@ -4,12 +4,22 @@
  * the live depth index so the bedside trend tracks the monitor more closely.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { setActiveBisAlignment, type BisAlignment } from "@/lib/eeg/depth";
+import { setActiveBisAlignment, type BisAlignment, type BisKnot } from "@/lib/eeg/depth";
+
+function toKnots(value: unknown): BisKnot[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((k) => {
+      const r = k as { x?: unknown; dy?: unknown };
+      return { x: Number(r.x), dy: Number(r.dy) };
+    })
+    .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy));
+}
 
 export async function fetchActiveBisAlignment(): Promise<BisAlignment | null> {
   const { data, error } = await supabase
     .from("depth_bis_alignments")
-    .select('gain, "offset", n_points, created_at')
+    .select('gain, "offset", n_points, created_at, knots')
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -18,7 +28,13 @@ export async function fetchActiveBisAlignment(): Promise<BisAlignment | null> {
   const gain = Number(data.gain);
   const offset = Number(data.offset);
   if (!Number.isFinite(gain) || !Number.isFinite(offset)) return null;
-  return { gain, offset, n: Number(data.n_points) || 0, fittedAt: String(data.created_at) };
+  return {
+    gain,
+    offset,
+    knots: toKnots((data as { knots?: unknown }).knots),
+    n: Number(data.n_points) || 0,
+    fittedAt: String(data.created_at),
+  };
 }
 
 /** Fetch and apply the active alignment to the live estimator. */

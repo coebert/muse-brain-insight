@@ -33,8 +33,8 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
     return tail.map((p, i) => ({
       i: i + 1,
       "Commercial BIS": p.bis,
-      "Open index (raw)": p.raw,
-      ...(hasCorrection ? { "Open index (corrected)": p.corrected } : {}),
+      "OpenIBIS (raw)": p.raw,
+      ...(hasCorrection ? { "COEBIS": p.corrected } : {}),
       recordedAt: p.recordedAt,
     }));
   }, [series, n, hasCorrection]);
@@ -60,7 +60,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
     <div className="space-y-2 border-t border-border pt-3">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Open index vs commercial BIS — last {stats.n} paired readings
+          OpenIBIS / COEBIS vs commercial BIS — last {stats.n} paired readings
         </h3>
         <div className="ml-auto flex items-center gap-1">
           {WINDOWS.filter((w) => w <= Math.max(30, series.length)).map((w) => (
@@ -115,7 +115,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
             />
             <Line
               type="monotone"
-              dataKey="Open index (raw)"
+              dataKey="OpenIBIS (raw)"
               stroke="var(--caution)"
               strokeDasharray="4 3"
               dot={false}
@@ -124,7 +124,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
             {hasCorrection ? (
               <Line
                 type="monotone"
-                dataKey="Open index (corrected)"
+                dataKey="COEBIS"
                 stroke="var(--signal)"
                 strokeWidth={2}
                 dot={false}
@@ -137,8 +137,8 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
 
       <p className="text-[11px] text-muted-foreground">
         Mean absolute difference from the monitor over this window:{" "}
-        {stats.raw == null ? "—" : `${stats.raw.toFixed(1)} index points raw`}
-        {stats.corrected == null ? "" : ` · ${stats.corrected.toFixed(1)} corrected`}. Dashed
+        {stats.raw == null ? "—" : `${stats.raw.toFixed(1)} index points OpenIBIS`}
+        {stats.corrected == null ? "" : ` · ${stats.corrected.toFixed(1)} COEBIS`}. Dashed
         guides mark the 40–60 window.
       </p>
     </div>

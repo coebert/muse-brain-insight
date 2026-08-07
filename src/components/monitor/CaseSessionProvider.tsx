@@ -45,7 +45,7 @@ import {
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
-import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
+import { getBisDrift, recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
@@ -90,6 +90,8 @@ function useCaseSessionState() {
 
   /** Files paired BIS/app values for the cross-case drift watch. */
   const fileBisPoints = useServerFn(recordBisPoints);
+  /** Re-runs the pooled fit so COEBIS keeps refining as cases accumulate. */
+  const refreshCoebis = useServerFn(getBisDrift);
 
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
@@ -590,6 +592,13 @@ function useCaseSessionState() {
                 points: paired,
               },
             });
+            // New paired data: refit COEBIS and pick the new model up locally.
+            try {
+              await refreshCoebis({});
+              await syncBisAlignment();
+            } catch {
+              // A refit failure is silent; the existing model stays in force.
+            }
           } catch {
             // The case itself is saved; a failed comparison upload must not
             // look like a lost record.
