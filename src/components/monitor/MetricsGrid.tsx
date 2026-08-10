@@ -1,6 +1,7 @@
 import type React from "react";
 
 import { MetricTile } from "@/components/monitor/MetricTile";
+import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatDuration } from "@/lib/eeg/format";
@@ -39,6 +40,9 @@ export function MetricsGrid({
   depthWindow,
   uncertainty,
 }: MetricsGridProps) {
+  // The active COEBIS fit, refreshed while the case runs so the tile always
+  // shows the number from the latest model.
+  const coebisModel = useCoebisModel();
   // Short "95 % CI a–b" suffixes appended to the tiles that carry an interval.
   const srCi = uncertainty?.suppression.interval;
   const sefCi = uncertainty?.spectral.interval;
@@ -86,8 +90,8 @@ export function MetricsGrid({
               value={latest?.depth.coebis != null ? String(latest.depth.coebis) : "—"}
               hint={
                 latest?.depth.coebis != null
-                  ? `App-learned index · OpenIBIS ${latest.depth.index ?? "—"}`
-                  : "Learning — needs paired commercial BIS readings"
+                  ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)}`
+                  : describeCoebisModel(coebisModel)
               }
               tone={
                 latest?.depth.coebis == null || latest.depth.held
