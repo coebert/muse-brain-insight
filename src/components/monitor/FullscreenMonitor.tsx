@@ -64,6 +64,7 @@ export function FullscreenMonitor({
   waveformStore,
   elapsed,
   sourceName,
+  startedAtMs,
   streaming,
   modeLabel,
   windowMinutes,
@@ -265,7 +266,7 @@ export function FullscreenMonitor({
             <DsaMarkerRail markers={markerRail} elapsed={elapsed} windowSeconds={windowSeconds} />
           </div>
 
-          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
+          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 short:hidden!">
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
                 <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
@@ -314,6 +315,14 @@ export function FullscreenMonitor({
                 </div>
               </div>
             </div>
+          </div>
+            <CoebisTrend
+              epochs={epochs}
+              elapsed={elapsed}
+              windowMinutes={windowMinutes}
+              startedAtMs={startedAtMs ?? null}
+              compact
+            />
           </div>
         </div>
 
