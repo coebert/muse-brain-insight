@@ -24,6 +24,7 @@ import {
   type HemiSpectra,
 } from "@/hooks/useEegMonitor";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
+import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,8 @@ export function FullscreenMonitor({
   controls,
   onExit,
 }: Props) {
+  // Latest COEBIS fit, so the bedside tile names the model it is showing.
+  const coebisModel = useCoebisModel();
   // Enter the browser's fullscreen mode where allowed, and mirror Esc/F11 exits.
   useEffect(() => {
     const el = document.documentElement;
