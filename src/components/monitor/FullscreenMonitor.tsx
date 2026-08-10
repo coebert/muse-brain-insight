@@ -15,6 +15,7 @@ import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { alignSeries } from "@/lib/eeg/gaps";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
 import { suppressionTone } from "@/lib/eeg/derivations";
 import {
