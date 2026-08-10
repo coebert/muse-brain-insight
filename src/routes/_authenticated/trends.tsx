@@ -310,6 +310,7 @@ function Trends() {
     return [
       { label: "At", value: cursorRow ? formatClock(cursorRow.t) : "—" },
       { label: "Depth", value: num(cursorRow?.depth, 0) },
+      { label: "COEBIS", value: num(cursorRow?.coebis, 0) },
       { label: "SEF95", value: num(cursorRow?.sef95, 1, " Hz") },
       { label: "SR", value: num(cursorRow?.sr, 1, " %") },
       { label: "Entropy", value: num(cursorRow?.entropy, 0) },
@@ -485,6 +486,10 @@ function Trends() {
               <Stat
                 label="Mean depth"
                 value={summary.meanDepth == null ? "—" : summary.meanDepth.toFixed(0)}
+              />
+              <Stat
+                label="Mean COEBIS"
+                value={summary.meanCoebis == null ? "—" : summary.meanCoebis.toFixed(0)}
               />
               <Stat
                 label="Mean SEF95"
