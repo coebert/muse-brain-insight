@@ -53,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/compare")({
 
 const SERIES = [
   { key: "depth", label: "Depth index (OpenIBIS)", color: "var(--chart-1)", axis: "left" },
+  { key: "coebis", label: "COEBIS (back-calculated)", color: "var(--chart-4)", axis: "left" },
   { key: "sef95", label: "SEF95 (Hz)", color: "var(--chart-2)", axis: "left" },
   { key: "sr", label: "Suppression ratio (%)", color: "var(--chart-3)", axis: "left" },
   { key: "entropy", label: "State entropy (x100)", color: "var(--chart-5)", axis: "left" },
@@ -62,8 +63,11 @@ type SeriesKey = (typeof SERIES)[number]["key"];
 
 function Compare() {
   const [sessionId, setSessionId] = useState<string>("");
+  // Active COEBIS fit; stored cases are re-scored against it on the fly.
+  const coebisModel = useCoebisModel();
   const [visible, setVisible] = useState<Record<SeriesKey, boolean>>({
     depth: true,
+    coebis: true,
     sef95: true,
     sr: true,
     entropy: false,
