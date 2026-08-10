@@ -31,6 +31,7 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
