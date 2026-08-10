@@ -246,7 +246,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
           residual: corrected == null ? null : round(corrected - p.bis),
           reliable: p.reliable,
           sqi: p.sqi == null ? null : round(p.sqi),
-          context: p.context,
+          context: p.context ?? null,
           usedInFit: inFit.has(p),
         };
       }),
