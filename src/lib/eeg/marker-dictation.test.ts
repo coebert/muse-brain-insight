@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normaliseDictation } from "./marker-dictation";
+import { composeMarkerLabel, normaliseDictation, normaliseRoute } from "./marker-dictation";
 
 describe("normaliseDictation", () => {
   it("orders several events from one entry chronologically", () => {
@@ -54,5 +54,63 @@ describe("normaliseDictation", () => {
     expect(result.markers[0]).toMatchObject({ label: "Line inserted", atSeconds: 0 });
     expect(result.markers[1]).toMatchObject({ label: "Ketamine bolus", atSeconds: 300 });
     expect(result.unmatched).toEqual(["patient looks settled"]);
+  });
+
+  it("keeps drug, dose and route as structured fields and in the label", () => {
+    const result = normaliseDictation(
+      {
+        markers: [
+          {
+            label: "Rocuronium",
+            atSeconds: 60,
+            timing: "stated",
+            drug: "rocuronium",
+            doseValue: 40,
+            doseUnit: "mg",
+            route: "intravenous",
+            quote: "rocuronium 40mg IV at 1 minute",
+          },
+          { label: "Surgical incision", atSeconds: 120 },
+        ],
+      },
+      600,
+    );
+
+    expect(result.markers[0]).toMatchObject({
+      label: "Rocuronium 40 mg IV",
+      drug: "Rocuronium",
+      doseValue: 40,
+      doseUnit: "mg",
+      route: "IV",
+    });
+    expect(result.markers[1]?.drug).toBeUndefined();
+    expect(result.markers[1]?.label).toBe("Surgical incision");
+  });
+
+  it("does not invent a route when none was stated", () => {
+    const result = normaliseDictation(
+      { markers: [{ label: "x", drug: "fentanyl", doseValue: 100, doseUnit: "mcg", atSeconds: 10 }] },
+      600,
+    );
+    expect(result.markers[0]?.route).toBeUndefined();
+    expect(result.markers[0]?.label).toBe("Fentanyl 100 mcg");
+  });
+
+  it("normalises written routes and ignores unknown ones", () => {
+    expect(normaliseRoute("i.v.")).toBe("IV");
+    expect(normaliseRoute("neb")).toBe("nebulised");
+    expect(normaliseRoute("Target controlled infusion")).toBe("TCI");
+    expect(normaliseRoute("by carrier pigeon")).toBeUndefined();
+  });
+
+  it("falls back to the model label when there is no drug", () => {
+    expect(
+      composeMarkerLabel({
+        label: "Facial twitching noted",
+        atSeconds: 5,
+        timing: "assumed-now",
+        quote: "",
+      }),
+    ).toBe("Facial twitching noted");
   });
 });

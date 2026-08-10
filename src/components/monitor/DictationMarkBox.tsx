@@ -104,6 +104,17 @@ export function DictationMarkBox({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{marker.label}</p>
+                {marker.drug ? (
+                  <p className="metric-value text-xs text-muted-foreground">
+                    {[
+                      `drug ${marker.drug}`,
+                      marker.doseValue !== undefined
+                        ? `dose ${marker.doseValue}${marker.doseUnit ? ` ${marker.doseUnit}` : ""}`
+                        : "dose not stated",
+                      marker.route ? `route ${marker.route}` : "route not stated",
+                    ].join(" · ")}
+                  </p>
+                ) : null}
                 <p className="metric-value text-xs text-muted-foreground">
                   {formatClock(marker.atSeconds)} · {TIMING_LABEL[marker.timing]}
                   {marker.quote ? ` · “${marker.quote}”` : ""}
