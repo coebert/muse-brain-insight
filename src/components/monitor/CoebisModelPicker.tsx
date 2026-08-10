@@ -9,6 +9,8 @@ import { Check, History, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CoebisFitBadge } from "@/components/monitor/CoebisFitBadge";
+import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
 import type { BisAlignment } from "@/lib/eeg/depth";
 
@@ -28,6 +30,8 @@ function metricsLabel(model: BisAlignment): string {
   const parts: string[] = [`${model.n} paired readings`];
   if (typeof model.biasAfter === "number") parts.push(`bias ${model.biasAfter.toFixed(1)}`);
   if (typeof model.maeAfter === "number") parts.push(`MAE ${model.maeAfter.toFixed(1)}`);
+  const q = computeCoebisFitQuality(model);
+  if (q.inFitPercent != null) parts.push(`~${q.inFitPercent}% in ±5`);
   return parts.join(" · ");
 }
 
@@ -45,6 +49,7 @@ export function CoebisModelPicker({ className }: { className?: string }) {
         >
           <History className="mr-1.5 size-3.5" aria-hidden />
           COEBIS {coebisVersionLabel(active)}
+          <CoebisFitBadge model={active} className="ml-1.5" compact />
           {pinned ? (
             <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
               pinned
