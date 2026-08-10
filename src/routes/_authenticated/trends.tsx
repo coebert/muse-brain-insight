@@ -38,6 +38,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { computeCoebis } from "@/lib/eeg/depth";
+import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
