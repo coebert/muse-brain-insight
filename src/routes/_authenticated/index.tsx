@@ -30,6 +30,7 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
+import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
