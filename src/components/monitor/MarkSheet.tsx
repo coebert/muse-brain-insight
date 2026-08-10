@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BACKDATE_OFFSETS, MARKER_GROUPS } from "@/lib/eeg/marker-presets";
+import { DictationMarkBox } from "@/components/monitor/DictationMarkBox";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
 import type { MarkerMode } from "@/lib/eeg/marker-presets";
 import { formatClock } from "@/lib/eeg/format";
@@ -34,6 +35,8 @@ export function MarkSheet({
 
   return (
     <div className="space-y-4">
+      <DictationMarkBox elapsed={elapsed} onMark={onMark} />
+
       {mode ? (
         <div>
           <p className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
