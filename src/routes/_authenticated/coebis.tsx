@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
+import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel";
 import { formatClock } from "@/lib/eeg/format";
 import { getCoebisTrainingData } from "@/lib/eeg/coebis-data.functions";
 
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 
 const TABS = [
   { key: "readings", label: "Paired readings" },
+  { key: "residuals", label: "Residuals" },
   { key: "cases", label: "By case" },
   { key: "coverage", label: "Coverage & corrections" },
 ] as const;
@@ -245,6 +247,8 @@ function CoebisDataPage() {
               ) : null}
             </section>
           ) : null}
+
+          {tab === "residuals" ? <CoebisResidualsPanel residuals={data.residuals} /> : null}
 
           {tab === "cases" ? (
             <section className="panel overflow-x-auto p-0">
