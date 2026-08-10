@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { computeCoebisResiduals, type CoebisResiduals } from "@/lib/eeg/coebis-residuals";
 import {
   KNOT_POSITIONS,
   MIN_POINTS,
@@ -79,6 +80,8 @@ export interface CoebisTrainingData {
   knots: CoebisKnotRow[];
   bands: { band: string; n: number; bias: number | null; meanAbsolute: number | null }[];
   cases: CoebisCaseRow[];
+  /** Where the active fit agrees and where it fails, over every paired reading. */
+  residuals: CoebisResiduals | null;
   /** Most recent readings, newest first, for inspection. */
   points: CoebisTrainingPoint[];
 }
@@ -219,6 +222,26 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
       .slice(0, 300);
 
+    // Residual breakdown runs over every paired reading, not just the recent
+    // window shown in the table, so the percentages match the fitted model.
+    const residuals = active
+      ? computeCoebisResiduals(
+          points.flatMap((p) => {
+            const corrected = map(p.appIndex);
+            if (corrected == null) return [];
+            return [
+              {
+                residual: round(corrected - p.bis),
+                bis: p.bis,
+                recordedAt: p.recordedAt,
+                caseCode: codeFor(p.sessionId),
+                usedInFit: inFit.has(p),
+              },
+            ];
+          }),
+        )
+      : null;
+
     return {
       totalPoints: points.length,
       usedPoints: fitPoints.length,
@@ -232,6 +255,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       knots,
       bands: analysis.bands,
       cases,
+      residuals,
       points: recent.map((p) => {
         const corrected = map(p.appIndex);
         return {
