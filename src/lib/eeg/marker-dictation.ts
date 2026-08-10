@@ -35,12 +35,17 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
   const markers: DictatedMarker[] = [];
 
   if (Array.isArray(source.markers)) {
-    for (const entry of source.markers.slice(0, 12)) {
+    const seen = new Set<string>();
+    for (const entry of source.markers.slice(0, 20)) {
       const item = (entry ?? {}) as Record<string, unknown>;
       const label = clean(item["label"], 60);
       if (!label) continue;
       const seconds = Number(item["atSeconds"]);
       const at = Number.isFinite(seconds) ? Math.min(limit, Math.max(0, Math.round(seconds))) : limit;
+      // The same event restated twice in one entry should mark the case once.
+      const key = `${label.toLowerCase()}@${at}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       const timing = item["timing"];
       markers.push({
         label,
@@ -61,6 +66,12 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
         .slice(0, 4)
     : [];
 
-  markers.sort((a, b) => a.atSeconds - b.atSeconds);
-  return { markers, unmatched };
+  // Chronological order, and stable for events sharing a timestamp so the
+  // proposal list reads in the order the clinician wrote them.
+  const ordered = markers
+    .map((marker, index) => ({ marker, index }))
+    .sort((a, b) => a.marker.atSeconds - b.marker.atSeconds || a.index - b.index)
+    .map((entry) => entry.marker);
+
+  return { markers: ordered, unmatched };
 }
