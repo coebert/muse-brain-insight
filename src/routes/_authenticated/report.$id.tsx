@@ -85,6 +85,8 @@ function CaseReport() {
     abbreviation: zoneAbbreviation,
     offsetLabel: zoneOffsetLabel,
   } = useTimeZonePreference();
+  // Active COEBIS fit used to re-score this stored case.
+  const coebisModel = useCoebisModel();
 
   const session = useQuery({
     queryKey: ["eeg_sessions", "report", id],
