@@ -352,9 +352,10 @@ export function FullscreenMonitor({
               value={depth?.coebis != null ? String(depth.coebis) : "—"}
               hint={
                 depth?.coebis != null
-                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)}`
+                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
                   : describeCoebisModel(coebisModel)
               }
+              badge={<CoebisFitBadge model={coebisModel} compact />}
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
             />
