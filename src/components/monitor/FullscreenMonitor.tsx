@@ -338,8 +338,8 @@ export function FullscreenMonitor({
               value={depth?.coebis != null ? String(depth.coebis) : "—"}
               hint={
                 depth?.coebis != null
-                  ? `App-learned · OpenIBIS ${depth.index ?? "—"}`
-                  : "Learning from paired BIS"
+                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)}`
+                  : describeCoebisModel(coebisModel)
               }
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
