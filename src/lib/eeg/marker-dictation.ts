@@ -132,6 +132,7 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
       const doseValue =
         Number.isFinite(doseRaw) && doseRaw > 0 ? Math.round(doseRaw * 1000) / 1000 : undefined;
       const doseUnit = doseValue === undefined ? "" : clean(item["doseUnit"], 12);
+      const route = normaliseRoute(item["route"]);
       const marker: DictatedMarker = {
         label,
         atSeconds: at,
@@ -143,7 +144,7 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
         ...(drug ? { drug } : {}),
         ...(doseValue !== undefined ? { doseValue } : {}),
         ...(doseUnit ? { doseUnit } : {}),
-        ...(normaliseRoute(item["route"]) ? { route: normaliseRoute(item["route"]) } : {}),
+        ...(route ? { route } : {}),
       };
       // Keep the filed label consistent with the structured fields.
       marker.label = composeMarkerLabel(marker);
