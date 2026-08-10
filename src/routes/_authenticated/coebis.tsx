@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
+import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { formatClock } from "@/lib/eeg/format";
 import { getCoebisTrainingData } from "@/lib/eeg/coebis-data.functions";
 
@@ -85,6 +86,7 @@ function CoebisDataPage() {
           <Database className="size-5 text-signal" /> COEBIS training data
         </h1>
         <div className="ml-auto">
+          <CoebisModelPicker />
           <AppNav compact showBrand={false} />
         </div>
       </header>

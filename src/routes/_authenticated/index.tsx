@@ -30,6 +30,7 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
+import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
@@ -816,6 +817,11 @@ function Monitor() {
 
             {/* Metrics */}
             <div id="mon-metrics" className="scroll-mt-24 rounded-lg transition-shadow">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
+              {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
+              <CoebisModelPicker />
+            </div>
             <MetricsGrid
               uncertainty={uncertainty}
               latest={latest}

@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { Activity, ArrowLeft } from "lucide-react";
 
+import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
@@ -410,6 +411,8 @@ function Trends() {
             <Button asChild variant="outline" size="sm">
               <Link to="/compare">Compare</Link>
             </Button>
+            {/* Which COEBIS fit the back-calculated trace uses. */}
+            <CoebisModelPicker />
             <Button asChild variant="outline" size="sm">
               <Link to="/sessions">Sessions</Link>
             </Button>
