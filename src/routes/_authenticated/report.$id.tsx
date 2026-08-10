@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { computeCoebis } from "@/lib/eeg/depth";
+import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
 import { TimeZoneControl } from "@/components/TimeZoneControl";
 
@@ -124,9 +126,12 @@ function CaseReport() {
     () =>
       (epochs.data ?? []).map((e) => {
         const ent = (e.entropy ?? null) as { state?: number } | null;
+        const depth = e.depth_index === null ? null : Number(e.depth_index);
         return {
           t: Number(e.t_offset_seconds) || 0,
-          depth: e.depth_index === null ? null : Number(e.depth_index),
+          depth,
+          // Back-calculated from the stored open index with the current model.
+          coebis: depth === null ? null : computeCoebis(depth),
           sef95: e.spectral_edge_95 === null ? null : Number(e.spectral_edge_95),
           sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
           seizure: e.seizure_score === null ? null : Number(e.seizure_score),
@@ -134,7 +139,7 @@ function CaseReport() {
           suppressed: e.is_suppressed ? 1 : 0,
         };
       }),
-    [epochs.data],
+    [epochs.data, coebisModel],
   );
 
   const spectra = useMemo(
@@ -147,7 +152,7 @@ function CaseReport() {
   const times = useMemo(() => rows.map((r) => r.t), [rows]);
 
   const summary = useMemo(() => {
-    const vals = (key: "depth" | "sef95" | "sr" | "seizure") =>
+    const vals = (key: "depth" | "coebis" | "sef95" | "sr" | "seizure") =>
       rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
     const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
     const cadence =
@@ -160,6 +165,7 @@ function CaseReport() {
     return {
       duration: rows.length ? rows[rows.length - 1]!.t : 0,
       meanDepth: mean(depth),
+      meanCoebis: mean(vals("coebis")),
       minDepth: depth.length ? Math.min(...depth) : null,
       meanSef: mean(vals("sef95")),
       meanSr: mean(sr),
@@ -293,6 +299,11 @@ function CaseReport() {
                   value={summary.meanSef == null ? "—" : `${summary.meanSef.toFixed(1)} Hz`}
                 />
                 <Stat
+                  label="Mean COEBIS"
+                  value={summary.meanCoebis == null ? "—" : summary.meanCoebis.toFixed(0)}
+                  sub={describeCoebisModel(coebisModel)}
+                />
+                <Stat
                   label="Mean suppression ratio"
                   value={summary.meanSr == null ? "—" : `${summary.meanSr.toFixed(1)} %`}
                   {...(summary.maxSr == null ? {} : { sub: `peak ${summary.maxSr.toFixed(0)} %` })}
@@ -354,6 +365,15 @@ function CaseReport() {
                     />
                     <Line
                       type="monotone"
+                      dataKey="coebis"
+                      stroke="var(--chart-3)"
+                      dot={false}
+                      strokeWidth={1.6}
+                      isAnimationActive={false}
+                      connectNulls
+                    />
+                    <Line
+                      type="monotone"
                       dataKey="sef95"
                       stroke="var(--chart-2)"
                       dot={false}
@@ -365,8 +385,8 @@ function CaseReport() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Depth index (0–100) with the 40–60 surgical band marked; SEF95 in Hz on the same
-                axis.
+                Depth index (0–100) with the 40–60 surgical band marked, COEBIS back-calculated
+                from the same recording with the current model, and SEF95 in Hz on the same axis.
               </p>
             </section>
 
