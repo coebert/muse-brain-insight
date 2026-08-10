@@ -16,6 +16,7 @@ import { alignSeries } from "@/lib/eeg/gaps";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
+import { CoebisFitBadge, coebisFitHint } from "@/components/monitor/CoebisFitBadge";
 import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
 import { suppressionTone } from "@/lib/eeg/derivations";
 import {
@@ -352,9 +353,10 @@ export function FullscreenMonitor({
               value={depth?.coebis != null ? String(depth.coebis) : "—"}
               hint={
                 depth?.coebis != null
-                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)}`
+                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
                   : describeCoebisModel(coebisModel)
               }
+              badge={<CoebisFitBadge model={coebisModel} compact />}
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
             />

@@ -1,6 +1,7 @@
 import type React from "react";
 
 import { MetricTile } from "@/components/monitor/MetricTile";
+import { CoebisFitBadge, coebisFitHint } from "@/components/monitor/CoebisFitBadge";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
@@ -90,9 +91,10 @@ export function MetricsGrid({
               value={latest?.depth.coebis != null ? String(latest.depth.coebis) : "—"}
               hint={
                 latest?.depth.coebis != null
-                  ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)}`
-                  : describeCoebisModel(coebisModel)
+                  ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
+                  : `${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
               }
+              badge={<CoebisFitBadge model={coebisModel} compact />}
               tone={
                 latest?.depth.coebis == null || latest.depth.held
                   ? "default"

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 import type { ParameterInfoKey } from "@/lib/eeg/parameter-info";
@@ -44,6 +44,8 @@ export interface MetricCardProps {
   reliabilityReasons?: string[] | undefined;
   /** Opens an explanation of significance, physiology and reliability. */
   info?: ParameterInfoKey | undefined;
+  /** Extra chip rendered next to the label (e.g. model fit quality). */
+  badge?: ReactNode | undefined;
   /** `tile` = dashboard grid card, `bedside` = fullscreen monitor numeric. */
   size?: "tile" | "bedside";
 }
@@ -66,6 +68,7 @@ function MetricCardInner({
   degraded,
   reliabilityReasons,
   info,
+  badge,
   size = "tile",
 }: MetricCardProps) {
   const reasonText = reliabilityReasons?.length ? reliabilityReasons.join(" · ") : undefined;
@@ -84,6 +87,7 @@ function MetricCardInner({
         <p className="flex items-center gap-1.5 text-xs tracking-[0.16em] text-muted-foreground uppercase">
           {label}
           {info ? <ParameterInfo parameter={info} /> : null}
+          {badge}
           {unreliable ? (
             <span className="rounded-sm bg-critical/15 px-1 py-px text-[11px] tracking-normal text-critical">
               unreliable
@@ -118,6 +122,7 @@ function MetricCardInner({
       <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
         <span className="min-w-0">{label}</span>
         {info ? <ParameterInfo parameter={info} /> : null}
+        {badge}
       </p>
       <p
         className={cn(
