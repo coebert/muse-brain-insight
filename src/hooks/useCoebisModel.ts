@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
+  fetchBisAlignmentHistory,
+  getLatestBisAlignment,
   getSyncedBisAlignment,
+  isBisAlignmentPinned,
+  pinBisAlignment,
   subscribeBisAlignment,
   syncBisAlignment,
   syncBisAlignmentIfStale,
@@ -55,12 +59,64 @@ export function useCoebisModel(): BisAlignment | null {
   return model;
 }
 
-/** Short "learned from N readings" line for the COEBIS tiles. */
+/** Version label for a fit, e.g. `v4`. */
+export function coebisVersionLabel(model: BisAlignment | null): string {
+  if (!model) return "no model";
+  return model.version ? `v${model.version}` : "v?";
+}
+
+/** Short "model v4 · N readings" line for the COEBIS tiles. */
 export function describeCoebisModel(model: BisAlignment | null): string {
   if (!model) return "Learning — needs paired commercial BIS readings";
   const fitted = new Date(model.fittedAt);
   const when = Number.isNaN(fitted.getTime())
     ? ""
     : ` · fitted ${fitted.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`;
-  return `Model v${model.n} readings${when}`;
+  const pinned = model.version && !model.isActive ? " · pinned for comparison" : "";
+  return `Model ${coebisVersionLabel(model)} · ${model.n} readings${when}${pinned}`;
+}
+
+/**
+ * Every fitted COEBIS version plus the pin controls, so a clinician can hold
+ * the display on an older model and compare it against the current one.
+ */
+export function useCoebisModelVersions() {
+  const active = useCoebisModel();
+  const [versions, setVersions] = useState<BisAlignment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    const list = await fetchBisAlignmentHistory();
+    setVersions(list);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const select = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        pinBisAlignment(null);
+        return;
+      }
+      const next = versions.find((v) => v.id === id);
+      if (!next) return;
+      // Pinning the newest fit is the same as running live, so release instead.
+      pinBisAlignment(next.id === getLatestBisAlignment()?.id ? null : next);
+    },
+    [versions],
+  );
+
+  return {
+    active,
+    latest: getLatestBisAlignment(),
+    pinned: isBisAlignmentPinned(),
+    versions,
+    loading,
+    select,
+    reload,
+  };
 }
