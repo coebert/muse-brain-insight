@@ -92,13 +92,16 @@ export function DictationMarkBox({
       {proposed.length ? (
         <div className="mt-3 space-y-2">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Proposed markers — check the times
+            {proposed.length} proposed marker{proposed.length === 1 ? "" : "s"} — in time order, check the times
           </p>
           {proposed.map((marker, index) => (
             <div
               key={`${marker.label}-${marker.atSeconds}-${index}`}
               className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2"
             >
+              <span className="metric-value flex size-6 shrink-0 items-center justify-center rounded-full border border-border text-[11px] text-muted-foreground">
+                {index + 1}
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{marker.label}</p>
                 <p className="metric-value text-xs text-muted-foreground">
