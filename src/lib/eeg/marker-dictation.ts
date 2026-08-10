@@ -13,6 +13,82 @@ export interface DictatedMarker {
   timing: "stated" | "relative" | "assumed-now";
   /** The words in the note this marker came from. */
   quote: string;
+  /** Drug name in sentence case, when the event was a drug administration. */
+  drug?: string;
+  /** Numeric dose amount, when one was stated. */
+  doseValue?: number;
+  /** Dose unit exactly as clinicians write it, e.g. "mg", "mcg", "mg/kg/hr". */
+  doseUnit?: string;
+  /** Normalised route of administration, e.g. "IV", "IM", "inhaled". */
+  route?: DrugRoute;
+}
+
+/** Routes the parser recognises; anything else is dropped rather than guessed. */
+export const DRUG_ROUTES = [
+  "IV",
+  "IM",
+  "SC",
+  "PO",
+  "SL",
+  "PR",
+  "IN",
+  "inhaled",
+  "nebulised",
+  "topical",
+  "epidural",
+  "intrathecal",
+  "infusion",
+  "TCI",
+] as const;
+
+export type DrugRoute = (typeof DRUG_ROUTES)[number];
+
+const ROUTE_LOOKUP = new Map<string, DrugRoute>();
+for (const route of DRUG_ROUTES) ROUTE_LOOKUP.set(route.toLowerCase(), route);
+for (const [written, route] of [
+  ["intravenous", "IV"],
+  ["i.v.", "IV"],
+  ["iv bolus", "IV"],
+  ["intramuscular", "IM"],
+  ["i.m.", "IM"],
+  ["subcut", "SC"],
+  ["subcutaneous", "SC"],
+  ["oral", "PO"],
+  ["by mouth", "PO"],
+  ["sublingual", "SL"],
+  ["buccal", "SL"],
+  ["rectal", "PR"],
+  ["intranasal", "IN"],
+  ["nasal", "IN"],
+  ["inhalational", "inhaled"],
+  ["volatile", "inhaled"],
+  ["neb", "nebulised"],
+  ["nebulized", "nebulised"],
+  ["target controlled infusion", "TCI"],
+  ["ivi", "infusion"],
+] as const) {
+  ROUTE_LOOKUP.set(written, route);
+}
+
+/** Map whatever the model wrote for a route onto the supported set. */
+export function normaliseRoute(value: unknown): DrugRoute | undefined {
+  if (typeof value !== "string") return undefined;
+  const key = value.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!key) return undefined;
+  return ROUTE_LOOKUP.get(key) ?? ROUTE_LOOKUP.get(key.replace(/[.\s]/g, "")) ?? undefined;
+}
+
+/**
+ * The single line filed onto the timeline: drug, dose and route read back the
+ * way an anaesthetist writes them on a chart ("Rocuronium 40 mg IV").
+ */
+export function composeMarkerLabel(marker: DictatedMarker): string {
+  if (!marker.drug) return marker.label;
+  const dose =
+    marker.doseValue !== undefined
+      ? `${marker.doseValue}${marker.doseUnit ? ` ${marker.doseUnit}` : ""}`
+      : "";
+  return [marker.drug, dose, marker.route].filter(Boolean).join(" ").slice(0, 60);
 }
 
 export interface MarkerDictationResult {
@@ -23,6 +99,10 @@ export interface MarkerDictationResult {
 
 function clean(value: unknown, max: number): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+
+function sentenceCase(value: string): string {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 /**
@@ -47,7 +127,12 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
       if (seen.has(key)) continue;
       seen.add(key);
       const timing = item["timing"];
-      markers.push({
+      const drug = sentenceCase(clean(item["drug"], 40));
+      const doseRaw = Number(item["doseValue"]);
+      const doseValue =
+        Number.isFinite(doseRaw) && doseRaw > 0 ? Math.round(doseRaw * 1000) / 1000 : undefined;
+      const doseUnit = doseValue === undefined ? "" : clean(item["doseUnit"], 12);
+      const marker: DictatedMarker = {
         label,
         atSeconds: at,
         timing:
@@ -55,7 +140,14 @@ export function normaliseDictation(raw: unknown, elapsed: number): MarkerDictati
             ? timing
             : "assumed-now",
         quote: clean(item["quote"], 120),
-      });
+        ...(drug ? { drug } : {}),
+        ...(doseValue !== undefined ? { doseValue } : {}),
+        ...(doseUnit ? { doseUnit } : {}),
+        ...(normaliseRoute(item["route"]) ? { route: normaliseRoute(item["route"]) } : {}),
+      };
+      // Keep the filed label consistent with the structured fields.
+      marker.label = composeMarkerLabel(marker);
+      markers.push(marker);
     }
   }
 
