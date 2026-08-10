@@ -124,6 +124,15 @@ export interface BisAlignment {
   /** Paired readings the map was fitted on. */
   n: number;
   fittedAt: string;
+  /** Row id of the fit in depth_bis_alignments, when it came from storage. */
+  id?: string;
+  /** 1-based fit sequence for this user, oldest fit = v1. */
+  version?: number;
+  /** True for the fit the app currently treats as the live model. */
+  isActive?: boolean;
+  /** Agreement metrics recorded at fit time, for version comparison. */
+  biasAfter?: number | null;
+  maeAfter?: number | null;
 }
 
 /** One residual correction: at aligned index `x`, add `dy`. */
