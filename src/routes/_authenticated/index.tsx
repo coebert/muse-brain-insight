@@ -30,6 +30,7 @@ import { EventLog } from "@/components/monitor/EventLog";
 import { AiInsightPanel } from "@/components/monitor/AiInsightPanel";
 import { TciResponsePanel } from "@/components/monitor/TciResponsePanel";
 import { MetricsGrid } from "@/components/monitor/MetricsGrid";
+import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
@@ -227,6 +228,7 @@ function Monitor() {
           onDsaViewChange={setDsaView}
           suppressionSeconds={summary.suppressionSeconds}
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+          startedAtMs={sessionStartedAtMs}
           controls={caseState !== "idle" ? caseControls : undefined}
           onExit={() => setFullscreen(false)}
         />
@@ -826,6 +828,15 @@ function Monitor() {
             />
 
             </div>
+
+            {caseState !== "idle" ? (
+              <CoebisTrend
+                epochs={monitor.epochs}
+                elapsed={monitor.elapsed}
+                windowMinutes={windowMinutes}
+                startedAtMs={sessionStartedAtMs}
+              />
+            ) : null}
 
             <AssessmentConfidencePanel report={uncertainty} />
 

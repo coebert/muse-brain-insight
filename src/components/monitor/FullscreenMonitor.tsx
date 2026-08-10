@@ -15,6 +15,7 @@ import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { alignSeries } from "@/lib/eeg/gaps";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { MetricCard, metricToneText, type MetricTone } from "@/components/monitor/MetricCard";
 import { suppressionTone } from "@/lib/eeg/derivations";
 import {
@@ -37,6 +38,8 @@ interface Props {
   latest: Epoch | null;
   waveformStore: WaveformStore;
   elapsed: number;
+  /** Wall-clock case start, used for timestamped trend ticks. */
+  startedAtMs?: number | null;
   sourceName: string;
   streaming: boolean;
   modeLabel: string;
@@ -61,6 +64,7 @@ export function FullscreenMonitor({
   waveformStore,
   elapsed,
   sourceName,
+  startedAtMs,
   streaming,
   modeLabel,
   windowMinutes,
@@ -262,7 +266,7 @@ export function FullscreenMonitor({
             <DsaMarkerRail markers={markerRail} elapsed={elapsed} windowSeconds={windowSeconds} />
           </div>
 
-          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 short:hidden!">
+          <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 short:hidden!">
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
                 <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
@@ -311,6 +315,13 @@ export function FullscreenMonitor({
                 </div>
               </div>
             </div>
+            <CoebisTrend
+              epochs={epochs}
+              elapsed={elapsed}
+              windowMinutes={windowMinutes}
+              startedAtMs={startedAtMs ?? null}
+              compact
+            />
           </div>
         </div>
 
