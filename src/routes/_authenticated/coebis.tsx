@@ -248,9 +248,10 @@ function CoebisDataPage() {
             </section>
           ) : null}
 
+          {tab === "residuals" ? <CoebisResidualsPanel residuals={data.residuals} /> : null}
+
           {tab === "cases" ? (
             <section className="panel overflow-x-auto p-0">
-
               {data.cases.length ? (
                 <table className="w-full min-w-[620px] text-sm">
                   <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
