@@ -17,6 +17,7 @@ const TOOLS = [
   { to: "/validate", label: "Agreement report" },
   { to: "/feedback", label: "Alert feedback" },
   { to: "/performance", label: "Alert tuning" },
+  { to: "/coebis", label: "COEBIS training data" },
 ] as const;
 
 /** Shared header navigation: Monitor, Cases, a Tools menu and Settings. */
