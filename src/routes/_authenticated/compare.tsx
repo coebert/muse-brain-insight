@@ -25,6 +25,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatClock } from "@/lib/eeg/format";
+import { computeCoebis } from "@/lib/eeg/depth";
+import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { correlate, correlationStrength, rollingCorrelation } from "@/lib/eeg/correlation";
 
 export const Route = createFileRoute("/_authenticated/compare")({
@@ -101,16 +103,19 @@ function Compare() {
     const list = epochs.data ?? [];
     return list.map((e) => {
       const ent = (e.entropy ?? null) as { state?: number } | null;
+      const depth = e.depth_index === null ? null : Number(e.depth_index);
       return {
         t: Number(e.t_offset_seconds) || 0,
-        depth: e.depth_index === null ? null : Number(e.depth_index),
+        depth,
+        // Back-calculated with the current COEBIS model, not stored per epoch.
+        coebis: depth === null ? null : computeCoebis(depth),
         sef95: e.spectral_edge_95 === null ? null : Number(e.spectral_edge_95),
         sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
         seizure: e.seizure_score === null ? null : Number(e.seizure_score),
         entropy: typeof ent?.state === "number" ? Number((ent.state * 100).toFixed(1)) : null,
       };
     });
-  }, [epochs.data]);
+  }, [epochs.data, coebisModel]);
 
   /** Epoch cadence in seconds, used to convert lag samples to time. */
   const cadence = useMemo(() => {
@@ -138,8 +143,14 @@ function Compare() {
   }
 
   const comparisons = useMemo(() => {
-    const defs: { label: string; a: "depth"; b: "sef95" | "sr" | "seizure" | "entropy" }[] = [
+    const defs: {
+      label: string;
+      a: "depth" | "coebis";
+      b: "coebis" | "sef95" | "sr" | "seizure" | "entropy";
+    }[] = [
+      { label: "Depth index vs COEBIS", a: "depth", b: "coebis" },
       { label: "Depth index vs SEF95", a: "depth", b: "sef95" },
+      { label: "COEBIS vs suppression ratio", a: "coebis", b: "sr" },
       { label: "Depth index vs suppression ratio", a: "depth", b: "sr" },
       { label: "Depth index vs state entropy", a: "depth", b: "entropy" },
       { label: "Depth index vs seizure score", a: "depth", b: "seizure" },
