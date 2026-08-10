@@ -15,6 +15,7 @@ import {
 import { Activity, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import {
   Select,
   SelectContent,
@@ -204,6 +205,8 @@ function Compare() {
             <Button asChild variant="outline" size="sm">
               <Link to="/validate">Agreement report</Link>
             </Button>
+            {/* Which COEBIS fit the back-calculated series uses. */}
+            <CoebisModelPicker />
             <Button asChild variant="outline" size="sm">
               <Link to="/sessions">Sessions</Link>
             </Button>
