@@ -828,6 +828,15 @@ function Monitor() {
 
             </div>
 
+            {caseState !== "idle" ? (
+              <CoebisTrend
+                epochs={monitor.epochs}
+                elapsed={monitor.elapsed}
+                windowMinutes={windowMinutes}
+                startedAtMs={sessionStartedAtMs}
+              />
+            ) : null}
+
             <AssessmentConfidencePanel report={uncertainty} />
 
             <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
