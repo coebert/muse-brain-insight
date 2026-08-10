@@ -1,6 +1,7 @@
 import type React from "react";
 
 import { MetricTile } from "@/components/monitor/MetricTile";
+import { CoebisFitBadge, coebisFitHint } from "@/components/monitor/CoebisFitBadge";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
