@@ -38,6 +38,8 @@ interface Props {
   latest: Epoch | null;
   waveformStore: WaveformStore;
   elapsed: number;
+  /** Wall-clock case start, used for timestamped trend ticks. */
+  startedAtMs?: number | null;
   sourceName: string;
   streaming: boolean;
   modeLabel: string;
