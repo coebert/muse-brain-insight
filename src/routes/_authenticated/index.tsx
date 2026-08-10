@@ -227,6 +227,7 @@ function Monitor() {
           onDsaViewChange={setDsaView}
           suppressionSeconds={summary.suppressionSeconds}
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
+          startedAtMs={sessionStartedAtMs}
           controls={caseState !== "idle" ? caseControls : undefined}
           onExit={() => setFullscreen(false)}
         />
