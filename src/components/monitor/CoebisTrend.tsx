@@ -93,7 +93,7 @@ export function CoebisTrend({
       <div className="flex items-center justify-between gap-2 px-2 pt-1">
         <span className="flex items-center gap-1 text-xs tracking-[0.16em] text-muted-foreground uppercase">
           COEBIS trend · {windowMinutes} min
-          {compact ? null : <ParameterInfo id="coebis" />}
+          {compact ? null : <ParameterInfo parameter="coebis" />}
         </span>
         <span className="metric-value text-xs text-signal">
           {latestCoebis != null ? Math.round(latestCoebis) : "—"}
