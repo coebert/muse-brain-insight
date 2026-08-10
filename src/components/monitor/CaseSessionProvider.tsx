@@ -83,10 +83,9 @@ function useCaseSessionState() {
 
   // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
   // live index reflects any correction the app has already earned the right to
-  // make.
-  useEffect(() => {
-    void syncBisAlignment();
-  }, []);
+  // make. The hook keeps re-checking during a case, so a model refitted while
+  // the case is running is picked up without a reload.
+  useCoebisModel();
 
   /** Files paired BIS/app values for the cross-case drift watch. */
   const fileBisPoints = useServerFn(recordBisPoints);
