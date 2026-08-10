@@ -315,7 +315,6 @@ export function FullscreenMonitor({
                 </div>
               </div>
             </div>
-          </div>
             <CoebisTrend
               epochs={epochs}
               elapsed={elapsed}
