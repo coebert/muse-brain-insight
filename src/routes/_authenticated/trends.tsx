@@ -122,6 +122,8 @@ const tooltipStyle = {
 function Trends() {
   const search = Route.useSearch();
   const [sessionId, setSessionId] = useState<string>(search.session ?? "");
+  // Active COEBIS fit; stored cases are re-scored against it on the fly.
+  const coebisModel = useCoebisModel();
 
   const sessions = useQuery({
     queryKey: ["eeg_sessions", "trends"],
