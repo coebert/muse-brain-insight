@@ -34,12 +34,12 @@ export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment
     .order("created_at", { ascending: true })
     .limit(200);
   if (error || !data) return [];
-  const all = data
+  const all: BisAlignment[] = data
     .map((row, i) => {
       const gain = Number(row.gain);
       const offset = Number(row.offset);
       if (!Number.isFinite(gain) || !Number.isFinite(offset)) return null;
-      return {
+      const entry: BisAlignment = {
         gain,
         offset,
         knots: toKnots((row as { knots?: unknown }).knots),
@@ -50,7 +50,8 @@ export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment
         isActive: Boolean(row.is_active),
         biasAfter: row.bias_after === null ? null : Number(row.bias_after),
         maeAfter: row.mae_after === null ? null : Number(row.mae_after),
-      } satisfies BisAlignment;
+      };
+      return entry;
     })
     .filter((a): a is BisAlignment => a !== null);
   return all.reverse().slice(0, limit);
