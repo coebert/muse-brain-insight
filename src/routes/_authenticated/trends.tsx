@@ -240,7 +240,7 @@ function Trends() {
   );
 
   const summary = useMemo(() => {
-    const vals = (key: "depth" | "sef95" | "sr" | "seizure") =>
+    const vals = (key: "depth" | "coebis" | "sef95" | "sr" | "seizure") =>
       rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
     const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
     const cadence =
@@ -252,6 +252,7 @@ function Trends() {
     return {
       duration: rows.length ? rows[rows.length - 1]!.t : 0,
       meanDepth: mean(vals("depth")),
+      meanCoebis: mean(vals("coebis")),
       meanSef: mean(vals("sef95")),
       meanSr: mean(sr),
       maxSr: sr.length ? Math.max(...sr) : null,
@@ -641,7 +642,10 @@ function Trends() {
                 </ResponsiveContainer>
               </TrendPanel>
 
-              <TrendPanel title="Depth index" hint="target band 40–60">
+              <TrendPanel
+                title="Depth index & COEBIS"
+                hint={`target band 40–60 · ${describeCoebisModel(coebisModel)}`}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
@@ -664,6 +668,14 @@ function Trends() {
                       type="monotone"
                       dataKey="depth"
                       stroke="var(--chart-1)"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="coebis"
+                      stroke="var(--chart-3)"
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
