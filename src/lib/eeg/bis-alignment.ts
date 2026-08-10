@@ -37,13 +37,43 @@ export async function fetchActiveBisAlignment(): Promise<BisAlignment | null> {
   };
 }
 
+/**
+ * The model currently driving COEBIS, mirrored here so the bedside tiles can
+ * show which version they are displaying without re-querying.
+ */
+let syncedAlignment: BisAlignment | null = null;
+let syncedAt = 0;
+const listeners = new Set<(alignment: BisAlignment | null) => void>();
+
+export function getSyncedBisAlignment(): BisAlignment | null {
+  return syncedAlignment;
+}
+
+/** Subscribe to model swaps; returns an unsubscribe. */
+export function subscribeBisAlignment(fn: (alignment: BisAlignment | null) => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 /** Fetch and apply the active alignment to the live estimator. */
 export async function syncBisAlignment(): Promise<BisAlignment | null> {
   try {
     const alignment = await fetchActiveBisAlignment();
     setActiveBisAlignment(alignment);
+    const changed =
+      (syncedAlignment?.fittedAt ?? null) !== (alignment?.fittedAt ?? null) ||
+      (syncedAlignment?.n ?? 0) !== (alignment?.n ?? 0);
+    syncedAlignment = alignment;
+    syncedAt = Date.now();
+    if (changed) for (const fn of listeners) fn(alignment);
     return alignment;
   } catch {
     return null;
   }
+}
+
+/** Re-sync only when the mirrored copy is older than `maxAgeMs`. */
+export async function syncBisAlignmentIfStale(maxAgeMs = 5 * 60_000): Promise<BisAlignment | null> {
+  if (syncedAt && Date.now() - syncedAt < maxAgeMs) return syncedAlignment;
+  return syncBisAlignment();
 }

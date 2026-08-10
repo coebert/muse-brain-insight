@@ -31,6 +31,7 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import type { CaseSheet } from "@/components/monitor/CaseActionBar";
@@ -83,10 +84,9 @@ function useCaseSessionState() {
 
   // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
   // live index reflects any correction the app has already earned the right to
-  // make.
-  useEffect(() => {
-    void syncBisAlignment();
-  }, []);
+  // make. The hook keeps re-checking during a case, so a model refitted while
+  // the case is running is picked up without a reload.
+  useCoebisModel();
 
   /** Files paired BIS/app values for the cross-case drift watch. */
   const fileBisPoints = useServerFn(recordBisPoints);
