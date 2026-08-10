@@ -169,9 +169,14 @@ function Trends() {
   const rows = useMemo(() => {
     return (epochs.data ?? []).map((e) => {
       const ent = (e.entropy ?? null) as { state?: number; response?: number } | null;
+      const depth = e.depth_index === null ? null : Number(e.depth_index);
       return {
         t: Number(e.t_offset_seconds) || 0,
-        depth: e.depth_index === null ? null : Number(e.depth_index),
+        depth,
+        // COEBIS is not stored: it is back-calculated from the recorded open
+        // index with whichever model is active now, so past cases always show
+        // the current learned correction.
+        coebis: depth === null ? null : computeCoebis(depth),
         sef95: e.spectral_edge_95 === null ? null : Number(e.spectral_edge_95),
         sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
         seizure: e.seizure_score === null ? null : Number(e.seizure_score),
@@ -181,7 +186,7 @@ function Trends() {
         suppressed: e.is_suppressed ? 1 : 0,
       };
     });
-  }, [epochs.data]);
+  }, [epochs.data, coebisModel]);
 
   const spectra = useMemo(
     () =>
@@ -203,6 +208,7 @@ function Trends() {
       withGapRows(rows, (t) => ({
         t,
         depth: null,
+        coebis: null,
         sef95: null,
         sr: null,
         seizure: null,
