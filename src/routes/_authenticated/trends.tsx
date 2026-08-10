@@ -38,6 +38,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
+import { computeCoebis } from "@/lib/eeg/depth";
+import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
@@ -120,6 +122,8 @@ const tooltipStyle = {
 function Trends() {
   const search = Route.useSearch();
   const [sessionId, setSessionId] = useState<string>(search.session ?? "");
+  // Active COEBIS fit; stored cases are re-scored against it on the fly.
+  const coebisModel = useCoebisModel();
 
   const sessions = useQuery({
     queryKey: ["eeg_sessions", "trends"],
@@ -169,9 +173,14 @@ function Trends() {
   const rows = useMemo(() => {
     return (epochs.data ?? []).map((e) => {
       const ent = (e.entropy ?? null) as { state?: number; response?: number } | null;
+      const depth = e.depth_index === null ? null : Number(e.depth_index);
       return {
         t: Number(e.t_offset_seconds) || 0,
-        depth: e.depth_index === null ? null : Number(e.depth_index),
+        depth,
+        // COEBIS is not stored: it is back-calculated from the recorded open
+        // index with whichever model is active now, so past cases always show
+        // the current learned correction.
+        coebis: depth === null ? null : computeCoebis(depth),
         sef95: e.spectral_edge_95 === null ? null : Number(e.spectral_edge_95),
         sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
         seizure: e.seizure_score === null ? null : Number(e.seizure_score),
@@ -181,7 +190,7 @@ function Trends() {
         suppressed: e.is_suppressed ? 1 : 0,
       };
     });
-  }, [epochs.data]);
+  }, [epochs.data, coebisModel]);
 
   const spectra = useMemo(
     () =>
@@ -203,6 +212,7 @@ function Trends() {
       withGapRows(rows, (t) => ({
         t,
         depth: null,
+        coebis: null,
         sef95: null,
         sr: null,
         seizure: null,
@@ -230,7 +240,7 @@ function Trends() {
   );
 
   const summary = useMemo(() => {
-    const vals = (key: "depth" | "sef95" | "sr" | "seizure") =>
+    const vals = (key: "depth" | "coebis" | "sef95" | "sr" | "seizure") =>
       rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
     const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
     const cadence =
@@ -242,6 +252,7 @@ function Trends() {
     return {
       duration: rows.length ? rows[rows.length - 1]!.t : 0,
       meanDepth: mean(vals("depth")),
+      meanCoebis: mean(vals("coebis")),
       meanSef: mean(vals("sef95")),
       meanSr: mean(sr),
       maxSr: sr.length ? Math.max(...sr) : null,
@@ -299,6 +310,7 @@ function Trends() {
     return [
       { label: "At", value: cursorRow ? formatClock(cursorRow.t) : "—" },
       { label: "Depth", value: num(cursorRow?.depth, 0) },
+      { label: "COEBIS", value: num(cursorRow?.coebis, 0) },
       { label: "SEF95", value: num(cursorRow?.sef95, 1, " Hz") },
       { label: "SR", value: num(cursorRow?.sr, 1, " %") },
       { label: "Entropy", value: num(cursorRow?.entropy, 0) },
@@ -476,6 +488,10 @@ function Trends() {
                 value={summary.meanDepth == null ? "—" : summary.meanDepth.toFixed(0)}
               />
               <Stat
+                label="Mean COEBIS"
+                value={summary.meanCoebis == null ? "—" : summary.meanCoebis.toFixed(0)}
+              />
+              <Stat
                 label="Mean SEF95"
                 value={summary.meanSef == null ? "—" : `${summary.meanSef.toFixed(1)} Hz`}
               />
@@ -631,7 +647,10 @@ function Trends() {
                 </ResponsiveContainer>
               </TrendPanel>
 
-              <TrendPanel title="Depth index" hint="target band 40–60">
+              <TrendPanel
+                title="Depth index & COEBIS"
+                hint={`target band 40–60 · ${describeCoebisModel(coebisModel)}`}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartRows} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
@@ -654,6 +673,14 @@ function Trends() {
                       type="monotone"
                       dataKey="depth"
                       stroke="var(--chart-1)"
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="coebis"
+                      stroke="var(--chart-3)"
                       strokeWidth={2}
                       dot={false}
                       isAnimationActive={false}
