@@ -369,15 +369,14 @@ export const getCoebisVersionResiduals = createServerFn({ method: "GET" })
             .map((k) => ({ x: Number(k.x), dy: Number(k.dy) }))
             .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
         : [];
-      const residuals = computeCoebisResiduals(
-        points.map((p) => ({
+      const residualInput = points.map((p) => ({
           residual: round(alignIndex(p.appIndex, { gain, offset, knots }) - p.bis),
           bis: p.bis,
           recordedAt: p.recordedAt,
           caseCode: codeFor(p.sessionId),
           usedInFit: fitBasisReliable ? p.reliable : true,
-        })),
-      );
+      }));
+      const residuals = computeCoebisResiduals(residualInput);
       return {
         id: String(row.id),
         version,
@@ -388,6 +387,7 @@ export const getCoebisVersionResiduals = createServerFn({ method: "GET" })
         offset: round(offset, 2),
         nFitted: Number(row.n_points) || 0,
         residuals,
+        drift: detectCoebisDrift(residualInput, residuals.tolerance),
       };
     });
   });
