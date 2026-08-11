@@ -90,6 +90,24 @@ const KNOT_WINDOW = 10;
 const round = (v: number, dp = 1) => Number(v.toFixed(dp));
 const meanOf = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 
+/** Residual breakdown for one stored COEBIS fit, measured on the same readings. */
+export interface CoebisVersionResiduals {
+  id: string;
+  /** Stable version number, counted from the oldest stored fit. */
+  version: number;
+  modelVersion: string;
+  createdAt: string;
+  isActive: boolean;
+  gain: number;
+  offset: number;
+  /** Readings the fit itself was made on, as recorded at fit time. */
+  nFitted: number;
+  residuals: CoebisResiduals;
+}
+
+/** Newest fits kept for the side-by-side comparison. */
+const COMPARE_LIMIT = 8;
+
 /**
  * Everything the COEBIS model is currently learning from: the paired readings,
  * which ones are in the fit, how they are spread across cases and depth bands,
