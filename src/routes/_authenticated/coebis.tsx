@@ -8,6 +8,7 @@ import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel";
+import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { formatClock } from "@/lib/eeg/format";
 import {
