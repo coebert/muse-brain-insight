@@ -260,7 +260,14 @@ function CoebisDataPage() {
             </section>
           ) : null}
 
-          {tab === "residuals" ? <CoebisResidualsPanel residuals={data.residuals} /> : null}
+          {tab === "residuals" ? (
+            <div className="space-y-3">
+              {data.drift ? (
+                <CoebisDriftAlert drift={data.drift} title="Active model drift watch" />
+              ) : null}
+              <CoebisResidualsPanel residuals={data.residuals} />
+            </div>
+          ) : null}
 
           {tab === "versions" ? (
             <CoebisVersionComparison
