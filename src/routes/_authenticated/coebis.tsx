@@ -8,8 +8,12 @@ import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel";
+import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { formatClock } from "@/lib/eeg/format";
-import { getCoebisTrainingData } from "@/lib/eeg/coebis-data.functions";
+import {
+  getCoebisTrainingData,
+  getCoebisVersionResiduals,
+} from "@/lib/eeg/coebis-data.functions";
 
 export const Route = createFileRoute("/_authenticated/coebis")({
   head: () => ({
@@ -42,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 const TABS = [
   { key: "readings", label: "Paired readings" },
   { key: "residuals", label: "Residuals" },
+  { key: "versions", label: "Version comparison" },
   { key: "cases", label: "By case" },
   { key: "coverage", label: "Coverage & corrections" },
 ] as const;
@@ -70,10 +75,17 @@ function Tile({ label, value, hint }: { label: string; value: string; hint: stri
 function CoebisDataPage() {
   const [tab, setTab] = useState<TabKey>("readings");
   const fetchData = useServerFn(getCoebisTrainingData);
+  const fetchVersions = useServerFn(getCoebisVersionResiduals);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["coebis-training-data"],
     queryFn: () => fetchData(),
+  });
+
+  const versionQuery = useQuery({
+    queryKey: ["coebis-version-residuals"],
+    queryFn: () => fetchVersions(),
+    enabled: tab === "versions",
   });
 
   return (
@@ -249,6 +261,20 @@ function CoebisDataPage() {
           ) : null}
 
           {tab === "residuals" ? <CoebisResidualsPanel residuals={data.residuals} /> : null}
+
+          {tab === "versions" ? (
+            <CoebisVersionComparison
+              versions={versionQuery.data ?? []}
+              loading={versionQuery.isLoading}
+              error={
+                versionQuery.error
+                  ? versionQuery.error instanceof Error
+                    ? versionQuery.error.message
+                    : "Could not compare model versions."
+                  : null
+              }
+            />
+          ) : null}
 
           {tab === "cases" ? (
             <section className="panel overflow-x-auto p-0">

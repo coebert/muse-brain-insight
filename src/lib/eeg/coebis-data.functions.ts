@@ -90,6 +90,24 @@ const KNOT_WINDOW = 10;
 const round = (v: number, dp = 1) => Number(v.toFixed(dp));
 const meanOf = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 
+/** Residual breakdown for one stored COEBIS fit, measured on the same readings. */
+export interface CoebisVersionResiduals {
+  id: string;
+  /** Stable version number, counted from the oldest stored fit. */
+  version: number;
+  modelVersion: string;
+  createdAt: string;
+  isActive: boolean;
+  gain: number;
+  offset: number;
+  /** Readings the fit itself was made on, as recorded at fit time. */
+  nFitted: number;
+  residuals: CoebisResiduals;
+}
+
+/** Newest fits kept for the side-by-side comparison. */
+const COMPARE_LIMIT = 8;
+
 /**
  * Everything the COEBIS model is currently learning from: the paired readings,
  * which ones are in the fit, how they are spread across cases and depth bands,
@@ -275,4 +293,95 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
         };
       }),
     };
+  });
+
+/**
+ * Residual breakdowns for every stored COEBIS fit, each computed over the very
+ * same pool of paired readings. Because the evidence is held constant, the
+ * differences between versions are the model's doing — so a clinician can see
+ * whether successive refits actually improved agreement, and where.
+ */
+export const getCoebisVersionResiduals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CoebisVersionResiduals[]> => {
+    const { open } = await import("@/lib/privacy.server");
+
+    const { data: pointRows, error } = await context.supabase
+      .from("bis_paired_points")
+      .select("bis, app_index, session_id, recorded_at, reliable")
+      .order("recorded_at", { ascending: true })
+      .limit(5000);
+    if (error) throw new Error(error.message);
+
+    const points = (pointRows ?? [])
+      .map((r) => ({
+        bis: Number(r.bis),
+        appIndex: Number(r.app_index),
+        sessionId: r.session_id ?? null,
+        recordedAt: String(r.recorded_at),
+        reliable: Boolean(r.reliable),
+      }))
+      .filter((p) => Number.isFinite(p.bis) && Number.isFinite(p.appIndex));
+    if (!points.length) return [];
+
+    const { data: fitRows } = await context.supabase
+      .from("depth_bis_alignments")
+      .select('id, gain, "offset", knots, model_version, n_points, is_active, created_at')
+      .order("created_at", { ascending: true })
+      .limit(200);
+
+    // Version numbers count from the oldest stored fit so a label never shifts
+    // as new models are added; only the newest few are worth comparing.
+    const numbered = (fitRows ?? [])
+      .map((row, i) => ({ row, version: i + 1 }))
+      .filter(({ row }) => Number.isFinite(Number(row.gain)) && Number.isFinite(Number(row.offset)))
+      .slice(-COMPARE_LIMIT)
+      .reverse();
+    if (!numbered.length) return [];
+
+    const sessionIds = Array.from(
+      new Set(points.map((p) => p.sessionId).filter((id): id is string => Boolean(id))),
+    );
+    const codes = new Map<string, string>();
+    if (sessionIds.length) {
+      const { data: sessions } = await context.supabase
+        .from("eeg_sessions")
+        .select("id, case_code")
+        .in("id", sessionIds.slice(0, 500));
+      for (const s of sessions ?? []) codes.set(s.id, open(s.case_code) ?? "unlabelled");
+    }
+    const codeFor = (id: string | null) => (id ? (codes.get(id) ?? "unlabelled") : "unfiled");
+
+    const reliableCount = points.filter((p) => p.reliable).length;
+    const fitBasisReliable = reliableCount >= MIN_POINTS;
+
+    return numbered.map(({ row, version }) => {
+      const gain = Number(row.gain);
+      const offset = Number(row.offset);
+      const knots = Array.isArray(row.knots)
+        ? (row.knots as { x: number; dy: number }[])
+            .map((k) => ({ x: Number(k.x), dy: Number(k.dy) }))
+            .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
+        : [];
+      const residuals = computeCoebisResiduals(
+        points.map((p) => ({
+          residual: round(alignIndex(p.appIndex, { gain, offset, knots }) - p.bis),
+          bis: p.bis,
+          recordedAt: p.recordedAt,
+          caseCode: codeFor(p.sessionId),
+          usedInFit: fitBasisReliable ? p.reliable : true,
+        })),
+      );
+      return {
+        id: String(row.id),
+        version,
+        modelVersion: row.model_version ?? `coebis-${version}`,
+        createdAt: String(row.created_at),
+        isActive: Boolean(row.is_active),
+        gain: round(gain, 3),
+        offset: round(offset, 2),
+        nFitted: Number(row.n_points) || 0,
+        residuals,
+      };
+    });
   });
