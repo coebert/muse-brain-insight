@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { computeCoebisResiduals, type CoebisResiduals } from "@/lib/eeg/coebis-residuals";
+import { detectCoebisDrift, type CoebisDriftWatch } from "@/lib/eeg/coebis-drift-watch";
 import {
   KNOT_POSITIONS,
   MIN_POINTS,
@@ -82,6 +83,8 @@ export interface CoebisTrainingData {
   cases: CoebisCaseRow[];
   /** Where the active fit agrees and where it fails, over every paired reading. */
   residuals: CoebisResiduals | null;
+  /** Whether the active fit's agreement has slipped on recent cases. */
+  drift: CoebisDriftWatch | null;
   /** Most recent readings, newest first, for inspection. */
   points: CoebisTrainingPoint[];
 }
@@ -103,6 +106,8 @@ export interface CoebisVersionResiduals {
   /** Readings the fit itself was made on, as recorded at fit time. */
   nFitted: number;
   residuals: CoebisResiduals;
+  /** Automatic drift watch for this version, earlier vs recent readings. */
+  drift: CoebisDriftWatch;
 }
 
 /** Newest fits kept for the side-by-side comparison. */
@@ -242,9 +247,8 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
 
     // Residual breakdown runs over every paired reading, not just the recent
     // window shown in the table, so the percentages match the fitted model.
-    const residuals = active
-      ? computeCoebisResiduals(
-          points.flatMap((p) => {
+    const residualInput = active
+      ? points.flatMap((p) => {
             const corrected = map(p.appIndex);
             if (corrected == null) return [];
             return [
@@ -256,9 +260,10 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
                 usedInFit: inFit.has(p),
               },
             ];
-          }),
-        )
-      : null;
+        })
+      : [];
+    const residuals = active ? computeCoebisResiduals(residualInput) : null;
+    const drift = residuals ? detectCoebisDrift(residualInput, residuals.tolerance) : null;
 
     return {
       totalPoints: points.length,
@@ -274,6 +279,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       bands: analysis.bands,
       cases,
       residuals,
+      drift,
       points: recent.map((p) => {
         const corrected = map(p.appIndex);
         return {
