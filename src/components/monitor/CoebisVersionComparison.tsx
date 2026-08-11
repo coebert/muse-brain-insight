@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Loader2, Pin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CoebisDriftAlert, CoebisDriftChip } from "@/components/monitor/CoebisDriftAlert";
 import type { CoebisVersionResiduals } from "@/lib/eeg/coebis-data.functions";
 import { useCoebisModelVersions } from "@/hooks/useCoebisModel";
 
@@ -138,8 +139,23 @@ export function CoebisVersionComparison({
     null,
   );
 
+  // Anything the automatic watch has flagged, pinned or not, is surfaced first.
+  const flagged = selected.filter(
+    (v) => v.drift.status === "watch" || v.drift.status === "drifting",
+  );
+  const pinnedVersion = selected.find((v) => active?.id === v.id) ?? null;
+
   return (
     <div className="space-y-3">
+      {flagged.map((v) => (
+        <CoebisDriftAlert
+          key={v.id}
+          drift={v.drift}
+          title={`v${v.version}${v.isActive ? " (active)" : pinnedVersion?.id === v.id ? " (pinned)" : ""} — ${
+            v.drift.status === "drifting" ? "drift detected" : "agreement slipping"
+          }`}
+        />
+      ))}
       <section className="panel p-3">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-semibold">Compare model versions</h2>
@@ -210,6 +226,7 @@ export function CoebisVersionComparison({
                   <th className="px-3 py-2 text-right">MAE</th>
                   <th className="px-3 py-2 text-right">RMSE</th>
                   <th className="px-3 py-2 text-right">Outliers</th>
+                  <th className="px-3 py-2 text-right">Drift</th>
                   <th className="px-3 py-2 text-left">Fitted</th>
                   <th className="px-3 py-2 text-right">Show</th>
                 </tr>
@@ -239,6 +256,9 @@ export function CoebisVersionComparison({
                       {v.residuals.rmse?.toFixed(1) ?? "—"}
                     </td>
                     <td className="px-3 py-1.5 text-right">{v.residuals.outliers}</td>
+                    <td className="px-3 py-1.5 text-right">
+                      <CoebisDriftChip drift={v.drift} />
+                    </td>
                     <td className="px-3 py-1.5 text-xs whitespace-nowrap">
                       {fittedLabel(v.createdAt)}
                     </td>
@@ -259,7 +279,9 @@ export function CoebisVersionComparison({
             </table>
             <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
               ★ marks the best agreement of the selected versions. Pinning changes the COEBIS number
-              shown across the app; it does not refit anything.
+              shown across the app; it does not refit anything. The drift column compares each
+              version's earlier readings against its most recent ones and flags it when the residual
+              histogram shifts or the share within ±{tolerance} falls away.
             </p>
           </section>
 

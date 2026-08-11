@@ -8,6 +8,7 @@ import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel";
+import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { formatClock } from "@/lib/eeg/format";
 import {
@@ -260,7 +261,14 @@ function CoebisDataPage() {
             </section>
           ) : null}
 
-          {tab === "residuals" ? <CoebisResidualsPanel residuals={data.residuals} /> : null}
+          {tab === "residuals" ? (
+            <div className="space-y-3">
+              {data.drift ? (
+                <CoebisDriftAlert drift={data.drift} title="Active model drift watch" />
+              ) : null}
+              <CoebisResidualsPanel residuals={data.residuals} />
+            </div>
+          ) : null}
 
           {tab === "versions" ? (
             <CoebisVersionComparison
