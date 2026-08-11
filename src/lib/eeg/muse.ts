@@ -451,6 +451,19 @@ export class MuseClient implements EegSource {
   private disconnectListener: (() => void) | null = null;
   /** Exponential backoff, seconds, between reconnection attempts. */
   private static readonly RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
+  /**
+   * Muse firmware puts itself to sleep after a spell without a host command —
+   * in practice around 15–20 minutes — even while it is happily streaming.
+   * A periodic keep-alive ("k") holds the headband awake for the whole case.
+   */
+  private static readonly KEEP_ALIVE_MS = 10_000;
+  /** Resend the start-data command if notifications dry up but GATT is up. */
+  private static readonly STALL_NUDGE_MS = 6_000;
+  /** Force a full reconnect if samples never come back after a nudge. */
+  private static readonly STALL_RESET_MS = 15_000;
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private lastSampleAt = 0;
+  private nudgedAt = 0;
 
   /**
    * A device and preset can be supplied when the clinician has already probed
@@ -533,7 +546,10 @@ export class MuseClient implements EegSource {
       const characteristic = await service.getCharacteristic(EEG_CHARS[channel]);
       const listener = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
-        if (value && value.byteLength >= 20) onSamples(channel, decodeMusePacket(value));
+        if (value && value.byteLength >= 20) {
+          this.lastSampleAt = Date.now();
+          onSamples(channel, decodeMusePacket(value));
+        }
       };
       characteristic.addEventListener("characteristicvaluechanged", listener);
       this.subscriptions.push({ characteristic, listener });
@@ -548,6 +564,61 @@ export class MuseClient implements EegSource {
     await this.send(this.preset); // confirmed streaming preset
     await this.send("s"); // status
     await this.send("d"); // start data
+    this.lastSampleAt = Date.now();
+    this.nudgedAt = 0;
+    this.startHeartbeat();
+  }
+
+  /**
+   * Keeps the headband awake and streaming for the length of a case: sends the
+   * keep-alive the firmware expects, and recovers a silent link that Bluetooth
+   * never reported as disconnected.
+   */
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeat = setInterval(() => {
+      if (this.stopping) return;
+      void this.tick();
+    }, MuseClient.KEEP_ALIVE_MS);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat = null;
+  }
+
+  private async tick() {
+    if (this.reconnecting) return;
+    const connected = this.device?.gatt?.connected ?? false;
+    if (!connected) {
+      void this.attemptReconnect();
+      return;
+    }
+    const silentFor = Date.now() - this.lastSampleAt;
+    try {
+      await this.send("k"); // keep-alive: stops the firmware idling out mid-case
+    } catch {
+      void this.attemptReconnect();
+      return;
+    }
+    if (silentFor > MuseClient.STALL_RESET_MS && this.nudgedAt) {
+      // Nudged already and still nothing: drop the link so the normal
+      // reconnect path rebuilds it from scratch.
+      this.nudgedAt = 0;
+      this.device?.gatt?.disconnect();
+      void this.attemptReconnect();
+      return;
+    }
+    if (silentFor > MuseClient.STALL_NUDGE_MS && !this.nudgedAt) {
+      this.nudgedAt = Date.now();
+      try {
+        await this.send("d"); // restart the data stream
+      } catch {
+        void this.attemptReconnect();
+      }
+      return;
+    }
+    if (silentFor <= MuseClient.STALL_NUDGE_MS) this.nudgedAt = 0;
   }
 
   /**
@@ -557,11 +628,15 @@ export class MuseClient implements EegSource {
   private async attemptReconnect() {
     if (this.reconnecting) return;
     this.reconnecting = true;
+    this.stopHeartbeat();
     const attempts = MuseClient.RETRY_DELAYS.length;
-    for (let i = 0; i < attempts; i++) {
-      if (this.stopping) break;
-      this.stateCb?.({ kind: "reconnecting", attempt: i + 1, attempts });
-      await new Promise((r) => setTimeout(r, MuseClient.RETRY_DELAYS[i]!));
+    let told = false;
+    // Keep trying for as long as the case is running — the clinician ends the
+    // case, not a retry counter.
+    for (let i = 0; !this.stopping; i++) {
+      this.stateCb?.({ kind: "reconnecting", attempt: Math.min(i + 1, attempts), attempts });
+      const delay = MuseClient.RETRY_DELAYS[Math.min(i, attempts - 1)]!;
+      await new Promise((r) => setTimeout(r, delay));
       if (this.stopping) break;
       try {
         await this.attach();
@@ -569,18 +644,18 @@ export class MuseClient implements EegSource {
         this.stateCb?.({ kind: "connected" });
         return;
       } catch {
-        /* try again */
+        if (i + 1 >= attempts && !told) {
+          told = true;
+          this.stateCb?.({
+            kind: "lost",
+            reason:
+              "The headband has not come back yet — the case and its data are kept and reconnection keeps retrying in the background. Check the headband is on and charged, or tap Reconnect.",
+          });
+          this.disconnectCb?.();
+        }
       }
     }
     this.reconnecting = false;
-    if (!this.stopping) {
-      this.stateCb?.({
-        kind: "lost",
-        reason:
-          "The headband did not come back after five automatic attempts — the case and its data are kept; tap Reconnect to try again.",
-      });
-      this.disconnectCb?.();
-    }
   }
 
   /**
@@ -614,6 +689,7 @@ export class MuseClient implements EegSource {
 
   async stop() {
     this.stopping = true;
+    this.stopHeartbeat();
     this.detachSubscriptions();
     try {
       await this.send("h");
