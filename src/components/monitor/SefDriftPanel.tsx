@@ -22,8 +22,7 @@ const VERDICT_TONE: Record<string, string> = {
   watching: "bg-caution/15 text-caution",
   provisional: "bg-caution/15 text-caution",
   aligned: "bg-signal/15 text-signal",
-  adjust: "bg-caution/15 text-caution",
-  adjustment_active: "bg-signal/15 text-signal",
+  adjusting: "bg-signal/15 text-signal",
 };
 
 const VERDICT_LABEL: Record<string, string> = {
@@ -31,8 +30,7 @@ const VERDICT_LABEL: Record<string, string> = {
   watching: "Watching",
   provisional: "Correction provisional",
   aligned: "SEF tracking monitor",
-  adjust: "Correction fitted",
-  adjustment_active: "Correction active",
+  adjusting: "Correction active",
 };
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string | undefined }) {
