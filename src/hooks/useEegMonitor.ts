@@ -327,6 +327,7 @@ export function useEegMonitor() {
   const [status, setStatus] = useState<MonitorStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("");
+  const [batteryPercent, setBatteryPercent] = useState<number | null>(null);
   const [channel, setChannel] = useState<MuseChannel | "average">("average");
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
   const [stream, dispatch] = useReducer(streamReducer, INITIAL_STREAM);
@@ -417,6 +418,7 @@ export function useEegMonitor() {
     sourceRef.current = null;
     lastConnectRef.current = null;
     setReconnectAttempt(null);
+    setBatteryPercent(null);
     setStatus("idle");
   }, []);
 
@@ -466,11 +468,13 @@ export function useEegMonitor() {
               })
             : new SimulatedSource();
         source.onDisconnect(() => {
+          setBatteryPercent(null);
           // The case keeps running: hold the source so a manual retry can
           // re-open the same headband without losing anything recorded.
           setStatus("error");
           setReconnectAttempt(null);
         });
+        source.onBattery?.((percent) => setBatteryPercent(percent));
         source.onState?.((state) => {
           if (state.kind === "reconnecting") {
             setStatus("reconnecting");
@@ -838,6 +842,7 @@ export function useEegMonitor() {
     status,
     error,
     sourceName,
+    batteryPercent,
     channel,
     setChannel,
     settings,
