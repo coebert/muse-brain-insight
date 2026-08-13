@@ -18,8 +18,13 @@ export const COEBIS_DEBOUNCE_CHOICES = [1000, 2000, 4000, 8000, 15000, 30000] as
 /** Minimum spacing between automatic refits, in milliseconds (0 = no throttle). */
 export const COEBIS_MIN_INTERVAL_CHOICES = [0, 30000, 60000, 120000, 300000, 600000] as const;
 
+/** Pacing strategies for the automatic refit. */
+export const COEBIS_REFIT_MODES = ["debounce", "throttle"] as const;
+export type CoebisRefitMode = (typeof COEBIS_REFIT_MODES)[number];
+
 export const DEFAULT_COEBIS_REFIT_SETTINGS: CoebisRefitSettings = {
   auto: true,
+  mode: "debounce",
   debounceMs: 4000,
   minIntervalMs: 60000,
 };
@@ -27,6 +32,13 @@ export const DEFAULT_COEBIS_REFIT_SETTINGS: CoebisRefitSettings = {
 export interface CoebisRefitSettings {
   /** Refit automatically as readings are entered. */
   auto: boolean;
+  /**
+   * "debounce" waits for entry to stop before refitting (quiet bedside, but a
+   * continuous stream of readings can keep postponing it). "throttle" refits
+   * on a fixed cadence regardless of ongoing entry, so the number keeps up
+   * during a long transcription run.
+   */
+  mode: CoebisRefitMode;
   /** Settle time after the last new reading before filing/refitting. */
   debounceMs: number;
   /** Refits are spaced at least this far apart. */
@@ -46,6 +58,7 @@ export function readCoebisRefitSettings(): CoebisRefitSettings {
     const parsed = JSON.parse(raw) as Partial<CoebisRefitSettings>;
     return {
       auto: parsed.auto !== false,
+      mode: parsed.mode === "throttle" ? "throttle" : "debounce",
       debounceMs: clamp(parsed.debounceMs, 500, 120000, DEFAULT_COEBIS_REFIT_SETTINGS.debounceMs),
       minIntervalMs: clamp(
         parsed.minIntervalMs,
@@ -73,6 +86,18 @@ export function pacingLabel(ms: number): string {
   if (ms <= 0) return "no limit";
   if (ms < 60000) return `${Math.round(ms / 1000)}s`;
   return `${Math.round(ms / 60000)} min`;
+}
+
+/** Plain description of how the chosen mode will behave. */
+export function refitModeDescription(settings: CoebisRefitSettings): string {
+  if (settings.mode === "throttle") {
+    return settings.minIntervalMs > 0
+      ? `Refits on a fixed cadence — at most one every ${pacingLabel(settings.minIntervalMs)}, even while readings keep arriving.`
+      : "Refits as soon as each new reading can be paired (no fixed gap set).";
+  }
+  return `Waits ${pacingLabel(settings.debounceMs)} after the last reading, then refits${
+    settings.minIntervalMs > 0 ? `, never closer than ${pacingLabel(settings.minIntervalMs)} apart` : ""
+  }.`;
 }
 
 /** Live settings, shared across every panel in the tab. */
