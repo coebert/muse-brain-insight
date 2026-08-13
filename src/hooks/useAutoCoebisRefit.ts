@@ -73,11 +73,16 @@ export function useAutoCoebisRefit(opts: {
     const pending = readings.filter((r) => !filedRef.current.has(r.id));
     if (!pending.length) return;
 
-    // Settle the burst, then respect the minimum spacing between refits: if a
-    // refit ran recently the timer simply waits out the remainder.
+    // Two pacing strategies share the same two numbers:
+    //  - debounce: settle the burst, then respect the minimum spacing;
+    //  - throttle: ignore the settle delay and fire on a fixed cadence, so a
+    //    continuous stream of readings cannot keep postponing the refit.
     const sinceLast = Date.now() - lastRunRef.current;
     const throttleWait = Math.max(0, settings.minIntervalMs - sinceLast);
-    const wait = Math.max(settings.debounceMs, throttleWait);
+    const wait =
+      settings.mode === "throttle"
+        ? throttleWait
+        : Math.max(settings.debounceMs, throttleWait);
 
     const timer = setTimeout(() => {
       void (async () => {
@@ -162,6 +167,7 @@ export function useAutoCoebisRefit(opts: {
     refreshSef,
     markFiled,
     settings.auto,
+    settings.mode,
     settings.debounceMs,
     settings.minIntervalMs,
   ]);
