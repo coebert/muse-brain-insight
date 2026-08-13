@@ -226,6 +226,18 @@ function useCaseSessionState() {
     streaming,
   });
 
+  /**
+   * Files each newly transcribed BIS reading as it is entered and refits
+   * COEBIS straight away, so the displayed number reflects every paired
+   * reading and case link logged so far — no waiting for the case to be filed.
+   */
+  const autoRefit = useAutoCoebisRefit({
+    enabled: caseState !== "idle",
+    epochs: monitor.epochs,
+    readings: bisReadings,
+    context: meta.context,
+  });
+
   /** Timestamped audit entry in the session event log. */
   const audit = useCallback(
     (detail: string) => {
