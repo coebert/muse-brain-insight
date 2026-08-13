@@ -19,6 +19,7 @@ import { ArrowLeft, Gauge, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
 import { BisDriftPanel } from "@/components/monitor/BisDriftPanel";
+import { SefDriftPanel } from "@/components/monitor/SefDriftPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
