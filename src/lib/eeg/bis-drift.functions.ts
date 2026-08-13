@@ -215,13 +215,18 @@ export const getBisDrift = createServerFn({ method: "GET" })
     if (
       fit &&
       fitIsSafe(fit) &&
-      analysis.readiness.points.have >= analysis.readiness.points.need &&
-      analysis.readiness.sessions.have >= analysis.readiness.sessions.need &&
+      // A provisional model is fitted as soon as there is early evidence, so a
+      // clinician sees a COEBIS number instead of a dash for weeks; it is
+      // stored and labelled as provisional until the full bar is cleared.
+      analysis.readiness.provisional.met &&
       // Once COEBIS exists it keeps refining on new data; the first activation
       // still needs a clear, meaningful systematic offset.
       (active != null || (analysis.readiness.biasSignificant && Math.abs(analysis.bias ?? 0) >= 3)) &&
       worthReplacing
     ) {
+      const confirmed =
+        analysis.readiness.points.have >= analysis.readiness.points.need &&
+        analysis.readiness.sessions.have >= analysis.readiness.sessions.need;
       await context.supabase
         .from("depth_bis_alignments")
         .update({ is_active: false })
@@ -233,7 +238,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
           gain: fit.gain,
           offset: fit.offset,
           knots: fit.knots.map((k) => ({ x: k.x, dy: k.dy })) as unknown as Record<string, number>[],
-          model_version: "coebis-2",
+          model_version: confirmed ? "coebis-2" : "coebis-2-provisional",
           n_points: fit.n,
           n_sessions: fit.sessions,
           bias_before: fit.biasBefore,
@@ -242,7 +247,9 @@ export const getBisDrift = createServerFn({ method: "GET" })
           mae_after: fit.maeAfter,
           auto_applied: true,
           is_active: true,
-          note: `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`,
+          note: confirmed
+            ? `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`
+            : `Provisional COEBIS fitted from ${fit.n} paired readings across ${fit.sessions} cases — indicative until 30 readings across 3 cases confirm it.`,
         })
         .select(ALIGNMENT_COLUMNS)
         .single();
