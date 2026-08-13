@@ -324,6 +324,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       drift,
       points: recent.map((p) => {
         const corrected = map(p.appIndex);
+        const err = errorOf(p);
         return {
           recordedAt: p.recordedAt,
           caseCode: codeFor(p.sessionId),
@@ -334,6 +335,8 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
           corrected,
           diff: round(p.appIndex - p.bis),
           residual: corrected == null ? null : round(corrected - p.bis),
+          errorShare: shareOf(err),
+          withinTolerance: err <= TOLERANCE,
           reliable: p.reliable,
           sqi: p.sqi == null ? null : round(p.sqi),
           context: p.context ?? null,
