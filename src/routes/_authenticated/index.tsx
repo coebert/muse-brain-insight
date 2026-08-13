@@ -99,6 +99,8 @@ import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { BatteryIndicator } from "@/components/monitor/BatteryIndicator";
 import { LowBatteryBanner } from "@/components/monitor/LowBatteryBanner";
+import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
+import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 import { useBatteryAlert } from "@/lib/eeg/battery-alert";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
@@ -207,6 +209,13 @@ function Monitor() {
   } = session;
 
   const batteryAlert = useBatteryAlert(monitor.batteryPercent, streaming || reconnecting);
+  const connection = deriveConnectionStatus({
+    status: monitor.status,
+    sourceName: monitor.sourceName,
+    caseEnded: caseState === "ended",
+    dataGapSeconds: monitor.dataGapSeconds,
+    reconnectAttempt: monitor.reconnectAttempt,
+  });
 
   const jumpTo = (target: MonitorJumpTarget) => {
     const { tab: targetTab, id } = MONITOR_JUMP[target];
@@ -247,24 +256,7 @@ function Monitor() {
               CortexTrace
             </span>
           </div>
-          <span
-            className={cn(
-              "metric-value hidden rounded-full border px-2.5 py-0.5 text-xs sm:inline short:hidden md:short:inline",
-              reconnecting
-                ? "border-caution/60 text-caution"
-                : streaming
-                  ? "border-signal/50 text-signal"
-                  : "border-border text-muted-foreground",
-            )}
-          >
-            {reconnecting
-              ? `reconnecting ${monitor.reconnectAttempt?.attempt ?? 1}/${monitor.reconnectAttempt?.attempts ?? 5}`
-              : streaming
-                ? `${monitor.sourceName} · live`
-                : caseState === "ended"
-                  ? "case ended"
-                  : "no case running"}
-          </span>
+          <ConnectionStatusBadge status={connection} />
           <BatteryIndicator
             percent={monitor.batteryPercent}
             connected={streaming || reconnecting}
