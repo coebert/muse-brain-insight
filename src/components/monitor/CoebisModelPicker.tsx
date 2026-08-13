@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CoebisFitBadge } from "@/components/monitor/CoebisFitBadge";
 import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
-import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { getBisDrift } from "@/lib/eeg/bis-drift.functions";
 import type { BisAlignment } from "@/lib/eeg/depth";
 
@@ -163,9 +163,9 @@ export function useCoebisRefit(onDone?: () => void | Promise<void>) {
   const run = async () => {
     if (running) return;
     setRunning(true);
-    const before = active_id();
+    const before = getLatestBisAlignment()?.id ?? null;
     try {
-      const report = await fetchDrift({ data: undefined });
+      const report = await fetchDrift({});
       const model = await syncBisAlignment();
       await onDone?.();
       if (report.justApplied || (model?.id && model.id !== before)) {
