@@ -10,6 +10,7 @@ import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel";
 import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
+import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { formatClock } from "@/lib/eeg/format";
 import {
   getCoebisTrainingData,
@@ -322,17 +323,20 @@ function CoebisDataPage() {
           ) : null}
 
           {tab === "versions" ? (
-            <CoebisVersionComparison
-              versions={versionQuery.data ?? []}
-              loading={versionQuery.isLoading}
-              error={
-                versionQuery.error
-                  ? versionQuery.error instanceof Error
-                    ? versionQuery.error.message
-                    : "Could not compare model versions."
-                  : null
-              }
-            />
+            <div className="space-y-3">
+              <CoebisVersionComparison
+                versions={versionQuery.data ?? []}
+                loading={versionQuery.isLoading}
+                error={
+                  versionQuery.error
+                    ? versionQuery.error instanceof Error
+                      ? versionQuery.error.message
+                      : "Could not compare model versions."
+                    : null
+                }
+              />
+              <CoebisRefitHistory />
+            </div>
           ) : null}
 
           {tab === "cases" ? (
