@@ -578,7 +578,9 @@ function useCaseSessionState() {
             bisSef: p.bisSef,
             appIndex: p.depthIndex!,
             appSr: p.appSr,
-            appSef: p.sef95,
+            // Always file the raw headband SEF: filing the displayed value
+            // would fold the existing correction back into the next refit.
+            appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
           }));
