@@ -595,6 +595,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sef_alignments: {
+        Row: {
+          auto_applied: boolean
+          bias_after: number | null
+          bias_before: number | null
+          created_at: string
+          gain: number
+          id: string
+          is_active: boolean
+          mae_after: number | null
+          mae_before: number | null
+          n_points: number
+          n_sessions: number
+          note: string | null
+          offset: number
+          user_id: string
+        }
+        Insert: {
+          auto_applied?: boolean
+          bias_after?: number | null
+          bias_before?: number | null
+          created_at?: string
+          gain: number
+          id?: string
+          is_active?: boolean
+          mae_after?: number | null
+          mae_before?: number | null
+          n_points?: number
+          n_sessions?: number
+          note?: string | null
+          offset: number
+          user_id: string
+        }
+        Update: {
+          auto_applied?: boolean
+          bias_after?: number | null
+          bias_before?: number | null
+          created_at?: string
+          gain?: number
+          id?: string
+          is_active?: boolean
+          mae_after?: number | null
+          mae_before?: number | null
+          n_points?: number
+          n_sessions?: number
+          note?: string | null
+          offset?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       webauthn_challenges: {
         Row: {
           challenge: string
