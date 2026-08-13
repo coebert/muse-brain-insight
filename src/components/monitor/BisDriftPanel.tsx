@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BisPairedChart } from "@/components/monitor/BisPairedChart";
 import { BisBlandAltmanChart } from "@/components/monitor/BisBlandAltmanChart";
+import { CoebisSufficiencyPanel } from "@/components/monitor/CoebisSufficiencyPanel";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import {
   clearBisAlignment,
@@ -170,6 +171,8 @@ export function BisDriftPanel() {
                 {a.readiness.sessions.need} cases.
               </p>
             ) : null}
+
+            <CoebisSufficiencyPanel analysis={a} active={data?.active ?? null} />
 
             {data?.active ? (
               <div className="rounded-md border border-border px-3 py-2 text-xs">
