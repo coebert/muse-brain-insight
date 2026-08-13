@@ -104,6 +104,9 @@ export type SourceState =
 
 export type SourceStateHandler = (state: SourceState) => void;
 
+/** Battery charge reported by the headband, 0–100. */
+export type BatteryHandler = (percent: number) => void;
+
 export interface EegSource {
   readonly name: string;
   start(onSamples: SampleHandler): Promise<void>;
@@ -111,6 +114,8 @@ export interface EegSource {
   onDisconnect(cb: () => void): void;
   /** Optional: reports reconnection attempts while the case continues. */
   onState?(cb: SourceStateHandler): void;
+  /** Optional: reports the headband's battery charge while streaming. */
+  onBattery?(cb: BatteryHandler): void;
   /**
    * Optional: clinician-triggered retry after the automatic attempts gave up.
    * Resolves true when the link is back; the case and its data are untouched.
