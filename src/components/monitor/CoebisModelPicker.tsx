@@ -25,6 +25,7 @@ import {
   COEBIS_DEBOUNCE_CHOICES,
   COEBIS_MIN_INTERVAL_CHOICES,
   pacingLabel,
+  refitModeDescription,
   useCoebisRefitSettings,
 } from "@/lib/eeg/coebis-refit-settings";
 import type { BisAlignment } from "@/lib/eeg/depth";
@@ -189,6 +190,37 @@ function CoebisRefitPacing() {
 
       <div className={settings.auto ? "space-y-2" : "space-y-2 opacity-50"}>
         <div>
+          <p className="text-[11px] text-muted-foreground">Pacing behaviour</p>
+          <div className="mt-1 grid grid-cols-2 gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={settings.mode === "debounce" ? "secondary" : "ghost"}
+              className="h-7 px-2 text-[11px]"
+              disabled={!settings.auto}
+              aria-pressed={settings.mode === "debounce"}
+              onClick={() => update({ mode: "debounce" })}
+            >
+              Debounce
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={settings.mode === "throttle" ? "secondary" : "ghost"}
+              className="h-7 px-2 text-[11px]"
+              disabled={!settings.auto}
+              aria-pressed={settings.mode === "throttle"}
+              onClick={() => update({ mode: "throttle" })}
+            >
+              Fixed interval
+            </Button>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {refitModeDescription(settings)}
+          </p>
+        </div>
+
+        <div className={settings.mode === "throttle" ? "opacity-50" : undefined}>
           <p className="text-[11px] text-muted-foreground">
             Settle delay after the last reading · {pacingLabel(settings.debounceMs)}
           </p>
@@ -200,7 +232,7 @@ function CoebisRefitPacing() {
                 size="sm"
                 variant={settings.debounceMs === ms ? "secondary" : "ghost"}
                 className="h-7 px-2 text-[11px]"
-                disabled={!settings.auto}
+                disabled={!settings.auto || settings.mode === "throttle"}
                 aria-pressed={settings.debounceMs === ms}
                 onClick={() => update({ debounceMs: ms })}
               >
@@ -212,7 +244,8 @@ function CoebisRefitPacing() {
 
         <div>
           <p className="text-[11px] text-muted-foreground">
-            Minimum gap between refits · {pacingLabel(settings.minIntervalMs)}
+            {settings.mode === "throttle" ? "Refit interval" : "Minimum gap between refits"} ·{" "}
+            {pacingLabel(settings.minIntervalMs)}
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
             {COEBIS_MIN_INTERVAL_CHOICES.map((ms) => (
