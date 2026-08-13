@@ -57,6 +57,7 @@ export interface BisAlignmentFit {
 export type DriftVerdict =
   | "insufficient"
   | "watching"
+  | "provisional"
   | "aligned"
   | "adjust"
   | "adjustment_active";
@@ -78,11 +79,19 @@ export interface BisDriftAnalysis {
   recent: { n: number; bias: number | null };
   fit: BisAlignmentFit | null;
   verdict: DriftVerdict;
+  /**
+   * How much weight the fitted model deserves: "provisional" once there is
+   * enough paired data to fit something useful, "confirmed" once the full
+   * evidence bar is cleared.
+   */
+  tier: "none" | "provisional" | "confirmed";
   /** Plain-language reading of where the surveillance has got to. */
   summary: string;
   readiness: {
     points: { have: number; need: number };
     sessions: { have: number; need: number };
+    /** Thresholds for the early, clearly-labelled provisional model. */
+    provisional: { points: number; sessions: number; met: boolean };
     /** Bias confidence interval excludes zero. */
     biasSignificant: boolean;
   };
@@ -91,6 +100,14 @@ export interface BisDriftAnalysis {
 /** Evidence needed before the app will touch the index. */
 export const MIN_POINTS = 30;
 export const MIN_SESSIONS = 3;
+/**
+ * Waiting for 30 readings across 3 cases leaves a clinician with no COEBIS
+ * number at all for weeks. Once there are a handful of paired readings from
+ * more than one case, COEBIS is fitted and shown — heavily shrunk toward the
+ * published index and labelled provisional until the full bar is cleared.
+ */
+export const PROVISIONAL_MIN_POINTS = 8;
+export const PROVISIONAL_MIN_SESSIONS = 2;
 /** Bias smaller than this is not worth correcting for. */
 export const MIN_MEANINGFUL_BIAS = 3;
 /** A fit must remove at least this much mean absolute error to be applied. */
