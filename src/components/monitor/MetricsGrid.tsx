@@ -169,13 +169,18 @@ export function MetricsGrid({
             <MetricTile
               key="sef"
               info="sef95"
-              label="Spectral edge 95"
+              label={sefAlignment ? "Spectral edge 95 (aligned)" : "Spectral edge 95"}
               value={latest ? latest.sef95.toFixed(1) : "—"}
               unit="Hz"
               hint={
-                sefCi
+                (sefCi
                   ? `95 % CI ${sefCi.low.toFixed(1)}–${sefCi.high.toFixed(1)} Hz · 95 % of power below`
-                  : "Frequency below which 95 % of power sits"
+                  : "Frequency below which 95 % of power sits") +
+                (sefAlignment
+                  ? ` · aligned to monitor SEF${sefAlignment.provisional ? " (provisional)" : ""}${
+                      latest ? `, raw ${latest.sef95Raw.toFixed(1)} Hz` : ""
+                    }`
+                  : "")
               }
               confidence={latest?.confidence.spectral}
             />
