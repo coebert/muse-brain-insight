@@ -596,8 +596,10 @@ function useCaseSessionState() {
       );
       // File the paired commercial-BIS values so the pooled drift watch can
       // keep tracking (and correcting) any systematic offset across cases.
-      if (bisReadings.length) {
-        const paired = pairBisReadings(monitor.epochs, bisReadings)
+      const filed = new Set(autoRefit.filedIds);
+      const unfiledReadings = bisReadings.filter((r) => !filed.has(r.id));
+      if (unfiledReadings.length) {
+        const paired = pairBisReadings(monitor.epochs, unfiledReadings)
           .filter((p) => p.depthIndex != null)
           .map((p) => ({
             at: p.at,
@@ -622,6 +624,7 @@ function useCaseSessionState() {
                 points: paired,
               },
             });
+            autoRefit.markFiled(unfiledReadings.map((r) => r.id));
             // New paired data: refit COEBIS and pick the new model up locally.
             try {
               await refreshCoebis({});
@@ -636,6 +639,19 @@ function useCaseSessionState() {
             // look like a lost record.
             toast.warning("Case saved, but the BIS comparison values could not be filed.");
           }
+        }
+      }
+      // Attach the case to points already filed live, so the pooled fit counts
+      // independent cases correctly, then refit on the new linkage.
+      if (filed.size) {
+        try {
+          await linkBisPoints({
+            data: { sessionId, sinceIso: new Date(sessionStartedAtMs).toISOString() },
+          });
+          await refreshCoebis({});
+          await syncBisAlignment();
+        } catch {
+          // Linkage is a refinement; the points remain in the pooled fit.
         }
       }
       toast.success("Session saved to your records.");
