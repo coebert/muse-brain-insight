@@ -16,6 +16,7 @@ import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
 import { spansGap } from "./gaps";
+import { applySefAlignment } from "./sef-drift";
 
 export type { SignalQuality } from "./dsp";
 export type { SeizureEvidence } from "./seizure-evidence";
