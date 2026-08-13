@@ -18,6 +18,7 @@ import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
 import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
 import { useCoebisRefitSettings } from "@/lib/eeg/coebis-refit-settings";
+import { recordCoebisRefit } from "@/lib/eeg/coebis-refit-log";
 
 export interface AutoCoebisRefit {
   /** A live file-and-refit cycle is in flight. */
@@ -108,7 +109,8 @@ export function useAutoCoebisRefit(opts: {
         busyRef.current = true;
         lastRunRef.current = Date.now();
         setRunning(true);
-        const before = getLatestBisAlignment()?.id ?? null;
+        const beforeModel = getLatestBisAlignment();
+        const before = beforeModel?.id ?? null;
         try {
           await fileBisPoints({
             data: {
@@ -121,6 +123,12 @@ export function useAutoCoebisRefit(opts: {
           markFiled(points.map((p) => byId.get(p.at)?.id).filter((id): id is string => !!id));
           await refreshCoebis({});
           const model = await syncBisAlignment();
+          recordCoebisRefit({
+            trigger: "auto",
+            before: beforeModel,
+            after: model,
+            changed: !!model?.id && model.id !== before,
+          });
           try {
             await refreshSef({});
             await syncSefAlignment();
