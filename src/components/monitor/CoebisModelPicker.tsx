@@ -11,12 +11,20 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CoebisFitBadge } from "@/components/monitor/CoebisFitBadge";
 import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
 import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { getBisDrift } from "@/lib/eeg/bis-drift.functions";
+import {
+  COEBIS_DEBOUNCE_CHOICES,
+  COEBIS_MIN_INTERVAL_CHOICES,
+  pacingLabel,
+  useCoebisRefitSettings,
+} from "@/lib/eeg/coebis-refit-settings";
 import type { BisAlignment } from "@/lib/eeg/depth";
 
 function fittedLabel(model: BisAlignment): string {
@@ -93,6 +101,8 @@ export function CoebisModelPicker({ className }: { className?: string }) {
             straight away if it improves agreement.
           </p>
         </div>
+
+        <CoebisRefitPacing />
 
         <div className="max-h-72 overflow-y-auto py-1">
           {loading ? (
