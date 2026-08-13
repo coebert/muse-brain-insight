@@ -28,6 +28,14 @@ export interface CoebisTrainingPoint {
   diff: number;
   /** Residual after the active model, if one is fitted. */
   residual: number | null;
+  /**
+   * This reading's share of the model's total absolute error, 0–100. Computed
+   * on residuals when a model is active, otherwise on the raw offsets, so it
+   * always answers "how much of the disagreement comes from this reading?".
+   */
+  errorShare: number | null;
+  /** Whether the reading sits inside the ±5 index-point agreement band. */
+  withinTolerance: boolean | null;
   reliable: boolean;
   sqi: number | null;
   context: string | null;
@@ -43,6 +51,14 @@ export interface CoebisCaseRow {
   meanBias: number | null;
   firstRecordedAt: string;
   lastRecordedAt: string;
+  /** Mean absolute residual for this case under the active model. */
+  mae: number | null;
+  /** Share of this case's readings inside ±5 index points, 0–100. */
+  percentWithin: number | null;
+  /** Share of the model's total absolute error contributed by this case. */
+  errorShare: number | null;
+  /** Largest single residual (signed) recorded in this case. */
+  worstResidual: number | null;
 }
 
 export interface CoebisKnotRow {
