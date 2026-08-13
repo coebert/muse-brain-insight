@@ -17,13 +17,13 @@ import { getBisDrift, recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
 import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
-
-/** Settle time so a burst of transcribed readings files as one batch. */
-const DEBOUNCE_MS = 4000;
+import { useCoebisRefitSettings } from "@/lib/eeg/coebis-refit-settings";
 
 export interface AutoCoebisRefit {
   /** A live file-and-refit cycle is in flight. */
   running: boolean;
+  /** Readings waiting for the settle/throttle window to elapse. */
+  pendingCount: number;
   /** Readings already filed for this case (not re-filed on save). */
   filedIds: string[];
   /** Marks readings as filed without re-sending them (used after a save). */
@@ -41,6 +41,7 @@ export function useAutoCoebisRefit(opts: {
   sessionId?: string | null;
 }): AutoCoebisRefit {
   const { enabled, epochs, readings, context, sessionId } = opts;
+  const { settings } = useCoebisRefitSettings();
   const fileBisPoints = useServerFn(recordBisPoints);
   const refreshCoebis = useServerFn(getBisDrift);
   const refreshSef = useServerFn(getSefDrift);
@@ -49,6 +50,7 @@ export function useAutoCoebisRefit(opts: {
   const filedRef = useRef<Set<string>>(new Set());
   const [filedIds, setFiledIds] = useState<string[]>([]);
   const busyRef = useRef(false);
+  const lastRunRef = useRef(0);
 
   // Latest inputs, read at fire time so the debounce timer never captures a
   // stale epoch list.
@@ -66,13 +68,20 @@ export function useAutoCoebisRefit(opts: {
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !settings.auto) return;
     const pending = readings.filter((r) => !filedRef.current.has(r.id));
     if (!pending.length) return;
+
+    // Settle the burst, then respect the minimum spacing between refits: if a
+    // refit ran recently the timer simply waits out the remainder.
+    const sinceLast = Date.now() - lastRunRef.current;
+    const throttleWait = Math.max(0, settings.minIntervalMs - sinceLast);
+    const wait = Math.max(settings.debounceMs, throttleWait);
 
     const timer = setTimeout(() => {
       void (async () => {
         if (busyRef.current) return;
+        if (Date.now() - lastRunRef.current < settings.minIntervalMs) return;
         const s = stateRef.current;
         const unfiled = s.readings.filter((r) => !filedRef.current.has(r.id));
         if (!unfiled.length) return;
@@ -97,6 +106,7 @@ export function useAutoCoebisRefit(opts: {
         if (!points.length) return;
 
         busyRef.current = true;
+        lastRunRef.current = Date.now();
         setRunning(true);
         const before = getLatestBisAlignment()?.id ?? null;
         try {
@@ -128,13 +138,27 @@ export function useAutoCoebisRefit(opts: {
           // Silent: the reading stays pending and is filed with the case.
         } finally {
           busyRef.current = false;
+          lastRunRef.current = Date.now();
           setRunning(false);
         }
       })();
-    }, DEBOUNCE_MS);
+    }, wait);
 
     return () => clearTimeout(timer);
-  }, [enabled, readings, epochs, fileBisPoints, refreshCoebis, refreshSef, markFiled]);
+  }, [
+    enabled,
+    readings,
+    epochs,
+    fileBisPoints,
+    refreshCoebis,
+    refreshSef,
+    markFiled,
+    settings.auto,
+    settings.debounceMs,
+    settings.minIntervalMs,
+  ]);
 
-  return { running, filedIds, markFiled, reset };
+  const pendingCount = readings.filter((r) => !filedIds.includes(r.id)).length;
+
+  return { running, pendingCount, filedIds, markFiled, reset };
 }
