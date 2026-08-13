@@ -5,6 +5,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { setActiveBisAlignment, type BisAlignment, type BisKnot } from "@/lib/eeg/depth";
+import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
 
 function toKnots(value: unknown): BisKnot[] {
   if (!Array.isArray(value)) return [];
@@ -30,7 +31,9 @@ export async function fetchActiveBisAlignment(): Promise<BisAlignment | null> {
 export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment[]> {
   const { data, error } = await supabase
     .from("depth_bis_alignments")
-    .select('id, gain, "offset", n_points, created_at, knots, is_active, bias_after, mae_after')
+    .select(
+      'id, gain, "offset", n_points, n_sessions, model_version, created_at, knots, is_active, bias_after, mae_after',
+    )
     .order("created_at", { ascending: true })
     .limit(200);
   if (error || !data) return [];
@@ -39,15 +42,18 @@ export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment
       const gain = Number(row.gain);
       const offset = Number(row.offset);
       if (!Number.isFinite(gain) || !Number.isFinite(offset)) return null;
+      const points = Number(row.n_points) || 0;
+      const sessions = Number((row as { n_sessions?: unknown }).n_sessions) || 0;
       const entry: BisAlignment = {
         gain,
         offset,
         knots: toKnots((row as { knots?: unknown }).knots),
-        n: Number(row.n_points) || 0,
+        n: points,
         fittedAt: String(row.created_at),
         id: String(row.id),
         version: i + 1,
         isActive: Boolean(row.is_active),
+        provisional: points < MIN_POINTS || sessions < MIN_SESSIONS,
         biasAfter: row.bias_after === null ? null : Number(row.bias_after),
         maeAfter: row.mae_after === null ? null : Number(row.mae_after),
       };
