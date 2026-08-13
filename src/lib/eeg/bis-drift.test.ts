@@ -38,9 +38,17 @@ describe("analyseBisDrift", () => {
   });
 
   it("keeps watching until the point and case thresholds are met", () => {
-    const a = analyseBisDrift(points(10, 8, { sessions: 2 }));
+    const a = analyseBisDrift(points(5, 8, { sessions: 1 }));
     expect(a.verdict).toBe("watching");
-    expect(a.readiness.points.have).toBe(10);
+    expect(a.readiness.points.have).toBe(5);
+    expect(a.bias).toBeCloseTo(8, 5);
+  });
+
+  it("fits a provisional model once early evidence spans two cases", () => {
+    const a = analyseBisDrift(points(10, 8, { sessions: 2 }));
+    expect(a.verdict).toBe("provisional");
+    expect(a.tier).toBe("provisional");
+    expect(a.readiness.provisional.met).toBe(true);
     expect(a.bias).toBeCloseTo(8, 5);
   });
 
