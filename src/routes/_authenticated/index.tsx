@@ -102,6 +102,7 @@ import { LowBatteryBanner } from "@/components/monitor/LowBatteryBanner";
 import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
 import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 import { useBatteryAlert } from "@/lib/eeg/battery-alert";
+import { useBatteryHealth } from "@/lib/eeg/battery-health";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
@@ -208,7 +209,10 @@ function Monitor() {
     handleSave,
   } = session;
 
-  const batteryAlert = useBatteryAlert(monitor.batteryPercent, streaming || reconnecting);
+  const batteryHealth = useBatteryHealth(monitor.batteryPercent);
+  // Alarm on the last plausible charge so a mis-parsed reply cannot fire a
+  // spurious flat-battery alert mid-case.
+  const batteryAlert = useBatteryAlert(batteryHealth.display, streaming || reconnecting);
   const connection = deriveConnectionStatus({
     status: monitor.status,
     sourceName: monitor.sourceName,
@@ -258,8 +262,9 @@ function Monitor() {
           </div>
           <ConnectionStatusBadge status={connection} />
           <BatteryIndicator
-            percent={monitor.batteryPercent}
+            percent={batteryHealth.display}
             connected={streaming || reconnecting}
+            health={batteryHealth}
           />
           {caseState !== "idle" ? (
             <span className="metric-value text-sm text-muted-foreground">
