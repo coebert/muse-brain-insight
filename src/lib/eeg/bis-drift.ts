@@ -271,6 +271,8 @@ export function analyseBisDrift(
 
   const biasSignificant = ci != null && (ci[0] > 0 || ci[1] < 0);
   const enough = usable.length >= MIN_POINTS && sessions >= MIN_SESSIONS;
+  const provisionalReady =
+    usable.length >= PROVISIONAL_MIN_POINTS && sessions >= PROVISIONAL_MIN_SESSIONS;
   const meaningful = bias != null && Math.abs(bias) >= MIN_MEANINGFUL_BIAS;
 
   let verdict: DriftVerdict;
@@ -278,12 +280,24 @@ export function analyseBisDrift(
   else if (!meaningful || !biasSignificant) verdict = "aligned";
   else if (fitIsSafe(fit)) verdict = active ? "adjustment_active" : "adjust";
   else verdict = "watching";
+  // Early evidence: fit and show COEBIS, but say plainly that it is provisional.
+  if (!enough && provisionalReady && meaningful && biasSignificant && fitIsSafe(fit)) {
+    verdict = "provisional";
+  }
+  const tier: BisDriftAnalysis["tier"] =
+    verdict === "adjust" || verdict === "adjustment_active"
+      ? "confirmed"
+      : verdict === "provisional"
+        ? "provisional"
+        : "none";
 
   const direction = bias == null ? "" : bias > 0 ? "lighter" : "deeper";
   const summary =
     verdict === "insufficient"
       ? "No paired BIS readings yet. Log values from the commercial monitor during cases and the app will watch for a systematic offset."
-      : verdict === "watching" && !enough
+      : verdict === "provisional"
+        ? `Provisional COEBIS model from ${usable.length} paired reading${usable.length === 1 ? "" : "s"} across ${sessions} case${sessions === 1 ? "" : "s"}: the open index reads ${Math.abs(bias!).toFixed(1)} points ${direction} than the monitor, and the fitted correction cuts mean absolute error from ${fit!.maeBefore.toFixed(1)} to ${fit!.maeAfter.toFixed(1)} points. Treat the number as indicative until ${MIN_POINTS} readings across ${MIN_SESSIONS} cases confirm it.`
+        : verdict === "watching" && !enough
         ? `Watching: ${usable.length} paired reading${usable.length === 1 ? "" : "s"} from ${sessions} case${sessions === 1 ? "" : "s"}${
             bias != null ? `, mean offset ${bias > 0 ? "+" : ""}${bias.toFixed(1)} (${direction} than BIS)` : ""
           }. ${MIN_POINTS} readings across ${MIN_SESSIONS} cases are needed before the index is adjusted.`
@@ -306,10 +320,16 @@ export function analyseBisDrift(
     recent,
     fit,
     verdict,
+    tier,
     summary,
     readiness: {
       points: { have: usable.length, need: MIN_POINTS },
       sessions: { have: sessions, need: MIN_SESSIONS },
+      provisional: {
+        points: PROVISIONAL_MIN_POINTS,
+        sessions: PROVISIONAL_MIN_SESSIONS,
+        met: provisionalReady,
+      },
       biasSignificant,
     },
   };
