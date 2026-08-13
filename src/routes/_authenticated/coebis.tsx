@@ -75,6 +75,10 @@ function Tile({ label, value, hint }: { label: string; value: string; hint: stri
 
 function CoebisDataPage() {
   const [tab, setTab] = useState<TabKey>("readings");
+  /** How the contributing readings are ordered: newest, or biggest error first. */
+  const [order, setOrder] = useState<"recent" | "error">("recent");
+  /** Hide readings the fit held out, to see only what shaped the model. */
+  const [fitOnly, setFitOnly] = useState(false);
   const fetchData = useServerFn(getCoebisTrainingData);
   const fetchVersions = useServerFn(getCoebisVersionResiduals);
 
