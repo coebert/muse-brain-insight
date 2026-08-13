@@ -1,4 +1,4 @@
-import { Battery, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning } from "lucide-react";
+import { BatteryFull, BatteryLow, BatteryMedium, BatteryWarning } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
