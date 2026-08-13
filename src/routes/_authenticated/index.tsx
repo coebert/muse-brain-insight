@@ -206,6 +206,8 @@ function Monitor() {
     handleSave,
   } = session;
 
+  const batteryAlert = useBatteryAlert(monitor.batteryPercent, streaming || reconnecting);
+
   const jumpTo = (target: MonitorJumpTarget) => {
     const { tab: targetTab, id } = MONITOR_JUMP[target];
     setTab(targetTab);
