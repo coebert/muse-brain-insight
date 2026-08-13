@@ -1,5 +1,6 @@
-import { BatteryFull, BatteryLow, BatteryMedium, BatteryWarning } from "lucide-react";
+import { BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, TriangleAlert } from "lucide-react";
 
+import type { BatteryHealth } from "@/lib/eeg/battery-health";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -7,6 +8,8 @@ interface Props {
   percent: number | null;
   /** True while the headband link is up; a stale reading is shown dimmed. */
   connected: boolean;
+  /** Plausibility grading of the reported charge, when available. */
+  health?: BatteryHealth;
   className?: string;
 }
 
@@ -15,23 +18,43 @@ interface Props {
  * a flat headband. Colour follows clinical urgency: low charge is a caution,
  * critically low is a destructive warning.
  */
-export function BatteryIndicator({ percent, connected, className }: Props) {
+export function BatteryIndicator({ percent, connected, health, className }: Props) {
   if (percent == null) return null;
 
+  const questionable = health?.status === "suspect" || health?.status === "unreliable";
+
   const tone =
-    percent < 15
+    questionable
+      ? "border-caution/60 text-caution"
+      : percent < 15
       ? "border-destructive/50 text-destructive"
       : percent < 30
         ? "border-caution/60 text-caution"
         : "border-border text-muted-foreground";
   const Icon =
-    percent < 15 ? BatteryWarning : percent < 30 ? BatteryLow : percent < 70 ? BatteryMedium : BatteryFull;
+    questionable
+      ? TriangleAlert
+      : percent < 15
+        ? BatteryWarning
+        : percent < 30
+          ? BatteryLow
+          : percent < 70
+            ? BatteryMedium
+            : BatteryFull;
 
   return (
     <span
       role="status"
-      aria-label={`Headband battery ${percent} percent${connected ? "" : " (last known)"}`}
-      title={connected ? "Muse 2 battery" : "Muse 2 battery — last known reading"}
+      aria-label={`Headband battery ${percent} percent${connected ? "" : " (last known)"}${
+        questionable ? " — reading may be unreliable" : ""
+      }`}
+      title={
+        questionable
+          ? `Muse 2 battery — ${health?.reason}`
+          : connected
+            ? "Muse 2 battery"
+            : "Muse 2 battery — last known reading"
+      }
       className={cn(
         "metric-value inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
         tone,
@@ -41,7 +64,11 @@ export function BatteryIndicator({ percent, connected, className }: Props) {
     >
       <Icon className="size-3.5 shrink-0" aria-hidden />
       {percent}%
-      {percent < 15 ? <span className="hidden sm:inline">· charge soon</span> : null}
+      {questionable ? (
+        <span className="hidden sm:inline">· check</span>
+      ) : percent < 15 ? (
+        <span className="hidden sm:inline">· charge soon</span>
+      ) : null}
     </span>
   );
 }
