@@ -88,10 +88,16 @@ function useCaseSessionState() {
   // the case is running is picked up without a reload.
   useCoebisModel();
 
+  // Same for the SEF correction fitted from paired monitor SEF readings, so
+  // the displayed spectral edge sits on the commercial monitor's scale.
+  useSefAlignment();
+
   /** Files paired BIS/app values for the cross-case drift watch. */
   const fileBisPoints = useServerFn(recordBisPoints);
   /** Re-runs the pooled fit so COEBIS keeps refining as cases accumulate. */
   const refreshCoebis = useServerFn(getBisDrift);
+  /** Re-runs the pooled SEF fit as paired SEF readings accumulate. */
+  const refreshSef = useServerFn(getSefDrift);
 
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
@@ -598,6 +604,8 @@ function useCaseSessionState() {
             try {
               await refreshCoebis({});
               await syncBisAlignment();
+              await refreshSef({});
+              await syncSefAlignment();
             } catch {
               // A refit failure is silent; the existing model stays in force.
             }
