@@ -422,6 +422,18 @@ function Monitor() {
           </span>
           <span>{activeMode.blurb}</span>
         </div>
+        {batteryAlert.visible ? (
+          <LowBatteryBanner
+            percent={batteryAlert.percent}
+            threshold={batteryAlert.threshold}
+            critical={batteryAlert.critical}
+            notify={batteryAlert.notify}
+            permission={batteryAlert.permission}
+            onThresholdChange={batteryAlert.setThreshold}
+            onNotifyChange={(v) => void batteryAlert.setNotify(v)}
+            onDismiss={batteryAlert.dismiss}
+          />
+        ) : null}
         {caseState !== "idle" ? (
           <TciStatusStrip infusions={infusions} onOpen={() => setCaseSheet("tci")} />
         ) : null}
