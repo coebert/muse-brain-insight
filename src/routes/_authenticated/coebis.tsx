@@ -93,6 +93,16 @@ function CoebisDataPage() {
     enabled: tab === "versions",
   });
 
+  /** Contributing readings, ordered and filtered for inspection. */
+  const shownPoints = (data?.points ?? [])
+    .filter((p) => (fitOnly ? p.usedInFit : true))
+    .slice()
+    .sort((a, b) =>
+      order === "error"
+        ? (b.errorShare ?? 0) - (a.errorShare ?? 0)
+        : b.recordedAt.localeCompare(a.recordedAt),
+    );
+
   return (
     <main className="min-h-dvh bg-background px-4 py-4 sm:px-6">
       <header className="mb-4 flex flex-wrap items-center gap-2">
