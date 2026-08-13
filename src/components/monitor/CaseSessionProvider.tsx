@@ -390,6 +390,7 @@ function useCaseSessionState() {
     setMarkers([]);
     setInfusions([]);
     setBisReadings([]);
+    autoRefit.reset();
     setSaved(false);
     setSessionStartedAtMs(Date.now());
     alarms.clearAll();
@@ -430,6 +431,7 @@ function useCaseSessionState() {
     setMarkers([]);
     setInfusions([]);
     setBisReadings([]);
+    autoRefit.reset();
     setMarkerText("");
     setChecklist({});
     // The next case starts with a fresh anonymised code, never the discarded one.
