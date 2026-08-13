@@ -161,6 +161,80 @@ export function CoebisModelPicker({ className }: { className?: string }) {
 }
 
 /**
+ * Pacing controls for the automatic refit. Rapid transcription of paired
+ * readings would otherwise recompute the pooled fit again and again; the
+ * settle delay batches a burst and the minimum interval spaces refits out.
+ */
+function CoebisRefitPacing() {
+  const { settings, update } = useCoebisRefitSettings();
+
+  return (
+    <div className="space-y-2 border-b p-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor="coebis-auto-refit" className="text-xs font-medium">
+          Auto-refit as readings are entered
+        </Label>
+        <Switch
+          id="coebis-auto-refit"
+          checked={settings.auto}
+          onCheckedChange={(auto) => update({ auto })}
+        />
+      </div>
+
+      <div className={settings.auto ? "space-y-2" : "space-y-2 opacity-50"}>
+        <div>
+          <p className="text-[11px] text-muted-foreground">
+            Settle delay after the last reading · {pacingLabel(settings.debounceMs)}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {COEBIS_DEBOUNCE_CHOICES.map((ms) => (
+              <Button
+                key={ms}
+                type="button"
+                size="sm"
+                variant={settings.debounceMs === ms ? "secondary" : "ghost"}
+                className="h-7 px-2 text-[11px]"
+                disabled={!settings.auto}
+                aria-pressed={settings.debounceMs === ms}
+                onClick={() => update({ debounceMs: ms })}
+              >
+                {pacingLabel(ms)}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] text-muted-foreground">
+            Minimum gap between refits · {pacingLabel(settings.minIntervalMs)}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {COEBIS_MIN_INTERVAL_CHOICES.map((ms) => (
+              <Button
+                key={ms}
+                type="button"
+                size="sm"
+                variant={settings.minIntervalMs === ms ? "secondary" : "ghost"}
+                className="h-7 px-2 text-[11px]"
+                disabled={!settings.auto}
+                aria-pressed={settings.minIntervalMs === ms}
+                onClick={() => update({ minIntervalMs: ms })}
+              >
+                {pacingLabel(ms)}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Readings keep being filed in order; only the recompute is paced. Use “Recompute COEBIS
+          now” to override the wait.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Manual COEBIS refit. The pooled fit normally runs on its own schedule, so
  * after entering a batch of paired readings a clinician can be left looking at
  * a stale number; this recomputes it on demand from the data already logged
