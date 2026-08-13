@@ -4,7 +4,10 @@
  * older model for comparison. Pinning is display-only: the live model keeps
  * syncing underneath and releasing the pin returns to it immediately.
  */
-import { Check, History, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Check, History, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CoebisFitBadge } from "@/components/monitor/CoebisFitBadge";
 import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
+import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { getBisDrift } from "@/lib/eeg/bis-drift.functions";
 import type { BisAlignment } from "@/lib/eeg/depth";
 
 function fittedLabel(model: BisAlignment): string {
@@ -36,7 +41,8 @@ function metricsLabel(model: BisAlignment): string {
 }
 
 export function CoebisModelPicker({ className }: { className?: string }) {
-  const { active, latest, pinned, versions, loading, select } = useCoebisModelVersions();
+  const { active, latest, pinned, versions, loading, select, reload } = useCoebisModelVersions();
+  const refit = useCoebisRefit(reload);
 
   return (
     <Popover>
@@ -64,6 +70,27 @@ export function CoebisModelPicker({ className }: { className?: string }) {
             {active
               ? `Displayed numbers come from ${coebisVersionLabel(active)} · ${metricsLabel(active)}`
               : "No fitted model yet — COEBIS matches OpenIBIS."}
+          </p>
+        </div>
+
+        <div className="border-b p-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="w-full"
+            disabled={refit.running}
+            onClick={() => void refit.run()}
+          >
+            {refit.running ? (
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="mr-1.5 size-3.5" aria-hidden />
+            )}
+            Recompute COEBIS now
+          </Button>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Refits from every paired commercial BIS reading already logged, and applies the result
+            straight away if it improves agreement.
           </p>
         </div>
 
@@ -121,4 +148,45 @@ export function CoebisModelPicker({ className }: { className?: string }) {
       </PopoverContent>
     </Popover>
   );
+}
+
+/**
+ * Manual COEBIS refit. The pooled fit normally runs on its own schedule, so
+ * after entering a batch of paired readings a clinician can be left looking at
+ * a stale number; this recomputes it on demand from the data already logged
+ * and reports plainly whether the model changed.
+ */
+export function useCoebisRefit(onDone?: () => void | Promise<void>) {
+  const fetchDrift = useServerFn(getBisDrift);
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    if (running) return;
+    setRunning(true);
+    const before = active_id();
+    try {
+      const report = await fetchDrift({ data: undefined });
+      const model = await syncBisAlignment();
+      await onDone?.();
+      if (report.justApplied || (model?.id && model.id !== before)) {
+        toast.success(
+          `COEBIS refitted — ${coebisVersionLabel(model)} from ${model?.n ?? report.analysis.n} paired readings${
+            model?.provisional ? " (provisional)" : ""
+          }.`,
+        );
+      } else if (model) {
+        toast.info(
+          `No change: ${coebisVersionLabel(model)} still gives the best agreement across ${report.analysis.n} paired readings.`,
+        );
+      } else {
+        toast.info(report.analysis.summary);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not recompute COEBIS.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return { running, run };
 }
