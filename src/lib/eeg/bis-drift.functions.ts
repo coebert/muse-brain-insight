@@ -184,19 +184,6 @@ export const linkBisPointsToSession = createServerFn({ method: "POST" })
     return { linked: true };
   });
 
-function unusedToDriftPoints(rows: Record<string, unknown>[]): BisDriftPoint[] {
-  return rows.map((r) => ({
-    at: Number(r["at_seconds"]),
-    bis: Number(r["bis"]),
-    appIndex: Number(r["app_index"]),
-    sessionId: (r["session_id"] as string | null) ?? null,
-    reliable: Boolean(r["reliable"]),
-    sqi: r["sqi"] == null ? null : Number(r["sqi"]),
-    recordedAt: String(r["recorded_at"]),
-    context: (r["context"] as string | null) ?? null,
-  }));
-}
-
 /**
  * Pooled BIS watch. Reads every filed paired point, reports the systematic
  * offset, and — once there is enough evidence across enough cases and the
