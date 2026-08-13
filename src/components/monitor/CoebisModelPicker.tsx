@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CoebisFitBadge } from "@/components/monitor/CoebisFitBadge";
+import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
+import { recordCoebisRefit } from "@/lib/eeg/coebis-refit-log";
 import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
 import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
@@ -103,6 +105,10 @@ export function CoebisModelPicker({ className }: { className?: string }) {
         </div>
 
         <CoebisRefitPacing />
+
+        <div className="border-b p-2">
+          <CoebisRefitHistory className="border-none shadow-none" limit={5} />
+        </div>
 
         <div className="max-h-72 overflow-y-auto py-1">
           {loading ? (
@@ -247,12 +253,15 @@ export function useCoebisRefit(onDone?: () => void | Promise<void>) {
   const run = async () => {
     if (running) return;
     setRunning(true);
-    const before = getLatestBisAlignment()?.id ?? null;
+    const beforeModel = getLatestBisAlignment();
+    const before = beforeModel?.id ?? null;
     try {
       const report = await fetchDrift({});
       const model = await syncBisAlignment();
+      const changed = report.justApplied || (!!model?.id && model.id !== before);
+      recordCoebisRefit({ trigger: "manual", before: beforeModel, after: model, changed });
       await onDone?.();
-      if (report.justApplied || (model?.id && model.id !== before)) {
+      if (changed) {
         toast.success(
           `COEBIS refitted — ${coebisVersionLabel(model)} from ${model?.n ?? report.analysis.n} paired readings${
             model?.provisional ? " (provisional)" : ""
