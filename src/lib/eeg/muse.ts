@@ -580,6 +580,9 @@ export class MuseClient implements EegSource {
     const service = await server.getPrimaryService(MUSE_SERVICE);
     this.control = await service.getCharacteristic(CONTROL_CHAR);
     await this.control.startNotifications();
+    this.control.removeEventListener("characteristicvaluechanged", this.handleControlValue);
+    this.control.addEventListener("characteristicvaluechanged", this.handleControlValue);
+    this.controlBuffer = "";
 
     for (const channel of MUSE_CHANNELS) {
       if (this.stopping) {
@@ -608,6 +611,7 @@ export class MuseClient implements EegSource {
     await this.send("s"); // status
     await this.send("d"); // start data
     this.lastSampleAt = Date.now();
+    this.lastStatusAt = Date.now();
     this.nudgedAt = 0;
     this.startHeartbeat();
   }
@@ -640,6 +644,10 @@ export class MuseClient implements EegSource {
     const silentFor = Date.now() - this.lastSampleAt;
     try {
       await this.send("k"); // keep-alive: stops the firmware idling out mid-case
+      if (Date.now() - this.lastStatusAt > MuseClient.BATTERY_POLL_MS) {
+        this.lastStatusAt = Date.now();
+        await this.send("s"); // status: refreshes the battery reading
+      }
     } catch {
       void this.attemptReconnect();
       return;
