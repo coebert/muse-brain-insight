@@ -467,11 +467,13 @@ export function useEegMonitor() {
               })
             : new SimulatedSource();
         source.onDisconnect(() => {
+          setBatteryPercent(null);
           // The case keeps running: hold the source so a manual retry can
           // re-open the same headband without losing anything recorded.
           setStatus("error");
           setReconnectAttempt(null);
         });
+        source.onBattery?.((percent) => setBatteryPercent(percent));
         source.onState?.((state) => {
           if (state.kind === "reconnecting") {
             setStatus("reconnecting");
@@ -839,6 +841,7 @@ export function useEegMonitor() {
     status,
     error,
     sourceName,
+    batteryPercent,
     channel,
     setChannel,
     settings,
