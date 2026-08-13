@@ -11,9 +11,28 @@ import {
   syncBisAlignmentIfStale,
 } from "@/lib/eeg/bis-alignment";
 import type { BisAlignment } from "@/lib/eeg/depth";
+import { getBisDrift } from "@/lib/eeg/bis-drift.functions";
 
 /** How often a running case checks whether a newer COEBIS model exists. */
 const REFRESH_MS = 5 * 60_000;
+
+/**
+ * With no model stored, nothing on the bedside screens ever asks the server to
+ * try fitting one — a clinician could log paired readings for weeks and still
+ * see a dash. Ask once per page load when there is no model yet; the server
+ * fits only if the paired data supports it.
+ */
+let fitAttempted = false;
+async function fitIfNoModelYet(): Promise<BisAlignment | null> {
+  if (fitAttempted || getSyncedBisAlignment()) return null;
+  fitAttempted = true;
+  try {
+    await getBisDrift({});
+  } catch {
+    return null;
+  }
+  return syncBisAlignment();
+}
 
 /**
  * The COEBIS model currently driving the live index. COEBIS keeps being
@@ -33,6 +52,10 @@ export function useCoebisModel(): BisAlignment | null {
 
     void syncBisAlignmentIfStale(REFRESH_MS).then((next) => {
       if (alive) setModel(next);
+      if (next) return;
+      void fitIfNoModelYet().then((fitted) => {
+        if (alive && fitted) setModel(fitted);
+      });
     });
 
     const interval = window.setInterval(() => {
