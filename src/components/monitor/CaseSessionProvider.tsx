@@ -47,6 +47,9 @@ import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
 import { getBisDrift, recordBisPoints } from "@/lib/eeg/bis-drift.functions";
+import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
+import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
+import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
