@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppNav } from "@/components/AppNav";
 import { PasskeyManager } from "@/components/PasskeyManager";
 import { DataPrivacyPanel } from "@/components/DataPrivacyPanel";
+import { BatteryAlertPanel } from "@/components/BatteryAlertPanel";
 import { TimeZonePanel } from "@/components/TimeZoneControl";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -43,6 +44,7 @@ function SettingsPage() {
         </p>
         <PasskeyManager />
         <TimeZonePanel />
+        <BatteryAlertPanel />
         <DataPrivacyPanel onChanged={() => undefined} />
       </main>
     </div>

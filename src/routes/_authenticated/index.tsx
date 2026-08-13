@@ -98,6 +98,8 @@ import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { BatteryIndicator } from "@/components/monitor/BatteryIndicator";
+import { LowBatteryBanner } from "@/components/monitor/LowBatteryBanner";
+import { useBatteryAlert } from "@/lib/eeg/battery-alert";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
@@ -203,6 +205,8 @@ function Monitor() {
     caseControls,
     handleSave,
   } = session;
+
+  const batteryAlert = useBatteryAlert(monitor.batteryPercent, streaming || reconnecting);
 
   const jumpTo = (target: MonitorJumpTarget) => {
     const { tab: targetTab, id } = MONITOR_JUMP[target];
@@ -418,6 +422,18 @@ function Monitor() {
           </span>
           <span>{activeMode.blurb}</span>
         </div>
+        {batteryAlert.visible ? (
+          <LowBatteryBanner
+            percent={batteryAlert.percent}
+            threshold={batteryAlert.threshold}
+            critical={batteryAlert.critical}
+            notify={batteryAlert.notify}
+            permission={batteryAlert.permission}
+            onThresholdChange={batteryAlert.setThreshold}
+            onNotifyChange={(v) => void batteryAlert.setNotify(v)}
+            onDismiss={batteryAlert.dismiss}
+          />
+        ) : null}
         {caseState !== "idle" ? (
           <TciStatusStrip infusions={infusions} onOpen={() => setCaseSheet("tci")} />
         ) : null}
