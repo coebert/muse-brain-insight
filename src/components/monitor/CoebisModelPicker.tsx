@@ -51,7 +51,7 @@ export function CoebisModelPicker({ className }: { className?: string }) {
           COEBIS {coebisVersionLabel(active)}
           <CoebisFitBadge model={active} className="ml-1.5" compact />
           {pinned ? (
-            <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
+            <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[11px]">
               pinned
             </Badge>
           ) : null}
@@ -95,7 +95,7 @@ export function CoebisModelPicker({ className }: { className?: string }) {
                     <span className="flex items-center gap-1.5 text-sm">
                       {coebisVersionLabel(v)}
                       {isLatest ? (
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                        <Badge variant="secondary" className="h-4 px-1 text-[11px]">
                           latest
                         </Badge>
                       ) : null}
