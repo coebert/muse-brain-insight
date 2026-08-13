@@ -327,6 +327,7 @@ export function useEegMonitor() {
   const [status, setStatus] = useState<MonitorStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sourceName, setSourceName] = useState<string>("");
+  const [batteryPercent, setBatteryPercent] = useState<number | null>(null);
   const [channel, setChannel] = useState<MuseChannel | "average">("average");
   const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_SETTINGS);
   const [stream, dispatch] = useReducer(streamReducer, INITIAL_STREAM);
