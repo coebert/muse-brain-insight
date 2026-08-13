@@ -161,6 +161,43 @@ function toDriftPoints(rows: Record<string, unknown>[]): BisDriftPoint[] {
 }
 
 /**
+ * Attach a saved session to paired points that were filed live during the
+ * case (before the session had an id), so the pooled fit keeps counting
+ * independent cases correctly.
+ */
+export const linkBisPointsToSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { sessionId: string; sinceIso: string }) => {
+    if (!input?.sessionId) throw new Error("No session supplied.");
+    const since = new Date(input.sinceIso);
+    if (Number.isNaN(since.getTime())) throw new Error("Invalid case start time.");
+    return { sessionId: input.sessionId, sinceIso: since.toISOString() };
+  })
+  .handler(async ({ data, context }): Promise<{ linked: boolean }> => {
+    const { error } = await context.supabase
+      .from("bis_paired_points")
+      .update({ session_id: data.sessionId })
+      .eq("user_id", context.userId)
+      .is("session_id", null)
+      .gte("recorded_at", data.sinceIso);
+    if (error) throw new Error(error.message);
+    return { linked: true };
+  });
+
+function unusedToDriftPoints(rows: Record<string, unknown>[]): BisDriftPoint[] {
+  return rows.map((r) => ({
+    at: Number(r["at_seconds"]),
+    bis: Number(r["bis"]),
+    appIndex: Number(r["app_index"]),
+    sessionId: (r["session_id"] as string | null) ?? null,
+    reliable: Boolean(r["reliable"]),
+    sqi: r["sqi"] == null ? null : Number(r["sqi"]),
+    recordedAt: String(r["recorded_at"]),
+    context: (r["context"] as string | null) ?? null,
+  }));
+}
+
+/**
  * Pooled BIS watch. Reads every filed paired point, reports the systematic
  * offset, and — once there is enough evidence across enough cases and the
  * fitted correction measurably improves agreement — activates that correction
