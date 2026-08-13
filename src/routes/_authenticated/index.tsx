@@ -98,6 +98,8 @@ import { BisAgreementPanel } from "@/components/monitor/BisAgreementPanel";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { CaseStatusWidget } from "@/components/monitor/CaseStatusWidget";
 import { BatteryIndicator } from "@/components/monitor/BatteryIndicator";
+import { LowBatteryBanner } from "@/components/monitor/LowBatteryBanner";
+import { useBatteryAlert } from "@/lib/eeg/battery-alert";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
