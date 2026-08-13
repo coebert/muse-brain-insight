@@ -171,6 +171,11 @@ export interface Epoch {
   entropy: SpectralEntropy;
   totalPower: number;
   sef95: number;
+  /**
+   * SEF95 exactly as measured by the headband, before the fitted commercial
+   * alignment. Refits must always pool this value, never the displayed one.
+   */
+  sef95Raw: number;
   /** Fraction of this epoch that was isoelectric (0–1). */
   epochSuppression: number;
   /** True when the epoch is predominantly suppressed. */
