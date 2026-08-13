@@ -444,6 +444,11 @@ export class MuseClient implements EegSource {
   private control: BluetoothRemoteGATTCharacteristic | null = null;
   private disconnectCb: (() => void) | null = null;
   private stateCb: SourceStateHandler | null = null;
+  private batteryCb: BatteryHandler | null = null;
+  /** Buffered control-characteristic text, used to read status replies. */
+  private controlBuffer = "";
+  private controlListener: ((event: Event) => void) | null = null;
+  private lastStatusAt = 0;
   private samplesCb: SampleHandler | null = null;
   private stopping = false;
   private reconnecting = false;
@@ -466,6 +471,8 @@ export class MuseClient implements EegSource {
   private static readonly STALL_NUDGE_MS = 6_000;
   /** Force a full reconnect if samples never come back after a nudge. */
   private static readonly STALL_RESET_MS = 15_000;
+  /** How often the headband is asked for a status ("s") reply. */
+  private static readonly BATTERY_POLL_MS = 60_000;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private lastSampleAt = 0;
   private nudgedAt = 0;
@@ -486,6 +493,37 @@ export class MuseClient implements EegSource {
   onState(cb: SourceStateHandler) {
     this.stateCb = cb;
   }
+
+  onBattery(cb: BatteryHandler) {
+    this.batteryCb = cb;
+  }
+
+  /**
+   * Status replies arrive as length-prefixed ASCII fragments on the control
+   * characteristic; once a fragment completes a JSON object, read the battery
+   * percentage ("bp") out of it.
+   */
+  private handleControlValue = (event: Event) => {
+    const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
+    if (!value || value.byteLength === 0) return;
+    this.controlBuffer += decodeControlChunk(value);
+    const end = this.controlBuffer.lastIndexOf("}");
+    const start = this.controlBuffer.indexOf("{");
+    if (end === -1 || start === -1 || end < start) return;
+    const text = this.controlBuffer.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      this.controlBuffer = this.controlBuffer.slice(end + 1);
+      const battery = Number(parsed["bp"]);
+      if (Number.isFinite(battery)) {
+        this.batteryCb?.(Math.max(0, Math.min(100, Math.round(battery))));
+      }
+    } catch {
+      /* reply still incomplete */
+    }
+    // Never let a malformed reply grow without bound.
+    if (this.controlBuffer.length > 2000) this.controlBuffer = "";
+  };
 
   private async send(command: string) {
     if (!this.control) return;
