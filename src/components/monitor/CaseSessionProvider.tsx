@@ -106,6 +106,8 @@ function useCaseSessionState() {
   const refreshCoebis = useServerFn(getBisDrift);
   /** Re-runs the pooled SEF fit as paired SEF readings accumulate. */
   const refreshSef = useServerFn(getSefDrift);
+  /** Links live-filed paired points to the session once the case is filed. */
+  const linkBisPoints = useServerFn(linkBisPointsToSession);
 
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
