@@ -27,7 +27,7 @@ describe("assessBatteryHealth", () => {
   });
 
   it("calls repeated nonsense unreliable", () => {
-    const health = assessBatteryHealth(series([[0, 80], [60, 9], [120, 81], [180, 80]]));
+    const health = assessBatteryHealth(series([[0, 80], [60, 9], [120, 95], [180, 94]]));
     expect(health.status).toBe("unreliable");
     expect(health.anomalies).toBeGreaterThanOrEqual(2);
   });
