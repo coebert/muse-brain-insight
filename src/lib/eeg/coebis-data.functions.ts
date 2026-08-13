@@ -28,6 +28,14 @@ export interface CoebisTrainingPoint {
   diff: number;
   /** Residual after the active model, if one is fitted. */
   residual: number | null;
+  /**
+   * This reading's share of the model's total absolute error, 0–100. Computed
+   * on residuals when a model is active, otherwise on the raw offsets, so it
+   * always answers "how much of the disagreement comes from this reading?".
+   */
+  errorShare: number | null;
+  /** Whether the reading sits inside the ±5 index-point agreement band. */
+  withinTolerance: boolean | null;
   reliable: boolean;
   sqi: number | null;
   context: string | null;
@@ -43,6 +51,14 @@ export interface CoebisCaseRow {
   meanBias: number | null;
   firstRecordedAt: string;
   lastRecordedAt: string;
+  /** Mean absolute residual for this case under the active model. */
+  mae: number | null;
+  /** Share of this case's readings inside ±5 index points, 0–100. */
+  percentWithin: number | null;
+  /** Share of the model's total absolute error contributed by this case. */
+  errorShare: number | null;
+  /** Largest single residual (signed) recorded in this case. */
+  worstResidual: number | null;
 }
 
 export interface CoebisKnotRow {
@@ -206,6 +222,20 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
 
     const analysis = analyseBisDrift(points, active);
 
+    /** Error each reading contributes: residual under the model, else raw offset. */
+    const errorOf = (p: BisDriftPoint): number => {
+      const corrected = map(p.appIndex);
+      return Math.abs((corrected ?? p.appIndex) - p.bis);
+    };
+    const residualOf = (p: BisDriftPoint): number | null => {
+      const corrected = map(p.appIndex);
+      return corrected == null ? null : round(corrected - p.bis);
+    };
+    const totalError = points.reduce((sum, p) => sum + errorOf(p), 0);
+    const shareOf = (err: number): number | null =>
+      totalError > 0 ? Number(((err / totalError) * 100).toFixed(2)) : null;
+    const TOLERANCE = 5;
+
     const byCase = new Map<string, BisDriftPoint[]>();
     for (const p of points) {
       const key = p.sessionId ?? "unfiled";
@@ -217,6 +247,14 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       .map(([key, list]) => {
         const sorted = [...list].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
         const bias = meanOf(list.map((p) => p.appIndex - p.bis));
+        const errors = list.map(errorOf);
+        const caseError = errors.reduce((a, b) => a + b, 0);
+        const within = errors.filter((e) => e <= TOLERANCE).length;
+        const worst = list.reduce<number | null>((worstSoFar, p) => {
+          const r = residualOf(p);
+          if (r == null) return worstSoFar;
+          return worstSoFar == null || Math.abs(r) > Math.abs(worstSoFar) ? r : worstSoFar;
+        }, null);
         return {
           sessionId: key === "unfiled" ? null : key,
           caseCode: codeFor(key === "unfiled" ? null : key),
@@ -225,6 +263,10 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
           meanBias: bias == null ? null : round(bias),
           firstRecordedAt: sorted[0]!.recordedAt,
           lastRecordedAt: sorted[sorted.length - 1]!.recordedAt,
+          mae: list.length ? round(caseError / list.length) : null,
+          percentWithin: list.length ? Math.round((within / list.length) * 100) : null,
+          errorShare: shareOf(caseError),
+          worstResidual: worst,
         };
       })
       .sort((a, b) => b.lastRecordedAt.localeCompare(a.lastRecordedAt));
@@ -282,6 +324,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       drift,
       points: recent.map((p) => {
         const corrected = map(p.appIndex);
+        const err = errorOf(p);
         return {
           recordedAt: p.recordedAt,
           caseCode: codeFor(p.sessionId),
@@ -292,6 +335,8 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
           corrected,
           diff: round(p.appIndex - p.bis),
           residual: corrected == null ? null : round(corrected - p.bis),
+          errorShare: shareOf(err),
+          withinTolerance: err <= TOLERANCE,
           reliable: p.reliable,
           sqi: p.sqi == null ? null : round(p.sqi),
           context: p.context ?? null,

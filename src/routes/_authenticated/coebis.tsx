@@ -75,6 +75,10 @@ function Tile({ label, value, hint }: { label: string; value: string; hint: stri
 
 function CoebisDataPage() {
   const [tab, setTab] = useState<TabKey>("readings");
+  /** How the contributing readings are ordered: newest, or biggest error first. */
+  const [order, setOrder] = useState<"recent" | "error">("recent");
+  /** Hide readings the fit held out, to see only what shaped the model. */
+  const [fitOnly, setFitOnly] = useState(false);
   const fetchData = useServerFn(getCoebisTrainingData);
   const fetchVersions = useServerFn(getCoebisVersionResiduals);
 
@@ -88,6 +92,16 @@ function CoebisDataPage() {
     queryFn: () => fetchVersions(),
     enabled: tab === "versions",
   });
+
+  /** Contributing readings, ordered and filtered for inspection. */
+  const shownPoints = (data?.points ?? [])
+    .filter((p) => (fitOnly ? p.usedInFit : true))
+    .slice()
+    .sort((a, b) =>
+      order === "error"
+        ? (b.errorShare ?? 0) - (a.errorShare ?? 0)
+        : b.recordedAt.localeCompare(a.recordedAt),
+    );
 
   return (
     <main className="min-h-dvh bg-background px-4 py-4 sm:px-6">
@@ -185,7 +199,34 @@ function CoebisDataPage() {
 
           {tab === "readings" ? (
             <section className="panel overflow-x-auto p-0">
-              {data.points.length ? (
+              <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+                <p className="text-xs text-muted-foreground">
+                  Every reading behind the current fit, with the share of the model's total error it
+                  contributes.
+                </p>
+                <div className="ml-auto flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setOrder(order === "recent" ? "error" : "recent")}
+                    className="min-h-9 rounded-full border border-border px-3 text-xs font-medium"
+                  >
+                    {order === "recent" ? "Newest first" : "Largest error first"}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={fitOnly}
+                    onClick={() => setFitOnly(!fitOnly)}
+                    className={
+                      fitOnly
+                        ? "min-h-9 rounded-full border border-signal bg-signal/15 px-3 text-xs font-medium text-signal"
+                        : "min-h-9 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground"
+                    }
+                  >
+                    In-fit only
+                  </button>
+                </div>
+              </div>
+              {shownPoints.length ? (
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="border-b border-border text-xs tracking-wide text-muted-foreground uppercase">
                     <tr>
@@ -197,12 +238,13 @@ function CoebisDataPage() {
                       <th className="px-3 py-2 text-right">COEBIS</th>
                       <th className="px-3 py-2 text-right">Diff</th>
                       <th className="px-3 py-2 text-right">Residual</th>
+                      <th className="px-3 py-2 text-right">Error share</th>
                       <th className="px-3 py-2 text-right">SQI</th>
                       <th className="px-3 py-2 text-left">In fit</th>
                     </tr>
                   </thead>
                   <tbody className="metric-value">
-                    {data.points.map((p, i) => (
+                    {shownPoints.map((p, i) => (
                       <tr
                         key={`${p.recordedAt}-${i}`}
                         className="border-b border-border/50 last:border-0"
@@ -232,6 +274,15 @@ function CoebisDataPage() {
                             ? "—"
                             : `${p.residual > 0 ? "+" : ""}${p.residual.toFixed(1)}`}
                         </td>
+                        <td
+                          className={
+                            p.withinTolerance === false
+                              ? "px-3 py-1.5 text-right text-caution"
+                              : "px-3 py-1.5 text-right"
+                          }
+                        >
+                          {p.errorShare == null ? "—" : `${p.errorShare.toFixed(2)}%`}
+                        </td>
                         <td className="px-3 py-1.5 text-right">
                           {p.sqi == null ? "—" : p.sqi.toFixed(0)}
                         </td>
@@ -254,8 +305,8 @@ function CoebisDataPage() {
               )}
               {data.totalPoints > data.points.length ? (
                 <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-                  Showing the most recent {data.points.length} of {data.totalPoints} readings. The
-                  model fits on all of them.
+                  Showing {shownPoints.length} of {data.totalPoints} readings (most recent 300 are
+                  listed). Error shares are measured against every reading the model fits on.
                 </p>
               ) : null}
             </section>
@@ -294,6 +345,10 @@ function CoebisDataPage() {
                       <th className="px-3 py-2 text-right">Readings</th>
                       <th className="px-3 py-2 text-right">Reliable</th>
                       <th className="px-3 py-2 text-right">Mean offset</th>
+                      <th className="px-3 py-2 text-right">MAE</th>
+                      <th className="px-3 py-2 text-right">Within ±5</th>
+                      <th className="px-3 py-2 text-right">Error share</th>
+                      <th className="px-3 py-2 text-right">Worst</th>
                       <th className="px-3 py-2 text-left">First</th>
                       <th className="px-3 py-2 text-left">Last</th>
                     </tr>
@@ -311,6 +366,26 @@ function CoebisDataPage() {
                           {c.meanBias == null
                             ? "—"
                             : `${c.meanBias > 0 ? "+" : ""}${c.meanBias.toFixed(1)}`}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {c.mae == null ? "—" : c.mae.toFixed(1)}
+                        </td>
+                        <td
+                          className={
+                            c.percentWithin != null && c.percentWithin < 60
+                              ? "px-3 py-1.5 text-right text-critical"
+                              : "px-3 py-1.5 text-right"
+                          }
+                        >
+                          {c.percentWithin == null ? "—" : `${c.percentWithin}%`}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {c.errorShare == null ? "—" : `${c.errorShare.toFixed(1)}%`}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {c.worstResidual == null
+                            ? "—"
+                            : `${c.worstResidual > 0 ? "+" : ""}${c.worstResidual.toFixed(1)}`}
                         </td>
                         <td className="px-3 py-1.5 text-xs whitespace-nowrap">
                           {when(c.firstRecordedAt)}
