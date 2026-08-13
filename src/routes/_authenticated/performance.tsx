@@ -292,6 +292,8 @@ function ModelPerformancePage() {
 
             <BisDriftPanel />
 
+            <SefDriftPanel />
+
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
