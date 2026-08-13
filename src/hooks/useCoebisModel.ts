@@ -96,7 +96,8 @@ export function describeCoebisModel(model: BisAlignment | null): string {
     ? ""
     : ` · fitted ${fitted.toLocaleDateString(undefined, { day: "2-digit", month: "short" })}`;
   const pinned = model.version && !model.isActive ? " · pinned for comparison" : "";
-  return `Model ${coebisVersionLabel(model)} · ${model.n} readings${when}${pinned}`;
+  const provisional = model.provisional ? " · provisional" : "";
+  return `Model ${coebisVersionLabel(model)}${provisional} · ${model.n} readings${when}${pinned}`;
 }
 
 /**
