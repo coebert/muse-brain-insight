@@ -47,6 +47,9 @@ import type { CaseControls } from "@/components/monitor/case-controls";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
 import { getBisDrift, recordBisPoints } from "@/lib/eeg/bis-drift.functions";
+import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
+import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
+import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
@@ -88,10 +91,16 @@ function useCaseSessionState() {
   // the case is running is picked up without a reload.
   useCoebisModel();
 
+  // Same for the SEF correction fitted from paired monitor SEF readings, so
+  // the displayed spectral edge sits on the commercial monitor's scale.
+  useSefAlignment();
+
   /** Files paired BIS/app values for the cross-case drift watch. */
   const fileBisPoints = useServerFn(recordBisPoints);
   /** Re-runs the pooled fit so COEBIS keeps refining as cases accumulate. */
   const refreshCoebis = useServerFn(getBisDrift);
+  /** Re-runs the pooled SEF fit as paired SEF readings accumulate. */
+  const refreshSef = useServerFn(getSefDrift);
 
   // Start-up speed: reuse the last context and location, and suggest the next
   // sequential anonymised case code so a case starts in two taps.
@@ -578,7 +587,9 @@ function useCaseSessionState() {
             bisSef: p.bisSef,
             appIndex: p.depthIndex!,
             appSr: p.appSr,
-            appSef: p.sef95,
+            // Always file the raw headband SEF: filing the displayed value
+            // would fold the existing correction back into the next refit.
+            appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
           }));
@@ -596,6 +607,8 @@ function useCaseSessionState() {
             try {
               await refreshCoebis({});
               await syncBisAlignment();
+              await refreshSef({});
+              await syncSefAlignment();
             } catch {
               // A refit failure is silent; the existing model stays in force.
             }

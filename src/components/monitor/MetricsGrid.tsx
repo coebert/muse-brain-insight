@@ -3,6 +3,7 @@ import type React from "react";
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { CoebisFitBadge, coebisFitHint } from "@/components/monitor/CoebisFitBadge";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
+import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatDuration } from "@/lib/eeg/format";
@@ -44,6 +45,8 @@ export function MetricsGrid({
   // The active COEBIS fit, refreshed while the case runs so the tile always
   // shows the number from the latest model.
   const coebisModel = useCoebisModel();
+  // The active SEF correction fitted from paired commercial monitor readings.
+  const sefAlignment = useSefAlignment();
   // Short "95 % CI a–b" suffixes appended to the tiles that carry an interval.
   const srCi = uncertainty?.suppression.interval;
   const sefCi = uncertainty?.spectral.interval;
@@ -169,13 +172,18 @@ export function MetricsGrid({
             <MetricTile
               key="sef"
               info="sef95"
-              label="Spectral edge 95"
+              label={sefAlignment ? "Spectral edge 95 (aligned)" : "Spectral edge 95"}
               value={latest ? latest.sef95.toFixed(1) : "—"}
               unit="Hz"
               hint={
-                sefCi
+                (sefCi
                   ? `95 % CI ${sefCi.low.toFixed(1)}–${sefCi.high.toFixed(1)} Hz · 95 % of power below`
-                  : "Frequency below which 95 % of power sits"
+                  : "Frequency below which 95 % of power sits") +
+                (sefAlignment
+                  ? ` · aligned to monitor SEF${sefAlignment.provisional ? " (provisional)" : ""}${
+                      latest ? `, raw ${latest.sef95Raw.toFixed(1)} Hz` : ""
+                    }`
+                  : "")
               }
               confidence={latest?.confidence.spectral}
             />

@@ -16,6 +16,7 @@ import { DepthArtifactGate, type DepthArtifactReport } from "./artifact";
 import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
 import { spansGap } from "./gaps";
+import { applySefAlignment } from "./sef-drift";
 
 export type { SignalQuality } from "./dsp";
 export type { SeizureEvidence } from "./seizure-evidence";
@@ -171,6 +172,11 @@ export interface Epoch {
   entropy: SpectralEntropy;
   totalPower: number;
   sef95: number;
+  /**
+   * SEF95 exactly as measured by the headband, before the fitted commercial
+   * alignment. Refits must always pool this value, never the displayed one.
+   */
+  sef95Raw: number;
   /** Fraction of this epoch that was isoelectric (0–1). */
   epochSuppression: number;
   /** True when the epoch is predominantly suppressed. */
@@ -375,7 +381,11 @@ export class EegAnalyzer {
       gamma: bandPower(psd, 30, 45),
     };
     const totalPower = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma;
-    const sef95 = spectralEdge(psd, 0.95);
+    const sef95Raw = spectralEdge(psd, 0.95);
+    // Displayed SEF is mapped onto the commercial monitor's scale when a
+    // paired-reading model has been fitted; entropy and every other derived
+    // measure stay on the raw spectrum.
+    const sef95 = applySefAlignment(sef95Raw);
     // Guard the ratios: an alpha floor keeps them finite in deep suppression
     // where alpha power approaches zero.
     const alphaFloor = Math.max(bands.alpha, totalPower * 1e-3, 1e-6);
@@ -384,7 +394,7 @@ export class EegAnalyzer {
       betaAlpha: bands.beta / alphaFloor,
       thetaAlpha: bands.theta / alphaFloor,
     };
-    const entropy = spectralEntropies(psd, sef95);
+    const entropy = spectralEntropies(psd, sef95Raw);
 
     // --- signal quality -----------------------------------------------------
     const quality = signalQuality(window, psd, this.fs);
@@ -724,6 +734,7 @@ export class EegAnalyzer {
       entropy,
       totalPower,
       sef95,
+      sef95Raw,
       epochSuppression,
       isSuppressed,
       suppressionRatio,

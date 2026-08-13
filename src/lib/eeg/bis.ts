@@ -92,6 +92,8 @@ export interface BisPairedPoint {
   appSr: number | null;
   srDifference: number | null;
   sef95: number | null;
+  /** Headband SEF before the fitted commercial alignment — used for refits. */
+  sef95Raw: number | null;
   /** App SEF95 minus commercial SEF (Hz). */
   sefDifference: number | null;
   /** App's own reliability verdict at that moment. */
@@ -165,6 +167,7 @@ export function pairBisReadings(
       const depthIndex = epoch?.depth.index ?? null;
       const appSr = epoch ? epoch.suppressionRatio : null;
       const appSef = epoch?.sef95 ?? null;
+      const appSefRaw = epoch?.sef95Raw ?? null;
       return {
         at: r.at,
         bis: r.bis,
@@ -176,6 +179,7 @@ export function pairBisReadings(
         srDifference:
           appSr == null || r.sr == null || !Number.isFinite(r.sr) ? null : round(appSr - r.sr, 1),
         sef95: round(appSef, 1),
+        sef95Raw: round(appSefRaw, 2),
         sefDifference:
           appSef == null || r.sef == null || !Number.isFinite(r.sef)
             ? null
