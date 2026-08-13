@@ -202,7 +202,7 @@ export function CoebisVersionComparison({
                     aria-hidden
                   />
                   v{v.version}
-                  {v.isActive ? <span className="text-[10px] text-signal">active</span> : null}
+                  {v.isActive ? <span className="text-[11px] text-signal">active</span> : null}
                 </button>
               </li>
             );
@@ -304,7 +304,7 @@ export function CoebisVersionComparison({
                           `v${v.version} · ${b.label} · ${v.residuals.histogram[bi]?.percent ?? 0}% (n ${v.residuals.histogram[bi]?.n ?? 0})`,
                       )}
                     />
-                    <span className="text-[10px] whitespace-nowrap text-muted-foreground">
+                    <span className="text-[11px] whitespace-nowrap text-muted-foreground">
                       {b.label}
                     </span>
                   </div>
@@ -322,7 +322,7 @@ export function CoebisVersionComparison({
                         const inside = b.from >= -tolerance && b.to <= tolerance;
                         return (
                           <li key={b.label} className="flex items-center gap-2">
-                            <span className="metric-value w-20 shrink-0 text-[10px] text-muted-foreground">
+                            <span className="metric-value w-20 shrink-0 text-[11px] text-muted-foreground">
                               {b.label}
                             </span>
                             <span className="h-2.5 flex-1 overflow-hidden rounded-sm bg-muted">
@@ -331,7 +331,7 @@ export function CoebisVersionComparison({
                                 style={{ width: `${(b.percent / maxBin) * 100}%` }}
                               />
                             </span>
-                            <span className="metric-value w-10 shrink-0 text-right text-[10px] text-muted-foreground">
+                            <span className="metric-value w-10 shrink-0 text-right text-[11px] text-muted-foreground">
                               {b.percent}%
                             </span>
                           </li>
@@ -369,7 +369,7 @@ export function CoebisVersionComparison({
                         return `v${v.version} · ${dayLabel(key)} · ${d?.percentWithin ?? 0}% (n ${d?.n ?? 0})`;
                       })}
                     />
-                    <span className="text-[10px] whitespace-nowrap text-muted-foreground">
+                    <span className="text-[11px] whitespace-nowrap text-muted-foreground">
                       {dayLabel(key)}
                     </span>
                   </div>
@@ -390,7 +390,7 @@ export function CoebisVersionComparison({
                               className={`w-full rounded-t-sm ${SERIES[i]!.bar}`}
                               style={{ height: `${Math.max(2, (d?.percentWithin ?? 0) * 0.5)}px` }}
                             />
-                            <span className="text-[10px] whitespace-nowrap text-muted-foreground">
+                            <span className="text-[11px] whitespace-nowrap text-muted-foreground">
                               {dayLabel(key)}
                             </span>
                           </div>

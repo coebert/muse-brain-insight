@@ -34,6 +34,11 @@ export function CoebisFitBadge({
     >
       {compact ? q.label.replace(" fit", "") : q.label}
       {q.inFitPercent != null ? <span className="opacity-80">{q.inFitPercent}% in ±5</span> : null}
+      {model?.provisional ? (
+        <span className="rounded-sm bg-caution/20 px-1 text-caution" title="Fitted on early data — indicative only">
+          prov
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -42,5 +47,6 @@ export function CoebisFitBadge({
 export function coebisFitHint(model: BisAlignment | null): string {
   const q = computeCoebisFitQuality(model);
   const inFit = q.inFitPercent == null ? "" : ` · ~${q.inFitPercent}% in ±5`;
-  return `${q.label} · ${q.residualSummary}${inFit}`;
+  const prov = model?.provisional ? " · provisional (early data)" : "";
+  return `${q.label} · ${q.residualSummary}${inFit}${prov}`;
 }

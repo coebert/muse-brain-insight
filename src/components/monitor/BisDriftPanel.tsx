@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 const VERDICT_TONE: Record<string, string> = {
   insufficient: "bg-muted text-muted-foreground",
   watching: "bg-caution/15 text-caution",
+  provisional: "bg-caution/15 text-caution",
   aligned: "bg-signal/15 text-signal",
   adjust: "bg-caution/15 text-caution",
   adjustment_active: "bg-signal/15 text-signal",
@@ -27,6 +28,7 @@ const VERDICT_TONE: Record<string, string> = {
 const VERDICT_LABEL: Record<string, string> = {
   insufficient: "No data yet",
   watching: "Watching",
+  provisional: "COEBIS provisional",
   aligned: "COEBIS tracking BIS",
   adjust: "COEBIS model fitted",
   adjustment_active: "COEBIS active",

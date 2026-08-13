@@ -130,6 +130,11 @@ export interface BisAlignment {
   version?: number;
   /** True for the fit the app currently treats as the live model. */
   isActive?: boolean;
+  /**
+   * True while the fit is based on early evidence (below the full 30-reading /
+   * 3-case bar). The number is shown, but always labelled as provisional.
+   */
+  provisional?: boolean;
   /** Agreement metrics recorded at fit time, for version comparison. */
   biasAfter?: number | null;
   maeAfter?: number | null;

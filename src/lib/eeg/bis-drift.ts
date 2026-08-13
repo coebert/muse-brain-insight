@@ -57,6 +57,7 @@ export interface BisAlignmentFit {
 export type DriftVerdict =
   | "insufficient"
   | "watching"
+  | "provisional"
   | "aligned"
   | "adjust"
   | "adjustment_active";
@@ -78,11 +79,19 @@ export interface BisDriftAnalysis {
   recent: { n: number; bias: number | null };
   fit: BisAlignmentFit | null;
   verdict: DriftVerdict;
+  /**
+   * How much weight the fitted model deserves: "provisional" once there is
+   * enough paired data to fit something useful, "confirmed" once the full
+   * evidence bar is cleared.
+   */
+  tier: "none" | "provisional" | "confirmed";
   /** Plain-language reading of where the surveillance has got to. */
   summary: string;
   readiness: {
     points: { have: number; need: number };
     sessions: { have: number; need: number };
+    /** Thresholds for the early, clearly-labelled provisional model. */
+    provisional: { points: number; sessions: number; met: boolean };
     /** Bias confidence interval excludes zero. */
     biasSignificant: boolean;
   };
@@ -91,6 +100,14 @@ export interface BisDriftAnalysis {
 /** Evidence needed before the app will touch the index. */
 export const MIN_POINTS = 30;
 export const MIN_SESSIONS = 3;
+/**
+ * Waiting for 30 readings across 3 cases leaves a clinician with no COEBIS
+ * number at all for weeks. Once there are a handful of paired readings from
+ * more than one case, COEBIS is fitted and shown — heavily shrunk toward the
+ * published index and labelled provisional until the full bar is cleared.
+ */
+export const PROVISIONAL_MIN_POINTS = 8;
+export const PROVISIONAL_MIN_SESSIONS = 2;
 /** Bias smaller than this is not worth correcting for. */
 export const MIN_MEANINGFUL_BIAS = 3;
 /** A fit must remove at least this much mean absolute error to be applied. */
@@ -254,6 +271,8 @@ export function analyseBisDrift(
 
   const biasSignificant = ci != null && (ci[0] > 0 || ci[1] < 0);
   const enough = usable.length >= MIN_POINTS && sessions >= MIN_SESSIONS;
+  const provisionalReady =
+    usable.length >= PROVISIONAL_MIN_POINTS && sessions >= PROVISIONAL_MIN_SESSIONS;
   const meaningful = bias != null && Math.abs(bias) >= MIN_MEANINGFUL_BIAS;
 
   let verdict: DriftVerdict;
@@ -261,12 +280,24 @@ export function analyseBisDrift(
   else if (!meaningful || !biasSignificant) verdict = "aligned";
   else if (fitIsSafe(fit)) verdict = active ? "adjustment_active" : "adjust";
   else verdict = "watching";
+  // Early evidence: fit and show COEBIS, but say plainly that it is provisional.
+  if (!enough && provisionalReady && meaningful && biasSignificant && fitIsSafe(fit)) {
+    verdict = "provisional";
+  }
+  const tier: BisDriftAnalysis["tier"] =
+    verdict === "adjust" || verdict === "adjustment_active"
+      ? "confirmed"
+      : verdict === "provisional"
+        ? "provisional"
+        : "none";
 
   const direction = bias == null ? "" : bias > 0 ? "lighter" : "deeper";
   const summary =
     verdict === "insufficient"
       ? "No paired BIS readings yet. Log values from the commercial monitor during cases and the app will watch for a systematic offset."
-      : verdict === "watching" && !enough
+      : verdict === "provisional"
+        ? `Provisional COEBIS model from ${usable.length} paired reading${usable.length === 1 ? "" : "s"} across ${sessions} case${sessions === 1 ? "" : "s"}: the open index reads ${Math.abs(bias!).toFixed(1)} points ${direction} than the monitor, and the fitted correction cuts mean absolute error from ${fit!.maeBefore.toFixed(1)} to ${fit!.maeAfter.toFixed(1)} points. Treat the number as indicative until ${MIN_POINTS} readings across ${MIN_SESSIONS} cases confirm it.`
+        : verdict === "watching" && !enough
         ? `Watching: ${usable.length} paired reading${usable.length === 1 ? "" : "s"} from ${sessions} case${sessions === 1 ? "" : "s"}${
             bias != null ? `, mean offset ${bias > 0 ? "+" : ""}${bias.toFixed(1)} (${direction} than BIS)` : ""
           }. ${MIN_POINTS} readings across ${MIN_SESSIONS} cases are needed before the index is adjusted.`
@@ -289,10 +320,16 @@ export function analyseBisDrift(
     recent,
     fit,
     verdict,
+    tier,
     summary,
     readiness: {
       points: { have: usable.length, need: MIN_POINTS },
       sessions: { have: sessions, need: MIN_SESSIONS },
+      provisional: {
+        points: PROVISIONAL_MIN_POINTS,
+        sessions: PROVISIONAL_MIN_SESSIONS,
+        met: provisionalReady,
+      },
       biasSignificant,
     },
   };

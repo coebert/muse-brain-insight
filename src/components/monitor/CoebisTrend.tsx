@@ -121,12 +121,12 @@ export function CoebisTrend({
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between px-2 pb-1 text-[10px] text-muted-foreground tabular-nums">
+      <div className="flex items-center justify-between px-2 pb-1 text-[11px] text-muted-foreground tabular-nums">
         {ticks.map((label, i) => (
           <span key={`${label}-${i}`}>{label}</span>
         ))}
       </div>
-      <div className="flex items-center gap-3 px-2 pb-1 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-3 px-2 pb-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="inline-block h-0.5 w-3 rounded bg-[rgb(120,170,255)]" /> COEBIS
         </span>

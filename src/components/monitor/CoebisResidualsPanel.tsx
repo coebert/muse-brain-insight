@@ -151,7 +151,7 @@ export function CoebisResidualsPanel({ residuals }: { residuals: CoebisResiduals
         <div className="flex items-end gap-1 overflow-x-auto pb-1" style={{ height: 120 }}>
           {recent.map((d) => (
             <div key={d.key} className="flex w-8 shrink-0 flex-col items-center gap-1">
-              <span className="metric-value text-[10px] text-muted-foreground">
+              <span className="metric-value text-[11px] text-muted-foreground">
                 {d.percentWithin}
               </span>
               <span
@@ -159,7 +159,7 @@ export function CoebisResidualsPanel({ residuals }: { residuals: CoebisResiduals
                 className={`w-full rounded-t-sm ${barTone(d.percentWithin)}`}
                 style={{ height: `${Math.max(2, d.percentWithin * 0.7)}px` }}
               />
-              <span className="text-[10px] whitespace-nowrap text-muted-foreground">
+              <span className="text-[11px] whitespace-nowrap text-muted-foreground">
                 {dayLabel(d.key)}
               </span>
             </div>
