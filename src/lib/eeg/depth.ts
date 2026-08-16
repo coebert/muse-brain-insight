@@ -24,6 +24,9 @@ import {
   type CovariateAdjustment,
   type CovariateTerm,
 } from "./covariates";
+import { monitorEntropy, type MonitorEntropy } from "./entropy-monitor";
+import { coebisAdjunct, NO_ADJUNCT, type AdjunctCorrection } from "./coebis-adjuncts";
+import { getActiveMontageFeatures } from "./psi-features";
 
 export interface DepthComponents {
   /** openibis component 1: mean 30-47 Hz power minus mid-band power, dB. */
