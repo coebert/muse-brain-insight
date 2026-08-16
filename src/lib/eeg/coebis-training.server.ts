@@ -39,7 +39,7 @@ export async function loadTrainingMatrix(
   const { data: pointRows, error } = await supabase
     .from("bis_paired_points")
     .select(
-      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, recorded_at, context, ce",
+      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, recorded_at, context, ce, features",
     )
     .order("recorded_at", { ascending: true })
     .limit(limit);
@@ -66,8 +66,23 @@ export async function loadTrainingMatrix(
   let unfiled = 0;
 
   const points: CoebisTrainingPoint[] = rows.map((r) => {
-    const sessionId = (r["session_id"] as string | null) ?? null;
-    const cov = sessionId ? covariates.get(sessionId) : undefined;
+    const rawSessionId = (r["session_id"] as string | null) ?? null;
+    // Imported readings carry their own pseudonymous case ref and covariates,
+    // so they still group per case rather than collapsing into one bucket.
+    const features = (r["features"] as Record<string, unknown> | null) ?? null;
+    const imported = !rawSessionId && features?.["imported"] === true;
+    const sessionId = rawSessionId ?? (imported ? `import:${String(features?.["caseRef"] ?? "?")}` : null);
+    const cov = rawSessionId
+      ? covariates.get(rawSessionId)
+      : imported
+        ? {
+            id: sessionId!,
+            age_band: (features?.["ageBand"] as string | null) ?? null,
+            sex: (features?.["sex"] as string | null) ?? null,
+            regimen: (features?.["regimen"] as string | null) ?? null,
+            frailty: (features?.["frailty"] as string | null) ?? null,
+          }
+        : undefined;
     if (!sessionId) unfiled++;
     if (!cov?.age_band) missingAge++;
     if (!cov?.regimen) missingRegimen++;
