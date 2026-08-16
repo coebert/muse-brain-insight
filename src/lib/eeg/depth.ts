@@ -497,11 +497,17 @@ export class DepthIndexEstimator {
   private bsrMap: number[] = [];
   private epochSeconds = 1;
   private heldEpochs = 0;
+  /** Running COEBIS value: an exponential average over epochs. */
+  private coebisEma: number | null = null;
+  /** Epochs since COEBIS last had a value (used to restart after a gap). */
+  private coebisIdleEpochs = 0;
 
   reset() {
     this.psdHistory = [];
     this.bsrMap = [];
     this.heldEpochs = 0;
+    this.coebisEma = null;
+    this.coebisIdleEpochs = 0;
   }
 
   /**
