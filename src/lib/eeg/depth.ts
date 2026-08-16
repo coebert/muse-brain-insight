@@ -215,11 +215,12 @@ export function applyBisAlignment(
   index: number,
   alignment = activeBisAlignment,
   cov: CaseCovariates | null = activeCovariates,
+  adjunct = 0,
 ): number {
   if (!alignment) return index;
   const affine = alignment.gain * index + alignment.offset;
   const shaped = affine + knotCorrection(affine, alignment.knots);
-  return clamp(shaped + covariateAdjustment(alignment.terms, cov).total, 0, 100);
+  return clamp(shaped + covariateAdjustment(alignment.terms, cov).total + adjunct, 0, 100);
 }
 
 /**
@@ -229,9 +230,10 @@ export function applyBisAlignment(
 export function computeCoebis(
   openIbis: number | null,
   alignment = activeBisAlignment,
+  adjunct = 0,
 ): number | null {
   if (openIbis == null || !alignment) return null;
-  return Math.round(applyBisAlignment(openIbis, alignment));
+  return Math.round(applyBisAlignment(openIbis, alignment, activeCovariates, adjunct));
 }
 
 export function getActiveDepthCalibration(): DepthCalibration {
