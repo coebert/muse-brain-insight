@@ -173,8 +173,8 @@ export function CoebisValidationPanel() {
                   {g.group}: <span className="normal-case">{g.level}</span>
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {g.n} reading{g.n === 1 ? "" : "s"} from {g.cases} case{g.cases === 1 ? "" : "s"} —
-                  need about {g.needed} more
+                  {g.have} reading{g.have === 1 ? "" : "s"} from {g.cases} case{g.cases === 1 ? "" : "s"} — need about{" "}
+                  {Math.max(0, g.need - g.have)} more
                 </span>
               </li>
             ))}

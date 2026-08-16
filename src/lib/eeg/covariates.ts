@@ -128,3 +128,9 @@ export function describeCovariateAdjustment(adj: CovariateAdjustment): string {
     .map((p) => `${p.dy > 0 ? "+" : "−"}${Math.abs(p.dy).toFixed(1)} for ${covariateLabel(p.group, p.level)}`)
     .join(", ");
 }
+
+/** "Age 75-89: +3.0 index points" — one learned term, in plain words. */
+export function describeTerm(term: CovariateTerm): string {
+  const sign = term.dy > 0 ? "+" : "−";
+  return `${covariateLabel(term.group, term.level)}: ${sign}${Math.abs(term.dy).toFixed(1)} index points`;
+}
