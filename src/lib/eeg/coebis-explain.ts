@@ -116,7 +116,7 @@ export function explainCoebis(
         label: `Monitor adjunct: ${part.label}`,
         delta: Number(part.delta.toFixed(1)),
         value: Number(value.toFixed(1)),
-        detail: part.detail,
+        detail: part.vsCommercial ? `${part.detail} ${part.vsCommercial}` : part.detail,
       });
     }
     if (adjunct.shrink < 1) {
