@@ -189,3 +189,28 @@ export function summariseInfusions(infusions: TciInfusion[]): string {
     .filter(Boolean)
     .join("; ");
 }
+
+/**
+ * Effect-site targets in force at a case-clock time, merged across every pump
+ * running then. Used to stamp each paired BIS reading with the drug state it
+ * was taken under, so the model can learn regimen- and dose-specific offsets.
+ */
+export function targetsAt(infusions: TciInfusion[], at: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const infusion of infusions) {
+    if (at < infusion.startedAt) continue;
+    if (infusion.stoppedAt != null && at > infusion.stoppedAt) continue;
+    const points =
+      infusion.history && infusion.history.length
+        ? infusion.history
+        : [{ at: infusion.startedAt, targets: infusion.targets }];
+    let current: Record<string, number> | null = null;
+    for (const p of points) {
+      if (p.at <= at) current = p.targets;
+    }
+    for (const [drug, value] of Object.entries(current ?? infusion.targets)) {
+      if (Number.isFinite(value)) out[drug] = Number(value);
+    }
+  }
+  return out;
+}
