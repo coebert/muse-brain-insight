@@ -146,6 +146,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
         appSef?: number | null;
         reliable?: boolean;
         sqi?: number | null;
+        /** Effect-site targets in force at the reading, per drug. */
+        ce?: Record<string, number> | null;
       }[];
     }) => {
       if (!input || !Array.isArray(input.points)) throw new Error("No paired points supplied.");
@@ -169,6 +171,7 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       app_sef: p.appSef ?? null,
       reliable: p.reliable ?? true,
       sqi: p.sqi ?? null,
+      ce: (p.ce ?? {}) as unknown as never,
       context: data.context ?? null,
       device: data.device ?? null,
     }));
