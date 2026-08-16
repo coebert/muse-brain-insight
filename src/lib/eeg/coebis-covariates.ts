@@ -287,41 +287,41 @@ export function outOfFoldPredictions(
   return out;
 }
 
-interface UnusedStratumMarker {
-  group: string;
-  level: string;
-  n: number;
-  cases: number;
-  before: AgreementSummary;
-  after: AgreementSummary;
-}
-
 /** Held-out error broken down by subgroup, so weak spots cannot hide in a mean. */
 export function stratifiedAgreement(
   points: CoebisTrainingPoint[],
-  predict: (p: CoebisTrainingPoint) => number,
+  predict: (p: CoebisTrainingPoint, index: number) => number | null,
 ): StratumResult[] {
-  const buckets = new Map<string, CoebisTrainingPoint[]>();
-  const push = (group: string, level: string, p: CoebisTrainingPoint) => {
+  const buckets = new Map<string, { p: CoebisTrainingPoint; i: number }[]>();
+  const push = (group: string, level: string, p: CoebisTrainingPoint, i: number) => {
     const key = `${group}\u0000${level}`;
-    buckets.set(key, [...(buckets.get(key) ?? []), p]);
+    buckets.set(key, [...(buckets.get(key) ?? []), { p, i }]);
   };
-  for (const p of points) {
-    for (const [group, level] of covariateLevels(p.cov)) push(group, level, p);
+  points.forEach((p, i) => {
+    for (const [group, level] of covariateLevels(p.cov)) push(group, level, p, i);
     const band =
-      p.bis >= 80 ? "80-100 (awake)" : p.bis >= 60 ? "60-79 (light)" : p.bis >= 40 ? "40-59 (surgical)" : "<40 (deep)";
-    push("depth", band, p);
-  }
+      p.bis >= 80
+        ? "80-100 (awake)"
+        : p.bis >= 60
+          ? "60-79 (light)"
+          : p.bis >= 40
+            ? "40-59 (surgical)"
+            : "<40 (deep)";
+    push("depth", band, p, i);
+  });
   return [...buckets.entries()]
     .map(([key, list]) => {
       const [group = "", level = ""] = key.split("\u0000");
+      const scored = list
+        .map((e) => ({ predicted: predict(e.p, e.i), bis: e.p.bis }))
+        .filter((e): e is { predicted: number; bis: number } => e.predicted != null);
       return {
         group,
         level,
         n: list.length,
-        cases: new Set(list.map((p) => p.sessionId ?? "unfiled")).size,
-        before: agreementSummary(list.map((p) => ({ predicted: p.appIndex, bis: p.bis }))),
-        after: agreementSummary(list.map((p) => ({ predicted: predict(p), bis: p.bis }))),
+        cases: new Set(list.map((e) => e.p.sessionId ?? "unfiled")).size,
+        before: agreementSummary(list.map((e) => ({ predicted: e.p.appIndex, bis: e.p.bis }))),
+        after: agreementSummary(scored),
       };
     })
     .sort((a, b) => (a.group === b.group ? b.n - a.n : a.group.localeCompare(b.group)));
