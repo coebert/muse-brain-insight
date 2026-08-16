@@ -11,6 +11,7 @@ import {
   type DetectedEvent,
   type Epoch,
 } from "@/lib/eeg/analysis";
+import { montageFeatures, setActiveMontageFeatures } from "@/lib/eeg/psi-features";
 import {
   MUSE_SAMPLE_RATE,
   computePsd,
