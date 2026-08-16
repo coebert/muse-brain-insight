@@ -33,6 +33,7 @@ import { MetricsGrid } from "@/components/monitor/MetricsGrid";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisUnavailableBanner } from "@/components/monitor/CoebisUnavailableBanner";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
+import { CoebisExplainPanel } from "@/components/monitor/CoebisExplainPanel";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
@@ -841,8 +842,15 @@ function Monitor() {
             <CoebisUnavailableBanner className="mb-2" />
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
-              {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
-              <CoebisModelPicker />
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Full derivation of the COEBIS number on screen. */}
+                <CoebisExplainPanel
+                  openIbis={latest?.depth.index ?? null}
+                  covariates={depthTargetInputs}
+                />
+                {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
+                <CoebisModelPicker />
+              </div>
             </div>
             <MetricsGrid
               uncertainty={uncertainty}
@@ -868,7 +876,11 @@ function Monitor() {
 
             <AssessmentConfidencePanel report={uncertainty} />
 
-            <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
+            <DepthWindowPanel
+              depthWindow={depthWindow}
+              depthIndex={latest?.depth.index}
+              targetInputs={depthTargetInputs}
+            />
 
             {caseState !== "idle" ? (
               <SeizureRiskPanel
