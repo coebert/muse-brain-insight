@@ -61,7 +61,10 @@ export function CoebisModelPicker({ className }: { className?: string }) {
         <Button
           variant="outline"
           size="sm"
-          className={className}
+          className={cn(
+            "h-auto max-w-full flex-wrap justify-start gap-y-1 py-1.5 text-left whitespace-normal",
+            className,
+          )}
           aria-label="COEBIS model version"
         >
           <History className="mr-1.5 size-3.5" aria-hidden />
