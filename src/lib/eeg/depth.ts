@@ -56,6 +56,10 @@ export interface DepthReading {
   gateReasons: string[];
   /** A fitted BIS alignment was applied to the index. */
   bisAligned?: boolean;
+  /** Entropy-monitor style State/Response Entropy for this epoch. */
+  entropy?: MonitorEntropy | null;
+  /** Adjunct (Entropy/PSI-informed) correction folded into COEBIS. */
+  adjunct?: AdjunctCorrection;
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
