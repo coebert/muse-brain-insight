@@ -281,6 +281,8 @@ export function BisPanel({
         </div>
       </div>
 
+      <CoebisGapHint className="mt-3" />
+
       {readings.length === 0 ? (
         <p className="mt-3 text-xs text-muted-foreground">
           No reference readings yet. Log the commercial monitor's value whenever it is worth
