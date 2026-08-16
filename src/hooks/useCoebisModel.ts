@@ -90,7 +90,7 @@ export function coebisVersionLabel(model: BisAlignment | null): string {
 
 /** Short "model v4 · N readings" line for the COEBIS tiles. */
 export function describeCoebisModel(model: BisAlignment | null): string {
-  if (!model) return "Learning — needs paired commercial BIS readings";
+  if (!model) return "Baseline (uncalibrated) — learning from paired commercial BIS readings";
   const fitted = new Date(model.fittedAt);
   const when = Number.isNaN(fitted.getTime())
     ? ""
