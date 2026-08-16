@@ -615,8 +615,8 @@ export class DepthIndexEstimator {
     // Entropy-monitor style SE/RE on the same rolling spectra, then the
     // Entropy/PSI-informed adjunct that finishes the COEBIS number.
     const entropy = monitorEntropy(this.psdHistory, bsr, BIN_HZ, epochSeconds);
-    const aligned =
-      rawValue == null || !activeBisAlignment ? null : applyBisAlignment(rawValue, activeBisAlignment);
+    const alignment = effectiveBisAlignment();
+    const aligned = rawValue == null ? null : applyBisAlignment(rawValue, alignment);
     const adjunct =
       aligned == null
         ? NO_ADJUNCT
@@ -627,7 +627,8 @@ export class DepthIndexEstimator {
             bsr,
             quality: 1 - gatedFraction,
           });
-    const coebis = computeCoebis(rawValue, activeBisAlignment, adjunct.total);
+    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total);
+    const coebis = this.smoothCoebis(coebisRaw, epochSeconds);
     return {
       index,
       raw: rawValue == null ? null : Math.round(rawValue),
@@ -641,7 +642,33 @@ export class DepthIndexEstimator {
       entropy,
       adjunct,
       coebis,
+      coebisRaw,
+      coebisBaseline: activeBisAlignment == null,
     };
+  }
+
+  /**
+   * COEBIS as a continuous signal. Each epoch nudges a running exponential
+   * average rather than replacing the displayed number outright, so the trend
+   * moves smoothly at the epoch rate. A dropout longer than
+   * {@link COEBIS_RESTART_SECONDS} restarts the average so the number picks up
+   * from the fresh EEG instead of drifting out of stale history.
+   */
+  private smoothCoebis(value: number | null, epochSeconds: number): number | null {
+    if (value == null) {
+      this.coebisIdleEpochs++;
+      if (this.coebisIdleEpochs * epochSeconds >= COEBIS_RESTART_SECONDS) this.coebisEma = null;
+      return null;
+    }
+    const restart = this.coebisIdleEpochs * epochSeconds >= COEBIS_RESTART_SECONDS;
+    this.coebisIdleEpochs = 0;
+    if (this.coebisEma == null || restart) {
+      this.coebisEma = value;
+      return Math.round(value);
+    }
+    const alpha = 1 - Math.exp(-Math.max(epochSeconds, 0.1) / COEBIS_TAU_SECONDS);
+    this.coebisEma += alpha * (value - this.coebisEma);
+    return Math.round(clamp(this.coebisEma, 0, 100));
   }
 
   /** Seconds of data currently contributing to the spectral window. */
