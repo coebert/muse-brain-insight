@@ -34,6 +34,7 @@ import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisUnavailableBanner } from "@/components/monitor/CoebisUnavailableBanner";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { CoebisExplainPanel } from "@/components/monitor/CoebisExplainPanel";
+import { ageBand } from "@/lib/eeg/save";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
