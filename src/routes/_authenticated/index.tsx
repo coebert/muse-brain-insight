@@ -869,9 +869,9 @@ function Monitor() {
             <div id="mon-metrics" className="scroll-mt-24 rounded-lg transition-shadow">
             {/* Names the missing inputs when no COEBIS correction is in force. */}
             <CoebisUnavailableBanner className="mb-2" />
-            <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {/* Full derivation of the COEBIS number on screen. */}
                 <CoebisExplainPanel
                   openIbis={latest?.depth.index ?? null}

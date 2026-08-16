@@ -27,7 +27,7 @@ export function CoebisFitBadge({
     <span
       title={q.detail}
       className={cn(
-        "inline-flex items-center gap-1 rounded-sm px-1 py-px text-[11px] font-medium tracking-normal",
+        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-sm px-1 py-px text-[11px] font-medium tracking-normal",
         TONE_CLASS[q.tone] ?? TONE_CLASS["default"],
         className,
       )}
