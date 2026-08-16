@@ -142,9 +142,6 @@ export function CaseFields({
           </Select>
         </div>
       </div>
-      <div>
-        <Label htmlFor={`${idPrefix}-dx`}>Admission diagnosis</Label>
-      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label>Anaesthetic / sedation regimen</Label>
@@ -182,6 +179,7 @@ export function CaseFields({
         </div>
       </div>
       <div>
+        <Label htmlFor={`${idPrefix}-dx`}>Admission diagnosis</Label>
         <Input
           id={`${idPrefix}-dx`}
           className="mt-1.5"
