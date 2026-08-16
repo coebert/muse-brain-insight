@@ -614,6 +614,14 @@ function useCaseSessionState() {
         monitor.elapsed,
         sessionStartedAtMs,
       );
+      // Keep the contemporaneous dosing record with the case.
+      if (user?.id && infusions.length) {
+        try {
+          await saveInfusions(sessionId, user.id, infusions);
+        } catch {
+          toast.warning("Case saved, but the TCI record could not be filed.");
+        }
+      }
       // File the paired commercial-BIS values so the pooled drift watch can
       // keep tracking (and correcting) any systematic offset across cases.
       const filed = new Set(autoRefit.filedIds);
