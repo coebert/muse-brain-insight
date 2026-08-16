@@ -146,11 +146,11 @@ export function CoebisVsBisPanel({
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-[11px]">
             {tier.label}
           </Badge>
           {model ? (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-[11px]">
               {model.version ? `v${model.version}` : "v?"}
               {model.provisional ? " · provisional" : ""}
             </Badge>
@@ -160,29 +160,29 @@ export function CoebisVsBisPanel({
 
       <div className="grid grid-cols-3 items-end gap-2">
         <div>
-          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">COEBIS</p>
+          <p className="text-[11px] tracking-wide text-muted-foreground uppercase">COEBIS</p>
           <p className="metric-value text-3xl leading-none">{fmt(live.tiered)}</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {covariates && adjustment.total !== 0
               ? `pooled ${fmt(live.pooled)} ${signed(adjustment.total)} patient`
               : "pooled correction only"}
           </p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Difference</p>
+          <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Difference</p>
           <p className={cn("metric-value text-2xl leading-none", deltaTone)}>
             {signed(liveDelta)}
           </p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {lastReading ? `vs reading at ${formatClock(lastReading.at)}` : "no BIS reading yet"}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
+          <p className="text-[11px] tracking-wide text-muted-foreground uppercase">
             Commercial BIS
           </p>
           <p className="metric-value text-3xl leading-none">{fmt(lastReading?.bis ?? null)}</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {lastReading ? `${lastReading.device ?? "BIS"} · ${bisBandLabel(lastReading.bis)}` : "—"}
           </p>
         </div>
@@ -202,7 +202,7 @@ export function CoebisVsBisPanel({
               bias {signed(agreement.biasPooled)} · MAE {fmt(agreement.maePooled, 1)}
             </p>
           </div>
-          <p className="col-span-2 text-[10px] text-muted-foreground">
+          <p className="col-span-2 text-[11px] text-muted-foreground">
             {agreement.maeTiered < agreement.maePooled - 0.1
               ? `Patient terms are closer to the monitor by ${(agreement.maePooled - agreement.maeTiered).toFixed(1)} points in this case.`
               : agreement.maeTiered > agreement.maePooled + 0.1
@@ -231,7 +231,7 @@ export function CoebisVsBisPanel({
             <p className="text-muted-foreground">Adjunct applied</p>
             <p className="metric-value">{signed(adjunct?.total ?? 0)}</p>
           </div>
-          <p className="col-span-3 text-[10px] text-muted-foreground">
+          <p className="col-span-3 text-[11px] text-muted-foreground">
             RE−SE {signed(entropy.emgGap)} points of frontal EMG/arousal margin.
             COEBIS folds this, the suppression ceiling and the bilateral
             spectral pattern into the adjunct above.
