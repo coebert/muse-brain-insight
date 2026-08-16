@@ -18,6 +18,13 @@
 //    index is uncalibrated against clinical endpoints.
 // Treat it as a trend, never as a target for drug titration on its own.
 
+import {
+  covariateAdjustment,
+  type CaseCovariates,
+  type CovariateAdjustment,
+  type CovariateTerm,
+} from "./covariates";
+
 export interface DepthComponents {
   /** openibis component 1: mean 30-47 Hz power minus mid-band power, dB. */
   betaRatio: number;
