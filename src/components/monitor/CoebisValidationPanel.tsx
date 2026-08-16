@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Layers, Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import { getCoebisValidation } from "@/lib/eeg/coebis-validation.functions";
 import { describeTerm } from "@/lib/eeg/covariates";
@@ -51,6 +51,36 @@ export function CoebisValidationPanel() {
   return (
     <div className="space-y-4">
       <p className="panel p-3 text-sm">{data.summary}</p>
+
+      <section className="panel p-3">
+        <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+          <Layers className="size-4 text-signal" /> Model tier in force
+        </h3>
+        <p className="text-sm">{data.tierNote}</p>
+        <ul className="mt-2 space-y-1 text-xs">
+          {data.tierCandidates.map((c) => (
+            <li
+              key={c.tier}
+              className={
+                c.tier === data.tier
+                  ? "flex flex-wrap items-baseline gap-2 rounded-md bg-signal/10 px-2 py-1"
+                  : "flex flex-wrap items-baseline gap-2 px-2 py-1"
+              }
+            >
+              <span className="font-medium">{c.label}</span>
+              {c.tier === data.tier ? (
+                <span className="rounded-full bg-signal/20 px-2 py-0.5 text-signal">in use</span>
+              ) : null}
+              <span className="text-muted-foreground">{c.reason}</span>
+              {c.mae != null ? (
+                <span className="metric-value ml-auto text-muted-foreground">
+                  held-out MAE {c.mae.toFixed(2)}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="panel overflow-x-auto p-3">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
