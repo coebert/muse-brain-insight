@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Gauge, Minus, Plus, X } from "lucide-react";
+import { Gauge, Minus, Plus, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { formatClock } from "@/lib/eeg/format";
 import { BIS_DEVICES, bisBandLabel, clampBis, type BisReading } from "@/lib/eeg/bis";
+import { evaluateCapturePrompt } from "@/lib/eeg/capture-prompts";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +30,7 @@ export function BisPanel({
   depthIndex,
   suppressionRatio,
   sef95,
+  trend = [],
   onMark,
 }: {
   readings: BisReading[];
@@ -38,6 +40,8 @@ export function BisPanel({
   depthIndex: number | null;
   suppressionRatio: number | null;
   sef95?: number | null;
+  /** Recent depth samples so the panel can spot high-value capture moments. */
+  trend?: { t: number; index: number | null }[];
   onMark: (detail: string) => void;
 }) {
   const [device, setDevice] = useState<string>(BIS_DEVICES[0]);
@@ -47,6 +51,28 @@ export function BisPanel({
   const [emg, setEmg] = useState<string>("");
   const [sqi, setSqi] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [dismissed, setDismissed] = useState<string | null>(null);
+
+  /**
+   * A reading logged at induction, in suppression or mid-swing is worth
+   * several taken at steady state, so the panel asks for one at those moments
+   * rather than leaving it to memory.
+   */
+  const lastReadingAt = readings.length ? Math.max(...readings.map((r) => r.at)) : null;
+  const prompt = useMemo(
+    () =>
+      evaluateCapturePrompt({
+        running,
+        elapsed,
+        depthIndex,
+        suppressionRatio,
+        trend,
+        lastReadingAt,
+        readings: readings.length,
+      }),
+    [running, elapsed, depthIndex, suppressionRatio, trend, lastReadingAt, readings.length],
+  );
+  const showPrompt = prompt && dismissed !== prompt.kind;
 
   const parsed = (v: string): number | null => {
     if (!v.trim()) return null;
@@ -90,6 +116,7 @@ export function BisPanel({
     setEmg("");
     setSqi("");
     setNote("");
+    setDismissed(null);
   }
 
   const difference = depthIndex == null ? null : Math.round(depthIndex - clampBis(bis));
@@ -115,6 +142,31 @@ export function BisPanel({
       </div>
 
       <div className="mt-3 rounded-lg border border-border p-3">
+        {showPrompt ? (
+          <div className="mb-3 flex flex-wrap items-start gap-2 rounded-md border border-signal/40 bg-signal/10 p-2">
+            <Sparkles className="mt-0.5 size-4 shrink-0 text-signal" />
+            <div className="min-w-[12rem] flex-1">
+              <p className="text-xs font-semibold">{prompt.title}</p>
+              <p className="text-[11px] text-muted-foreground">{prompt.why}</p>
+            </div>
+            <Button
+              size="sm"
+              className="h-9"
+              onClick={log}
+              aria-label={`Capture BIS ${clampBis(bis)} now`}
+            >
+              Capture {clampBis(bis)}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9"
+              onClick={() => setDismissed(prompt.kind)}
+            >
+              Not now
+            </Button>
+          </div>
+        ) : null}
         <div className="flex items-center gap-3">
           <Button
             size="icon"
