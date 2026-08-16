@@ -322,7 +322,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
                 ? "coebis-2"
                 : "coebis-2-provisional",
           model_family: learned.family,
-          coefficients: { terms: learned.terms } as unknown as Record<string, unknown>,
+          coefficients: { terms: learned.terms } as unknown as never,
           n_points: fit.n,
           n_sessions: fit.sessions,
           bias_before: fit.biasBefore,
