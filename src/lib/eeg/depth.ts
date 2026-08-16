@@ -193,6 +193,26 @@ export function knotCorrection(x: number, knots: BisKnot[] | undefined): number 
 
 let activeBisAlignment: BisAlignment | null = null;
 
+/**
+ * The correction COEBIS falls back to before any commercial-BIS readings have
+ * been paired: identity on the OpenIBIS scale, with the Entropy/PSI adjuncts
+ * still applied. It keeps COEBIS a continuous live signal instead of a number
+ * that only appears once a model exists.
+ */
+export const BASELINE_BIS_ALIGNMENT: BisAlignment = {
+  gain: 1,
+  offset: 0,
+  n: 0,
+  fittedAt: "",
+  family: "baseline",
+  provisional: true,
+};
+
+/** The alignment actually applied to the live number (never null). */
+export function effectiveBisAlignment(alignment = activeBisAlignment): BisAlignment {
+  return alignment ?? BASELINE_BIS_ALIGNMENT;
+}
+
 export function getActiveBisAlignment(): BisAlignment | null {
   return activeBisAlignment;
 }
@@ -245,8 +265,10 @@ export function computeCoebis(
   alignment = activeBisAlignment,
   adjunct = 0,
 ): number | null {
-  if (openIbis == null || !alignment) return null;
-  return Math.round(applyBisAlignment(openIbis, alignment, activeCovariates, adjunct));
+  if (openIbis == null) return null;
+  return Math.round(
+    applyBisAlignment(openIbis, effectiveBisAlignment(alignment), activeCovariates, adjunct),
+  );
 }
 
 export function getActiveDepthCalibration(): DepthCalibration {
