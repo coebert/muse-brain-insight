@@ -6,7 +6,7 @@ import type { ExchangeBundle } from "@/lib/eeg/exchange";
 /** De-identified export of every paired reading, for pooling across devices. */
 export const exportPairedDataset = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { site?: string }) => input ?? {})
+  .inputValidator((input?: { site?: string | undefined }) => input ?? {})
   .handler(async ({ data, context }): Promise<ExchangeBundle> => {
     const { buildExportForUser } = await import("@/lib/eeg/exchange.server");
     return buildExportForUser(context.supabase, context.userId, data.site ?? "");

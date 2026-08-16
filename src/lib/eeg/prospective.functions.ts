@@ -38,7 +38,7 @@ export interface ProspectiveReport {
 /** Freeze the active COEBIS fit so later readings become prospective test data. */
 export const lockCoebisModel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { label?: string; note?: string | null }) => input ?? {})
+  .inputValidator((input?: { label?: string | undefined; note?: string | null }) => input ?? {})
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     const { data: alignment, error } = await context.supabase
       .from("depth_bis_alignments")
@@ -85,7 +85,7 @@ export const lockCoebisModel = createServerFn({ method: "POST" })
 /** Agreement of a locked model on the readings recorded since it was frozen. */
 export const getProspectiveReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input?: { lockId?: string }) => input ?? {})
+  .inputValidator((input?: { lockId?: string | undefined }) => input ?? {})
   .handler(async ({ data, context }): Promise<ProspectiveReport> => {
     const { buildProspectiveReport } = await import("@/lib/eeg/prospective-report.server");
     return buildProspectiveReport(context.supabase, data.lockId ?? null);
