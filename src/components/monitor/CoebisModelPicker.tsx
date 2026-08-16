@@ -21,6 +21,7 @@ import { computeCoebisFitQuality } from "@/lib/eeg/coebis-fit-quality";
 import { coebisVersionLabel, useCoebisModelVersions } from "@/hooks/useCoebisModel";
 import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { getBisDrift } from "@/lib/eeg/bis-drift.functions";
+import { cn } from "@/lib/utils";
 import {
   COEBIS_DEBOUNCE_CHOICES,
   COEBIS_MIN_INTERVAL_CHOICES,
