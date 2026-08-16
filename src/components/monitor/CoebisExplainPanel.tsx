@@ -10,6 +10,7 @@ import { Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { explainCoebis } from "@/lib/eeg/coebis-explain";
+import type { AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import type { CaseCovariates } from "@/lib/eeg/covariates";
 import { cn } from "@/lib/utils";
 
