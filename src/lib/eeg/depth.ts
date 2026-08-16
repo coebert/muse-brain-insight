@@ -491,6 +491,11 @@ const SUPPRESSION_BLANK_EPOCHS = 2;
 /** Suppression rule: 2 s detrended segment staying within +/-5 µV. */
 const SUPPRESSION_UV = 5;
 
+/** Time constant of the running COEBIS average, seconds. */
+export const COEBIS_TAU_SECONDS = 6;
+/** Dropout after which the running COEBIS average restarts, seconds. */
+export const COEBIS_RESTART_SECONDS = 10;
+
 /** Stateful estimator: feed the most recent 4 s of signal once per epoch. */
 export class DepthIndexEstimator {
   private psdHistory: (Float64Array | null)[] = [];
