@@ -11,6 +11,7 @@ import { CoebisResidualsPanel } from "@/components/monitor/CoebisResidualsPanel"
 import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
+import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
 import { formatClock } from "@/lib/eeg/format";
 import {
   getCoebisTrainingData,
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 
 const TABS = [
   { key: "readings", label: "Paired readings" },
+  { key: "validation", label: "Validation" },
   { key: "residuals", label: "Residuals" },
   { key: "versions", label: "Version comparison" },
   { key: "cases", label: "By case" },
@@ -197,6 +199,8 @@ function CoebisDataPage() {
               </button>
             ))}
           </div>
+
+          {tab === "validation" ? <CoebisValidationPanel /> : null}
 
           {tab === "readings" ? (
             <section className="panel overflow-x-auto p-0">
