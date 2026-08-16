@@ -212,6 +212,20 @@ function Monitor() {
   } = session;
 
   const batteryHealth = useBatteryHealth(monitor.batteryPercent);
+  // Covariates of the case on screen: drive the patient-adjusted depth target
+  // and the COEBIS derivation breakdown.
+  const depthTargetInputs = useMemo(() => {
+    const age = Number(meta.ageYears);
+    const years = Number.isFinite(age) ? age : null;
+    return {
+      ageYears: years,
+      ageBand: ageBand(years),
+      sex: meta.sex || null,
+      regimen: meta.regimen || null,
+      frailty: meta.frailty || null,
+      context: meta.context,
+    };
+  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty, meta.context]);
   // Alarm on the last plausible charge so a mis-parsed reply cannot fire a
   // spurious flat-battery alert mid-case.
   const batteryAlert = useBatteryAlert(batteryHealth.display, streaming || reconnecting);
