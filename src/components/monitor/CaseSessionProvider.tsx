@@ -46,7 +46,8 @@ import {
   rememberCaseCode,
 } from "@/lib/eeg/case-code-registry";
 import type { CaseControls } from "@/components/monitor/case-controls";
-import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
+import { summariseInfusions, targetsAt, type TciInfusion } from "@/lib/eeg/tci";
+import { saveInfusions } from "@/lib/eeg/tci-save";
 import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
 import {
   getBisDrift,
@@ -632,6 +633,9 @@ function useCaseSessionState() {
             appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
+            // Drug state at the moment of the reading, so the model can learn
+            // regimen- and dose-specific offsets rather than one global map.
+            ce: targetsAt(infusions, p.at),
           }));
         if (paired.length) {
           try {
