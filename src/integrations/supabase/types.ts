@@ -153,12 +153,15 @@ export type Database = {
           ce: Json
           context: string | null
           device: string | null
+          external_ref: string | null
           feature_source: string
           features: Json
           id: string
           recorded_at: string
           reliable: boolean
           session_id: string | null
+          source: string
+          source_site: string | null
           sqi: number | null
           user_id: string
         }
@@ -173,12 +176,15 @@ export type Database = {
           ce?: Json
           context?: string | null
           device?: string | null
+          external_ref?: string | null
           feature_source?: string
           features?: Json
           id?: string
           recorded_at?: string
           reliable?: boolean
           session_id?: string | null
+          source?: string
+          source_site?: string | null
           sqi?: number | null
           user_id: string
         }
@@ -193,12 +199,15 @@ export type Database = {
           ce?: Json
           context?: string | null
           device?: string | null
+          external_ref?: string | null
           feature_source?: string
           features?: Json
           id?: string
           recorded_at?: string
           reliable?: boolean
           session_id?: string | null
+          source?: string
+          source_site?: string | null
           sqi?: number | null
           user_id?: string
         }
@@ -250,6 +259,62 @@ export type Database = {
           },
         ]
       }
+      case_outcomes: {
+        Row: {
+          awareness: boolean
+          created_at: string
+          delirium: string
+          delirium_days: number | null
+          emergence: string
+          id: string
+          length_of_stay_days: number | null
+          mortality_30d: boolean
+          notes: string | null
+          session_id: string
+          unplanned_icu: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          awareness?: boolean
+          created_at?: string
+          delirium?: string
+          delirium_days?: number | null
+          emergence?: string
+          id?: string
+          length_of_stay_days?: number | null
+          mortality_30d?: boolean
+          notes?: string | null
+          session_id: string
+          unplanned_icu?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          awareness?: boolean
+          created_at?: string
+          delirium?: string
+          delirium_days?: number | null
+          emergence?: string
+          id?: string
+          length_of_stay_days?: number | null
+          mortality_30d?: boolean
+          notes?: string | null
+          session_id?: string
+          unplanned_icu?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_outcomes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_pattern_feedback: {
         Row: {
           created_at: string
@@ -279,6 +344,59 @@ export type Database = {
           verdict?: string
         }
         Relationships: []
+      }
+      coebis_locks: {
+        Row: {
+          alignment_id: string | null
+          coefficients: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          locked_at: string
+          model_family: string
+          model_version: number | null
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alignment_id?: string | null
+          coefficients?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          locked_at?: string
+          model_family?: string
+          model_version?: number | null
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alignment_id?: string | null
+          coefficients?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          locked_at?: string
+          model_family?: string
+          model_version?: number | null
+          note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coebis_locks_alignment_id_fkey"
+            columns: ["alignment_id"]
+            isOneToOne: false
+            referencedRelation: "depth_bis_alignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       depth_bis_alignments: {
         Row: {
