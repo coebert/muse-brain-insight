@@ -843,6 +843,8 @@ function Monitor() {
                 openIbis={latest?.depth.index ?? null}
                 model={coebisModel}
                 covariates={depthTargetInputs}
+                entropy={latest?.depth.entropy ?? null}
+                adjunct={latest?.depth.adjunct ?? null}
               />
               <TciPanel
                 infusions={infusions}
@@ -874,6 +876,7 @@ function Monitor() {
                 <CoebisExplainPanel
                   openIbis={latest?.depth.index ?? null}
                   covariates={depthTargetInputs}
+                  adjunct={latest?.depth.adjunct ?? null}
                 />
                 {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
                 <CoebisModelPicker />
