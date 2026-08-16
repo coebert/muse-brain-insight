@@ -8,7 +8,7 @@ import { bisBandLabel, type BisReading } from "@/lib/eeg/bis";
 import { applyBisAlignment, type BisAlignment } from "@/lib/eeg/depth";
 import { covariateAdjustment, type CaseCovariates } from "@/lib/eeg/covariates";
 import type { MonitorEntropy } from "@/lib/eeg/entropy-monitor";
-import type { AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
+import { ADJUNCT_COMPONENTS, type AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import { cn } from "@/lib/utils";
 
 /** Which tier of the COEBIS hierarchy the live model represents. */
@@ -238,6 +238,35 @@ export function CoebisVsBisPanel({
           </p>
         </div>
       ) : null}
+
+      {/* What each adjunct component does, and where it parts company with the
+          commercial BIS reading it is paired against. */}
+      <div className="mt-3 rounded-md border border-border/70 p-2">
+        <p className="text-[11px] font-medium text-foreground">
+          Adjunct components · how they differ from commercial BIS
+        </p>
+        <ul className="mt-1.5 space-y-2">
+          {ADJUNCT_COMPONENTS.map((c) => {
+            const applied = adjunct?.parts.find(
+              (p) => p.vsCommercial === c.vsCommercial,
+            );
+            return (
+              <li key={c.label} className="border-l-2 border-border pl-2">
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
+                  <span className="min-w-0 text-[11px] font-medium text-foreground">
+                    {c.label}
+                  </span>
+                  <span className="metric-value shrink-0 text-[11px] text-muted-foreground">
+                    {applied ? signed(applied.delta) : `idle · ±${c.limit} max`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{c.what}</p>
+                <p className="text-[11px] text-muted-foreground italic">{c.vsCommercial}</p>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {pairs.length ? (
         <div className="mt-3 overflow-hidden rounded-md border border-border/70">
