@@ -7,6 +7,8 @@ import type { Epoch } from "@/lib/eeg/analysis";
 import { bisBandLabel, type BisReading } from "@/lib/eeg/bis";
 import { applyBisAlignment, type BisAlignment } from "@/lib/eeg/depth";
 import { covariateAdjustment, type CaseCovariates } from "@/lib/eeg/covariates";
+import type { MonitorEntropy } from "@/lib/eeg/entropy-monitor";
+import type { AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import { cn } from "@/lib/utils";
 
 /** Which tier of the COEBIS hierarchy the live model represents. */
@@ -54,6 +56,8 @@ export function CoebisVsBisPanel({
   openIbis,
   model,
   covariates,
+  entropy,
+  adjunct,
   className,
 }: {
   epochs: Epoch[];
@@ -62,6 +66,10 @@ export function CoebisVsBisPanel({
   openIbis: number | null;
   model: BisAlignment | null;
   covariates: CaseCovariates | null;
+  /** Entropy-monitor style SE/RE for the epoch on screen. */
+  entropy?: MonitorEntropy | null;
+  /** Entropy/PSI-informed adjunct folded into the live COEBIS value. */
+  adjunct?: AdjunctCorrection | null;
   className?: string;
 }) {
   const tier = tierOf(model);
@@ -69,10 +77,10 @@ export function CoebisVsBisPanel({
   const live = useMemo(() => {
     if (openIbis == null || !model) return { tiered: null, pooled: null };
     return {
-      tiered: applyBisAlignment(openIbis, model, covariates),
+      tiered: applyBisAlignment(openIbis, model, covariates, adjunct?.total ?? 0),
       pooled: applyBisAlignment(openIbis, model, null),
     };
-  }, [openIbis, model, covariates]);
+  }, [openIbis, model, covariates, adjunct?.total]);
 
   const adjustment = useMemo(
     () => covariateAdjustment(model?.terms, covariates ?? null),
@@ -208,6 +216,28 @@ export function CoebisVsBisPanel({
           case-level comparison.
         </p>
       )}
+
+      {entropy?.se != null ? (
+        <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+          <div className="rounded-md border border-border/70 p-2">
+            <p className="text-muted-foreground">State Entropy</p>
+            <p className="metric-value">{entropy.se.toFixed(0)}</p>
+          </div>
+          <div className="rounded-md border border-border/70 p-2">
+            <p className="text-muted-foreground">Response Entropy</p>
+            <p className="metric-value">{entropy.re?.toFixed(0) ?? "—"}</p>
+          </div>
+          <div className="rounded-md border border-border/70 p-2">
+            <p className="text-muted-foreground">Adjunct applied</p>
+            <p className="metric-value">{signed(adjunct?.total ?? 0)}</p>
+          </div>
+          <p className="col-span-3 text-[10px] text-muted-foreground">
+            RE−SE {signed(entropy.emgGap)} points of frontal EMG/arousal margin.
+            COEBIS folds this, the suppression ceiling and the bilateral
+            spectral pattern into the adjunct above.
+          </p>
+        </div>
+      ) : null}
 
       {pairs.length ? (
         <div className="mt-3 overflow-hidden rounded-md border border-border/70">
