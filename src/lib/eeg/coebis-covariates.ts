@@ -173,9 +173,29 @@ export function fitCoebisModel(
   const affine = fitAlignment(points);
   if (!affine) return null;
   const base = { gain: affine.gain, offset: affine.offset, knots: affine.knots };
-  const terms = family === "affine" ? [] : fitCovariateTerms(points, base);
-  const caseIntercepts =
-    family === "mixed" ? fitCaseIntercepts(points, { ...base, terms }) : {};
+  if (family === "affine") {
+    return { family, ...base, terms: [], caseIntercepts: {}, n: points.length, sessions };
+  }
+  let terms = fitCovariateTerms(points, base);
+  let caseIntercepts: Record<string, number> = {};
+  if (family === "mixed") {
+    /**
+     * Readings inside one case are correlated: a single long case with an
+     * unusual patient can otherwise masquerade as an "age band" effect. Two
+     * EM-style passes separate the two — estimate the per-case intercepts,
+     * subtract them, and re-learn the covariate terms on what is left, so a
+     * term only survives if it repeats across cases.
+     */
+    for (let pass = 0; pass < 2; pass++) {
+      caseIntercepts = fitCaseIntercepts(points, { ...base, terms });
+      const centred = points.map((p) => ({
+        ...p,
+        bis: p.bis - (caseIntercepts[p.sessionId ?? "unfiled"] ?? 0),
+      }));
+      terms = fitCovariateTerms(centred, base);
+    }
+    caseIntercepts = fitCaseIntercepts(points, { ...base, terms });
+  }
   return { family, ...base, terms, caseIntercepts, n: points.length, sessions };
 }
 
