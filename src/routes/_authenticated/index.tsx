@@ -65,6 +65,7 @@ import { useMarkerAlerts } from "@/hooks/useMarkerAlerts";
 import { useSqiAlerts } from "@/hooks/useSqiAlerts";
 import { useSeizureRiskAlerts, type SeizureTrendAlert } from "@/hooks/useSeizureRiskAlerts";
 import { useDepthWindowAlerts, type DepthWindowTransition } from "@/hooks/useDepthWindowAlerts";
+import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
@@ -214,6 +215,8 @@ function Monitor() {
   } = session;
 
   const batteryHealth = useBatteryHealth(monitor.batteryPercent);
+  // Live COEBIS fit driving the tiered comparison against the commercial monitor.
+  const coebisModel = useCoebisModel();
   // Covariates of the case on screen: drive the patient-adjusted depth target
   // and the COEBIS derivation breakdown.
   const depthTargetInputs = useMemo(() => {
