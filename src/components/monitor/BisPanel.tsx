@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatClock } from "@/lib/eeg/format";
+import { CoebisGapHint } from "@/components/monitor/CoebisGapHint";
 import { BIS_DEVICES, bisBandLabel, clampBis, type BisReading } from "@/lib/eeg/bis";
 import { evaluateCapturePrompt } from "@/lib/eeg/capture-prompts";
 import { cn } from "@/lib/utils";
