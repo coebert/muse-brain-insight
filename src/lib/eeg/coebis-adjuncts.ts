@@ -142,6 +142,7 @@ export function coebisAdjunct({
         label: "Frontal EMG margin",
         delta,
         detail: `Response minus State Entropy is ${entropy.emgGap.toFixed(0)} points, the Entropy monitor's marker of frontal EMG and arousal, which raises a commercial BIS without a change in the EEG itself.`,
+        vsCommercial: vs("Frontal EMG margin"),
       });
     }
   }
@@ -158,6 +159,7 @@ export function coebisAdjunct({
         label: "State Entropy concordance",
         delta,
         detail: `State Entropy of ${entropy.se.toFixed(0)} corresponds to about ${seAsIndex.toFixed(0)} on a BIS-like scale; COEBIS is nudged 15 % of the way towards this independent estimate.`,
+        vsCommercial: vs("State Entropy concordance"),
       });
     }
   }
@@ -174,6 +176,7 @@ export function coebisAdjunct({
           label: "Suppression proportionality",
           delta,
           detail: `With a suppression ratio of ${safeBsr.toFixed(0)} %, a commercial monitor would not display more than about ${ceiling.toFixed(0)}; the index is drawn towards that ceiling.`,
+          vsCommercial: vs("Suppression proportionality"),
         });
       }
     }
@@ -190,12 +193,14 @@ export function coebisAdjunct({
         label: "Anaesthetic spectral pattern",
         delta: -3,
         detail: `Frontal alpha (${(montage.alphaFraction * 100).toFixed(0)} % of power) with dominant slow-wave activity is the pattern of an adequately anaesthetised brain, which the index is reading as lighter than it is.`,
+        vsCommercial: vs("Spectral pattern (SedLine-style)"),
       });
     } else if (light && aligned < 40) {
       parts.push({
         label: "Absent anaesthetic pattern",
         delta: 3,
         detail: `Neither frontal alpha nor slow-wave dominance is present, which argues against the depth the index is reporting.`,
+        vsCommercial: vs("Spectral pattern (SedLine-style)"),
       });
     }
   }
