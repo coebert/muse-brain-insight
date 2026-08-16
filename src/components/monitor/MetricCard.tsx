@@ -84,12 +84,12 @@ function MetricCardInner({
         )}
         {...(reasonText ? { title: reasonText } : {})}
       >
-        <p className="flex items-center gap-1.5 text-xs tracking-[0.16em] text-muted-foreground uppercase">
-          {label}
-          {info ? <ParameterInfo parameter={info} /> : null}
-          {badge}
+        <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs tracking-[0.16em] text-muted-foreground uppercase">
+          <span className="min-w-0 break-words">{label}</span>
+          {info ? <span className="shrink-0">{<ParameterInfo parameter={info} />}</span> : null}
+          {badge ? <span className="min-w-0 max-w-full">{badge}</span> : null}
           {unreliable ? (
-            <span className="rounded-sm bg-critical/15 px-1 py-px text-[11px] tracking-normal text-critical">
+            <span className="shrink-0 rounded-sm bg-critical/15 px-1 py-px text-[11px] tracking-normal text-critical">
               unreliable
             </span>
           ) : null}
@@ -119,10 +119,10 @@ function MetricCardInner({
       )}
       {...(reasonText ? { title: reasonText } : {})}
     >
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
-        <span className="min-w-0">{label}</span>
-        {info ? <ParameterInfo parameter={info} /> : null}
-        {badge}
+      <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs uppercase tracking-[0.12em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
+        <span className="min-w-0 break-words">{label}</span>
+        {info ? <span className="shrink-0">{<ParameterInfo parameter={info} />}</span> : null}
+        {badge ? <span className="min-w-0 max-w-full">{badge}</span> : null}
       </p>
       <p
         className={cn(
