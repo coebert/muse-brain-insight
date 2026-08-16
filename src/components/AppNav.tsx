@@ -18,6 +18,7 @@ const TOOLS = [
   { to: "/feedback", label: "Alert feedback" },
   { to: "/performance", label: "Alert tuning" },
   { to: "/coebis", label: "COEBIS training data" },
+  { to: "/outcomes", label: "Case outcomes" },
 ] as const;
 
 /** Shared header navigation: Monitor, Cases, a Tools menu and Settings. */

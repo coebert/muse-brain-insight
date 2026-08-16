@@ -12,6 +12,8 @@ import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
+import { ProspectiveValidationPanel } from "@/components/monitor/ProspectiveValidationPanel";
+import { DataExchangePanel } from "@/components/monitor/DataExchangePanel";
 import { formatClock } from "@/lib/eeg/format";
 import {
   getCoebisTrainingData,
@@ -49,10 +51,12 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 const TABS = [
   { key: "readings", label: "Paired readings" },
   { key: "validation", label: "Validation" },
+  { key: "prospective", label: "Prospective" },
   { key: "residuals", label: "Residuals" },
   { key: "versions", label: "Version comparison" },
   { key: "cases", label: "By case" },
   { key: "coverage", label: "Coverage & corrections" },
+  { key: "exchange", label: "Data exchange" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -201,6 +205,10 @@ function CoebisDataPage() {
           </div>
 
           {tab === "validation" ? <CoebisValidationPanel /> : null}
+
+          {tab === "prospective" ? <ProspectiveValidationPanel /> : null}
+
+          {tab === "exchange" ? <DataExchangePanel /> : null}
 
           {tab === "readings" ? (
             <section className="panel overflow-x-auto p-0">
