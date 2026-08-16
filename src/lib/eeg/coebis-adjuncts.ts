@@ -34,6 +34,11 @@ export interface AdjunctPart {
   label: string;
   delta: number;
   detail: string;
+  /**
+   * One sentence on how this component differs from the commercial BIS
+   * reading it is paired against — i.e. why the correction exists at all.
+   */
+  vsCommercial: string;
 }
 
 export interface AdjunctCorrection {
@@ -51,6 +56,52 @@ export const NO_ADJUNCT: AdjunctCorrection = {
   capped: false,
   shrink: 1,
 };
+
+/**
+ * Plain-language reference for the four adjunct components, used by the UI so
+ * a clinician can see what each one does and where it parts company with the
+ * commercial BIS number on the other monitor.
+ */
+export interface AdjunctComponentInfo {
+  label: string;
+  /** What the component measures. */
+  what: string;
+  /** How it differs from the paired commercial BIS reading. */
+  vsCommercial: string;
+  /** Largest movement this single rule can make, in index points. */
+  limit: number;
+}
+
+export const ADJUNCT_COMPONENTS: AdjunctComponentInfo[] = [
+  {
+    label: "Frontal EMG margin",
+    what: "The Response minus State Entropy gap, the Entropy monitor's measure of frontal muscle activity and arousal.",
+    vsCommercial:
+      "Commercial BIS lumps frontal EMG into one number, so it reads high on muscle tone alone; COEBIS measures that muscle band separately and credits only part of it back, so it moves with the monitor without inheriting the whole artefact.",
+    limit: 4,
+  },
+  {
+    label: "State Entropy concordance",
+    what: "A second, independent depth estimate from the 0.8–32 Hz entropy, rescaled onto the BIS-like 0–100 scale.",
+    vsCommercial:
+      "Commercial BIS is one proprietary index with no second opinion; COEBIS cross-checks itself against an openly published algorithm and moves 15 % of the way towards it when the two disagree.",
+    limit: 5,
+  },
+  {
+    label: "Suppression proportionality",
+    what: "A ceiling on the displayed index implied by the current suppression ratio.",
+    vsCommercial:
+      "Commercial BIS can lag or sit implausibly high during intermittent burst suppression; COEBIS ties the number directly to the measured suppression ratio, so deep states cannot be displayed as light ones.",
+    limit: 6,
+  },
+  {
+    label: "Spectral pattern (SedLine-style)",
+    what: "Frontal alpha and slow-wave dominance across both hemispheres — the classic propofol signature.",
+    vsCommercial:
+      "Commercial BIS is a single-sided scalar and ignores hemispheric agreement; COEBIS reads the bilateral spectral shape, so an adequately anaesthetised brain is not reported as light purely because the ratio-based index is high.",
+    limit: 3,
+  },
+];
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
