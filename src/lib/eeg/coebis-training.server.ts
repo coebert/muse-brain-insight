@@ -1,0 +1,102 @@
+/**
+ * Builds the training matrix COEBIS learns from: every paired
+ * commercial-BIS/app reading joined to the covariates of the case it came from
+ * and to whatever TCI targets were running at that moment.
+ *
+ * Server-only: it reads across all of a user's cases with their own RLS-scoped
+ * client, and is imported by server functions rather than by components.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CoebisTrainingPoint } from "./coebis-covariates";
+
+type Client = SupabaseClient<any, any, any>;
+
+interface SessionCovariateRow {
+  id: string;
+  age_band: string | null;
+  sex: string | null;
+  regimen: string | null;
+  frailty: string | null;
+}
+
+export interface TrainingMatrix {
+  points: CoebisTrainingPoint[];
+  /** Cases that contributed at least one reading. */
+  cases: number;
+  /** Readings that could not be attributed to a filed case. */
+  unfiled: number;
+  /** Readings whose case has no age band recorded. */
+  missingAge: number;
+  missingRegimen: number;
+}
+
+/** Load every paired reading with its patient covariates attached. */
+export async function loadTrainingMatrix(
+  supabase: Client,
+  limit = 5000,
+): Promise<TrainingMatrix> {
+  const { data: pointRows, error } = await supabase
+    .from("bis_paired_points")
+    .select(
+      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, recorded_at, context, ce",
+    )
+    .order("recorded_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  const rows = (pointRows ?? []) as unknown as Record<string, unknown>[];
+  const sessionIds = [
+    ...new Set(rows.map((r) => r["session_id"]).filter((v): v is string => typeof v === "string")),
+  ];
+
+  const covariates = new Map<string, SessionCovariateRow>();
+  if (sessionIds.length) {
+    const { data: sessions } = await supabase
+      .from("eeg_sessions")
+      .select("id, age_band, sex, regimen, frailty")
+      .in("id", sessionIds);
+    for (const s of (sessions ?? []) as unknown as SessionCovariateRow[]) {
+      covariates.set(s.id, s);
+    }
+  }
+
+  let missingAge = 0;
+  let missingRegimen = 0;
+  let unfiled = 0;
+
+  const points: CoebisTrainingPoint[] = rows.map((r) => {
+    const sessionId = (r["session_id"] as string | null) ?? null;
+    const cov = sessionId ? covariates.get(sessionId) : undefined;
+    if (!sessionId) unfiled++;
+    if (!cov?.age_band) missingAge++;
+    if (!cov?.regimen) missingRegimen++;
+    return {
+      at: Number(r["at_seconds"]),
+      bis: Number(r["bis"]),
+      appIndex: Number(r["app_index"]),
+      appSr: r["app_sr"] == null ? null : Number(r["app_sr"]),
+      sessionId,
+      reliable: Boolean(r["reliable"]),
+      sqi: r["sqi"] == null ? null : Number(r["sqi"]),
+      recordedAt: String(r["recorded_at"]),
+      context: (r["context"] as string | null) ?? null,
+      ce: (r["ce"] as Record<string, number> | null) ?? null,
+      cov: {
+        ageBand: cov?.age_band ?? null,
+        sex: cov?.sex ?? null,
+        regimen: cov?.regimen ?? null,
+        frailty: cov?.frailty ?? null,
+      },
+    } satisfies CoebisTrainingPoint;
+  });
+
+  const usable = points.filter((p) => Number.isFinite(p.bis) && Number.isFinite(p.appIndex));
+  return {
+    points: usable,
+    cases: new Set(usable.map((p) => p.sessionId).filter(Boolean)).size,
+    unfiled,
+    missingAge,
+    missingRegimen,
+  };
+}
