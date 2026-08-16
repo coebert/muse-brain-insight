@@ -66,13 +66,13 @@ export function CoebisUnavailableBanner({ className }: { className?: string }) {
   return (
     <section
       className={cn("rounded-lg border border-caution/40 bg-caution/5 p-3", className)}
-      aria-label="COEBIS unavailable"
+      aria-label="COEBIS uncalibrated"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <AlertTriangle className="size-4 text-caution" aria-hidden />
-            COEBIS unavailable — showing the open depth index
+            COEBIS uncalibrated — running on the baseline correction
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {isLoading ? "Checking what paired data has been logged…" : sufficiency.headline}

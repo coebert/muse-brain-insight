@@ -29,8 +29,9 @@ describe("COEBIS model", () => {
     expect(knotCorrection(90, knots)).toBe(4);
   });
 
-  it("returns no COEBIS value until a model is active", () => {
-    expect(computeCoebis(55)).toBeNull();
+  it("runs on the baseline correction until a model is active", () => {
+    expect(computeCoebis(55)).toBe(55);
+    expect(computeCoebis(null)).toBeNull();
     setActiveBisAlignment({ gain: 1, offset: -6, n: 40, fittedAt: "now" });
     expect(computeCoebis(55)).toBe(49);
   });

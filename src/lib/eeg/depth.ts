@@ -66,9 +66,15 @@ export interface DepthReading {
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
-   * against a commercial monitor. Null until a model has been fitted.
+   * against a commercial monitor. Runs continuously: with no fitted model
+   * yet the baseline (identity) correction plus the live adjuncts is used, so
+   * the number streams from the first usable epoch.
    */
   coebis?: number | null;
+  /** Unsmoothed COEBIS for this epoch (the smoothed value is `coebis`). */
+  coebisRaw?: number | null;
+  /** True while COEBIS is running on the uncalibrated baseline correction. */
+  coebisBaseline?: boolean;
 }
 
 export type DepthState =
@@ -187,6 +193,26 @@ export function knotCorrection(x: number, knots: BisKnot[] | undefined): number 
 
 let activeBisAlignment: BisAlignment | null = null;
 
+/**
+ * The correction COEBIS falls back to before any commercial-BIS readings have
+ * been paired: identity on the OpenIBIS scale, with the Entropy/PSI adjuncts
+ * still applied. It keeps COEBIS a continuous live signal instead of a number
+ * that only appears once a model exists.
+ */
+export const BASELINE_BIS_ALIGNMENT: BisAlignment = {
+  gain: 1,
+  offset: 0,
+  n: 0,
+  fittedAt: "",
+  family: "baseline",
+  provisional: true,
+};
+
+/** The alignment actually applied to the live number (never null). */
+export function effectiveBisAlignment(alignment = activeBisAlignment): BisAlignment {
+  return alignment ?? BASELINE_BIS_ALIGNMENT;
+}
+
 export function getActiveBisAlignment(): BisAlignment | null {
   return activeBisAlignment;
 }
@@ -239,8 +265,10 @@ export function computeCoebis(
   alignment = activeBisAlignment,
   adjunct = 0,
 ): number | null {
-  if (openIbis == null || !alignment) return null;
-  return Math.round(applyBisAlignment(openIbis, alignment, activeCovariates, adjunct));
+  if (openIbis == null) return null;
+  return Math.round(
+    applyBisAlignment(openIbis, effectiveBisAlignment(alignment), activeCovariates, adjunct),
+  );
 }
 
 export function getActiveDepthCalibration(): DepthCalibration {
@@ -463,17 +491,28 @@ const SUPPRESSION_BLANK_EPOCHS = 2;
 /** Suppression rule: 2 s detrended segment staying within +/-5 µV. */
 const SUPPRESSION_UV = 5;
 
+/** Time constant of the running COEBIS average, seconds. */
+export const COEBIS_TAU_SECONDS = 6;
+/** Dropout after which the running COEBIS average restarts, seconds. */
+export const COEBIS_RESTART_SECONDS = 10;
+
 /** Stateful estimator: feed the most recent 4 s of signal once per epoch. */
 export class DepthIndexEstimator {
   private psdHistory: (Float64Array | null)[] = [];
   private bsrMap: number[] = [];
   private epochSeconds = 1;
   private heldEpochs = 0;
+  /** Running COEBIS value: an exponential average over epochs. */
+  private coebisEma: number | null = null;
+  /** Epochs since COEBIS last had a value (used to restart after a gap). */
+  private coebisIdleEpochs = 0;
 
   reset() {
     this.psdHistory = [];
     this.bsrMap = [];
     this.heldEpochs = 0;
+    this.coebisEma = null;
+    this.coebisIdleEpochs = 0;
   }
 
   /**
@@ -581,8 +620,8 @@ export class DepthIndexEstimator {
     // Entropy-monitor style SE/RE on the same rolling spectra, then the
     // Entropy/PSI-informed adjunct that finishes the COEBIS number.
     const entropy = monitorEntropy(this.psdHistory, bsr, BIN_HZ, epochSeconds);
-    const aligned =
-      rawValue == null || !activeBisAlignment ? null : applyBisAlignment(rawValue, activeBisAlignment);
+    const alignment = effectiveBisAlignment();
+    const aligned = rawValue == null ? null : applyBisAlignment(rawValue, alignment);
     const adjunct =
       aligned == null
         ? NO_ADJUNCT
@@ -593,7 +632,8 @@ export class DepthIndexEstimator {
             bsr,
             quality: 1 - gatedFraction,
           });
-    const coebis = computeCoebis(rawValue, activeBisAlignment, adjunct.total);
+    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total);
+    const coebis = this.smoothCoebis(coebisRaw, epochSeconds);
     return {
       index,
       raw: rawValue == null ? null : Math.round(rawValue),
@@ -607,7 +647,33 @@ export class DepthIndexEstimator {
       entropy,
       adjunct,
       coebis,
+      coebisRaw,
+      coebisBaseline: activeBisAlignment == null,
     };
+  }
+
+  /**
+   * COEBIS as a continuous signal. Each epoch nudges a running exponential
+   * average rather than replacing the displayed number outright, so the trend
+   * moves smoothly at the epoch rate. A dropout longer than
+   * {@link COEBIS_RESTART_SECONDS} restarts the average so the number picks up
+   * from the fresh EEG instead of drifting out of stale history.
+   */
+  private smoothCoebis(value: number | null, epochSeconds: number): number | null {
+    if (value == null) {
+      this.coebisIdleEpochs++;
+      if (this.coebisIdleEpochs * epochSeconds >= COEBIS_RESTART_SECONDS) this.coebisEma = null;
+      return null;
+    }
+    const restart = this.coebisIdleEpochs * epochSeconds >= COEBIS_RESTART_SECONDS;
+    this.coebisIdleEpochs = 0;
+    if (this.coebisEma == null || restart) {
+      this.coebisEma = value;
+      return Math.round(value);
+    }
+    const alpha = 1 - Math.exp(-Math.max(epochSeconds, 0.1) / COEBIS_TAU_SECONDS);
+    this.coebisEma += alpha * (value - this.coebisEma);
+    return Math.round(clamp(this.coebisEma, 0, 100));
   }
 
   /** Seconds of data currently contributing to the spectral window. */
