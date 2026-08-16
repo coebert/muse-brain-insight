@@ -79,7 +79,7 @@ export function CoebisValidationPanel() {
                 <td className="py-1.5 text-left font-medium">
                   {FAMILY_LABEL[f.family] ?? f.family}
                   {f.family === data.best ? (
-                    <span className="ml-2 rounded-full bg-signal/20 px-2 py-0.5 text-[10px] text-signal">
+                    <span className="ml-2 rounded-full bg-signal/20 px-2 py-0.5 text-xs text-signal">
                       best
                     </span>
                   ) : null}
