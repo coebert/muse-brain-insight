@@ -16,14 +16,17 @@ import { cn } from "@/lib/utils";
 export function CoebisExplainPanel({
   openIbis,
   covariates,
+  adjunct,
   className,
 }: {
   openIbis: number | null | undefined;
   covariates: CaseCovariates | null | undefined;
+  /** Entropy/PSI-informed adjunct applied to the live number, when present. */
+  adjunct?: AdjunctCorrection | null;
   className?: string;
 }) {
   const model = useCoebisModel();
-  const explanation = explainCoebis(openIbis, model, covariates);
+  const explanation = explainCoebis(openIbis, model, covariates, adjunct);
 
   return (
     <Popover>
