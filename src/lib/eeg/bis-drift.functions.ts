@@ -9,6 +9,12 @@ import {
   type BisDriftAnalysis,
   type BisDriftPoint,
 } from "@/lib/eeg/bis-drift";
+import {
+  crossValidateByCase,
+  fitCovariateTerms,
+  type CoebisTrainingPoint,
+} from "@/lib/eeg/coebis-covariates";
+import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
 
 export interface ActiveAlignment {
   id: string;
@@ -16,6 +22,10 @@ export interface ActiveAlignment {
   offset: number;
   knots: { x: number; dy: number }[];
   modelVersion: string;
+  /** "affine" (pooled only) or "covariate" (patient-adjusted, COEBIS v3). */
+  modelFamily: string;
+  /** Patient-specific residual corrections learned per covariate level. */
+  terms: CovariateTerm[];
   nPoints: number;
   nSessions: number;
   maeBefore: number | null;
@@ -67,10 +77,28 @@ interface AlignmentRow {
   note: string | null;
   knots?: unknown;
   model_version?: string | null;
+  model_family?: string | null;
+  coefficients?: unknown;
 }
 
 const num = (v: number | string | null): number | null =>
   v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null;
+
+function toTerms(value: unknown): CovariateTerm[] {
+  const raw = (value as { terms?: unknown } | null)?.terms;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t) => {
+      const r = t as { group?: unknown; level?: unknown; dy?: unknown; n?: unknown };
+      return {
+        group: String(r.group ?? ""),
+        level: String(r.level ?? ""),
+        dy: Number(r.dy),
+        n: Number(r.n) || 0,
+      };
+    })
+    .filter((t) => t.group && t.level && Number.isFinite(t.dy));
+}
 
 function toAlignment(row: AlignmentRow): ActiveAlignment {
   return {
@@ -83,6 +111,8 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
           .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
       : [],
     modelVersion: row.model_version ?? "coebis-1",
+    modelFamily: row.model_family ?? "affine",
+    terms: toTerms(row.coefficients),
     nPoints: row.n_points,
     nSessions: row.n_sessions,
     biasBefore: num(row.bias_before),
@@ -96,7 +126,7 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
 }
 
 const ALIGNMENT_COLUMNS =
-  'id, gain, "offset", knots, model_version, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
+  'id, gain, "offset", knots, model_version, model_family, coefficients, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
 
 /** File the paired BIS/app values from a case so the pooled watch can use them. */
 export const recordBisPoints = createServerFn({ method: "POST" })
