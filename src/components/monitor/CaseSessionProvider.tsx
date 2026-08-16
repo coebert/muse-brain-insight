@@ -31,6 +31,8 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { setActiveCaseCovariates } from "@/lib/eeg/depth";
+import { ageBand } from "@/lib/eeg/save";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
@@ -185,6 +187,21 @@ function useCaseSessionState() {
    * Remembered per device and per anonymised case code.
    */
   const [dsaView, setDsaView] = useDsaViewPreference(meta.caseCode);
+
+  /**
+   * COEBIS personalises the number using the covariates of the case on screen,
+   * so the live index picks up an age/regimen adjustment the moment those
+   * details are entered rather than only after the case is filed.
+   */
+  useEffect(() => {
+    const age = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
+    setActiveCaseCovariates({
+      ageBand: ageBand(Number.isFinite(age as number) ? (age as number) : null),
+      sex: meta.sex || null,
+      regimen: meta.regimen || null,
+      frailty: meta.frailty || null,
+    });
+  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty]);
 
   const { summary, status } = monitor;
   const streaming = status === "streaming";
