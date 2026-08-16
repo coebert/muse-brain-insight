@@ -66,9 +66,15 @@ export interface DepthReading {
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
-   * against a commercial monitor. Null until a model has been fitted.
+   * against a commercial monitor. Runs continuously: with no fitted model
+   * yet the baseline (identity) correction plus the live adjuncts is used, so
+   * the number streams from the first usable epoch.
    */
   coebis?: number | null;
+  /** Unsmoothed COEBIS for this epoch (the smoothed value is `coebis`). */
+  coebisRaw?: number | null;
+  /** True while COEBIS is running on the uncalibrated baseline correction. */
+  coebisBaseline?: boolean;
 }
 
 export type DepthState =
