@@ -34,6 +34,7 @@ import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisUnavailableBanner } from "@/components/monitor/CoebisUnavailableBanner";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
 import { CoebisExplainPanel } from "@/components/monitor/CoebisExplainPanel";
+import { CoebisVsBisPanel } from "@/components/monitor/CoebisVsBisPanel";
 import { ageBand } from "@/lib/eeg/save";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
@@ -831,6 +832,14 @@ function Monitor() {
                 sef95={derived.live.sef95}
                 trend={monitor.epochs.map((e) => ({ t: e.t, index: e.depth?.index ?? null }))}
                 onMark={addMarker}
+              />
+              {/* Tiered patient-adjusted COEBIS beside the monitor's own number. */}
+              <CoebisVsBisPanel
+                epochs={monitor.epochs}
+                readings={bisReadings}
+                openIbis={latest?.depth.index ?? null}
+                model={coebisModel}
+                covariates={depthTargetInputs}
               />
               <TciPanel
                 infusions={infusions}
