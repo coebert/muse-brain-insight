@@ -33,6 +33,8 @@ import { MetricsGrid } from "@/components/monitor/MetricsGrid";
 import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { CoebisUnavailableBanner } from "@/components/monitor/CoebisUnavailableBanner";
 import { CoebisTrend } from "@/components/monitor/CoebisTrend";
+import { CoebisExplainPanel } from "@/components/monitor/CoebisExplainPanel";
+import { ageBand } from "@/lib/eeg/save";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
@@ -211,6 +213,20 @@ function Monitor() {
   } = session;
 
   const batteryHealth = useBatteryHealth(monitor.batteryPercent);
+  // Covariates of the case on screen: drive the patient-adjusted depth target
+  // and the COEBIS derivation breakdown.
+  const depthTargetInputs = useMemo(() => {
+    const age = Number(meta.ageYears);
+    const years = Number.isFinite(age) ? age : null;
+    return {
+      ageYears: years,
+      ageBand: ageBand(years),
+      sex: meta.sex || null,
+      regimen: meta.regimen || null,
+      frailty: meta.frailty || null,
+      context: meta.context,
+    };
+  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty, meta.context]);
   // Alarm on the last plausible charge so a mis-parsed reply cannot fire a
   // spurious flat-battery alert mid-case.
   const batteryAlert = useBatteryAlert(batteryHealth.display, streaming || reconnecting);
@@ -841,8 +857,15 @@ function Monitor() {
             <CoebisUnavailableBanner className="mb-2" />
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
-              {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
-              <CoebisModelPicker />
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Full derivation of the COEBIS number on screen. */}
+                <CoebisExplainPanel
+                  openIbis={latest?.depth.index ?? null}
+                  covariates={depthTargetInputs}
+                />
+                {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
+                <CoebisModelPicker />
+              </div>
             </div>
             <MetricsGrid
               uncertainty={uncertainty}
@@ -868,7 +891,11 @@ function Monitor() {
 
             <AssessmentConfidencePanel report={uncertainty} />
 
-            <DepthWindowPanel depthWindow={depthWindow} depthIndex={latest?.depth.index} />
+            <DepthWindowPanel
+              depthWindow={depthWindow}
+              depthIndex={latest?.depth.index}
+              targetInputs={depthTargetInputs}
+            />
 
             {caseState !== "idle" ? (
               <SeizureRiskPanel

@@ -7,6 +7,8 @@ import { Slider } from "@/components/ui/slider";
 import { formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
 import type { DepthWindowPrefs, DepthWindowStatus } from "@/hooks/useDepthWindowAlerts";
+import { DepthTargetCard } from "@/components/monitor/DepthTargetCard";
+import type { DepthTargetInputs } from "@/lib/eeg/depth-targets";
 
 export interface DepthWindowPanelProps {
   depthWindow: {
@@ -16,15 +18,28 @@ export interface DepthWindowPanelProps {
     breachSeconds: number;
   };
   depthIndex: number | null | undefined;
+  /** Case covariates used to suggest a patient-adjusted target window. */
+  targetInputs?: DepthTargetInputs;
 }
 
 /**
  * Out-of-window depth alert banner plus the OpenIBIS explainer with the
  * configurable target-window popover.
  */
-export function DepthWindowPanel({ depthWindow, depthIndex }: DepthWindowPanelProps) {
+export function DepthWindowPanel({
+  depthWindow,
+  depthIndex,
+  targetInputs,
+}: DepthWindowPanelProps) {
   return (
     <>
+      {targetInputs ? (
+        <DepthTargetCard
+          inputs={targetInputs}
+          prefs={depthWindow.prefs}
+          setPrefs={depthWindow.setPrefs}
+        />
+      ) : null}
       {depthWindow.prefs.enabled &&
       (depthWindow.status === "below" || depthWindow.status === "above") ? (
         <Alert
