@@ -103,6 +103,11 @@ export const ADJUNCT_COMPONENTS: AdjunctComponentInfo[] = [
   },
 ];
 
+/** The contrast sentence for a component, by registry label. */
+export function vs(label: string): string {
+  return ADJUNCT_COMPONENTS.find((c) => c.label === label)?.vsCommercial ?? "";
+}
+
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
