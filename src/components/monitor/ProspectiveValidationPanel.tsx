@@ -176,8 +176,8 @@ export function ProspectiveValidationPanel() {
                       {s.group}: {s.level}
                     </td>
                     <td className="py-1 text-right tabular-nums">{s.n}</td>
-                    <td className="py-1 text-right tabular-nums">{num(s.mae)}</td>
-                    <td className="py-1 text-right tabular-nums">{num(s.bias)}</td>
+                    <td className="py-1 text-right tabular-nums">{num(s.after.mae)}</td>
+                    <td className="py-1 text-right tabular-nums">{num(s.after.bias)}</td>
                   </tr>
                 ))}
               </tbody>
