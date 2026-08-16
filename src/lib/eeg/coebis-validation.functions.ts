@@ -13,6 +13,7 @@ import {
   type SubgroupGap,
 } from "@/lib/eeg/coebis-covariates";
 import { AGE_BANDS, REGIMENS, type CovariateTerm } from "@/lib/eeg/covariates";
+import { selectCoebisTier, type CoebisTier, type TierCandidate } from "@/lib/eeg/coebis-tiers";
 
 export interface CoebisValidationReport {
   n: number;
@@ -32,6 +33,10 @@ export interface CoebisValidationReport {
   baseline: AgreementSummary;
   /** Which family currently wins on held-out mean absolute error. */
   best: CoebisFamily | null;
+  /** The model tier the current data supports, and why. */
+  tier: CoebisTier;
+  tierNote: string;
+  tierCandidates: TierCandidate[];
   summary: string;
 }
 
@@ -71,7 +76,8 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
     const oof = outOfFoldPredictions(points, "covariate");
     const strata = stratifiedAgreement(points, (_p, i) => oof[i] ?? null);
 
-    const full = fitCoebisModel(points, "covariate");
+    const selection = selectCoebisTier(points);
+    const full = selection.model ?? fitCoebisModel(points, "covariate");
     const gaps = subgroupGaps(points, [
       { group: "age", levels: [...AGE_BANDS] },
       { group: "regimen", levels: REGIMENS.map((r) => r.key) },
@@ -108,6 +114,9 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
       terms: full?.terms ?? [],
       baseline,
       best,
+      tier: selection.tier,
+      tierNote: selection.note,
+      tierCandidates: selection.candidates,
       summary,
     };
   });

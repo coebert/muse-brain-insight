@@ -9,11 +9,8 @@ import {
   type BisDriftAnalysis,
   type BisDriftPoint,
 } from "@/lib/eeg/bis-drift";
-import {
-  crossValidateByCase,
-  fitCovariateTerms,
-  type CoebisTrainingPoint,
-} from "@/lib/eeg/coebis-covariates";
+import { type CoebisTrainingPoint } from "@/lib/eeg/coebis-covariates";
+import { selectCoebisTier, tierModelVersion } from "@/lib/eeg/coebis-tiers";
 import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
 
 export interface ActiveAlignment {
@@ -244,29 +241,6 @@ export const getBisDrift = createServerFn({ method: "GET" })
     let analysis = analyseBisDrift(points, active);
     let justApplied = false;
 
-    /**
-     * Patient-specific corrections are only kept when leaving each case out in
-     * turn shows they genuinely help on cases the model has never seen — an
-     * in-sample improvement from a subgroup term is almost guaranteed and
-     * proves nothing.
-     */
-    function learnTerms(base: { gain: number; offset: number; knots: { x: number; dy: number }[] }): {
-      terms: CovariateTerm[];
-      family: string;
-      cvGain: number | null;
-    } {
-      const candidate = fitCovariateTerms(training, base);
-      if (!candidate.length) return { terms: [], family: "affine", cvGain: null };
-      const affineCv = crossValidateByCase(training, "affine");
-      const covCv = crossValidateByCase(training, "covariate");
-      const before = affineCv.outOfSample.mae;
-      const after = covCv.outOfSample.mae;
-      if (before == null || after == null || covCv.folds < 3 || after > before - 0.2) {
-        return { terms: [], family: "affine", cvGain: null };
-      }
-      return { terms: candidate, family: "covariate", cvGain: Number((before - after).toFixed(2)) };
-    }
-
     // Auto-adjust: enough evidence, a meaningful and statistically clear bias,
     // and a fitted correction that is both safe and materially better than
     // what is already applied.
@@ -304,7 +278,11 @@ export const getBisDrift = createServerFn({ method: "GET" })
       const confirmed =
         analysis.readiness.points.have >= analysis.readiness.points.need &&
         analysis.readiness.sessions.have >= analysis.readiness.sessions.need;
-      const learned = learnTerms({ gain: fit.gain, offset: fit.offset, knots: fit.knots });
+      /**
+       * How much model the paired data can honestly carry: a higher tier is
+       * only taken when it beats the simpler one on cases it never saw.
+       */
+      const selection = selectCoebisTier(training);
       await context.supabase
         .from("depth_bis_alignments")
         .update({ is_active: false })
@@ -316,16 +294,25 @@ export const getBisDrift = createServerFn({ method: "GET" })
           gain: fit.gain,
           offset: fit.offset,
           knots: fit.knots.map((k) => ({ x: k.x, dy: k.dy })) as unknown as Record<string, number>[],
-          model_version:
-            learned.family === "covariate"
-              ? confirmed
-                ? "coebis-3"
-                : "coebis-3-provisional"
-              : confirmed
-                ? "coebis-2"
-                : "coebis-2-provisional",
-          model_family: learned.family,
-          coefficients: { terms: learned.terms } as unknown as never,
+          model_version: tierModelVersion(selection.tier, confirmed),
+          model_family: selection.family,
+          coefficients: {
+            terms: selection.terms,
+            tier: selection.tier,
+          } as unknown as never,
+          cv_metrics: {
+            tier: selection.tier,
+            gainOverPooled: selection.gainOverPooled,
+            outOfSample: selection.cv?.outOfSample ?? null,
+            folds: selection.cv?.folds ?? 0,
+            candidates: selection.candidates.map((c) => ({
+              tier: c.tier,
+              eligible: c.eligible,
+              mae: c.mae,
+              gain: c.gain,
+              reason: c.reason,
+            })),
+          } as unknown as never,
           n_points: fit.n,
           n_sessions: fit.sessions,
           bias_before: fit.biasBefore,
@@ -338,8 +325,9 @@ export const getBisDrift = createServerFn({ method: "GET" })
             (confirmed
               ? `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`
               : `Provisional COEBIS fitted from ${fit.n} paired readings across ${fit.sessions} cases — indicative until 30 readings across 3 cases confirm it.`) +
-            (learned.family === "covariate"
-              ? ` Patient-specific adjustments (${learned.terms.length}) cut held-out error by a further ${learned.cvGain} index points.`
+            ` ${selection.note}` +
+            (selection.terms.length
+              ? ` ${selection.terms.length} patient-specific adjustment${selection.terms.length === 1 ? "" : "s"} in force.`
               : ""),
         })
         .select(ALIGNMENT_COLUMNS)
