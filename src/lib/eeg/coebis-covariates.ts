@@ -263,6 +263,39 @@ export interface StratumResult {
   after: AgreementSummary;
 }
 
+/**
+ * Out-of-fold prediction for every reading: each one comes from a model fitted
+ * without that reading's case. Returned in the same order as `points`, with
+ * null where no fold could be fitted.
+ */
+export function outOfFoldPredictions(
+  points: CoebisTrainingPoint[],
+  family: CoebisFamily,
+): (number | null)[] {
+  const out: (number | null)[] = points.map(() => null);
+  const caseKeys = [...new Set(points.map((p) => p.sessionId ?? "unfiled"))];
+  if (caseKeys.length < 2) return out;
+  for (const key of caseKeys) {
+    const train = points.filter((p) => (p.sessionId ?? "unfiled") !== key);
+    if (train.length < 5) continue;
+    const model = fitCoebisModel(train, family);
+    if (!model) continue;
+    points.forEach((p, i) => {
+      if ((p.sessionId ?? "unfiled") === key) out[i] = predictCoebis(model, p, false);
+    });
+  }
+  return out;
+}
+
+interface UnusedStratumMarker {
+  group: string;
+  level: string;
+  n: number;
+  cases: number;
+  before: AgreementSummary;
+  after: AgreementSummary;
+}
+
 /** Held-out error broken down by subgroup, so weak spots cannot hide in a mean. */
 export function stratifiedAgreement(
   points: CoebisTrainingPoint[],
