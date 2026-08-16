@@ -62,17 +62,21 @@ function pearson(a: number[], b: number[]): number | null {
 
 function bandShare(
   spectrum: number[],
-  binHz: number,
   lo: number,
   hi: number,
   refLo: number,
   refHi: number,
+  startHz: number,
+  endHz: number,
 ): number | null {
+  if (spectrum.length < 4) return null;
+  const step = (endHz - startHz) / (spectrum.length - 1);
   const lin = spectrum.map((db) => 10 ** (db / 10));
   const sum = (a: number, b: number) => {
     let s = 0;
-    for (let k = Math.round(a / binHz); k <= Math.round(b / binHz) && k < lin.length; k++) {
-      s += lin[k] ?? 0;
+    for (let k = 0; k < lin.length; k++) {
+      const hz = startHz + k * step;
+      if (hz >= a && hz <= b) s += lin[k] ?? 0;
     }
     return s;
   };
@@ -88,7 +92,8 @@ function bandShare(
 export function montageFeatures(
   left: number[] | null | undefined,
   right: number[] | null | undefined,
-  binHz = 0.5,
+  startHz = 0.5,
+  endHz = 30,
 ): MontageFeatures {
   const combined = left && right
     ? left.map((v, i) => (v + (right[i] ?? v)) / 2)
@@ -107,8 +112,8 @@ export function montageFeatures(
   return {
     coherence,
     asymmetry,
-    alphaFraction: combined ? bandShare(combined, binHz, 8, 12, 0.5, 30) : null,
-    slowFraction: combined ? bandShare(combined, binHz, 0.5, 4, 0.5, 30) : null,
+    alphaFraction: combined ? bandShare(combined, 8, 12, startHz, endHz, startHz, endHz) : null,
+    slowFraction: combined ? bandShare(combined, startHz, 4, startHz, endHz, startHz, endHz) : null,
   };
 }
 
