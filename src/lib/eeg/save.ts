@@ -16,6 +16,10 @@ export interface SessionMeta {
   sex: string;
   admissionDiagnosis: string;
   clinicalFeatures: string[];
+  /** Anaesthetic / sedation regimen (covariate for COEBIS). */
+  regimen: string;
+  /** Frailty grouping (covariate for COEBIS). */
+  frailty: string;
 }
 
 /** Coarse banding keeps records non-identifying even when age is recorded. */
@@ -114,6 +118,8 @@ export async function saveSession(
         })(),
         age_band: ageBand(meta.ageYears.trim() === "" ? null : Number(meta.ageYears)),
         sex: meta.sex || null,
+        regimen: meta.regimen || null,
+        frailty: meta.frailty || null,
         admission_diagnosis: sealedDiagnosis ?? null,
         clinical_features: meta.clinicalFeatures,
         duration_seconds: Math.round(elapsed),

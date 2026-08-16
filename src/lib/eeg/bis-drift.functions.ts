@@ -9,6 +9,12 @@ import {
   type BisDriftAnalysis,
   type BisDriftPoint,
 } from "@/lib/eeg/bis-drift";
+import {
+  crossValidateByCase,
+  fitCovariateTerms,
+  type CoebisTrainingPoint,
+} from "@/lib/eeg/coebis-covariates";
+import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
 
 export interface ActiveAlignment {
   id: string;
@@ -16,6 +22,10 @@ export interface ActiveAlignment {
   offset: number;
   knots: { x: number; dy: number }[];
   modelVersion: string;
+  /** "affine" (pooled only) or "covariate" (patient-adjusted, COEBIS v3). */
+  modelFamily: string;
+  /** Patient-specific residual corrections learned per covariate level. */
+  terms: CovariateTerm[];
   nPoints: number;
   nSessions: number;
   maeBefore: number | null;
@@ -67,10 +77,28 @@ interface AlignmentRow {
   note: string | null;
   knots?: unknown;
   model_version?: string | null;
+  model_family?: string | null;
+  coefficients?: unknown;
 }
 
 const num = (v: number | string | null): number | null =>
   v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null;
+
+function toTerms(value: unknown): CovariateTerm[] {
+  const raw = (value as { terms?: unknown } | null)?.terms;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t) => {
+      const r = t as { group?: unknown; level?: unknown; dy?: unknown; n?: unknown };
+      return {
+        group: String(r.group ?? ""),
+        level: String(r.level ?? ""),
+        dy: Number(r.dy),
+        n: Number(r.n) || 0,
+      };
+    })
+    .filter((t) => t.group && t.level && Number.isFinite(t.dy));
+}
 
 function toAlignment(row: AlignmentRow): ActiveAlignment {
   return {
@@ -83,6 +111,8 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
           .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
       : [],
     modelVersion: row.model_version ?? "coebis-1",
+    modelFamily: row.model_family ?? "affine",
+    terms: toTerms(row.coefficients),
     nPoints: row.n_points,
     nSessions: row.n_sessions,
     biasBefore: num(row.bias_before),
@@ -96,7 +126,7 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
 }
 
 const ALIGNMENT_COLUMNS =
-  'id, gain, "offset", knots, model_version, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
+  'id, gain, "offset", knots, model_version, model_family, coefficients, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
 
 /** File the paired BIS/app values from a case so the pooled watch can use them. */
 export const recordBisPoints = createServerFn({ method: "POST" })
@@ -116,6 +146,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
         appSef?: number | null;
         reliable?: boolean;
         sqi?: number | null;
+        /** Effect-site targets in force at the reading, per drug. */
+        ce?: Record<string, number> | null;
       }[];
     }) => {
       if (!input || !Array.isArray(input.points)) throw new Error("No paired points supplied.");
@@ -139,6 +171,7 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       app_sef: p.appSef ?? null,
       reliable: p.reliable ?? true,
       sqi: p.sqi ?? null,
+      ce: (p.ce ?? {}) as unknown as never,
       context: data.context ?? null,
       device: data.device ?? null,
     }));
@@ -193,13 +226,10 @@ export const linkBisPointsToSession = createServerFn({ method: "POST" })
 export const getBisDrift = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<BisDriftReport> => {
-    const { data: pointRows, error: pointsError } = await context.supabase
-      .from("bis_paired_points")
-      .select("at_seconds, bis, app_index, session_id, reliable, sqi, recorded_at, context")
-      .order("recorded_at", { ascending: true })
-      .limit(5000);
-    if (pointsError) throw new Error(pointsError.message);
-    const points = toDriftPoints((pointRows ?? []) as unknown as Record<string, unknown>[]);
+    const { loadTrainingMatrix } = await import("@/lib/eeg/coebis-training.server");
+    const matrix = await loadTrainingMatrix(context.supabase);
+    const training: CoebisTrainingPoint[] = matrix.points;
+    const points: BisDriftPoint[] = training;
 
     const { data: rows, error } = await context.supabase
       .from("depth_bis_alignments")
@@ -213,6 +243,29 @@ export const getBisDrift = createServerFn({ method: "GET" })
 
     let analysis = analyseBisDrift(points, active);
     let justApplied = false;
+
+    /**
+     * Patient-specific corrections are only kept when leaving each case out in
+     * turn shows they genuinely help on cases the model has never seen — an
+     * in-sample improvement from a subgroup term is almost guaranteed and
+     * proves nothing.
+     */
+    function learnTerms(base: { gain: number; offset: number; knots: { x: number; dy: number }[] }): {
+      terms: CovariateTerm[];
+      family: string;
+      cvGain: number | null;
+    } {
+      const candidate = fitCovariateTerms(training, base);
+      if (!candidate.length) return { terms: [], family: "affine", cvGain: null };
+      const affineCv = crossValidateByCase(training, "affine");
+      const covCv = crossValidateByCase(training, "covariate");
+      const before = affineCv.outOfSample.mae;
+      const after = covCv.outOfSample.mae;
+      if (before == null || after == null || covCv.folds < 3 || after > before - 0.2) {
+        return { terms: [], family: "affine", cvGain: null };
+      }
+      return { terms: candidate, family: "covariate", cvGain: Number((before - after).toFixed(2)) };
+    }
 
     // Auto-adjust: enough evidence, a meaningful and statistically clear bias,
     // and a fitted correction that is both safe and materially better than
@@ -251,6 +304,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
       const confirmed =
         analysis.readiness.points.have >= analysis.readiness.points.need &&
         analysis.readiness.sessions.have >= analysis.readiness.sessions.need;
+      const learned = learnTerms({ gain: fit.gain, offset: fit.offset, knots: fit.knots });
       await context.supabase
         .from("depth_bis_alignments")
         .update({ is_active: false })
@@ -262,7 +316,16 @@ export const getBisDrift = createServerFn({ method: "GET" })
           gain: fit.gain,
           offset: fit.offset,
           knots: fit.knots.map((k) => ({ x: k.x, dy: k.dy })) as unknown as Record<string, number>[],
-          model_version: confirmed ? "coebis-2" : "coebis-2-provisional",
+          model_version:
+            learned.family === "covariate"
+              ? confirmed
+                ? "coebis-3"
+                : "coebis-3-provisional"
+              : confirmed
+                ? "coebis-2"
+                : "coebis-2-provisional",
+          model_family: learned.family,
+          coefficients: { terms: learned.terms } as unknown as never,
           n_points: fit.n,
           n_sessions: fit.sessions,
           bias_before: fit.biasBefore,
@@ -271,9 +334,13 @@ export const getBisDrift = createServerFn({ method: "GET" })
           mae_after: fit.maeAfter,
           auto_applied: true,
           is_active: true,
-          note: confirmed
-            ? `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`
-            : `Provisional COEBIS fitted from ${fit.n} paired readings across ${fit.sessions} cases — indicative until 30 readings across 3 cases confirm it.`,
+          note:
+            (confirmed
+              ? `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`
+              : `Provisional COEBIS fitted from ${fit.n} paired readings across ${fit.sessions} cases — indicative until 30 readings across 3 cases confirm it.`) +
+            (learned.family === "covariate"
+              ? ` Patient-specific adjustments (${learned.terms.length}) cut held-out error by a further ${learned.cvGain} index points.`
+              : ""),
         })
         .select(ALIGNMENT_COLUMNS)
         .single();
@@ -294,11 +361,21 @@ export const getBisDrift = createServerFn({ method: "GET" })
       raw: Number(p.appIndex.toFixed(1)),
       corrected: active
         ? Number(
-            alignIndex(p.appIndex, {
-              gain: active.gain,
-              offset: active.offset,
-              knots: active.knots,
-            }).toFixed(1),
+            Math.min(
+              100,
+              Math.max(
+                0,
+                alignIndex(p.appIndex, {
+                  gain: active.gain,
+                  offset: active.offset,
+                  knots: active.knots,
+                }) +
+                  covariateAdjustment(
+                    active.terms,
+                    (p as CoebisTrainingPoint).cov ?? null,
+                  ).total,
+              ),
+            ).toFixed(1),
           )
         : null,
       reliable: p.reliable,

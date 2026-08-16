@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { setActiveBisAlignment, type BisAlignment, type BisKnot } from "@/lib/eeg/depth";
 import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
+import type { CovariateTerm } from "@/lib/eeg/covariates";
 
 function toKnots(value: unknown): BisKnot[] {
   if (!Array.isArray(value)) return [];
@@ -15,6 +16,23 @@ function toKnots(value: unknown): BisKnot[] {
       return { x: Number(r.x), dy: Number(r.dy) };
     })
     .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy));
+}
+
+/** Patient-specific corrections stored alongside the pooled map (COEBIS v3). */
+function toTerms(value: unknown): CovariateTerm[] {
+  const raw = (value as { terms?: unknown } | null)?.terms;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((t) => {
+      const r = t as { group?: unknown; level?: unknown; dy?: unknown; n?: unknown };
+      return {
+        group: String(r.group ?? ""),
+        level: String(r.level ?? ""),
+        dy: Number(r.dy),
+        n: Number(r.n) || 0,
+      };
+    })
+    .filter((t) => t.group && t.level && Number.isFinite(t.dy));
 }
 
 export async function fetchActiveBisAlignment(): Promise<BisAlignment | null> {
@@ -32,7 +50,7 @@ export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment
   const { data, error } = await supabase
     .from("depth_bis_alignments")
     .select(
-      'id, gain, "offset", n_points, n_sessions, model_version, created_at, knots, is_active, bias_after, mae_after',
+      'id, gain, "offset", n_points, n_sessions, model_version, model_family, coefficients, created_at, knots, is_active, bias_after, mae_after',
     )
     .order("created_at", { ascending: true })
     .limit(200);
@@ -48,6 +66,8 @@ export async function fetchBisAlignmentHistory(limit = 40): Promise<BisAlignment
         gain,
         offset,
         knots: toKnots((row as { knots?: unknown }).knots),
+        terms: toTerms((row as { coefficients?: unknown }).coefficients),
+        family: String((row as { model_family?: unknown }).model_family ?? "affine"),
         n: points,
         fittedAt: String(row.created_at),
         id: String(row.id),

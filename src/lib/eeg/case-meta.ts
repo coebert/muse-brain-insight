@@ -10,6 +10,10 @@ export interface CaseMeta {
   sex: string;
   admissionDiagnosis: string;
   clinicalFeatures: string[];
+  /** Anaesthetic/sedation regimen, used to personalise COEBIS. */
+  regimen: string;
+  /** Clinical frailty grouping, used to personalise COEBIS. */
+  frailty: string;
 }
 
 export const EMPTY_CASE_META: CaseMeta = {
@@ -22,6 +26,8 @@ export const EMPTY_CASE_META: CaseMeta = {
   sex: "",
   admissionDiagnosis: "",
   clinicalFeatures: [],
+  regimen: "",
+  frailty: "",
 };
 
 export const CONTEXTS = [

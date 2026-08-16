@@ -18,6 +18,13 @@
 //    index is uncalibrated against clinical endpoints.
 // Treat it as a trend, never as a target for drug titration on its own.
 
+import {
+  covariateAdjustment,
+  type CaseCovariates,
+  type CovariateAdjustment,
+  type CovariateTerm,
+} from "./covariates";
+
 export interface DepthComponents {
   /** openibis component 1: mean 30-47 Hz power minus mid-band power, dB. */
   betaRatio: number;
@@ -138,6 +145,13 @@ export interface BisAlignment {
   /** Agreement metrics recorded at fit time, for version comparison. */
   biasAfter?: number | null;
   maeAfter?: number | null;
+  /**
+   * Patient-specific residual corrections (COEBIS model v3). Applied on top of
+   * the affine + knot map when the covariates of the case are known.
+   */
+  terms?: CovariateTerm[];
+  /** "affine" (v1/v2) or "covariate" (v3). */
+  family?: string;
 }
 
 /** One residual correction: at aligned index `x`, add `dy`. */
@@ -174,11 +188,38 @@ export function setActiveBisAlignment(alignment: BisAlignment | null) {
   activeBisAlignment = alignment;
 }
 
+/**
+ * Covariates of the case on screen. COEBIS uses them to personalise the
+ * number; with none set the pooled correction is applied unchanged.
+ */
+let activeCovariates: CaseCovariates | null = null;
+
+export function getActiveCaseCovariates(): CaseCovariates | null {
+  return activeCovariates;
+}
+
+export function setActiveCaseCovariates(cov: CaseCovariates | null) {
+  activeCovariates = cov;
+}
+
+/** The patient-specific part of the current COEBIS number, for explanation. */
+export function activeCovariateAdjustment(
+  alignment = activeBisAlignment,
+  cov = activeCovariates,
+): CovariateAdjustment {
+  return covariateAdjustment(alignment?.terms, cov);
+}
+
 /** Map a raw index onto the aligned scale, clamped to 0–100. */
-export function applyBisAlignment(index: number, alignment = activeBisAlignment): number {
+export function applyBisAlignment(
+  index: number,
+  alignment = activeBisAlignment,
+  cov: CaseCovariates | null = activeCovariates,
+): number {
   if (!alignment) return index;
   const affine = alignment.gain * index + alignment.offset;
-  return clamp(affine + knotCorrection(affine, alignment.knots), 0, 100);
+  const shaped = affine + knotCorrection(affine, alignment.knots);
+  return clamp(shaped + covariateAdjustment(alignment.terms, cov).total, 0, 100);
 }
 
 /**

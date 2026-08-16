@@ -31,6 +31,8 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { setActiveCaseCovariates } from "@/lib/eeg/depth";
+import { ageBand } from "@/lib/eeg/save";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
@@ -44,7 +46,8 @@ import {
   rememberCaseCode,
 } from "@/lib/eeg/case-code-registry";
 import type { CaseControls } from "@/components/monitor/case-controls";
-import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
+import { summariseInfusions, targetsAt, type TciInfusion } from "@/lib/eeg/tci";
+import { saveInfusions } from "@/lib/eeg/tci-save";
 import { pairBisReadings, summariseBis, type BisReading } from "@/lib/eeg/bis";
 import {
   getBisDrift,
@@ -185,6 +188,21 @@ function useCaseSessionState() {
    * Remembered per device and per anonymised case code.
    */
   const [dsaView, setDsaView] = useDsaViewPreference(meta.caseCode);
+
+  /**
+   * COEBIS personalises the number using the covariates of the case on screen,
+   * so the live index picks up an age/regimen adjustment the moment those
+   * details are entered rather than only after the case is filed.
+   */
+  useEffect(() => {
+    const age = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
+    setActiveCaseCovariates({
+      ageBand: ageBand(Number.isFinite(age as number) ? (age as number) : null),
+      sex: meta.sex || null,
+      regimen: meta.regimen || null,
+      frailty: meta.frailty || null,
+    });
+  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty]);
 
   const { summary, status } = monitor;
   const streaming = status === "streaming";
@@ -596,6 +614,14 @@ function useCaseSessionState() {
         monitor.elapsed,
         sessionStartedAtMs,
       );
+      // Keep the contemporaneous dosing record with the case.
+      if (user?.id && infusions.length) {
+        try {
+          await saveInfusions(sessionId, user.id, infusions);
+        } catch {
+          toast.warning("Case saved, but the TCI record could not be filed.");
+        }
+      }
       // File the paired commercial-BIS values so the pooled drift watch can
       // keep tracking (and correcting) any systematic offset across cases.
       const filed = new Set(autoRefit.filedIds);
@@ -615,6 +641,9 @@ function useCaseSessionState() {
             appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
+            // Drug state at the moment of the reading, so the model can learn
+            // regimen- and dose-specific offsets rather than one global map.
+            ce: targetsAt(infusions, p.at),
           }));
         if (paired.length) {
           try {

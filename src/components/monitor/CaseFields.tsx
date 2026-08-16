@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
+import { FRAILTY_LEVELS, REGIMENS } from "@/lib/eeg/covariates";
 import { Button } from "@/components/ui/button";
 import { generateCaseCode } from "@/lib/eeg/case-startup";
 import { generateUniqueCaseCode, isCaseCodeUsed } from "@/lib/eeg/case-code-registry";
@@ -135,6 +136,42 @@ export function CaseFields({
               {SEX_OPTIONS.map((s) => (
                 <SelectItem key={s.value} value={s.value}>
                   {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label>Anaesthetic / sedation regimen</Label>
+          <Select value={meta.regimen} onValueChange={(v) => onChange({ ...meta, regimen: v })}>
+            <SelectTrigger className="mt-1.5 w-full">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent>
+              {REGIMENS.map((r) => (
+                <SelectItem key={r.key} value={r.key}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            The EEG signature of a given depth differs by agent — recording this lets COEBIS learn a
+            regimen-specific correction.
+          </p>
+        </div>
+        <div>
+          <Label>Frailty</Label>
+          <Select value={meta.frailty} onValueChange={(v) => onChange({ ...meta, frailty: v })}>
+            <SelectTrigger className="mt-1.5 w-full">
+              <SelectValue placeholder="Select" />
+            </SelectTrigger>
+            <SelectContent>
+              {FRAILTY_LEVELS.map((f) => (
+                <SelectItem key={f.key} value={f.key}>
+                  {f.label}
                 </SelectItem>
               ))}
             </SelectContent>

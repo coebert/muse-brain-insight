@@ -150,8 +150,11 @@ export type Database = {
           bis: number
           bis_sef: number | null
           bis_sr: number | null
+          ce: Json
           context: string | null
           device: string | null
+          feature_source: string
+          features: Json
           id: string
           recorded_at: string
           reliable: boolean
@@ -167,8 +170,11 @@ export type Database = {
           bis: number
           bis_sef?: number | null
           bis_sr?: number | null
+          ce?: Json
           context?: string | null
           device?: string | null
+          feature_source?: string
+          features?: Json
           id?: string
           recorded_at?: string
           reliable?: boolean
@@ -184,8 +190,11 @@ export type Database = {
           bis?: number
           bis_sef?: number | null
           bis_sr?: number | null
+          ce?: Json
           context?: string | null
           device?: string | null
+          feature_source?: string
+          features?: Json
           id?: string
           recorded_at?: string
           reliable?: boolean
@@ -276,13 +285,16 @@ export type Database = {
           auto_applied: boolean
           bias_after: number | null
           bias_before: number | null
+          coefficients: Json
           created_at: string
+          cv_metrics: Json
           gain: number
           id: string
           is_active: boolean
           knots: Json
           mae_after: number | null
           mae_before: number | null
+          model_family: string
           model_version: string
           n_points: number
           n_sessions: number
@@ -294,13 +306,16 @@ export type Database = {
           auto_applied?: boolean
           bias_after?: number | null
           bias_before?: number | null
+          coefficients?: Json
           created_at?: string
+          cv_metrics?: Json
           gain: number
           id?: string
           is_active?: boolean
           knots?: Json
           mae_after?: number | null
           mae_before?: number | null
+          model_family?: string
           model_version?: string
           n_points: number
           n_sessions: number
@@ -312,13 +327,16 @@ export type Database = {
           auto_applied?: boolean
           bias_after?: number | null
           bias_before?: number | null
+          coefficients?: Json
           created_at?: string
+          cv_metrics?: Json
           gain?: number
           id?: string
           is_active?: boolean
           knots?: Json
           mae_after?: number | null
           mae_before?: number | null
+          model_family?: string
           model_version?: string
           n_points?: number
           n_sessions?: number
@@ -536,11 +554,13 @@ export type Database = {
           device_name: string | null
           duration_seconds: number
           ended_at: string | null
+          frailty: string | null
           id: string
           location: string | null
           max_suppression_ratio: number
           mean_suppression_ratio: number
           notes: string | null
+          regimen: string | null
           seizure_alerts: number
           sex: string | null
           started_at: string
@@ -559,11 +579,13 @@ export type Database = {
           device_name?: string | null
           duration_seconds?: number
           ended_at?: string | null
+          frailty?: string | null
           id?: string
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
           notes?: string | null
+          regimen?: string | null
           seizure_alerts?: number
           sex?: string | null
           started_at?: string
@@ -582,11 +604,13 @@ export type Database = {
           device_name?: string | null
           duration_seconds?: number
           ended_at?: string | null
+          frailty?: string | null
           id?: string
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
           notes?: string | null
+          regimen?: string | null
           seizure_alerts?: number
           sex?: string | null
           started_at?: string
@@ -645,6 +669,92 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      tci_ce_points: {
+        Row: {
+          at_seconds: number
+          created_at: string
+          id: string
+          infusion_id: string
+          session_id: string | null
+          targets: Json
+          user_id: string
+        }
+        Insert: {
+          at_seconds: number
+          created_at?: string
+          id?: string
+          infusion_id: string
+          session_id?: string | null
+          targets?: Json
+          user_id: string
+        }
+        Update: {
+          at_seconds?: number
+          created_at?: string
+          id?: string
+          infusion_id?: string
+          session_id?: string | null
+          targets?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tci_ce_points_infusion_id_fkey"
+            columns: ["infusion_id"]
+            isOneToOne: false
+            referencedRelation: "tci_infusions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tci_ce_points_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tci_infusions: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          model_key: string
+          session_id: string | null
+          started_seconds: number
+          stopped_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          model_key: string
+          session_id?: string | null
+          started_seconds?: number
+          stopped_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          model_key?: string
+          session_id?: string | null
+          started_seconds?: number
+          stopped_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tci_infusions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webauthn_challenges: {
         Row: {
