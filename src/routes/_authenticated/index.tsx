@@ -813,6 +813,7 @@ function Monitor() {
                 depthIndex={derived.live.depthIndex}
                 suppressionRatio={derived.live.suppressionRatio}
                 sef95={derived.live.sef95}
+                trend={monitor.epochs.map((e) => ({ t: e.t, index: e.depth?.index ?? null }))}
                 onMark={addMarker}
               />
               <TciPanel

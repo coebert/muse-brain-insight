@@ -117,6 +117,25 @@ export const GAIN_LIMITS: [number, number] = [0.6, 1.6];
 export const MAX_OFFSET = 30;
 /** Shrinkage sample size: at n points the fit carries n/(n+K) of its weight. */
 const SHRINK_K = 40;
+/**
+ * Weight floor for a reading taken during poor signal. A reading logged while
+ * the headband was noisy is still evidence — it is just weaker evidence than
+ * one taken on a clean trace, so it is down-weighted rather than discarded.
+ */
+export const MIN_POINT_WEIGHT = 0.25;
+
+/**
+ * How much a paired reading counts toward the fit: full weight on a clean,
+ * reliable epoch, tapering toward the floor as signal quality falls or the
+ * epoch was flagged unreliable at the time.
+ */
+export function pointWeight(p: { reliable?: boolean; sqi?: number | null }): number {
+  const sqi = typeof p.sqi === "number" && Number.isFinite(p.sqi) ? p.sqi : null;
+  // SQI is a percentage; 100 % earns full weight, 50 % or below earns the floor.
+  const quality = sqi == null ? 0.85 : Math.min(1, Math.max(0, (sqi - 50) / 50));
+  const reliability = p.reliable === false ? 0.5 : 1;
+  return Math.max(MIN_POINT_WEIGHT, Math.min(1, quality * reliability));
+}
 
 const mean = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 
@@ -161,6 +180,7 @@ export function fitCoebisKnots(
   const mapped = points.map((p) => ({
     x: affine.gain * p.appIndex + affine.offset,
     r: p.bis - (affine.gain * p.appIndex + affine.offset),
+    w: pointWeight(p),
   }));
   const knots: BisKnot[] = [];
   for (const x of KNOT_POSITIONS) {
@@ -169,8 +189,10 @@ export function fitCoebisKnots(
       knots.push({ x, dy: 0 });
       continue;
     }
-    const m = near.reduce((s, v) => s + v.r, 0) / near.length;
-    const lambda = near.length / (near.length + KNOT_SHRINK_K);
+    const wsum = near.reduce((s, v) => s + v.w, 0);
+    const m = wsum > 0 ? near.reduce((s, v) => s + v.w * v.r, 0) / wsum : 0;
+    // Effective sample size: noisy readings buy less confidence.
+    const lambda = wsum / (wsum + KNOT_SHRINK_K);
     const dy = Math.max(-MAX_KNOT_CORRECTION, Math.min(MAX_KNOT_CORRECTION, lambda * m));
     knots.push({ x, dy: Number(dy.toFixed(2)) });
   }
@@ -185,19 +207,21 @@ export function fitAlignment(points: BisDriftPoint[]): BisAlignmentFit | null {
   if (points.length < 5) return null;
   const xs = points.map((p) => p.appIndex);
   const ys = points.map((p) => p.bis);
-  const mx = mean(xs)!;
-  const my = mean(ys)!;
+  const ws = points.map((p) => pointWeight(p));
+  const wsum = ws.reduce((a, b) => a + b, 0) || 1;
+  const mx = xs.reduce((s, x, i) => s + ws[i]! * x, 0) / wsum;
+  const my = ys.reduce((s, y, i) => s + ws[i]! * y, 0) / wsum;
   let sxy = 0;
   let sxx = 0;
   for (let i = 0; i < xs.length; i++) {
-    sxy += (xs[i]! - mx) * (ys[i]! - my);
-    sxx += (xs[i]! - mx) ** 2;
+    sxy += ws[i]! * (xs[i]! - mx) * (ys[i]! - my);
+    sxx += ws[i]! * (xs[i]! - mx) ** 2;
   }
   // With no spread in the app index only an offset is identifiable.
   const rawGain = sxx < 1e-6 ? 1 : sxy / sxx;
   const rawOffset = sxx < 1e-6 ? my - mx : my - rawGain * mx;
 
-  const lambda = points.length / (points.length + SHRINK_K);
+  const lambda = wsum / (wsum + SHRINK_K);
   const gain = 1 + lambda * (rawGain - 1);
   const offset = lambda * rawOffset + (1 - lambda) * 0;
 

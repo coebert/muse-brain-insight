@@ -13,7 +13,7 @@
  * clinician is an out-of-sample improvement on cases the model never saw.
  */
 
-import { fitAlignment, type BisDriftPoint } from "./bis-drift";
+import { fitAlignment, pointWeight, type BisDriftPoint } from "./bis-drift";
 import { knotCorrection, type BisKnot } from "./depth";
 import {
   covariateAdjustment,
@@ -105,14 +105,19 @@ export function fitCovariateTerms(
   points: CoebisTrainingPoint[],
   base: { gain: number; offset: number; knots: BisKnot[] },
 ): CovariateTerm[] {
-  const buckets = new Map<string, { group: string; level: string; residuals: number[] }>();
+  const buckets = new Map<
+    string,
+    { group: string; level: string; residuals: number[]; weights: number[] }
+  >();
   for (const p of points) {
     const residual = p.bis - shaped(base, p.appIndex);
     if (!Number.isFinite(residual)) continue;
+    const w = pointWeight(p);
     for (const [group, level] of covariateLevels(p.cov)) {
       const key = `${group}:${level}`;
-      const bucket = buckets.get(key) ?? { group, level, residuals: [] };
+      const bucket = buckets.get(key) ?? { group, level, residuals: [], weights: [] };
       bucket.residuals.push(residual);
+      bucket.weights.push(w);
       buckets.set(key, bucket);
     }
   }
@@ -120,8 +125,11 @@ export function fitCovariateTerms(
   for (const b of buckets.values()) {
     const n = b.residuals.length;
     if (n < MIN_LEVEL_POINTS) continue;
-    const m = mean(b.residuals)!;
-    const lambda = n / (n + TERM_SHRINK_K);
+    // Readings taken on a noisy trace contribute less to the correction and
+    // buy less confidence in it.
+    const wsum = b.weights.reduce((a, x) => a + x, 0) || 1;
+    const m = b.residuals.reduce((s, r, i) => s + b.weights[i]! * r, 0) / wsum;
+    const lambda = wsum / (wsum + TERM_SHRINK_K);
     const dy = Math.max(-MAX_TERM_ADJUSTMENT, Math.min(MAX_TERM_ADJUSTMENT, lambda * m));
     if (Math.abs(dy) < 0.2) continue;
     terms.push({ group: b.group, level: b.level, dy: Number(dy.toFixed(2)), n });
@@ -134,20 +142,23 @@ function fitCaseIntercepts(
   points: CoebisTrainingPoint[],
   base: { gain: number; offset: number; knots: BisKnot[]; terms: CovariateTerm[] },
 ): Record<string, number> {
-  const byCase = new Map<string, number[]>();
+  const byCase = new Map<string, { residuals: number[]; weights: number[] }>();
   for (const p of points) {
     const key = p.sessionId ?? "unfiled";
     const pred = shaped(base, p.appIndex) + covariateAdjustment(base.terms, p.cov).total;
-    const list = byCase.get(key) ?? [];
-    list.push(p.bis - pred);
-    byCase.set(key, list);
+    const entry = byCase.get(key) ?? { residuals: [], weights: [] };
+    entry.residuals.push(p.bis - pred);
+    entry.weights.push(pointWeight(p));
+    byCase.set(key, entry);
   }
   const out: Record<string, number> = {};
-  for (const [key, residuals] of byCase) {
-    const n = residuals.length;
+  for (const [key, entry] of byCase) {
+    const n = entry.residuals.length;
     if (n < 3) continue;
-    const lambda = n / (n + CASE_SHRINK_K);
-    out[key] = Number((lambda * mean(residuals)!).toFixed(2));
+    const wsum = entry.weights.reduce((a, x) => a + x, 0) || 1;
+    const m = entry.residuals.reduce((s, r, i) => s + entry.weights[i]! * r, 0) / wsum;
+    const lambda = wsum / (wsum + CASE_SHRINK_K);
+    out[key] = Number((lambda * m).toFixed(2));
   }
   return out;
 }
