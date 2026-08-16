@@ -24,6 +24,9 @@ import {
   type CovariateAdjustment,
   type CovariateTerm,
 } from "./covariates";
+import { monitorEntropy, type MonitorEntropy } from "./entropy-monitor";
+import { coebisAdjunct, NO_ADJUNCT, type AdjunctCorrection } from "./coebis-adjuncts";
+import { getActiveMontageFeatures } from "./psi-features";
 
 export interface DepthComponents {
   /** openibis component 1: mean 30-47 Hz power minus mid-band power, dB. */
@@ -56,6 +59,10 @@ export interface DepthReading {
   gateReasons: string[];
   /** A fitted BIS alignment was applied to the index. */
   bisAligned?: boolean;
+  /** Entropy-monitor style State/Response Entropy for this epoch. */
+  entropy?: MonitorEntropy | null;
+  /** Adjunct (Entropy/PSI-informed) correction folded into COEBIS. */
+  adjunct?: AdjunctCorrection;
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
@@ -215,11 +222,12 @@ export function applyBisAlignment(
   index: number,
   alignment = activeBisAlignment,
   cov: CaseCovariates | null = activeCovariates,
+  adjunct = 0,
 ): number {
   if (!alignment) return index;
   const affine = alignment.gain * index + alignment.offset;
   const shaped = affine + knotCorrection(affine, alignment.knots);
-  return clamp(shaped + covariateAdjustment(alignment.terms, cov).total, 0, 100);
+  return clamp(shaped + covariateAdjustment(alignment.terms, cov).total + adjunct, 0, 100);
 }
 
 /**
@@ -229,9 +237,10 @@ export function applyBisAlignment(
 export function computeCoebis(
   openIbis: number | null,
   alignment = activeBisAlignment,
+  adjunct = 0,
 ): number | null {
   if (openIbis == null || !alignment) return null;
-  return Math.round(applyBisAlignment(openIbis, alignment));
+  return Math.round(applyBisAlignment(openIbis, alignment, activeCovariates, adjunct));
 }
 
 export function getActiveDepthCalibration(): DepthCalibration {
@@ -565,10 +574,26 @@ export class DepthIndexEstimator {
     };
 
     const index = rawValue == null ? null : Math.round(rawValue);
-    const coebis = computeCoebis(rawValue);
     const gatedFraction = this.psdHistory.length
       ? this.psdHistory.filter((r) => r == null).length / this.psdHistory.length
       : 1;
+
+    // Entropy-monitor style SE/RE on the same rolling spectra, then the
+    // Entropy/PSI-informed adjunct that finishes the COEBIS number.
+    const entropy = monitorEntropy(this.psdHistory, bsr, BIN_HZ, epochSeconds);
+    const aligned =
+      rawValue == null || !activeBisAlignment ? null : applyBisAlignment(rawValue, activeBisAlignment);
+    const adjunct =
+      aligned == null
+        ? NO_ADJUNCT
+        : coebisAdjunct({
+            aligned,
+            entropy,
+            montage: getActiveMontageFeatures(),
+            bsr,
+            quality: 1 - gatedFraction,
+          });
+    const coebis = computeCoebis(rawValue, activeBisAlignment, adjunct.total);
     return {
       index,
       raw: rawValue == null ? null : Math.round(rawValue),
@@ -579,6 +604,8 @@ export class DepthIndexEstimator {
       gatedFraction,
       gateReasons: gate.reasons ?? [],
       bisAligned: activeBisAlignment != null,
+      entropy,
+      adjunct,
       coebis,
     };
   }

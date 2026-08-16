@@ -9,6 +9,7 @@
 
 import { covariateAdjustment, covariateLabel, type CaseCovariates } from "./covariates";
 import { knotCorrection, type BisAlignment } from "./depth";
+import type { AdjunctCorrection } from "./coebis-adjuncts";
 
 export interface CoebisExplainStep {
   /** Short step name, e.g. "Patient adjustment: age 75-89". */
@@ -41,6 +42,7 @@ export function explainCoebis(
   openIbis: number | null | undefined,
   alignment: BisAlignment | null | undefined,
   cov: CaseCovariates | null | undefined,
+  adjunct?: AdjunctCorrection | null,
 ): CoebisExplanation {
   const caveats: string[] = [];
   if (openIbis == null || !alignment) {
@@ -105,6 +107,26 @@ export function explainCoebis(
       value: Number(value.toFixed(1)),
       detail: "Total patient-specific adjustment is capped so covariates can nudge the index, never redefine it.",
     });
+  }
+
+  if (adjunct?.parts.length) {
+    for (const part of adjunct.parts) {
+      value += part.delta;
+      steps.push({
+        label: `Monitor adjunct: ${part.label}`,
+        delta: Number(part.delta.toFixed(1)),
+        value: Number(value.toFixed(1)),
+        detail: part.detail,
+      });
+    }
+    if (adjunct.shrink < 1) {
+      caveats.push(
+        `Adjunct corrections were shrunk to ${Math.round(adjunct.shrink * 100)} % because the hemispheres disagreed or the signal was poor.`,
+      );
+    }
+    if (adjunct.capped) {
+      caveats.push("The adjunct stage hit its cap; it can nudge the index, never redefine it.");
+    }
   }
 
   const final = clamp(value, 0, 100);

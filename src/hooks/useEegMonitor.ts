@@ -11,6 +11,7 @@ import {
   type DetectedEvent,
   type Epoch,
 } from "@/lib/eeg/analysis";
+import { montageFeatures, setActiveMontageFeatures } from "@/lib/eeg/psi-features";
 import {
   MUSE_SAMPLE_RATE,
   computePsd,
@@ -763,6 +764,12 @@ export function useEegMonitor() {
       const leftMetrics = left.metrics;
       const rightMetrics = right.metrics;
       const hemi: HemiSpectra = { left: left.spectrum, right: right.spectrum };
+      // Publish the bilateral montage evidence (SedLine/PSI-style coherence,
+      // asymmetry and spectral shape) for the COEBIS adjunct stage. It is read
+      // on the next epoch, a one-second lag that is immaterial at this scale.
+      setActiveMontageFeatures(
+        montageFeatures(left.spectrum, right.spectrum, DSA_MIN_HZ, DSA_MAX_HZ),
+      );
 
       // BIS-style Signal Quality Index trend: one point per epoch, thinned
       // with the same rule as the DSA so long cases keep their full history.

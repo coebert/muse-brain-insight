@@ -10,20 +10,24 @@ import { Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { explainCoebis } from "@/lib/eeg/coebis-explain";
+import type { AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import type { CaseCovariates } from "@/lib/eeg/covariates";
 import { cn } from "@/lib/utils";
 
 export function CoebisExplainPanel({
   openIbis,
   covariates,
+  adjunct,
   className,
 }: {
   openIbis: number | null | undefined;
   covariates: CaseCovariates | null | undefined;
+  /** Entropy/PSI-informed adjunct applied to the live number, when present. */
+  adjunct?: AdjunctCorrection | null;
   className?: string;
 }) {
   const model = useCoebisModel();
-  const explanation = explainCoebis(openIbis, model, covariates);
+  const explanation = explainCoebis(openIbis, model, covariates, adjunct);
 
   return (
     <Popover>
