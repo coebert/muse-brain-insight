@@ -574,10 +574,26 @@ export class DepthIndexEstimator {
     };
 
     const index = rawValue == null ? null : Math.round(rawValue);
-    const coebis = computeCoebis(rawValue);
     const gatedFraction = this.psdHistory.length
       ? this.psdHistory.filter((r) => r == null).length / this.psdHistory.length
       : 1;
+
+    // Entropy-monitor style SE/RE on the same rolling spectra, then the
+    // Entropy/PSI-informed adjunct that finishes the COEBIS number.
+    const entropy = monitorEntropy(this.psdHistory, bsr, BIN_HZ, epochSeconds);
+    const aligned =
+      rawValue == null || !activeBisAlignment ? null : applyBisAlignment(rawValue, activeBisAlignment);
+    const adjunct =
+      aligned == null
+        ? NO_ADJUNCT
+        : coebisAdjunct({
+            aligned,
+            entropy,
+            montage: getActiveMontageFeatures(),
+            bsr,
+            quality: 1 - gatedFraction,
+          });
+    const coebis = computeCoebis(rawValue, activeBisAlignment, adjunct.total);
     return {
       index,
       raw: rawValue == null ? null : Math.round(rawValue),
@@ -588,6 +604,8 @@ export class DepthIndexEstimator {
       gatedFraction,
       gateReasons: gate.reasons ?? [],
       bisAligned: activeBisAlignment != null,
+      entropy,
+      adjunct,
       coebis,
     };
   }
