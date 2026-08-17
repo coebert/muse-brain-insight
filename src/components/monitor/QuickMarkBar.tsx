@@ -99,7 +99,9 @@ export function QuickMarkBar({
             }
             className={cn(
               "flex items-center gap-1.5 rounded-full border border-border font-medium text-foreground transition-colors disabled:opacity-40 disabled:hover:border-border disabled:hover:text-foreground",
-              size === "compact" ? "min-h-9 px-2.5 text-xs" : "min-h-11 px-3 text-xs sm:min-h-10",
+              size === "compact"
+                ? "min-h-11 px-2.5 text-xs sm:min-h-9"
+                : "min-h-11 px-3 text-xs sm:min-h-10",
               TONE[template.tone],
             )}
           >
@@ -120,7 +122,9 @@ export function QuickMarkBar({
           onClick={onMore}
           className={cn(
             "rounded-full border border-dashed border-border font-medium text-muted-foreground transition-colors hover:text-foreground",
-            size === "compact" ? "min-h-9 px-2.5 text-xs" : "min-h-11 px-3 text-xs sm:min-h-10",
+            size === "compact"
+              ? "min-h-11 px-2.5 text-xs sm:min-h-9"
+              : "min-h-11 px-3 text-xs sm:min-h-10",
           )}
         >
           More…
