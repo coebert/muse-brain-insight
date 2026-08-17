@@ -536,6 +536,7 @@ function useCaseSessionState() {
     onInfusionsChange: setInfusions,
     bisReadings,
     onBisReadingsChange: setBisReadings,
+    coebisSeries: monitor.epochs.map((e) => e.depth?.coebis ?? null),
     caseNotes: { meta, onChange: setMeta, usedCaseCodes },
     settings: monitor.settings,
     onSettingsChange: applySettings,

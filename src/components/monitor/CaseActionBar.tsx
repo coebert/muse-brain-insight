@@ -249,6 +249,7 @@ export function CaseActionBar({
                 depthIndex={controls.live.depthIndex}
                 suppressionRatio={controls.live.suppressionRatio}
                 sef95={controls.live.sef95}
+                coebisSeries={controls.coebisSeries ?? []}
                 onMark={(detail) => controls.onMark(detail)}
               />
             </>
