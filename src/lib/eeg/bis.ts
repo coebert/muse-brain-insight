@@ -186,10 +186,13 @@ export function pairBisReadings(
   const series: IndexSample[] = epochs
     .filter((e) => e.depth.index != null && Number.isFinite(e.depth.index))
     .map((e) => ({ t: e.t, value: e.depth.index as number }));
-  const lag = series.length
+  // Only shift when the case's own readings supported the estimate. Applying
+  // the published default on faith would move every pair on an assumption,
+  // which is a worse error than leaving them as transcribed.
+  const estimate = series.length
     ? estimateMonitorLagSeconds(sortedReadings.map((r) => ({ at: r.at, bis: r.bis, series })))
-        .lagSeconds
-    : 0;
+    : null;
+  const lag = estimate?.estimated ? estimate.lagSeconds : 0;
 
   return sortedReadings
     .map((r) => {
