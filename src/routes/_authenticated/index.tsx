@@ -698,7 +698,8 @@ function Monitor() {
                   windowSeconds={windowMinutes * 60}
                 />
                 {!monitor.epochs.length ? (
-                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                    <p className="max-w-xs rounded-lg border border-border bg-background/90 px-4 py-3 text-center text-sm text-muted-foreground backdrop-blur-sm">
                     Connect a Muse 2 headband to start building the spectrogram — or run the demo
                     signal to see anaesthesia, burst suppression and ictal patterns.
                   </div>
