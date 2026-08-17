@@ -4,6 +4,8 @@ import { Layers, Loader2, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import { getCoebisValidation } from "@/lib/eeg/coebis-validation.functions";
 import { describeTerm } from "@/lib/eeg/covariates";
+import { ConfidenceCalibrationPanel } from "./ConfidenceCalibrationPanel";
+import { DiscriminationPanel } from "./DiscriminationPanel";
 
 const FAMILY_LABEL: Record<string, string> = {
   raw: "Published open index",
@@ -129,6 +131,10 @@ export function CoebisValidationPanel() {
           and {data.n} paired reading{data.n === 1 ? "" : "s"}.
         </p>
       </section>
+
+      <DiscriminationPanel report={data.discrimination} />
+
+      <ConfidenceCalibrationPanel report={data.confidence} />
 
       {data.terms.length ? (
         <section className="panel p-3">
