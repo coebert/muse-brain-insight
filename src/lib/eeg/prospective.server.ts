@@ -56,6 +56,10 @@ export function rowToLock(row: Record<string, unknown>): CoebisLock {
         ? (coefficients!["knots"] as { x: number; dy: number }[])
         : [],
       terms: toTerms(coefficients),
+      ceTerms: Array.isArray(coefficients?.["ceTerms"])
+        ? (coefficients!["ceTerms"] as CoebisModel["ceTerms"])
+        : [],
+      diagnostics: null,
       caseIntercepts: {},
       n: Number((coefficients?.["n"] as number) ?? 0),
       sessions: Number((coefficients?.["sessions"] as number) ?? 0),
