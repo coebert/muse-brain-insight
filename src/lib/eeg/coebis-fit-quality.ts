@@ -57,7 +57,28 @@ export function estimateInFitPercent(
   return Math.min(100, Math.max(0, Math.round(pct)));
 }
 
-export function computeCoebisFitQuality(model: BisAlignment | null): CoebisFitQuality {
+/**
+ * Observed share of residuals inside the band. Preferred over the Gaussian
+ * estimate whenever the residuals themselves are available: index residuals sit
+ * on a bounded 0–100 scale and pile up near the floor in deep anaesthesia, so
+ * they are not normally distributed and the analytic figure can disagree with
+ * what actually happened.
+ */
+export function empiricalInFitPercent(
+  residuals: number[],
+  band: number = COEBIS_IN_FIT_BAND,
+): number | null {
+  const usable = residuals.filter((r) => Number.isFinite(r));
+  if (usable.length < 5) return null;
+  const inside = usable.filter((r) => Math.abs(r) <= band).length;
+  return Math.round((inside / usable.length) * 100);
+}
+
+export function computeCoebisFitQuality(
+  model: BisAlignment | null,
+  /** Observed residuals (prediction − monitor) when they are to hand. */
+  residuals?: number[],
+): CoebisFitQuality {
   if (!model) {
     return {
       grade: "none",
@@ -72,7 +93,9 @@ export function computeCoebisFitQuality(model: BisAlignment | null): CoebisFitQu
 
   const bias = typeof model.biasAfter === "number" ? model.biasAfter : null;
   const mae = typeof model.maeAfter === "number" ? model.maeAfter : null;
-  const inFitPercent = estimateInFitPercent(bias, mae);
+  const observed = residuals ? empiricalInFitPercent(residuals) : null;
+  const inFitPercent = observed ?? estimateInFitPercent(bias, mae);
+  const inFitObserved = observed != null;
 
   const parts: string[] = [];
   parts.push(bias == null ? "bias —" : `bias ${bias >= 0 ? "+" : ""}${bias.toFixed(1)}`);
@@ -93,7 +116,9 @@ export function computeCoebisFitQuality(model: BisAlignment | null): CoebisFitQu
   const inFitText =
     inFitPercent == null
       ? "In-fit share not estimable yet."
-      : `About ${inFitPercent}% of paired readings are expected within ±${COEBIS_IN_FIT_BAND} BIS units of the monitor (estimated from the residual spread).`;
+      : inFitObserved
+        ? `${inFitPercent}% of paired readings actually landed within ±${COEBIS_IN_FIT_BAND} BIS units of the monitor.`
+        : `About ${inFitPercent}% of paired readings are expected within ±${COEBIS_IN_FIT_BAND} BIS units of the monitor (estimated from the residual spread — the observed share is shown once the residuals are loaded).`;
 
   const gradeText =
     grade === "good"
