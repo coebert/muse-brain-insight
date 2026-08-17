@@ -69,6 +69,7 @@ import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
 import {
   MODES,
   defaultWindowMinutes,
@@ -314,7 +315,7 @@ function Monitor() {
                   title={m.blurb}
                   onClick={() => selectMode(m.key)}
                   className={cn(
-                    "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none sm:py-1",
+                    "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-8 sm:flex-none sm:py-1",
                     active
                       ? "bg-signal/15 text-signal"
                       : "text-muted-foreground hover:text-foreground",
@@ -332,7 +333,7 @@ function Monitor() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="flex-1 sm:flex-none"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                   onClick={() => setEndOpen(true)}
                 >
                   <CircleStop className="size-4" /> End case
@@ -370,13 +371,17 @@ function Monitor() {
               {caseState === "ended" ? (
                 <Button
                   size="sm"
-                  className="flex-1 sm:flex-none"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                   onClick={() => requestNewCase()}
                 >
                   <Plus className="size-4" /> New case
                 </Button>
               ) : (
-                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setCaseOpen(true)}>
+                <Button
+                  size="sm"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                  onClick={() => setCaseOpen(true)}
+                >
                   <Bluetooth className="size-4" /> Start case
                 </Button>
               )}
@@ -385,7 +390,7 @@ function Monitor() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="flex-1 sm:flex-none"
+                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                     onClick={() => setSaveOpen(true)}
                   >
                     <Save className="size-4" /> File case
@@ -560,7 +565,7 @@ function Monitor() {
                     value={monitor.channel}
                     onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
                   >
-                    <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
+                    <SelectTrigger className="min-h-11 w-full min-w-0 sm:min-h-9 sm:w-[150px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -576,7 +581,7 @@ function Monitor() {
                     value={String(windowMinutes)}
                     onValueChange={(v) => setWindowMinutes(Number(v))}
                   >
-                    <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
+                    <SelectTrigger className="min-h-11 w-full min-w-0 sm:min-h-9 sm:w-[110px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -586,29 +591,8 @@ function Monitor() {
                       <SelectItem value="60">60 min</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="col-span-2 flex shrink-0 rounded-md border border-border p-0.5">
-                    {(
-                      [
-                        { key: "bilateral", label: "Bilateral" },
-                        { key: "combined", label: "Combined" },
-                        { key: "overlay", label: "Overlay" },
-                      ] as const
-                    ).map((v) => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        aria-pressed={dsaView === v.key}
-                        onClick={() => setDsaView(v.key)}
-                        className={cn(
-                          "min-h-[36px] flex-1 rounded px-3 text-xs font-medium sm:flex-none",
-                          dsaView === v.key
-                            ? "bg-secondary text-secondary-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
+                  <div className="col-span-2 flex shrink-0">
+                    <DsaViewToggle value={dsaView} onChange={setDsaView} full />
                   </div>
                   <button
                     type="button"
@@ -623,7 +607,7 @@ function Monitor() {
                     }
                     onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
                     className={cn(
-                      "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center justify-self-start rounded-md border border-border",
+                      "flex min-h-11 min-w-11 shrink-0 items-center justify-center justify-self-start rounded-md border border-border sm:min-h-9 sm:min-w-9",
                       markerAlerts.soundEnabled
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
@@ -698,9 +682,11 @@ function Monitor() {
                   windowSeconds={windowMinutes * 60}
                 />
                 {!monitor.epochs.length ? (
-                  <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                    Connect a Muse 2 headband to start building the spectrogram — or run the demo
-                    signal to see anaesthesia, burst suppression and ictal patterns.
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+                    <p className="max-w-xs rounded-lg border border-border bg-background/90 px-4 py-3 text-center text-sm text-muted-foreground backdrop-blur-sm">
+                      Connect a Muse 2 headband to start building the spectrogram — or run the demo
+                      signal to see anaesthesia, burst suppression and ictal patterns.
+                    </p>
                   </div>
                 ) : null}
               </div>
@@ -769,6 +755,7 @@ function Monitor() {
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="min-h-11 sm:min-h-9"
                     disabled={!caseRunning || !markerText.trim()}
                     onClick={() => {
                       addMarker(markerText);
