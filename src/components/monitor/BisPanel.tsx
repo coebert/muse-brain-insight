@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { formatClock } from "@/lib/eeg/format";
 import { CoebisGapHint } from "@/components/monitor/CoebisGapHint";
+import { CoebisDriftStrip } from "@/components/monitor/CoebisDriftStrip";
 import { BIS_DEVICES, bisBandLabel, clampBis, type BisReading } from "@/lib/eeg/bis";
 import { evaluateCapturePrompt } from "@/lib/eeg/capture-prompts";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function BisPanel({
   suppressionRatio,
   sef95,
   trend = [],
+  coebisSeries = [],
   onMark,
 }: {
   readings: BisReading[];
@@ -43,6 +45,8 @@ export function BisPanel({
   sef95?: number | null;
   /** Recent depth samples so the panel can spot high-value capture moments. */
   trend?: { t: number; index: number | null }[];
+  /** COEBIS values for the case (oldest first, gaps as null) for the drift strip. */
+  coebisSeries?: (number | null)[];
   onMark: (detail: string) => void;
 }) {
   const [device, setDevice] = useState<string>(BIS_DEVICES[0]);
@@ -280,6 +284,16 @@ export function BisPanel({
           </Button>
         </div>
       </div>
+
+      <CoebisDriftStrip
+        className="mt-3"
+        series={coebisSeries}
+        action={
+          <Button size="sm" className="h-9" disabled={!running} onClick={log}>
+            Capture {clampBis(bis)}
+          </Button>
+        }
+      />
 
       <CoebisGapHint className="mt-3" />
 
