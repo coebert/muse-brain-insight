@@ -174,6 +174,8 @@ function designRow(p: CoebisTrainingPoint, columns: string[]): number[] {
 export function fitJointCovariates(
   points: CoebisTrainingPoint[],
   base: { gain: number; offset: number; knots: BisKnot[] },
+  /** Set false inside the interaction test itself, to avoid recursing. */
+  testInteraction = true,
 ): JointCovariateFit {
   const columns = designColumns(points);
   const empty: JointFitDiagnostics = {
@@ -250,7 +252,9 @@ export function fitJointCovariates(
       entangled,
       maxVif: vif.length ? Number(Math.max(...vif).toFixed(2)) : null,
       ceReadings: empty.ceReadings,
-      interaction: testAgeRegimenInteraction(points, base),
+      interaction: testInteraction
+        ? testAgeRegimenInteraction(points, base)
+        : empty.interaction,
     },
   };
 }
@@ -280,17 +284,7 @@ export function testAgeRegimenInteraction(
       note: `Only ${populated} age/regimen combination${populated === 1 ? "" : "s"} has enough readings — an interaction cannot be tested yet.`,
     };
   }
-  const base0 = fitJointCovariates(points, base);
-  const withInteraction = points.map((p) => ({
-    ...p,
-    cov: {
-      ...p.cov,
-      frailty: p.cov?.frailty ?? null,
-      // Encode the interaction as an extra pseudo-level so it goes through the
-      // same penalised machinery as everything else.
-      sex: p.cov?.sex ?? null,
-    },
-  }));
+  const base0 = fitJointCovariates(points, base, false);
   const err = (terms: CovariateTerm[], ce: CeTerm[]) =>
     points.reduce((s, p) => {
       const pred =
@@ -299,7 +293,7 @@ export function testAgeRegimenInteraction(
         ceAdjustment(ce, p.ce).total;
       return s + Math.abs(pred - p.bis);
     }, 0) / (points.length || 1);
-  const interactionTerms = fitInteractionTerms(withInteraction, base);
+  const interactionTerms = fitInteractionTerms(points, base);
   const gain = Number(
     (err(base0.terms, base0.ceTerms) - err([...base0.terms, ...interactionTerms], base0.ceTerms)).toFixed(2),
   );
