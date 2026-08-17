@@ -17,6 +17,8 @@
 import { pearson } from "./correlation";
 import { BIS_BANDS } from "./bis";
 import { knotCorrection, type BisKnot } from "./depth";
+import { clusterRobustMeanCi } from "./ci";
+import { TRANSITIONAL_WEIGHT, type PairStability } from "./pairing-lag";
 
 /** One pooled comparison point, from any case. */
 export interface BisDriftPoint {
@@ -30,6 +32,16 @@ export interface BisDriftPoint {
   /** ISO timestamp the point was filed. */
   recordedAt: string;
   context?: string | null;
+  /**
+   * Was depth steady when the reading was taken? A transitional reading is
+   * paired against a monitor value that reflects a different moment, so it
+   * carries a lag error and counts for less.
+   */
+  stability?: PairStability;
+  /** Index points per minute around the reading, when the trend was recorded. */
+  slopePerMin?: number | null;
+  /** Seconds the app index was shifted back before pairing, if any. */
+  lagAppliedSeconds?: number | null;
 }
 
 export interface BisDriftBand {
@@ -72,6 +84,15 @@ export interface BisDriftAnalysis {
   sd: number | null;
   /** 95 % confidence interval of the bias. */
   ci: [number, number] | null;
+  /**
+   * How much the clustering of readings within cases inflates the interval.
+   * 1.0 means the readings behaved as independent observations.
+   */
+  designEffect: number | null;
+  /** Share of the disagreement explained by which case a reading came from. */
+  icc: number | null;
+  /** Readings taken while depth was moving, which carry a monitor-lag error. */
+  nTransitional: number;
   mae: number | null;
   r: number | null;
   bands: BisDriftBand[];
@@ -134,7 +155,12 @@ export function pointWeight(p: { reliable?: boolean; sqi?: number | null }): num
   // SQI is a percentage; 100 % earns full weight, 50 % or below earns the floor.
   const quality = sqi == null ? 0.85 : Math.min(1, Math.max(0, (sqi - 50) / 50));
   const reliability = p.reliable === false ? 0.5 : 1;
-  return Math.max(MIN_POINT_WEIGHT, Math.min(1, quality * reliability));
+  // A reading taken mid-transition is compared against a monitor number that
+  // reflects the recent past, so it is evidence about the lag as much as about
+  // the calibration. Keep it, but at half authority.
+  const stability =
+    (p as { stability?: PairStability }).stability === "transitional" ? TRANSITIONAL_WEIGHT : 1;
+  return Math.max(MIN_POINT_WEIGHT, Math.min(1, quality * reliability * stability));
 }
 
 const mean = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
@@ -263,9 +289,12 @@ export function analyseBisDrift(
   const diffs = usable.map((p) => p.appIndex - p.bis);
   const bias = mean(diffs);
   const spread = sd(diffs);
-  const se = spread != null && usable.length > 1 ? spread / Math.sqrt(usable.length) : null;
-  const ci: [number, number] | null =
-    bias != null && se != null ? [round(bias - 1.96 * se)!, round(bias + 1.96 * se)!] : null;
+  // Readings cluster inside cases, so a naive sd/sqrt(n) interval is too tight
+  // and would declare an offset "real" on the strength of one long case.
+  const robust = clusterRobustMeanCi(
+    usable.map((p) => ({ caseKey: p.sessionId ?? "unfiled", value: p.appIndex - p.bis })),
+  );
+  const ci: [number, number] | null = robust ? robust.ci : null;
   const sessions = new Set(usable.map((p) => p.sessionId ?? "unfiled")).size;
   const reliable = usable.filter((p) => p.reliable);
 
@@ -338,6 +367,9 @@ export function analyseBisDrift(
     bias: round(bias, 2),
     sd: round(spread, 2),
     ci,
+    designEffect: robust ? robust.designEffect : null,
+    icc: robust ? robust.icc : null,
+    nTransitional: usable.filter((p) => p.stability === "transitional").length,
     mae: round(mean(diffs.map(Math.abs)), 2),
     r: usable.length >= 3 ? round(pearson(usable.map((p) => p.appIndex), usable.map((p) => p.bis)), 3) : null,
     bands,

@@ -11,6 +11,9 @@ function analysis(over: Partial<BisDriftAnalysis> = {}): BisDriftAnalysis {
     bias: 6,
     sd: 5,
     ci: [4, 8],
+    designEffect: 1,
+    icc: 0,
+    nTransitional: 0,
     mae: 6,
     r: 0.9,
     bands: [

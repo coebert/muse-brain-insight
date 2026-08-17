@@ -11,6 +11,14 @@
 
 import type { Epoch } from "@/lib/eeg/analysis";
 import { agreementMetrics, type AgreementMetrics, type AlignedPair } from "@/lib/eeg/agreement";
+import {
+  classifyStability,
+  estimateMonitorLagSeconds,
+  laggedAppIndex,
+  slopePerMinute,
+  type IndexSample,
+  type PairStability,
+} from "@/lib/eeg/pairing-lag";
 
 /** One transcribed reading from the commercial monitor. */
 export interface BisReading {
@@ -100,6 +108,14 @@ export interface BisPairedPoint {
   reliable: boolean;
   sqi: number | null;
   gapSeconds: number | null;
+  /**
+   * Whether depth was steady or moving when the reading was transcribed. A
+   * reading taken mid-transition carries a timing error rather than a real
+   * calibration offset, so downstream fits weight it less.
+   */
+  stability?: PairStability;
+  /** Seconds of monitor smoothing delay allowed for when pairing. */
+  lagSeconds?: number;
 }
 
 export interface BisBandAgreement {
@@ -160,11 +176,32 @@ export function pairBisReadings(
   readings: BisReading[],
   tolerance = 30,
 ): BisPairedPoint[] {
-  return [...readings]
-    .sort((a, b) => a.at - b.at)
+  const sortedReadings = [...readings].sort((a, b) => a.at - b.at);
+  /**
+   * The monitor's displayed number reflects the last 15–30 s of EEG, so the
+   * honest comparison is against the app index as it was then, not now. The
+   * shift is estimated from the case's own readings where there are enough of
+   * them, and falls back to the published delay otherwise.
+   */
+  const series: IndexSample[] = epochs
+    .filter((e) => e.depth.index != null && Number.isFinite(e.depth.index))
+    .map((e) => ({ t: e.t, value: e.depth.index as number }));
+  // Only shift when the case's own readings supported the estimate. Applying
+  // the published default on faith would move every pair on an assumption,
+  // which is a worse error than leaving them as transcribed.
+  const estimate = series.length
+    ? estimateMonitorLagSeconds(sortedReadings.map((r) => ({ at: r.at, bis: r.bis, series })))
+    : null;
+  const lag = estimate?.estimated ? estimate.lagSeconds : 0;
+
+  return sortedReadings
     .map((r) => {
       const epoch = nearestEpoch(epochs, r.at, tolerance);
-      const depthIndex = epoch?.depth.index ?? null;
+      const nearestIndex = epoch?.depth.index ?? null;
+      const depthIndex =
+        nearestIndex == null || !series.length
+          ? nearestIndex
+          : laggedAppIndex(series, r.at, lag, nearestIndex);
       const appSr = epoch ? epoch.suppressionRatio : null;
       const appSef = epoch?.sef95 ?? null;
       const appSefRaw = epoch?.sef95Raw ?? null;
@@ -187,6 +224,10 @@ export function pairBisReadings(
         reliable: epoch ? epoch.depthReliability.reliable && !epoch.depth.held : false,
         sqi: round(epoch ? epoch.quality.score * 100 : null, 0),
         gapSeconds: epoch ? Math.round(Math.abs(epoch.t - r.at)) : null,
+        stability: series.length
+          ? classifyStability(slopePerMinute(series, r.at - lag))
+          : "unknown",
+        lagSeconds: lag,
       } satisfies BisPairedPoint;
     });
 }

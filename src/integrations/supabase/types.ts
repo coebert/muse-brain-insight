@@ -157,12 +157,14 @@ export type Database = {
           feature_source: string
           features: Json
           id: string
+          lag_seconds: number | null
           recorded_at: string
           reliable: boolean
           session_id: string | null
           source: string
           source_site: string | null
           sqi: number | null
+          stability: string | null
           user_id: string
         }
         Insert: {
@@ -180,12 +182,14 @@ export type Database = {
           feature_source?: string
           features?: Json
           id?: string
+          lag_seconds?: number | null
           recorded_at?: string
           reliable?: boolean
           session_id?: string | null
           source?: string
           source_site?: string | null
           sqi?: number | null
+          stability?: string | null
           user_id: string
         }
         Update: {
@@ -203,12 +207,14 @@ export type Database = {
           feature_source?: string
           features?: Json
           id?: string
+          lag_seconds?: number | null
           recorded_at?: string
           reliable?: boolean
           session_id?: string | null
           source?: string
           source_site?: string | null
           sqi?: number | null
+          stability?: string | null
           user_id?: string
         }
         Relationships: [

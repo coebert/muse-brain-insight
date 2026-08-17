@@ -104,21 +104,46 @@ function fftLength(len: number): number {
   return n;
 }
 
-/** Single-taper (Hann) periodogram. Input is detrended internally. */
+/**
+ * Least-squares linear detrend of a slice, written into `out`.
+ *
+ * Removing only the mean leaves any baseline drift — common on dry frontal
+ * electrodes — in the low-frequency bins, where it inflates delta power and
+ * every ratio built on it. Removing the fitted straight line as well is what
+ * the depth path already does, and every other spectral consumer needs it too.
+ */
+export function detrendInto(seg: Float64Array, out: Float64Array): void {
+  const n = seg.length;
+  if (!n) return;
+  let sx = 0;
+  let sy = 0;
+  let sxx = 0;
+  let sxy = 0;
+  for (let i = 0; i < n; i++) {
+    const y = seg[i]!;
+    sx += i;
+    sy += y;
+    sxx += i * i;
+    sxy += i * y;
+  }
+  const denom = n * sxx - sx * sx;
+  const slope = denom === 0 ? 0 : (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  for (let i = 0; i < n; i++) out[i] = seg[i]! - (slope * i + intercept);
+}
+
+/** Single-taper (Hann) periodogram. Input is linearly detrended internally. */
 export function computePsd(signal: Float64Array, fs = MUSE_SAMPLE_RATE): Psd {
   const n = fftLength(signal.length);
   const seg = signal.subarray(signal.length - n);
 
-  let mean = 0;
-  for (let i = 0; i < n; i++) mean += seg[i]!;
-  mean /= n;
-
   const w = hannCached(n);
   const { re, im } = scratch(n);
   im.fill(0);
+  detrendInto(seg, re);
   let winPower = 0;
   for (let i = 0; i < n; i++) {
-    re[i] = (seg[i]! - mean) * w[i]!;
+    re[i] = re[i]! * w[i]!;
     winPower += w[i]! * w[i]!;
   }
   fft(re, im);
@@ -153,21 +178,16 @@ export function computePsdPair(
   const sa = a.subarray(a.length - n);
   const sb = b.subarray(b.length - n);
 
-  let meanA = 0;
-  let meanB = 0;
-  for (let i = 0; i < n; i++) {
-    meanA += sa[i]!;
-    meanB += sb[i]!;
-  }
-  meanA /= n;
-  meanB /= n;
-
   const w = hannCached(n);
   const { re, im } = scratch(n);
+  // Same linear detrend as the single-channel path, so the two engines cannot
+  // disagree about low-frequency power.
+  detrendInto(sa, re);
+  detrendInto(sb, im);
   let winPower = 0;
   for (let i = 0; i < n; i++) {
-    re[i] = (sa[i]! - meanA) * w[i]!;
-    im[i] = (sb[i]! - meanB) * w[i]!;
+    re[i] = re[i]! * w[i]!;
+    im[i] = im[i]! * w[i]!;
     winPower += w[i]! * w[i]!;
   }
   fft(re, im);
@@ -350,7 +370,50 @@ export class FilterChain {
 }
 
 export function makeEegFilter(fs = MUSE_SAMPLE_RATE, mains: 50 | 60 = 50): FilterChain {
-  return new FilterChain([highpass(0.5, fs), lowpass(45, fs), notch(mains, fs)]);
+  /**
+   * A single 12 dB/oct low-pass at 45 Hz still passes a great deal of the
+   * muscle energy that sits just above it, and the depth index reads the
+   * 30–47 Hz band directly. Two Butterworth-aligned stages give 24 dB/oct,
+   * which attenuates that shoulder before it can bias the index rather than
+   * relying on the artefact gate to notice afterwards. The mains harmonic is
+   * notched too, since a 50/60 Hz sideband can leak into the same band.
+   */
+  return new FilterChain([
+    highpass(0.5, fs),
+    lowpass(45, fs, 0.5412),
+    lowpass(45, fs, 1.3066),
+    notch(mains, fs),
+    notch(Math.min(mains * 2, fs / 2 - 1), fs),
+  ]);
+}
+
+/**
+ * Which mains frequency the trace actually shows.
+ *
+ * The notch frequency is a user setting, and a site set to the wrong one
+ * notches nothing. Comparing the residual power at 50 and 60 Hz against the
+ * neighbouring background says which one is really there.
+ */
+export function detectMainsHz(
+  psd: Psd,
+  { minRatio = 3 } = {},
+): { detected: 50 | 60 | null; ratio50: number; ratio60: number } {
+  const at = (f: number, halfWidth: number) => bandPower(psd, f - halfWidth, f + halfWidth);
+  const score = (f: number) => {
+    if (f + 5 >= psd.freqs[psd.freqs.length - 1]!) return 0;
+    const peak = at(f, 1.5);
+    const background = (at(f - 6, 2) + at(f + 6, 2)) / 2;
+    return background > 0 ? peak / background : 0;
+  };
+  const ratio50 = score(50);
+  const ratio60 = score(60);
+  const best = ratio50 >= ratio60 ? 50 : 60;
+  const bestRatio = Math.max(ratio50, ratio60);
+  return {
+    detected: bestRatio >= minRatio ? (best as 50 | 60) : null,
+    ratio50: Number(ratio50.toFixed(2)),
+    ratio60: Number(ratio60.toFixed(2)),
+  };
 }
 
 /** Peak-to-peak amplitude of a slice. */
