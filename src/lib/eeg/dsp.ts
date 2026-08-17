@@ -178,21 +178,16 @@ export function computePsdPair(
   const sa = a.subarray(a.length - n);
   const sb = b.subarray(b.length - n);
 
-  let meanA = 0;
-  let meanB = 0;
-  for (let i = 0; i < n; i++) {
-    meanA += sa[i]!;
-    meanB += sb[i]!;
-  }
-  meanA /= n;
-  meanB /= n;
-
   const w = hannCached(n);
   const { re, im } = scratch(n);
+  // Same linear detrend as the single-channel path, so the two engines cannot
+  // disagree about low-frequency power.
+  detrendInto(sa, re);
+  detrendInto(sb, im);
   let winPower = 0;
   for (let i = 0; i < n; i++) {
-    re[i] = (sa[i]! - meanA) * w[i]!;
-    im[i] = (sb[i]! - meanB) * w[i]!;
+    re[i] = re[i]! * w[i]!;
+    im[i] = im[i]! * w[i]!;
     winPower += w[i]! * w[i]!;
   }
   fft(re, im);
