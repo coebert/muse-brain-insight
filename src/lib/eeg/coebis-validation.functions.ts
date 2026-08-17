@@ -13,6 +13,7 @@ import {
   type SubgroupGap,
 } from "@/lib/eeg/coebis-covariates";
 import { AGE_BANDS, REGIMENS, type CovariateTerm } from "@/lib/eeg/covariates";
+import { benjaminiHochberg, pValueForMean } from "@/lib/eeg/fdr";
 import { selectCoebisTier, type CoebisTier, type TierCandidate } from "@/lib/eeg/coebis-tiers";
 
 export interface CoebisValidationReport {
@@ -25,6 +26,11 @@ export interface CoebisValidationReport {
   families: CoebisCvResult[];
   /** Held-out error per subgroup for the covariate model. */
   strata: StratumResult[];
+  /**
+   * Subgroups whose residual bias survives false-discovery-rate control across
+   * every subgroup tested — the ones worth acting on.
+   */
+  weakSpots: { group: string; level: string; n: number; bias: number | null; q: number }[];
   /** Subgroups still too thin to earn their own correction. */
   gaps: SubgroupGap[];
   /** Patient-specific corrections the current data supports. */
@@ -76,6 +82,26 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
     const oof = outOfFoldPredictions(points, "covariate");
     const strata = stratifiedAgreement(points, (_p, i) => oof[i] ?? null);
 
+    // Twenty subgroups tested at 5 % throws up a "weak spot" by chance in most
+    // reports. Benjamini-Hochberg keeps the flagged ones meaningful.
+    const tested = strata
+      .filter((s) => s.after.n >= 5 && s.after.bias != null && s.after.rmse != null)
+      .map((s) => {
+        const spread = Math.sqrt(
+          Math.max(0, (s.after.rmse ?? 0) ** 2 - (s.after.bias ?? 0) ** 2),
+        );
+        return { item: s, p: pValueForMean(s.after.bias, spread / Math.sqrt(s.after.n)) };
+      });
+    const weakSpots = benjaminiHochberg(tested)
+      .filter((r) => r.significant)
+      .map((r) => ({
+        group: r.item.group,
+        level: r.item.level,
+        n: r.item.after.n,
+        bias: r.item.after.bias,
+        q: r.q,
+      }));
+
     const selection = selectCoebisTier(points);
     const full = selection.model ?? fitCoebisModel(points, "covariate");
     const gaps = subgroupGaps(points, [
@@ -110,6 +136,7 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
       missingRegimen: matrix.missingRegimen,
       families,
       strata,
+      weakSpots,
       gaps,
       terms: full?.terms ?? [],
       baseline,
