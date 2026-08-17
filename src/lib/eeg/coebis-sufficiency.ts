@@ -44,9 +44,32 @@ export interface SufficiencyCheck {
 
 export type CoebisTier = "none" | "provisional" | "confirmed";
 
+/**
+ * One dimension of model confidence, reported separately.
+ *
+ * A single blended 0–100 number invites over-trust: it lets strong evidence in
+ * one dimension hide the absence of evidence in another. Each component is
+ * therefore published on its own, together with an explicit statement of what
+ * has *not* been established (`missing`).
+ */
+export interface SufficiencyComponent {
+  key: string;
+  label: string;
+  /** 0–1 standing on this dimension, or null when it cannot be judged yet. */
+  value: number | null;
+  /** Plain-language reading of where the evidence stands. */
+  detail: string;
+  /** What this dimension does *not* tell you. */
+  limitation: string;
+}
+
 export interface CoebisSufficiency {
   tier: CoebisTier;
-  /** Overall 0–100 confidence in the model, or null with no fit at all. */
+  /**
+   * Legacy blended 0–100 confidence. Retained for stored records and trend
+   * comparisons only — the UI reports `components` and `missing` instead.
+   * @deprecated Read `components` and `missing`.
+   */
   score: number | null;
   /** Word for the score: "Weak" / "Moderate" / "Strong". */
   scoreLabel: string;
@@ -55,6 +78,10 @@ export interface CoebisSufficiency {
   headline: string;
   /** What would move the model from provisional to confirmed, if anything. */
   nextStep: string | null;
+  /** Confidence broken into its independent dimensions. */
+  components: SufficiencyComponent[];
+  /** Explicit list of what has not been established yet. */
+  missing: string[];
   checks: SufficiencyCheck[];
   passed: number;
   failed: number;
@@ -90,6 +117,10 @@ export function evaluateCoebisSufficiency(
       tone: "critical",
       headline: "No paired commercial BIS readings have been pooled yet.",
       nextStep: `Enter paired BIS readings during cases: ${PROVISIONAL_MIN_POINTS} readings across ${PROVISIONAL_MIN_SESSIONS} cases start a provisional model.`,
+      components: [],
+      missing: [
+        "No paired readings — nothing about this model's accuracy has been established.",
+      ],
       checks: [],
       passed: 0,
       failed: 0,
