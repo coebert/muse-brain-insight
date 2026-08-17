@@ -412,9 +412,9 @@ export function evaluateCoebisSufficiency(
 
   const headline =
     tier === "confirmed"
-      ? `Confirmed model — ${passed} of ${checks.length} sufficiency checks passed, confidence ${score}/100.`
+      ? `Confirmed model — ${passed} of ${checks.length} sufficiency checks passed; ${missing.length} thing${missing.length === 1 ? "" : "s"} still not established.`
       : tier === "provisional"
-        ? `Provisional model — fitted on early data (${n} readings, ${plural(sessions, "case")}), confidence ${score}/100.`
+        ? `Provisional model — fitted on early data (${n} readings, ${plural(sessions, "case")}); ${passed} of ${checks.length} checks passed.`
         : `No model yet — ${n} paired reading${n === 1 ? "" : "s"} pooled so far.`;
 
   const needPoints = Math.max(0, MIN_POINTS - n);
