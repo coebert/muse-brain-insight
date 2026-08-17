@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { withInterval } from "@/lib/eeg/ci";
 import { getProspectiveReport, lockCoebisModel } from "@/lib/eeg/prospective.functions";
+import { DiscriminationPanel } from "./DiscriminationPanel";
 
 function num(v: number | null | undefined, dp = 1): string {
   return v == null ? "—" : v.toFixed(dp);
@@ -109,6 +110,9 @@ export function ProspectiveValidationPanel() {
                     locked {new Date(lock.lockedAt).toLocaleDateString()} · v{lock.modelVersion ?? "?"} ·{" "}
                     {lock.trainingReadings} training, {lock.unseenReadings} unseen from{" "}
                     {lock.unseenCases} case{lock.unseenCases === 1 ? "" : "s"}
+                    {lock.straddlingCases
+                      ? ` · ${lock.straddlingCases} case${lock.straddlingCases === 1 ? "" : "s"} straddling the lock, counted as training`
+                      : ""}
                   </span>
                 </button>
               </li>
@@ -153,7 +157,25 @@ export function ProspectiveValidationPanel() {
               long case cannot narrow them artificially.
             </p>
           )}
+          {data.agreement?.limits && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Limits of agreement {data.agreement.limits[0].toFixed(1)} to{" "}
+              {data.agreement.limits[1].toFixed(1)} points once repeated readings within a case are
+              separated
+              {data.agreement.naiveLimits
+                ? ` (the classic pooled formula would claim ${data.agreement.naiveLimits[0].toFixed(1)} to ${data.agreement.naiveLimits[1].toFixed(1)})`
+                : ""}
+              .
+            </p>
+          )}
         </section>
+      )}
+
+      {data.discrimination && data.discrimination.indices.length > 0 && (
+        <DiscriminationPanel
+          report={data.discrimination}
+          title="Discrimination on unseen patients"
+        />
       )}
 
       {data.strata.length > 0 && (
