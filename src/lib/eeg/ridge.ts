@@ -36,7 +36,7 @@ function solveSpd(a: number[][], b: number[]): number[] | null {
       if (r === col) continue;
       const f = m[r]![col]! / p;
       if (!f) continue;
-      for (let c = col; c <= n; c++) m[r]![c]! -= f * m[col]![c]!;
+      for (let c = col; c <= n; c++) m[r]![c] = m[r]![c]! - f * m[col]![c]!;
     }
   }
   return m.map((row, i) => row[n]! / row[i]![i]!);
