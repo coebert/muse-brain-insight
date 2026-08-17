@@ -18,6 +18,7 @@ import { pearson } from "./correlation";
 import { BIS_BANDS } from "./bis";
 import { knotCorrection, type BisKnot } from "./depth";
 import { clusterRobustMeanCi } from "./ci";
+import { fitPenalisedKnots, type PenalisedKnotFit } from "./pspline";
 import { TRANSITIONAL_WEIGHT, type PairStability } from "./pairing-lag";
 
 /** One pooled comparison point, from any case. */
@@ -186,43 +187,42 @@ export function alignIndex(
 
 /** Positions on the aligned scale where COEBIS learns a residual correction. */
 export const KNOT_POSITIONS = [20, 30, 40, 50, 60, 70, 80];
-/** Half-width of the neighbourhood pooled for each knot. */
-const KNOT_WINDOW = 10;
-/** Shrinkage sample size for the residual corrections. */
-const KNOT_SHRINK_K = 15;
 /** No knot may move the index by more than this. */
 export const MAX_KNOT_CORRECTION = 8;
 
 /**
  * Fit the residual corrections that turn the straight-line alignment into the
- * COEBIS model: for each knot, the shrunk mean residual (BIS − aligned index)
- * of nearby points. With few points near a knot the correction collapses to
- * zero, so sparse depth ranges are left on the affine map.
+ * COEBIS model. All knots are fitted together as a penalised piecewise-linear
+ * curve — neighbouring corrections have to agree unless the data insists
+ * otherwise — with the smoothing strength chosen by leave-one-case-out error,
+ * and the finished map projected monotone so a higher raw index can never
+ * produce a lower COEBIS.
  */
 export function fitCoebisKnots(
   points: BisDriftPoint[],
   affine: { gain: number; offset: number },
 ): BisKnot[] {
-  const mapped = points.map((p) => ({
-    x: affine.gain * p.appIndex + affine.offset,
-    r: p.bis - (affine.gain * p.appIndex + affine.offset),
-    w: pointWeight(p),
-  }));
-  const knots: BisKnot[] = [];
-  for (const x of KNOT_POSITIONS) {
-    const near = mapped.filter((m) => Math.abs(m.x - x) <= KNOT_WINDOW);
-    if (near.length < 5) {
-      knots.push({ x, dy: 0 });
-      continue;
-    }
-    const wsum = near.reduce((s, v) => s + v.w, 0);
-    const m = wsum > 0 ? near.reduce((s, v) => s + v.w * v.r, 0) / wsum : 0;
-    // Effective sample size: noisy readings buy less confidence.
-    const lambda = wsum / (wsum + KNOT_SHRINK_K);
-    const dy = Math.max(-MAX_KNOT_CORRECTION, Math.min(MAX_KNOT_CORRECTION, lambda * m));
-    knots.push({ x, dy: Number(dy.toFixed(2)) });
-  }
-  return knots;
+  return fitCoebisKnotCurve(points, affine).knots;
+}
+
+/**
+ * The same fit with its diagnostics: the cross-validated smoothing strength
+ * chosen and how many knots the monotonicity projection had to move.
+ */
+export function fitCoebisKnotCurve(
+  points: BisDriftPoint[],
+  affine: { gain: number; offset: number },
+): PenalisedKnotFit {
+  const samples = points.map((p) => {
+    const x = affine.gain * p.appIndex + affine.offset;
+    return {
+      x,
+      r: p.bis - x,
+      w: pointWeight(p),
+      caseKey: p.sessionId ?? "unfiled",
+    };
+  });
+  return fitPenalisedKnots(samples, KNOT_POSITIONS, MAX_KNOT_CORRECTION);
 }
 
 /**
