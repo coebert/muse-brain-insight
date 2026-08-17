@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
 import type { Epoch } from "@/lib/eeg/analysis";
+import { BASELINE_SAMPLES, coebisBaseline, coebisDriftSeries } from "@/lib/eeg/coebis-baseline";
 import { alignSeries } from "@/lib/eeg/gaps";
 import { formatClock } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,8 @@ interface Props {
 }
 
 const TICKS = 4;
+/** Vertical span of the drift strip, in COEBIS points either side of baseline. */
+const DRIFT_SPAN = 30;
 
 /** Wall-clock (HH:MM) or elapsed (mm:ss) label for a point on the trend. */
 function tickLabel(tSeconds: number, startedAtMs: number | null | undefined): string {
@@ -74,6 +77,28 @@ export function CoebisTrend({
     return null;
   }, [visible]);
 
+  // Baseline is anchored on the whole case, not the visible window, so the drift
+  // reading stays stable as the trend scrolls.
+  const baseline = useMemo(
+    () => coebisBaseline(epochs.map((e) => e.depth.coebis ?? null)),
+    [epochs],
+  );
+  const driftTrend = useMemo(
+    () => coebisDriftSeries(coebisTrend, baseline.value),
+    [coebisTrend, baseline.value],
+  );
+  const drift = baseline.delta;
+  const driftLabel =
+    drift == null ? "—" : `${drift > 0 ? "+" : drift < 0 ? "−" : "±"}${Math.abs(drift).toFixed(0)}`;
+  const driftTone =
+    drift == null
+      ? "text-muted-foreground"
+      : Math.abs(drift) >= 15
+        ? "text-critical"
+        : Math.abs(drift) >= 8
+          ? "text-caution"
+          : "text-muted-foreground";
+
   // Ticks span the plotted window, from the first visible epoch to "now".
   const ticks = useMemo(() => {
     const end = visible.length > 0 ? (visible[visible.length - 1]?.t ?? elapsed) : elapsed;
@@ -99,7 +124,7 @@ export function CoebisTrend({
           {latestCoebis != null ? Math.round(latestCoebis) : "—"}
         </span>
       </div>
-      <div className="h-[90px] min-h-[70px]">
+      <div className={compact ? "h-[64px]" : "h-[90px] min-h-[70px]"}>
         <div className="relative h-full">
           <TrendLine
             values={coebisTrend}
@@ -125,6 +150,35 @@ export function CoebisTrend({
         {ticks.map((label, i) => (
           <span key={`${label}-${i}`}>{label}</span>
         ))}
+      </div>
+      {/* Drift strip: how far COEBIS has moved from this patient's own baseline. */}
+      <div className="border-t border-border/60 px-2 pt-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+            Drift vs baseline
+          </span>
+          <span className="metric-value text-xs text-muted-foreground">
+            {baseline.value != null ? (
+              <>
+                base {Math.round(baseline.value)} ·{" "}
+                <span className={cn("metric-value", driftTone)}>{driftLabel}</span>
+              </>
+            ) : (
+              `establishing baseline ${baseline.samples}/${BASELINE_SAMPLES}`
+            )}
+          </span>
+        </div>
+        <div className={compact ? "h-[34px]" : "h-[46px]"}>
+          <TrendLine
+            values={driftTrend}
+            min={-DRIFT_SPAN}
+            max={DRIFT_SPAN}
+            band={[-5, 5]}
+            color="rgb(200,150,255)"
+            unit=" pts"
+            height={compact ? 34 : 46}
+          />
+        </div>
       </div>
       <div className="flex items-center gap-3 px-2 pb-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
