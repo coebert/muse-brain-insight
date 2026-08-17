@@ -169,8 +169,22 @@ export interface BisComparisonDigest {
     difference: number;
     reliable: boolean;
     sqi: number | null;
+    /** Whether depth was steady or moving when the reading was taken. */
+    stability?: PairStability;
     note?: string;
   }[];
+  /**
+   * How the readings were time-aligned with the app index, and how many were
+   * taken while depth was moving — shown so a reader can see what assumption
+   * the comparison rests on.
+   */
+  pairing: {
+    lagSeconds: number;
+    stable: number;
+    transitional: number;
+    unknown: number;
+    summary: string;
+  };
   calibration: BisCalibrationSuggestion | null;
   points: BisPairedPoint[];
   sparse: boolean;
@@ -322,8 +336,28 @@ export function buildBisComparison(
       difference: p.difference!,
       reliable: p.reliable,
       sqi: p.sqi,
+      stability: p.stability ?? "unknown",
       ...(noteFor.get(Math.round(p.at)) ? { note: noteFor.get(Math.round(p.at))! } : {}),
     }));
+
+  const lagSeconds = points.find((p) => p.lagSeconds != null)?.lagSeconds ?? 0;
+  const stable = points.filter((p) => p.stability === "stable").length;
+  const transitional = points.filter((p) => p.stability === "transitional").length;
+  const pairing = {
+    lagSeconds,
+    stable,
+    transitional,
+    unknown: points.length - stable - transitional,
+    summary: `${
+      lagSeconds
+        ? `Monitor values compared against the app index from ${lagSeconds} s earlier, the smoothing delay estimated from this case's own readings.`
+        : "Readings paired as transcribed — no monitor smoothing delay was supported by this case's data."
+    }${
+      transitional
+        ? ` ${transitional} of ${points.length} readings were taken while depth was still moving, so they carry a timing error as well as any real offset.`
+        : ""
+    }`,
+  };
 
   const devices = Array.from(
     new Set(readings.map((r) => r.device).filter((d): d is string => Boolean(d))),
@@ -340,6 +374,7 @@ export function buildBisComparison(
     suppression,
     sef,
     divergences,
+    pairing,
     calibration: fitCalibration(pairs),
     points: usable.slice(-60),
     sparse: usable.length < 5,

@@ -126,6 +126,9 @@ export function BisAgreementPanel({
               </div>
             </div>
 
+            {digest.paired ? (
+              <p className="text-[11px] text-muted-foreground">{digest.pairing.summary}</p>
+            ) : null}
             {digest.calibration ? (
               <div className="rounded-md border border-border px-3 py-2 text-xs">
                 <p className="font-semibold">Least-squares fit onto BIS</p>
@@ -162,6 +165,18 @@ export function BisAgreementPanel({
                       {!d.reliable ? (
                         <span className="rounded-full bg-caution/15 px-1.5 text-[11px] text-caution">
                           app unreliable
+                        </span>
+                      ) : null}
+                      {d.stability === "transitional" ? (
+                        <span
+                          className="rounded-full bg-caution/15 px-1.5 text-[11px] text-caution"
+                          title="Depth was moving when this reading was taken, so part of the difference is timing, not calibration."
+                        >
+                          transitional
+                        </span>
+                      ) : d.stability === "stable" ? (
+                        <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground">
+                          stable
                         </span>
                       ) : null}
                       {d.sqi != null ? (

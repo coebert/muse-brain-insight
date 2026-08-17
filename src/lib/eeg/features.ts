@@ -72,25 +72,34 @@ export interface FeatureDigest {
     usableFraction: number;
     poorEpochs: number;
   };
-  /** OpenIBIS-style BIS-like depth index (uncalibrated, frontal montage). */
+  /**
+   * OpenIBIS-style BIS-like depth index (uncalibrated, frontal montage).
+   *
+   * Every aggregate here is computed from reliability-gated epochs only: the
+   * unfiltered mean/min/max were retired so a downstream report or AI prompt
+   * cannot quietly read a number that artefact and EMG gating had rejected.
+   */
   depthIndex: {
-    mean: number | null;
-    min: number | null;
-    max: number | null;
-    latest: number | null;
-    fractionBelow40: number;
+    /** Mean of the depth index across reliable epochs only. */
+    meanWhenReliable: number | null;
+    /** Range across reliable epochs only. */
+    minWhenReliable: number | null;
+    maxWhenReliable: number | null;
+    /** Share of reliable epochs below 40 (deeper than the usual target). */
+    fractionBelow40WhenReliable: number;
     /** Fraction of epochs where the depth index was trustworthy (0-1). */
     reliableFraction: number;
     /** Mean 0-1 confidence in the depth index across the session. */
     meanConfidence: number;
-    /** Mean of the depth index restricted to reliable epochs. */
-    meanWhenReliable: number | null;
     /** Latest depth index from a reliable epoch. */
     latestReliable: number | null;
     /** Whether the most recent epoch's depth index was reliable. */
     latestIsReliable: boolean;
     /** Most common reasons the depth index was gated, with counts. */
     topGatingReasons: { reason: string; epochs: number }[];
+    /** How many epochs were discarded by reliability gating. */
+    gatedEpochs: number;
+    note: string;
   };
   /** qCON/qNOX-style composite indices (transparent re-implementation). */
   compositeIndex: {
@@ -254,7 +263,6 @@ export function buildFeatureDigest(
       poorEpochs: epochs.filter((e) => e.quality.grade === "poor").length,
     },
     depthIndex: (() => {
-      const vals = epochs.map((e) => e.depth.index).filter((v): v is number => v != null);
       const reliableEpochs = epochs.filter((e) => e.depthReliability.reliable);
       const reliableVals = reliableEpochs
         .map((e) => e.depth.index)
@@ -275,29 +283,22 @@ export function buildFeatureDigest(
       const reliability = {
         reliableFraction: round(epochs.length ? reliableEpochs.length / epochs.length : 0),
         meanConfidence: round(mean(epochs.map((e) => e.confidence.depth))),
-        meanWhenReliable: reliableVals.length ? round(mean(reliableVals), 0) : null,
         latestReliable: reliableVals.length ? reliableVals[reliableVals.length - 1]! : null,
         latestIsReliable: epochs.length
           ? epochs[epochs.length - 1]!.depthReliability.reliable
           : false,
         topGatingReasons,
+        gatedEpochs: epochs.length - reliableEpochs.length,
+        note:
+          "All depth aggregates are computed from reliability-gated epochs only; epochs rejected by artefact/EMG gating are excluded rather than averaged in.",
       };
-      if (!vals.length) {
-        return {
-          mean: null,
-          min: null,
-          max: null,
-          latest: null,
-          fractionBelow40: 0,
-          ...reliability,
-        };
-      }
       return {
-        mean: round(mean(vals), 0),
-        min: Math.min(...vals),
-        max: Math.max(...vals),
-        latest: vals[vals.length - 1]!,
-        fractionBelow40: round(vals.filter((v) => v < 40).length / vals.length),
+        meanWhenReliable: reliableVals.length ? round(mean(reliableVals), 0) : null,
+        minWhenReliable: reliableVals.length ? Math.min(...reliableVals) : null,
+        maxWhenReliable: reliableVals.length ? Math.max(...reliableVals) : null,
+        fractionBelow40WhenReliable: reliableVals.length
+          ? round(reliableVals.filter((v) => v < 40).length / reliableVals.length)
+          : 0,
         ...reliability,
       };
     })(),
