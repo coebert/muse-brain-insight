@@ -755,6 +755,7 @@ function Monitor() {
                   <Button
                     size="sm"
                     variant="secondary"
+                    className="min-h-11 sm:min-h-9"
                     disabled={!caseRunning || !markerText.trim()}
                     onClick={() => {
                       addMarker(markerText);
