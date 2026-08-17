@@ -169,8 +169,22 @@ export interface BisComparisonDigest {
     difference: number;
     reliable: boolean;
     sqi: number | null;
+    /** Whether depth was steady or moving when the reading was taken. */
+    stability?: PairStability;
     note?: string;
   }[];
+  /**
+   * How the readings were time-aligned with the app index, and how many were
+   * taken while depth was moving — shown so a reader can see what assumption
+   * the comparison rests on.
+   */
+  pairing: {
+    lagSeconds: number;
+    stable: number;
+    transitional: number;
+    unknown: number;
+    summary: string;
+  };
   calibration: BisCalibrationSuggestion | null;
   points: BisPairedPoint[];
   sparse: boolean;
