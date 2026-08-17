@@ -63,22 +63,63 @@ export function CoebisSufficiencyPanel({
         >
           {s.tier === "confirmed" ? "Confirmed" : s.tier === "provisional" ? "Provisional" : "No model"}
         </span>
-        <span className={cn("ml-auto text-sm font-semibold", TONE_TEXT[s.tone])}>
-          {s.score == null ? "—" : `${s.score}/100`}{" "}
-          <span className="text-[11px] font-medium opacity-80">{s.scoreLabel}</span>
+        <span className={cn("ml-auto text-[11px] font-medium", TONE_TEXT[s.tone])}>
+          {s.checks.length ? `${s.passed}/${s.checks.length} checks passed` : "No checks yet"}
         </span>
       </header>
 
       <div className="space-y-3 px-3 py-2.5">
-        <div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={cn("h-full rounded-full transition-all", TONE_BG[s.tone])}
-              style={{ width: `${s.score ?? 0}%` }}
-            />
+        <p className="text-xs text-muted-foreground">{s.headline}</p>
+
+        {s.components.length ? (
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Confidence by dimension
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+              Reported separately rather than blended into one number — strength in one dimension
+              does not compensate for absent evidence in another.
+            </p>
+            <ul className="mt-1.5 space-y-1.5">
+              {s.components.map((c) => {
+                const pct = c.value == null ? null : Math.round(c.value * 100);
+                const tone: CoebisSufficiency["tone"] =
+                  pct == null ? "default" : pct >= 75 ? "signal" : pct >= 50 ? "caution" : "critical";
+                return (
+                  <li key={c.key}>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-medium">{c.label}</span>
+                      <span className={cn("ml-auto text-[11px] font-medium", TONE_TEXT[tone])}>
+                        {pct == null ? "not yet judgeable" : `${pct} %`}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn("h-full rounded-full transition-all", TONE_BG[tone])}
+                        style={{ width: `${pct ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{c.detail}</p>
+                    <p className="text-[11px] text-muted-foreground/70">{c.limitation}</p>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <p className="mt-1.5 text-xs text-muted-foreground">{s.headline}</p>
-        </div>
+        ) : null}
+
+        {s.missing.length ? (
+          <div className="rounded-md border border-border/70 px-2.5 py-2">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Not established yet
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+              {s.missing.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {s.checks.length ? (
           <ul className="space-y-1.5">
