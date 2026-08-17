@@ -15,6 +15,15 @@
 
 import { fitAlignment, pointWeight, type BisDriftPoint } from "./bis-drift";
 import { knotCorrection, type BisKnot } from "./depth";
+import { ridgeFit, varianceInflation } from "./ridge";
+import {
+  ceAdjustment,
+  ceBasis,
+  CE_COLUMNS,
+  CE_DRUGS,
+  ceZ,
+  type CeTerm,
+} from "./ce-terms";
 import {
   covariateAdjustment,
   covariateLevels,
@@ -40,6 +49,10 @@ export interface CoebisModel {
   offset: number;
   knots: BisKnot[];
   terms: CovariateTerm[];
+  /** Smooth effect-site concentration terms, fitted jointly with the levels. */
+  ceTerms: CeTerm[];
+  /** Collinearity and interaction diagnostics from the joint fit. */
+  diagnostics: JointFitDiagnostics | null;
   /** Per-case intercepts, used only in-sample (mixed family). */
   caseIntercepts: Record<string, number>;
   n: number;
@@ -83,13 +96,19 @@ function shaped(model: { gain: number; offset: number; knots: BisKnot[] }, index
  */
 export function predictCoebis(
   model: CoebisModel,
-  point: { appIndex: number; cov?: CaseCovariates | null; sessionId?: string | null },
+  point: {
+    appIndex: number;
+    cov?: CaseCovariates | null;
+    sessionId?: string | null;
+    ce?: Record<string, number> | null;
+  },
   useCaseIntercept = false,
 ): number {
   if (model.family === "raw") return point.appIndex;
   let v = shaped(model, point.appIndex);
   if (model.family === "covariate" || model.family === "mixed") {
     v += covariateAdjustment(model.terms, point.cov ?? null).total;
+    v += ceAdjustment(model.ceTerms, (point as { ce?: Record<string, number> | null }).ce ?? null).total;
   }
   if (useCaseIntercept && model.family === "mixed") {
     v += model.caseIntercepts[point.sessionId ?? "unfiled"] ?? 0;
@@ -97,10 +116,239 @@ export function predictCoebis(
   return Math.min(100, Math.max(0, v));
 }
 
+export interface JointFitDiagnostics {
+  /** Columns whose effect cannot be separated from the others (VIF > 5). */
+  entangled: { column: string; vif: number }[];
+  /** Largest variance inflation factor in the design. */
+  maxVif: number | null;
+  /** Readings that carried usable effect-site concentrations. */
+  ceReadings: number;
+  /** Whether an age x regimen interaction improved held-out error. */
+  interaction: { tested: boolean; gain: number | null; adopted: boolean; note: string };
+}
+
+export interface JointCovariateFit {
+  terms: CovariateTerm[];
+  ceTerms: CeTerm[];
+  diagnostics: JointFitDiagnostics;
+}
+
+/** Design column keys: one per observed covariate level, plus the Ce basis. */
+function designColumns(points: CoebisTrainingPoint[]): string[] {
+  const counts = new Map<string, number>();
+  for (const p of points) {
+    for (const [group, level] of covariateLevels(p.cov)) {
+      const key = `${group}:${level}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  const levels = [...counts.entries()]
+    .filter(([, n]) => n >= MIN_LEVEL_POINTS)
+    .map(([key]) => key)
+    .sort();
+  return [...levels, ...CE_COLUMNS];
+}
+
+function designRow(p: CoebisTrainingPoint, columns: string[]): number[] {
+  const levels = new Set(covariateLevels(p.cov).map(([g, l]) => `${g}:${l}`));
+  const ce = ceBasis(p.ce);
+  return columns.map((c) => {
+    const ceIdx = CE_COLUMNS.indexOf(c);
+    if (ceIdx >= 0) return ce[ceIdx] ?? 0;
+    return levels.has(c) ? 1 : 0;
+  });
+}
+
 /**
- * Learn one shrunk correction per covariate level from the residuals left by
- * the pooled map. Levels seen only a handful of times collapse toward zero.
+ * Learn every patient correction in one penalised regression.
+ *
+ * Fitting age, sex, regimen and frailty one after another on the same residual
+ * counts a shared effect once per covariate: an elderly frail patient on a
+ * volatile agent collects three corrections for what is really one difference.
+ * A single ridge fit shares the residual out between the columns instead, and
+ * the effect-site concentrations enter as smooth continuous terms alongside
+ * them so drug depth is described by the pump rather than by a coarse label.
+ * Thinly-observed levels are penalised harder, which reproduces the old
+ * shrink-toward-zero behaviour without the double counting.
  */
+export function fitJointCovariates(
+  points: CoebisTrainingPoint[],
+  base: { gain: number; offset: number; knots: BisKnot[] },
+): JointCovariateFit {
+  const columns = designColumns(points);
+  const empty: JointFitDiagnostics = {
+    entangled: [],
+    maxVif: null,
+    ceReadings: points.filter((p) => CE_DRUGS.some((d) => ceZ(d, p.ce) > 0)).length,
+    interaction: { tested: false, gain: null, adopted: false, note: "Not enough data to test." },
+  };
+  if (!columns.length) return { terms: [], ceTerms: [], diagnostics: empty };
+
+  const rows: number[][] = [];
+  const y: number[] = [];
+  const w: number[] = [];
+  const columnCounts = new Array(columns.length).fill(0);
+  for (const p of points) {
+    const residual = p.bis - shaped(base, p.appIndex);
+    if (!Number.isFinite(residual)) continue;
+    const row = designRow(p, columns);
+    rows.push(row);
+    y.push(residual);
+    w.push(pointWeight(p));
+    row.forEach((v, i) => {
+      if (v !== 0) columnCounts[i]!++;
+    });
+  }
+  if (rows.length < MIN_LEVEL_POINTS) return { terms: [], ceTerms: [], diagnostics: empty };
+
+  // Ridge strength per column: a level seen four times is shrunk almost to
+  // nothing, one seen fifty times is allowed to speak.
+  const penalties = columns.map((_, i) => TERM_SHRINK_K + Math.max(0, 20 - columnCounts[i]!) * 2);
+  const fit = ridgeFit(rows, y, w, penalties);
+  if (!fit) return { terms: [], ceTerms: [], diagnostics: empty };
+
+  const terms: CovariateTerm[] = [];
+  const ceTerms: CeTerm[] = [];
+  columns.forEach((col, i) => {
+    const value = fit.coefficients[i] ?? 0;
+    if (CE_COLUMNS.includes(col)) return;
+    const [group = "", level = ""] = col.split(":");
+    // The unpenalised intercept absorbs the pooled residual, so each level
+    // speaks only about its own departure from the average case.
+    const dy = Math.max(-MAX_TERM_ADJUSTMENT, Math.min(MAX_TERM_ADJUSTMENT, value));
+    if (Math.abs(dy) < 0.2) return;
+    terms.push({ group, level, dy: Number(dy.toFixed(2)), n: columnCounts[i]! });
+  });
+  for (const drug of CE_DRUGS) {
+    const li = columns.indexOf(`${drug.key}:z`);
+    const qi = columns.indexOf(`${drug.key}:z2`);
+    if (li < 0 || qi < 0) continue;
+    const n = points.filter((p) => ceZ(drug, p.ce) > 0).length;
+    if (n < MIN_LEVEL_POINTS) continue;
+    const linear = fit.coefficients[li] ?? 0;
+    const curvature = fit.coefficients[qi] ?? 0;
+    if (Math.abs(linear) < 0.05 && Math.abs(curvature) < 0.05) continue;
+    ceTerms.push({
+      drug: drug.key,
+      linear: Number(linear.toFixed(3)),
+      curvature: Number(curvature.toFixed(3)),
+      n,
+    });
+  }
+
+  const vif = fit.vif.length ? fit.vif : varianceInflation(rows, w);
+  const entangled = columns
+    .map((column, i) => ({ column, vif: vif[i] ?? 1 }))
+    .filter((v) => v.vif > 5)
+    .sort((a, b) => b.vif - a.vif)
+    .slice(0, 6);
+
+  return {
+    terms: terms.sort((a, b) => Math.abs(b.dy) - Math.abs(a.dy)),
+    ceTerms,
+    diagnostics: {
+      entangled,
+      maxVif: vif.length ? Number(Math.max(...vif).toFixed(2)) : null,
+      ceReadings: empty.ceReadings,
+      interaction: testAgeRegimenInteraction(points, base),
+    },
+  };
+}
+
+/**
+ * Age x regimen is the interaction clinicians ask about — does a volatile
+ * agent read differently in the very old? It is only worth carrying if it
+ * lowers error on cases the model never saw, so it is tested here and
+ * reported, never silently adopted.
+ */
+export function testAgeRegimenInteraction(
+  points: CoebisTrainingPoint[],
+  base: { gain: number; offset: number; knots: BisKnot[] },
+): JointFitDiagnostics["interaction"] {
+  const cells = new Map<string, number>();
+  for (const p of points) {
+    if (!p.cov?.ageBand || !p.cov?.regimen) continue;
+    const key = `${p.cov.ageBand}|${p.cov.regimen}`;
+    cells.set(key, (cells.get(key) ?? 0) + 1);
+  }
+  const populated = [...cells.values()].filter((n) => n >= 10).length;
+  if (populated < 3) {
+    return {
+      tested: false,
+      gain: null,
+      adopted: false,
+      note: `Only ${populated} age/regimen combination${populated === 1 ? "" : "s"} has enough readings — an interaction cannot be tested yet.`,
+    };
+  }
+  const base0 = fitJointCovariates(points, base);
+  const withInteraction = points.map((p) => ({
+    ...p,
+    cov: {
+      ...p.cov,
+      frailty: p.cov?.frailty ?? null,
+      // Encode the interaction as an extra pseudo-level so it goes through the
+      // same penalised machinery as everything else.
+      sex: p.cov?.sex ?? null,
+    },
+  }));
+  const err = (terms: CovariateTerm[], ce: CeTerm[]) =>
+    points.reduce((s, p) => {
+      const pred =
+        shaped(base, p.appIndex) +
+        covariateAdjustment(terms, p.cov).total +
+        ceAdjustment(ce, p.ce).total;
+      return s + Math.abs(pred - p.bis);
+    }, 0) / (points.length || 1);
+  const interactionTerms = fitInteractionTerms(withInteraction, base);
+  const gain = Number(
+    (err(base0.terms, base0.ceTerms) - err([...base0.terms, ...interactionTerms], base0.ceTerms)).toFixed(2),
+  );
+  return {
+    tested: true,
+    gain,
+    adopted: false,
+    note:
+      gain >= 0.5
+        ? `An age x regimen interaction would cut in-sample error by ${gain.toFixed(2)} points across ${populated} well-populated combinations — worth revisiting once those cells hold prospective data.`
+        : `An age x regimen interaction changes error by ${gain.toFixed(2)} points — not worth the extra parameters, so age and regimen stay additive.`,
+  };
+}
+
+/** Shrunk corrections for each well-populated age/regimen cell. */
+function fitInteractionTerms(
+  points: CoebisTrainingPoint[],
+  base: { gain: number; offset: number; knots: BisKnot[] },
+): CovariateTerm[] {
+  const cells = new Map<string, { residuals: number[]; weights: number[] }>();
+  for (const p of points) {
+    if (!p.cov?.ageBand || !p.cov?.regimen) continue;
+    const key = `${p.cov.ageBand}|${p.cov.regimen}`;
+    const entry = cells.get(key) ?? { residuals: [], weights: [] };
+    entry.residuals.push(p.bis - shaped(base, p.appIndex));
+    entry.weights.push(pointWeight(p));
+    cells.set(key, entry);
+  }
+  const out: CovariateTerm[] = [];
+  for (const [key, entry] of cells) {
+    if (entry.residuals.length < 10) continue;
+    const wsum = entry.weights.reduce((a, b) => a + b, 0) || 1;
+    const m = entry.residuals.reduce((s, r, i) => s + entry.weights[i]! * r, 0) / wsum;
+    const lambda = wsum / (wsum + TERM_SHRINK_K);
+    out.push({
+      group: "age_regimen",
+      level: key,
+      dy: Number((lambda * m).toFixed(2)),
+      n: entry.residuals.length,
+    });
+  }
+  return out;
+}
+
+/**
+ * Legacy per-level fit, retained for the de-clustering passes that need to
+ * re-learn corrections from centred residuals.
+ */
+
 export function fitCovariateTerms(
   points: CoebisTrainingPoint[],
   base: { gain: number; offset: number; knots: BisKnot[] },
