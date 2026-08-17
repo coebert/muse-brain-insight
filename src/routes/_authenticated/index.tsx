@@ -69,6 +69,7 @@ import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { useEegMonitor } from "@/hooks/useEegMonitor";
 import { HemiDsaPanel } from "@/components/monitor/HemiDsaPanel";
 import { DsaMarkerRail } from "@/components/monitor/DsaMarkerRail";
+import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
 import {
   MODES,
   defaultWindowMinutes,
