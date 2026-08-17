@@ -374,6 +374,7 @@ export function buildBisComparison(
     suppression,
     sef,
     divergences,
+    pairing,
     calibration: fitCalibration(pairs),
     points: usable.slice(-60),
     sparse: usable.length < 5,
