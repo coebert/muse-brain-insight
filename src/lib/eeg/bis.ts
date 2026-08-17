@@ -336,7 +336,7 @@ export function buildBisComparison(
       difference: p.difference!,
       reliable: p.reliable,
       sqi: p.sqi,
-      stability: p.stability,
+      stability: p.stability ?? "unknown",
       ...(noteFor.get(Math.round(p.at)) ? { note: noteFor.get(Math.round(p.at))! } : {}),
     }));
 
