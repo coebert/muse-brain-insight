@@ -152,6 +152,7 @@ export type Database = {
           bis_sr: number | null
           ce: Json
           context: string | null
+          depth_confidence: number | null
           device: string | null
           external_ref: string | null
           feature_source: string
@@ -177,6 +178,7 @@ export type Database = {
           bis_sr?: number | null
           ce?: Json
           context?: string | null
+          depth_confidence?: number | null
           device?: string | null
           external_ref?: string | null
           feature_source?: string
@@ -202,6 +204,7 @@ export type Database = {
           bis_sr?: number | null
           ce?: Json
           context?: string | null
+          depth_confidence?: number | null
           device?: string | null
           external_ref?: string | null
           feature_source?: string
