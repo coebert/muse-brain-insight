@@ -590,29 +590,8 @@ function Monitor() {
                       <SelectItem value="60">60 min</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="col-span-2 flex shrink-0 rounded-md border border-border p-0.5">
-                    {(
-                      [
-                        { key: "bilateral", label: "Bilateral" },
-                        { key: "combined", label: "Combined" },
-                        { key: "overlay", label: "Overlay" },
-                      ] as const
-                    ).map((v) => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        aria-pressed={dsaView === v.key}
-                        onClick={() => setDsaView(v.key)}
-                        className={cn(
-                          "min-h-[36px] flex-1 rounded px-3 text-xs font-medium sm:flex-none",
-                          dsaView === v.key
-                            ? "bg-secondary text-secondary-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
+                  <div className="col-span-2 flex shrink-0">
+                    <DsaViewToggle value={dsaView} onChange={setDsaView} full />
                   </div>
                   <button
                     type="button"
