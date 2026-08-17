@@ -418,6 +418,8 @@ export function fitCoebisModel(
       offset: 0,
       knots: [],
       terms: [],
+      ceTerms: [],
+      diagnostics: null,
       caseIntercepts: {},
       n: points.length,
       sessions,
@@ -427,9 +429,20 @@ export function fitCoebisModel(
   if (!affine) return null;
   const base = { gain: affine.gain, offset: affine.offset, knots: affine.knots };
   if (family === "affine") {
-    return { family, ...base, terms: [], caseIntercepts: {}, n: points.length, sessions };
+    return {
+      family,
+      ...base,
+      terms: [],
+      ceTerms: [],
+      diagnostics: null,
+      caseIntercepts: {},
+      n: points.length,
+      sessions,
+    };
   }
-  let terms = fitCovariateTerms(points, base);
+  const joint = fitJointCovariates(points, base);
+  let terms = joint.terms;
+  let ceTerms = joint.ceTerms;
   let caseIntercepts: Record<string, number> = {};
   if (family === "covariate") {
     /**
@@ -445,7 +458,9 @@ export function fitCoebisModel(
       ...p,
       bis: p.bis - (centring[p.sessionId ?? "unfiled"] ?? 0),
     }));
-    terms = fitCovariateTerms(centred, base);
+    const declustered = fitJointCovariates(centred, base, false);
+    terms = declustered.terms;
+    ceTerms = declustered.ceTerms;
   }
   if (family === "mixed") {
     /**
@@ -461,11 +476,22 @@ export function fitCoebisModel(
         ...p,
         bis: p.bis - (caseIntercepts[p.sessionId ?? "unfiled"] ?? 0),
       }));
-      terms = fitCovariateTerms(centred, base);
+      const declustered = fitJointCovariates(centred, base, false);
+      terms = declustered.terms;
+      ceTerms = declustered.ceTerms;
     }
     caseIntercepts = fitCaseIntercepts(points, { ...base, terms });
   }
-  return { family, ...base, terms, caseIntercepts, n: points.length, sessions };
+  return {
+    family,
+    ...base,
+    terms,
+    ceTerms,
+    diagnostics: joint.diagnostics,
+    caseIntercepts,
+    n: points.length,
+    sessions,
+  };
 }
 
 /** Agreement of a set of predictions with the transcribed monitor values. */
