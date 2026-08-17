@@ -164,6 +164,18 @@ export function BisAgreementPanel({
                           app unreliable
                         </span>
                       ) : null}
+                      {d.stability === "transitional" ? (
+                        <span
+                          className="rounded-full bg-caution/15 px-1.5 text-[11px] text-caution"
+                          title="Depth was moving when this reading was taken, so part of the difference is timing, not calibration."
+                        >
+                          transitional
+                        </span>
+                      ) : d.stability === "stable" ? (
+                        <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground">
+                          stable
+                        </span>
+                      ) : null}
                       {d.sqi != null ? (
                         <span className="text-muted-foreground">SQI {d.sqi} %</span>
                       ) : null}
