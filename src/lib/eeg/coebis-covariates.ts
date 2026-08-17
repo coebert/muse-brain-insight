@@ -189,6 +189,22 @@ export function fitCoebisModel(
   }
   let terms = fitCovariateTerms(points, base);
   let caseIntercepts: Record<string, number> = {};
+  if (family === "covariate") {
+    /**
+     * Even without publishing per-case intercepts, the covariate terms must be
+     * learned on de-clustered residuals: otherwise one long case with an
+     * unusual patient contributes dozens of correlated readings and its
+     * idiosyncrasy is filed under whichever age band that patient happened to
+     * be in. Centre each case once, re-learn the terms, and discard the
+     * intercepts — the correction stays patient-adjusted, not case-adjusted.
+     */
+    const centring = fitCaseIntercepts(points, { ...base, terms });
+    const centred = points.map((p) => ({
+      ...p,
+      bis: p.bis - (centring[p.sessionId ?? "unfiled"] ?? 0),
+    }));
+    terms = fitCovariateTerms(centred, base);
+  }
   if (family === "mixed") {
     /**
      * Readings inside one case are correlated: a single long case with an
@@ -252,6 +268,8 @@ export interface CoebisCvResult {
   inSample: AgreementSummary;
   /** Cases that could be held out (needed ≥ 2 cases). */
   folds: number;
+  /** Held-out mean absolute error per fold, so a tier gain can be tested. */
+  foldErrors: { caseKey: string; n: number; mae: number }[];
 }
 
 /**
@@ -270,6 +288,7 @@ export function crossValidateByCase(
     : agreementSummary([]);
 
   const predictions: { predicted: number; bis: number }[] = [];
+  const foldErrors: { caseKey: string; n: number; mae: number }[] = [];
   let folds = 0;
   if (caseKeys.length >= 2) {
     for (const key of caseKeys) {
@@ -279,10 +298,20 @@ export function crossValidateByCase(
       const model = fitCoebisModel(train, family);
       if (!model) continue;
       folds++;
-      for (const p of test) predictions.push({ predicted: predictCoebis(model, p, false), bis: p.bis });
+      let absSum = 0;
+      for (const p of test) {
+        const predicted = predictCoebis(model, p, false);
+        predictions.push({ predicted, bis: p.bis });
+        absSum += Math.abs(predicted - p.bis);
+      }
+      foldErrors.push({
+        caseKey: key,
+        n: test.length,
+        mae: Number((absSum / test.length).toFixed(3)),
+      });
     }
   }
-  return { family, outOfSample: agreementSummary(predictions), inSample, folds };
+  return { family, outOfSample: agreementSummary(predictions), inSample, folds, foldErrors };
 }
 
 export interface StratumResult {
