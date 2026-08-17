@@ -124,7 +124,7 @@ export function CoebisTrend({
           {latestCoebis != null ? Math.round(latestCoebis) : "—"}
         </span>
       </div>
-      <div className="h-[90px] min-h-[70px]">
+      <div className={compact ? "h-[64px]" : "h-[90px] min-h-[70px]"}>
         <div className="relative h-full">
           <TrendLine
             values={coebisTrend}
@@ -168,7 +168,7 @@ export function CoebisTrend({
             )}
           </span>
         </div>
-        <div className="h-[46px]">
+        <div className={compact ? "h-[34px]" : "h-[46px]"}>
           <TrendLine
             values={driftTrend}
             min={-DRIFT_SPAN}
@@ -176,7 +176,7 @@ export function CoebisTrend({
             band={[-5, 5]}
             color="rgb(200,150,255)"
             unit=" pts"
-            height={46}
+            height={compact ? 34 : 46}
           />
         </div>
       </div>
