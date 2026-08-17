@@ -327,6 +327,89 @@ export function evaluateCoebisSufficiency(
   const tone: CoebisSufficiency["tone"] =
     score == null || score < 50 ? "critical" : score < 75 ? "caution" : "signal";
 
+  // Confidence, unblended. Each dimension stands or falls on its own evidence.
+  const components: SufficiencyComponent[] = [
+    {
+      key: "volume",
+      label: "Evidence volume",
+      value: ramp(n, PROVISIONAL_MIN_POINTS / 2, MIN_POINTS),
+      detail: `${plural(n, "paired reading")} pooled (${MIN_POINTS} for a full fit).`,
+      limitation: "Volume says nothing about whether the readings are accurate or varied.",
+    },
+    {
+      key: "spread",
+      label: "Spread across cases",
+      value: ramp(sessions, 1, MIN_SESSIONS),
+      detail: `${plural(sessions, "case")} contributing.`,
+      limitation: "Readings from few cases cannot show the offset generalises to new patients.",
+    },
+    {
+      key: "quality",
+      label: "Signal quality at entry",
+      value: n ? reliableShare : null,
+      detail: n
+        ? `${Math.round(reliableShare * 100)} % of readings logged during reliable signal.`
+        : "No readings yet.",
+      limitation: "Clean signal does not make a reading well-timed against the monitor.",
+    },
+    {
+      key: "agreement",
+      label: "Agreement after correction",
+      value: maeAfter == null ? null : 1 - ramp(maeAfter, GOOD_RESIDUAL_MAE, GOOD_RESIDUAL_MAE * 3),
+      detail:
+        maeAfter == null
+          ? "No fitted correction to score yet."
+          : `Mean absolute error ${maeAfter.toFixed(1)} units against the monitor.`,
+      limitation: "Measured on the data the fit was learned from unless a held-out test is run.",
+    },
+    {
+      key: "centring",
+      label: "Residuals centred",
+      value:
+        residualBias == null
+          ? null
+          : 1 - ramp(Math.abs(residualBias), MAX_RESIDUAL_BIAS, MAX_RESIDUAL_BIAS * 3),
+      detail:
+        residualBias == null
+          ? "No fitted correction to score yet."
+          : `Residual bias ${signed(residualBias)} units.`,
+      limitation: "A centred model can still be wrong in individual depth bands.",
+    },
+    {
+      key: "coverage",
+      label: "Depth-band coverage",
+      value: analysis.bands.length ? covered.length / analysis.bands.length : null,
+      detail: `${covered.length} of ${analysis.bands.length} depth bands carry readings.`,
+      limitation: "Bands with no readings are extrapolation, not calibration.",
+    },
+    {
+      key: "stability",
+      label: "Offset stable over time",
+      value: divergence == null ? null : 1 - ramp(divergence, 0, MAX_RECENT_DIVERGENCE * 2),
+      detail:
+        divergence == null
+          ? "Not enough recent readings to judge."
+          : `Recent offset differs from pooled by ${divergence.toFixed(1)} units.`,
+      limitation: "Stability so far is no guarantee across a new device or drug regimen.",
+    },
+  ];
+
+  const missing: string[] = [];
+  if (n < MIN_POINTS) missing.push(`${MIN_POINTS - n} more paired readings before the full evidence bar is met.`);
+  if (sessions < MIN_SESSIONS)
+    missing.push(`Readings from ${MIN_SESSIONS - sessions} more case(s) — generalisation across patients is unproven.`);
+  if (covered.length < analysis.bands.length)
+    missing.push(
+      `No readings yet in ${analysis.bands.filter((b) => !b.n).map((b) => b.band).join(", ")} — the correction is extrapolated there.`,
+    );
+  if (maeAfter == null) missing.push("No fitted correction has been scored for agreement yet.");
+  if (divergence == null) missing.push("Not enough recent readings to show the offset is stable over time.");
+  if (reliableShare < 0.7)
+    missing.push("A large share of readings were logged during degraded signal, which the fit cannot undo.");
+  missing.push(
+    "Prospective accuracy on cases the model has never seen is reported separately — this panel grades evidence, not outcome.",
+  );
+
   const headline =
     tier === "confirmed"
       ? `Confirmed model — ${passed} of ${checks.length} sufficiency checks passed, confidence ${score}/100.`
@@ -350,5 +433,18 @@ export function evaluateCoebisSufficiency(
             .join(" and ")}.`
         : "All evidence thresholds met — the model confirms on the next refit.";
 
-  return { tier, score, scoreLabel, tone, headline, nextStep, checks, passed, failed, total: checks.length };
+  return {
+    tier,
+    score,
+    scoreLabel,
+    tone,
+    headline,
+    nextStep,
+    components,
+    missing,
+    checks,
+    passed,
+    failed,
+    total: checks.length,
+  };
 }
