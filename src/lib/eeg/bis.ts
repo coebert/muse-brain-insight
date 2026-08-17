@@ -11,6 +11,14 @@
 
 import type { Epoch } from "@/lib/eeg/analysis";
 import { agreementMetrics, type AgreementMetrics, type AlignedPair } from "@/lib/eeg/agreement";
+import {
+  classifyStability,
+  estimateMonitorLagSeconds,
+  laggedAppIndex,
+  slopePerMinute,
+  type IndexSample,
+  type PairStability,
+} from "@/lib/eeg/pairing-lag";
 
 /** One transcribed reading from the commercial monitor. */
 export interface BisReading {
