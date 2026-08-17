@@ -229,6 +229,7 @@ export function pairBisReadings(
             : round(appSef - r.sef, 1),
         reliable: epoch ? epoch.depthReliability.reliable && !epoch.depth.held : false,
         sqi: round(epoch ? epoch.quality.score * 100 : null, 0),
+        depthConfidence: round(epoch ? epoch.confidence.depth : null, 3),
         gapSeconds: epoch ? Math.round(Math.abs(epoch.t - r.at)) : null,
         stability: series.length
           ? classifyStability(slopePerMinute(series, r.at - lag))
