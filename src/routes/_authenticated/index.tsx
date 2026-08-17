@@ -370,13 +370,17 @@ function Monitor() {
               {caseState === "ended" ? (
                 <Button
                   size="sm"
-                  className="flex-1 sm:flex-none"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                   onClick={() => requestNewCase()}
                 >
                   <Plus className="size-4" /> New case
                 </Button>
               ) : (
-                <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setCaseOpen(true)}>
+                <Button
+                  size="sm"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                  onClick={() => setCaseOpen(true)}
+                >
                   <Bluetooth className="size-4" /> Start case
                 </Button>
               )}
@@ -385,7 +389,7 @@ function Monitor() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="flex-1 sm:flex-none"
+                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                     onClick={() => setSaveOpen(true)}
                   >
                     <Save className="size-4" /> File case
