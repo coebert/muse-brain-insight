@@ -39,7 +39,7 @@ function solveSpd(a: number[][], b: number[]): number[] | null {
       for (let c = col; c <= n; c++) m[r]![c] = m[r]![c]! - f * m[col]![c]!;
     }
   }
-  return m.map((row, i) => row[n]! / row[i]![i]!);
+  return m.map((row, i) => row[n]! / row[i]!);
 }
 
 /**
