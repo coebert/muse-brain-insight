@@ -415,7 +415,11 @@ export class EegAnalyzer {
       segs++;
     }
     const epochSuppression = segs ? suppressedSegs / segs : 0;
-    const artifact = maxP2p > 500 || quality.grade === "poor";
+    // A flat trace is an electrode off the skin, not a suppressed brain. Gating
+    // only on the composite grade let a "fair" near-flat epoch count as
+    // suppression seconds, which is the one artefact that must never inflate a
+    // burst-suppression burden.
+    const artifact = maxP2p > 500 || quality.grade === "poor" || quality.flat;
     const isSuppressed = !artifact && !gapAffected && epochSuppression >= 0.5;
 
     if (!artifact && !gapAffected) {
@@ -490,6 +494,10 @@ export class EegAnalyzer {
     const ictalFraction = totalPower > 0 ? ictalBand / totalPower : 0;
 
     let seizureScore = 0;
+    // Muscle activity is rhythmic too. Penalising only the reported confidence
+    // let a chewing or shivering artefact cross the alarm threshold and merely
+    // be labelled low-confidence; the score itself has to carry the penalty.
+    const emgContamination = clamp01((quality.emgIndex - 0.15) / 0.35);
     if (
       !artifact &&
       !gapAffected &&
@@ -500,7 +508,7 @@ export class EegAnalyzer {
         0.45 * rhythmic +
         0.3 * Math.min(1, Math.max(0, (llRatio - 1.6) / 2.4)) +
         0.25 * Math.min(1, Math.max(0, (ictalFraction - 0.35) / 0.45));
-      seizureScore = Math.min(1, seizureScore);
+      seizureScore = Math.min(1, seizureScore) * (1 - 0.6 * emgContamination);
     }
 
     if (!artifact && !gapAffected && !isSuppressed && seizureScore < 0.4) {
@@ -512,7 +520,7 @@ export class EegAnalyzer {
     // Seizure confidence is computed here (rather than only in the confidence
     // block below) so the evidence attached to the event reflects the run.
     const seizureBaselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
-    const seizureEmgPenalty = clamp01((quality.emgIndex - 0.15) / 0.35);
+    const seizureEmgPenalty = emgContamination;
     const seizureConfidence = clamp01(
       quality.score *
         (0.3 + 0.7 * seizureBaselineMaturity) *
