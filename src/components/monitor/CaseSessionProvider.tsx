@@ -642,6 +642,10 @@ function useCaseSessionState() {
             appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
+            // Timing context for the fit: a mid-transition reading is weighted
+            // down rather than treated as a calibration offset.
+            stability: p.stability ?? null,
+            lagSeconds: p.lagSeconds ?? null,
             // Drug state at the moment of the reading, so the model can learn
             // regimen- and dose-specific offsets rather than one global map.
             ce: targetsAt(infusions, p.at),
