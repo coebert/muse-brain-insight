@@ -107,6 +107,12 @@ export interface BisPairedPoint {
   /** App's own reliability verdict at that moment. */
   reliable: boolean;
   sqi: number | null;
+  /**
+   * The depth index's stated confidence, 0–1, at that moment. Filed so the
+   * reliability cut-offs can be checked against how often the index actually
+   * agreed with the monitor.
+   */
+  depthConfidence: number | null;
   gapSeconds: number | null;
   /**
    * Whether depth was steady or moving when the reading was transcribed. A
