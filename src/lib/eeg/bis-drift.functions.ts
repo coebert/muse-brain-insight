@@ -143,6 +143,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
         appSef?: number | null;
         reliable?: boolean;
         sqi?: number | null;
+        /** Stated depth-index confidence, 0–1, at the reading. */
+        depthConfidence?: number | null;
         /** Whether the depth trend was steady or moving when the reading was taken. */
         stability?: "stable" | "transitional" | "unknown" | null;
         /** Monitor delay allowed for when the app value was picked, in seconds. */
@@ -172,6 +174,7 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       app_sef: p.appSef ?? null,
       reliable: p.reliable ?? true,
       sqi: p.sqi ?? null,
+      depth_confidence: p.depthConfidence ?? null,
       stability: p.stability ?? null,
       lag_seconds: p.lagSeconds ?? null,
       ce: (p.ce ?? {}) as unknown as never,

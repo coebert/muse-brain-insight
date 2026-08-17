@@ -39,7 +39,7 @@ export async function loadTrainingMatrix(
   const { data: pointRows, error } = await supabase
     .from("bis_paired_points")
     .select(
-      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, recorded_at, context, ce, features",
+      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features",
     )
     .order("recorded_at", { ascending: true })
     .limit(limit);
@@ -94,6 +94,8 @@ export async function loadTrainingMatrix(
       sessionId,
       reliable: Boolean(r["reliable"]),
       sqi: r["sqi"] == null ? null : Number(r["sqi"]),
+      depthConfidence:
+        r["depth_confidence"] == null ? null : Number(r["depth_confidence"]),
       recordedAt: String(r["recorded_at"]),
       context: (r["context"] as string | null) ?? null,
       ce: (r["ce"] as Record<string, number> | null) ?? null,

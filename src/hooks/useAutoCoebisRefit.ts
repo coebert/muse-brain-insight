@@ -108,6 +108,7 @@ export function useAutoCoebisRefit(opts: {
             appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
+            depthConfidence: p.depthConfidence,
             stability: p.stability ?? null,
             lagSeconds: p.lagSeconds ?? null,
           }));
