@@ -70,12 +70,12 @@ describe("de-identified exchange bundles", () => {
 });
 
 describe("prospective split", () => {
-  const point = (recordedAt: string): CoebisTrainingPoint =>
+  const point = (recordedAt: string, sessionId = "s"): CoebisTrainingPoint =>
     ({
       at: 0,
       bis: 50,
       appIndex: 55,
-      sessionId: "s",
+      sessionId,
       reliable: true,
       sqi: 1,
       recordedAt,
@@ -83,13 +83,24 @@ describe("prospective split", () => {
       cov: { ageBand: null, sex: null, regimen: null, frailty: null },
     }) as CoebisTrainingPoint;
 
-  it("counts only readings after the lock as unseen", () => {
+  it("counts only readings from new cases after the lock as unseen", () => {
     const split = splitAtLock(
-      [point("2026-01-01T00:00:00Z"), point("2026-03-01T00:00:00Z")],
+      [point("2026-01-01T00:00:00Z", "old"), point("2026-03-01T00:00:00Z", "new")],
       "2026-02-01T00:00:00Z",
     );
     expect(split.before).toHaveLength(1);
     expect(split.after).toHaveLength(1);
+    expect(split.straddlingCases).toBe(0);
+  });
+
+  it("keeps a case that straddles the lock out of the unseen set", () => {
+    const split = splitAtLock(
+      [point("2026-01-01T00:00:00Z"), point("2026-03-01T00:00:00Z")],
+      "2026-02-01T00:00:00Z",
+    );
+    expect(split.after).toHaveLength(0);
+    expect(split.before).toHaveLength(2);
+    expect(split.straddlingCases).toBe(1);
   });
 });
 
