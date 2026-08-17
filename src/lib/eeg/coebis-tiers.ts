@@ -68,6 +68,40 @@ export const MIN_TIER_GAIN = 0.2;
 /** Fewer held-out folds than this and no tier above A can be trusted. */
 export const MIN_TIER_FOLDS = 3;
 
+/**
+ * A tier is only adopted when its held-out improvement is larger than the
+ * uncertainty of that improvement. Comparing raw mean absolute errors adopts a
+ * richer model on a 0.21-point gain that three noisy folds could produce by
+ * chance; this pairs the folds (same held-out case, two models) and requires
+ * the mean paired difference to clear its own standard error.
+ */
+export function pairedFoldGain(
+  simpler: { caseKey: string; n: number; mae: number }[],
+  richer: { caseKey: string; n: number; mae: number }[],
+): { gain: number; se: number | null; t: number | null; convincing: boolean; folds: number } {
+  const byKey = new Map(simpler.map((f) => [f.caseKey, f]));
+  const diffs: number[] = [];
+  for (const f of richer) {
+    const base = byKey.get(f.caseKey);
+    if (base) diffs.push(base.mae - f.mae);
+  }
+  const k = diffs.length;
+  if (!k) return { gain: 0, se: null, t: null, convincing: false, folds: 0 };
+  const gain = diffs.reduce((a, b) => a + b, 0) / k;
+  if (k < 3) return { gain: Number(gain.toFixed(3)), se: null, t: null, convincing: false, folds: k };
+  const variance = diffs.reduce((s, d) => s + (d - gain) ** 2, 0) / (k - 1);
+  const se = Math.sqrt(variance / k);
+  const t = se > 0 ? gain / se : gain > 0 ? Infinity : 0;
+  return {
+    gain: Number(gain.toFixed(3)),
+    se: Number(se.toFixed(3)),
+    t: Number.isFinite(t) ? Number(t.toFixed(2)) : t,
+    // ~95 % two-sided for the small fold counts this ever runs on.
+    convincing: gain >= MIN_TIER_GAIN && t >= 2,
+    folds: k,
+  };
+}
+
 export interface TierCandidate {
   tier: CoebisTier;
   family: CoebisFamily;
@@ -81,6 +115,10 @@ export interface TierCandidate {
   folds: number;
   /** Improvement over the tier currently selected below it. */
   gain: number | null;
+  /** Standard error of that improvement across held-out cases. */
+  gainSe: number | null;
+  /** The improvement is larger than its own uncertainty. */
+  gainConvincing: boolean;
   /** Why this tier was or was not taken, in one line. */
   reason: string;
 }
@@ -121,12 +159,21 @@ export function selectCoebisTier(points: CoebisTrainingPoint[]): TierSelection {
   let chosen = COEBIS_TIERS[0]!;
   let chosenCv: CoebisCvResult | null = null;
   let bestMae: number | null = null;
+  let bestFolds: { caseKey: string; n: number; mae: number }[] = [];
 
   for (const spec of COEBIS_TIERS) {
     const eligible = n >= spec.minPoints && cases >= spec.minCases;
     const cv = eligible ? cvFor(spec.family) : null;
     const mae = cv?.outOfSample.mae ?? null;
-    const gain = mae != null && bestMae != null ? Number((bestMae - mae).toFixed(2)) : null;
+    const paired = cv && bestFolds.length ? pairedFoldGain(bestFolds, cv.foldErrors) : null;
+    const gain =
+      paired != null
+        ? paired.gain
+        : mae != null && bestMae != null
+          ? Number((bestMae - mae).toFixed(2))
+          : null;
+    const gainSe = paired?.se ?? null;
+    const gainConvincing = paired?.convincing ?? false;
 
     let reason: string;
     if (!eligible) {
@@ -136,17 +183,22 @@ export function selectCoebisTier(points: CoebisTrainingPoint[]): TierSelection {
       chosen = spec;
       chosenCv = cv;
       bestMae = mae;
+      bestFolds = cv?.foldErrors ?? [];
     } else if (cv && cv.folds < MIN_TIER_FOLDS) {
       reason = `Only ${cv.folds} case${cv.folds === 1 ? "" : "s"} could be held out — not enough to test it.`;
     } else if (mae == null || gain == null) {
       reason = "Held-out error could not be measured.";
-    } else if (gain < MIN_TIER_GAIN) {
+    } else if (!gainConvincing) {
       reason = `Held-out error ${gain <= 0 ? "no better than" : "only " + gain.toFixed(2) + " points better than"} the simpler model — not adopted.`;
+      if (gain >= MIN_TIER_GAIN && gainSe != null) {
+        reason = `Held-out error is ${gain.toFixed(2)} points better, but varies by ±${gainSe.toFixed(2)} between cases — not distinguishable from noise, so the simpler model stays.`;
+      }
     } else {
-      reason = `Cuts held-out error by ${gain.toFixed(2)} index points — adopted.`;
+      reason = `Cuts held-out error by ${gain.toFixed(2)} index points${gainSe != null ? ` (±${gainSe.toFixed(2)} across cases)` : ""} — adopted.`;
       chosen = spec;
       chosenCv = cv;
       bestMae = mae;
+      bestFolds = cv?.foldErrors ?? [];
     }
 
     candidates.push({
@@ -159,6 +211,8 @@ export function selectCoebisTier(points: CoebisTrainingPoint[]): TierSelection {
       mae,
       folds: cv?.folds ?? 0,
       gain,
+      gainSe,
+      gainConvincing,
       reason,
     });
   }
