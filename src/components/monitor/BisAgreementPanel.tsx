@@ -127,6 +127,9 @@ export function BisAgreementPanel({
             </div>
 
             {digest.calibration ? (
+              <p className="text-[11px] text-muted-foreground">{digest.pairing.summary}</p>
+            ) : null}
+            {digest.calibration ? (
               <div className="rounded-md border border-border px-3 py-2 text-xs">
                 <p className="font-semibold">Least-squares fit onto BIS</p>
                 <p className="mt-1 text-muted-foreground">
