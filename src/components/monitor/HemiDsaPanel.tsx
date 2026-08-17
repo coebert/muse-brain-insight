@@ -242,7 +242,7 @@ function HemiDsaPanelInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="size-11 sm:size-7"
             aria-label="Zoom out DSA"
             disabled={!zoomed}
             onClick={() => zoomBy(1.6)}
@@ -252,7 +252,7 @@ function HemiDsaPanelInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="size-11 sm:size-7"
             aria-label="Zoom in DSA"
             disabled={span <= MIN_SPAN_SECONDS}
             onClick={() => zoomBy(1 / 1.6)}
@@ -262,7 +262,7 @@ function HemiDsaPanelInner({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="size-11 sm:size-7"
             aria-label="Reset DSA zoom to live view"
             disabled={!zoomed && view.to === 0}
             onClick={() => setView({ from: windowSeconds, to: 0 })}
