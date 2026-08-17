@@ -126,7 +126,7 @@ export function BisAgreementPanel({
               </div>
             </div>
 
-            {digest.calibration ? (
+            {digest.paired ? (
               <p className="text-[11px] text-muted-foreground">{digest.pairing.summary}</p>
             ) : null}
             {digest.calibration ? (
