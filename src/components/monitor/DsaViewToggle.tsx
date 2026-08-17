@@ -31,7 +31,7 @@ export function DsaViewToggle({
           onClick={() => onChange(o.key)}
           className={cn(
             "rounded px-2 text-xs font-medium transition-colors",
-            size === "sm" ? "min-h-8" : "min-h-9",
+            size === "sm" ? "min-h-8" : "min-h-11 sm:min-h-9",
             value === o.key
               ? "bg-signal/15 text-signal"
               : "text-muted-foreground hover:text-foreground",
