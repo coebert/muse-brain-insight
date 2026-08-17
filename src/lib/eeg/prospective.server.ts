@@ -77,18 +77,48 @@ export async function loadLocks(supabase: Client): Promise<CoebisLock[]> {
   return ((data ?? []) as unknown as Record<string, unknown>[]).map(rowToLock);
 }
 
-/** Split the training matrix at the lock time: seen before, unseen after. */
+/**
+ * Split the training matrix at the lock time: seen before, unseen after.
+ *
+ * The split is by *patient*, not by timestamp. A case that was running when the
+ * model was locked contributed readings to the fit, so its later readings are
+ * not unseen data — they share a patient, a montage and an anaesthetic with
+ * rows the model already learned from. Those straddling cases are counted as
+ * training data in full and reported, so the prospective claim stays clean.
+ */
 export function splitAtLock(
   points: CoebisTrainingPoint[],
   lockedAt: string,
-): { before: CoebisTrainingPoint[]; after: CoebisTrainingPoint[] } {
+): {
+  before: CoebisTrainingPoint[];
+  after: CoebisTrainingPoint[];
+  /** Cases with readings on both sides of the lock, held out of the unseen set. */
+  straddlingCases: number;
+} {
   const t = new Date(lockedAt).getTime();
+  const isAfter = (p: CoebisTrainingPoint) => {
+    const at = p.recordedAt ? new Date(p.recordedAt).getTime() : NaN;
+    return Number.isFinite(at) && at > t;
+  };
+  const keyOf = (p: CoebisTrainingPoint) => p.sessionId ?? "unfiled";
+
+  const seenCases = new Set<string>();
+  for (const p of points) if (!isAfter(p)) seenCases.add(keyOf(p));
+
   const before: CoebisTrainingPoint[] = [];
   const after: CoebisTrainingPoint[] = [];
+  const straddling = new Set<string>();
   for (const p of points) {
-    const at = p.recordedAt ? new Date(p.recordedAt).getTime() : NaN;
-    if (Number.isFinite(at) && at > t) after.push(p);
-    else before.push(p);
+    if (!isAfter(p)) {
+      before.push(p);
+      continue;
+    }
+    if (seenCases.has(keyOf(p))) {
+      straddling.add(keyOf(p));
+      before.push(p);
+    } else {
+      after.push(p);
+    }
   }
-  return { before, after };
+  return { before, after, straddlingCases: straddling.size };
 }

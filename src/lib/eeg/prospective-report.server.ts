@@ -7,6 +7,8 @@ import {
   stratifiedAgreement,
 } from "./coebis-covariates";
 import { biasStatistic, clusterBootstrapCi, maeStatistic, type ClusteredPair } from "./ci";
+import { repeatedMeasuresBlandAltman } from "./bland-altman";
+import { buildDiscriminationReport } from "./discrimination-report";
 import type { ProspectiveReport, ProspectiveLockSummary } from "./prospective.functions";
 import { loadLocks, splitAtLock } from "./prospective.server";
 
@@ -32,6 +34,7 @@ export async function buildProspectiveReport(
       trainingReadings: split.before.length,
       unseenReadings: split.after.length,
       unseenCases: new Set(split.after.map((p) => p.sessionId ?? "unfiled")).size,
+      straddlingCases: split.straddlingCases,
     };
   });
 
@@ -46,12 +49,15 @@ export async function buildProspectiveReport(
       biasCi: null,
       strata: [],
       blandAltman: [],
+      agreement: null,
+      discrimination: null,
+      straddlingCases: 0,
       summary:
         "No model locked yet. Lock the current COEBIS fit to start a prospective test: every paired reading you take afterwards is scored against a model that never saw it.",
     };
   }
 
-  const { after } = splitAtLock(matrix.points, chosen.lockedAt);
+  const { after, straddlingCases } = splitAtLock(matrix.points, chosen.lockedAt);
   if (!after.length) {
     return {
       locks: summaries,
@@ -62,7 +68,14 @@ export async function buildProspectiveReport(
       biasCi: null,
       strata: [],
       blandAltman: [],
-      summary: `“${chosen.label}” was locked on ${new Date(chosen.lockedAt).toLocaleDateString()}. No paired readings have been logged since, so there is nothing prospective to score yet.`,
+      agreement: null,
+      discrimination: null,
+      straddlingCases,
+      summary: `“${chosen.label}” was locked on ${new Date(chosen.lockedAt).toLocaleDateString()}. No readings from a patient the model has never seen have been logged since, so there is nothing prospective to score yet.${
+        straddlingCases
+          ? ` ${straddlingCases} case${straddlingCases === 1 ? " was" : "s were"} already running at the lock, so ${straddlingCases === 1 ? "its" : "their"} later readings count as training data.`
+          : ""
+      }`,
     };
   }
 
@@ -85,6 +98,22 @@ export async function buildProspectiveReport(
     mean: Number(((predictions[i]! + p.bis) / 2).toFixed(1)),
     diff: Number((predictions[i]! - p.bis).toFixed(1)),
   }));
+  // Limits of agreement that respect repeated readings within a case.
+  const agreement = repeatedMeasuresBlandAltman(
+    after.map((p, i) => ({
+      caseKey: p.sessionId ?? "unfiled",
+      predicted: predictions[i]!,
+      reference: p.bis,
+    })),
+  );
+  // Does the locked model still order clinical states correctly on new patients?
+  const discrimination = buildDiscriminationReport(
+    after.map((p) => ({ bis: p.bis, bisSr: null, sessionId: p.sessionId })),
+    [
+      { key: "raw", label: "Published open index", values: after.map((p) => p.appIndex) },
+      { key: "coebis", label: "COEBIS (locked)", values: predictions },
+    ],
+  );
 
   const cases = new Set(after.map((p) => p.sessionId ?? "unfiled")).size;
   const better =
@@ -103,6 +132,13 @@ export async function buildProspectiveReport(
     biasCi,
     strata,
     blandAltman,
-    summary: `On ${after.length} reading${after.length === 1 ? "" : "s"} from ${cases} case${cases === 1 ? "" : "s"} recorded after “${chosen.label}” was locked, COEBIS is out by ${prospective.mae?.toFixed(1) ?? "—"} index points on average${better ? `, ${better}` : ""}. ${prospective.within5 ?? 0}% of readings fall within 5 points of the monitor and the concordance coefficient is ${prospective.ccc ?? "—"}.`,
+    agreement,
+    discrimination,
+    straddlingCases,
+    summary: `On ${after.length} reading${after.length === 1 ? "" : "s"} from ${cases} patient${cases === 1 ? "" : "s"} the locked “${chosen.label}” model has never seen, COEBIS is out by ${prospective.mae?.toFixed(1) ?? "—"} index points on average${better ? `, ${better}` : ""}. ${prospective.within5 ?? 0}% of readings fall within 5 points of the monitor and the concordance coefficient is ${prospective.ccc ?? "—"}.${
+      straddlingCases
+        ? ` ${straddlingCases} case${straddlingCases === 1 ? "" : "s"} straddling the lock ${straddlingCases === 1 ? "was" : "were"} left out of this test, because the model was partly fitted on ${straddlingCases === 1 ? "it" : "them"}.`
+        : ""
+    }`,
   };
 }

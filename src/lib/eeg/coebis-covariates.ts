@@ -39,6 +39,8 @@ export interface CoebisTrainingPoint extends BisDriftPoint {
   ce?: Record<string, number> | null;
   /** App suppression ratio at the reading, %. */
   appSr?: number | null;
+  /** Stated depth-index confidence at the reading, 0–1. */
+  depthConfidence?: number | null;
 }
 
 export type CoebisFamily = "raw" | "affine" | "covariate" | "mixed";

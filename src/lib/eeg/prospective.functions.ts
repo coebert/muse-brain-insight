@@ -3,6 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AgreementSummary, StratumResult } from "@/lib/eeg/coebis-covariates";
 import type { Interval } from "@/lib/eeg/ci";
+import type { RepeatedBlandAltman } from "@/lib/eeg/bland-altman";
+import type { DiscriminationReport } from "@/lib/eeg/discrimination-report";
 
 export interface ProspectiveLockSummary {
   id: string;
@@ -17,6 +19,8 @@ export interface ProspectiveLockSummary {
   /** Readings recorded since the lock — genuinely unseen. */
   unseenReadings: number;
   unseenCases: number;
+  /** Cases running at the lock; their later readings are not unseen data. */
+  straddlingCases: number;
 }
 
 export interface ProspectiveReport {
@@ -32,6 +36,12 @@ export interface ProspectiveReport {
   strata: StratumResult[];
   /** Bland-Altman points (mean, difference) on the unseen readings. */
   blandAltman: { mean: number; diff: number }[];
+  /** Limits of agreement with within-/between-case variance separated. */
+  agreement: RepeatedBlandAltman | null;
+  /** Pk and ROC on the unseen readings, locked model against the raw index. */
+  discrimination: DiscriminationReport | null;
+  /** Cases excluded from the unseen set because they straddled the lock. */
+  straddlingCases: number;
   summary: string;
 }
 

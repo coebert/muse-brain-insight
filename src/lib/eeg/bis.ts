@@ -107,6 +107,12 @@ export interface BisPairedPoint {
   /** App's own reliability verdict at that moment. */
   reliable: boolean;
   sqi: number | null;
+  /**
+   * The depth index's stated confidence, 0–1, at that moment. Filed so the
+   * reliability cut-offs can be checked against how often the index actually
+   * agreed with the monitor.
+   */
+  depthConfidence: number | null;
   gapSeconds: number | null;
   /**
    * Whether depth was steady or moving when the reading was transcribed. A
@@ -223,6 +229,7 @@ export function pairBisReadings(
             : round(appSef - r.sef, 1),
         reliable: epoch ? epoch.depthReliability.reliable && !epoch.depth.held : false,
         sqi: round(epoch ? epoch.quality.score * 100 : null, 0),
+        depthConfidence: round(epoch ? epoch.confidence.depth : null, 3),
         gapSeconds: epoch ? Math.round(Math.abs(epoch.t - r.at)) : null,
         stability: series.length
           ? classifyStability(slopePerMinute(series, r.at - lag))

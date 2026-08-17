@@ -1,0 +1,2 @@
+ALTER TABLE public.bis_paired_points ADD COLUMN IF NOT EXISTS depth_confidence numeric;
+COMMENT ON COLUMN public.bis_paired_points.depth_confidence IS 'App depth-index confidence (0-1) at the moment of the paired reading, used to calibrate the reliability cut-offs.';

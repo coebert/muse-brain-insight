@@ -642,6 +642,7 @@ function useCaseSessionState() {
             appSef: p.sef95Raw ?? p.sef95,
             reliable: p.reliable,
             sqi: p.sqi,
+            depthConfidence: p.depthConfidence,
             // Timing context for the fit: a mid-transition reading is weighted
             // down rather than treated as a calibration offset.
             stability: p.stability ?? null,

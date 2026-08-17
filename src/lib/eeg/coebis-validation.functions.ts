@@ -15,6 +15,14 @@ import {
 import { AGE_BANDS, REGIMENS, type CovariateTerm } from "@/lib/eeg/covariates";
 import { benjaminiHochberg, pValueForMean } from "@/lib/eeg/fdr";
 import { selectCoebisTier, type CoebisTier, type TierCandidate } from "@/lib/eeg/coebis-tiers";
+import {
+  buildDiscriminationReport,
+  type DiscriminationReport,
+} from "@/lib/eeg/discrimination-report";
+import {
+  calibrateDepthConfidence,
+  type ConfidenceCalibration,
+} from "@/lib/eeg/depth-confidence-calibration";
 
 export interface CoebisValidationReport {
   n: number;
@@ -39,6 +47,13 @@ export interface CoebisValidationReport {
   baseline: AgreementSummary;
   /** Which family currently wins on held-out mean absolute error. */
   best: CoebisFamily | null;
+  /**
+   * Pk and ROC/AUC for the published index, COEBIS and the monitor itself,
+   * plus repeated-measures limits of agreement.
+   */
+  discrimination: DiscriminationReport;
+  /** Whether the depth confidence cut-offs sit where the data puts them. */
+  confidence: ConfidenceCalibration;
   /** The model tier the current data supports, and why. */
   tier: CoebisTier;
   tierNote: string;
@@ -81,6 +96,32 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
 
     const oof = outOfFoldPredictions(points, "covariate");
     const strata = stratifiedAgreement(points, (_p, i) => oof[i] ?? null);
+
+    // How the field validates a depth monitor: does the index order clinical
+    // states correctly, and does it separate the boundaries that matter?
+    const discrimination = buildDiscriminationReport(
+      points.map((p) => ({ bis: p.bis, bisSr: null, sessionId: p.sessionId })),
+      [
+        { key: "raw", label: "Published open index", values: points.map((p) => p.appIndex) },
+        { key: "coebis", label: "COEBIS (held-out)", values: oof },
+        {
+          key: "monitor",
+          label: "Commercial monitor",
+          values: points.map((p) => p.bis),
+          reference: true,
+        },
+      ],
+    );
+
+    // Did the readings the app called reliable actually agree with the monitor?
+    const confidence = calibrateDepthConfidence(
+      points
+        .filter((p) => p.depthConfidence != null && Number.isFinite(p.depthConfidence))
+        .map((p) => ({
+          confidence: p.depthConfidence as number,
+          absError: Math.abs(p.appIndex - p.bis),
+        })),
+    );
 
     // Twenty subgroups tested at 5 % throws up a "weak spot" by chance in most
     // reports. Benjamini-Hochberg keeps the flagged ones meaningful.
@@ -141,6 +182,8 @@ export const getCoebisValidation = createServerFn({ method: "GET" })
       terms: full?.terms ?? [],
       baseline,
       best,
+      discrimination,
+      confidence,
       tier: selection.tier,
       tierNote: selection.note,
       tierCandidates: selection.candidates,
