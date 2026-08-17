@@ -100,6 +100,14 @@ export interface BisPairedPoint {
   reliable: boolean;
   sqi: number | null;
   gapSeconds: number | null;
+  /**
+   * Whether depth was steady or moving when the reading was transcribed. A
+   * reading taken mid-transition carries a timing error rather than a real
+   * calibration offset, so downstream fits weight it less.
+   */
+  stability?: PairStability;
+  /** Seconds of monitor smoothing delay allowed for when pairing. */
+  lagSeconds?: number;
 }
 
 export interface BisBandAgreement {
