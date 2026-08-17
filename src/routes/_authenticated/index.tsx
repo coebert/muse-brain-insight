@@ -314,7 +314,7 @@ function Monitor() {
                   title={m.blurb}
                   onClick={() => selectMode(m.key)}
                   className={cn(
-                    "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none sm:py-1",
+                    "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-8 sm:flex-none sm:py-1",
                     active
                       ? "bg-signal/15 text-signal"
                       : "text-muted-foreground hover:text-foreground",
@@ -332,7 +332,7 @@ function Monitor() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="flex-1 sm:flex-none"
+                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                   onClick={() => setEndOpen(true)}
                 >
                   <CircleStop className="size-4" /> End case
