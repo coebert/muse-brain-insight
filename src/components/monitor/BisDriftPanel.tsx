@@ -172,10 +172,10 @@ export function BisDriftPanel() {
               </p>
             ) : null}
 
-            {a.designEffect > 1.05 || a.nTransitional > 0 ? (
+            {(a.designEffect ?? 1) > 1.05 || a.nTransitional > 0 ? (
               <p className="text-[11px] text-muted-foreground">
-                {a.designEffect > 1.05
-                  ? `Readings repeat within cases, so the interval above is widened ${a.designEffect.toFixed(1)}× to reflect ${a.sessions} independent case${a.sessions === 1 ? "" : "s"} rather than ${a.n} readings. `
+                {(a.designEffect ?? 1) > 1.05
+                  ? `Readings repeat within cases, so the interval above is widened ${(a.designEffect ?? 1).toFixed(1)}× to reflect ${a.sessions} independent case${a.sessions === 1 ? "" : "s"} rather than ${a.n} readings. `
                   : ""}
                 {a.nTransitional > 0
                   ? `${a.nTransitional} reading${a.nTransitional === 1 ? " was" : "s were"} taken while depth was still moving and count${a.nTransitional === 1 ? "s" : ""} half, because the monitor's displayed number lags the EEG during a transition.`
