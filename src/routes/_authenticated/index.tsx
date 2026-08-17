@@ -565,7 +565,7 @@ function Monitor() {
                     value={monitor.channel}
                     onValueChange={(v) => monitor.setChannel(v as typeof monitor.channel)}
                   >
-                    <SelectTrigger className="w-full min-w-0 sm:w-[150px]">
+                    <SelectTrigger className="min-h-11 w-full min-w-0 sm:min-h-9 sm:w-[150px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -581,7 +581,7 @@ function Monitor() {
                     value={String(windowMinutes)}
                     onValueChange={(v) => setWindowMinutes(Number(v))}
                   >
-                    <SelectTrigger className="w-full min-w-0 sm:w-[110px]">
+                    <SelectTrigger className="min-h-11 w-full min-w-0 sm:min-h-9 sm:w-[110px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -607,7 +607,7 @@ function Monitor() {
                     }
                     onClick={() => markerAlerts.setSoundEnabled(!markerAlerts.soundEnabled)}
                     className={cn(
-                      "flex min-h-[36px] min-w-[36px] shrink-0 items-center justify-center justify-self-start rounded-md border border-border",
+                      "flex min-h-11 min-w-11 shrink-0 items-center justify-center justify-self-start rounded-md border border-border sm:min-h-9 sm:min-w-9",
                       markerAlerts.soundEnabled
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
