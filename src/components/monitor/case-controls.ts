@@ -28,6 +28,8 @@ export interface CaseControls {
   /** Values transcribed from a commercial BIS monitor running alongside. */
   bisReadings: BisReading[];
   onBisReadingsChange: (next: BisReading[]) => void;
+  /** COEBIS values for the case (oldest first, gaps as null) for the drift strip. */
+  coebisSeries?: (number | null)[];
 
   /** Live case details, so notes and the free-text summary can be written mid-case. */
   caseNotes?: {
