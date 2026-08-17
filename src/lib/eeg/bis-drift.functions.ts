@@ -143,6 +143,10 @@ export const recordBisPoints = createServerFn({ method: "POST" })
         appSef?: number | null;
         reliable?: boolean;
         sqi?: number | null;
+        /** Whether the depth trend was steady or moving when the reading was taken. */
+        stability?: "stable" | "transitional" | "unknown" | null;
+        /** Monitor delay allowed for when the app value was picked, in seconds. */
+        lagSeconds?: number | null;
         /** Effect-site targets in force at the reading, per drug. */
         ce?: Record<string, number> | null;
       }[];
@@ -168,6 +172,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       app_sef: p.appSef ?? null,
       reliable: p.reliable ?? true,
       sqi: p.sqi ?? null,
+      stability: p.stability ?? null,
+      lag_seconds: p.lagSeconds ?? null,
       ce: (p.ce ?? {}) as unknown as never,
       context: data.context ?? null,
       device: data.device ?? null,
@@ -185,6 +191,10 @@ function toDriftPoints(rows: Record<string, unknown>[]): BisDriftPoint[] {
     sessionId: (r["session_id"] as string | null) ?? null,
     reliable: Boolean(r["reliable"]),
     sqi: r["sqi"] == null ? null : Number(r["sqi"]),
+    stability:
+      r["stability"] === "stable" || r["stability"] === "transitional"
+        ? (r["stability"] as "stable" | "transitional")
+        : "unknown",
     recordedAt: String(r["recorded_at"]),
     context: (r["context"] as string | null) ?? null,
   }));
