@@ -678,6 +678,7 @@ export type Database = {
           clinical_features: string[]
           context: string
           created_at: string
+          deid_findings: Json
           device_name: string | null
           duration_seconds: number
           ended_at: string | null
@@ -687,6 +688,8 @@ export type Database = {
           max_suppression_ratio: number
           mean_suppression_ratio: number
           notes: string | null
+          patient_link_id: string | null
+          patient_pseudonym: string | null
           regimen: string | null
           seizure_alerts: number
           sex: string | null
@@ -703,6 +706,7 @@ export type Database = {
           clinical_features?: string[]
           context?: string
           created_at?: string
+          deid_findings?: Json
           device_name?: string | null
           duration_seconds?: number
           ended_at?: string | null
@@ -712,6 +716,8 @@ export type Database = {
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
           notes?: string | null
+          patient_link_id?: string | null
+          patient_pseudonym?: string | null
           regimen?: string | null
           seizure_alerts?: number
           sex?: string | null
@@ -728,6 +734,7 @@ export type Database = {
           clinical_features?: string[]
           context?: string
           created_at?: string
+          deid_findings?: Json
           device_name?: string | null
           duration_seconds?: number
           ended_at?: string | null
@@ -737,11 +744,54 @@ export type Database = {
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
           notes?: string | null
+          patient_link_id?: string | null
+          patient_pseudonym?: string | null
           regimen?: string | null
           seizure_alerts?: number
           sex?: string | null
           started_at?: string
           suppression_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eeg_sessions_patient_link_id_fkey"
+            columns: ["patient_link_id"]
+            isOneToOne: false
+            referencedRelation: "patient_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_links: {
+        Row: {
+          created_at: string
+          id: string
+          identifier_fingerprint: string
+          identifier_sealed: string
+          label_sealed: string | null
+          pseudonym: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier_fingerprint: string
+          identifier_sealed: string
+          label_sealed?: string | null
+          pseudonym: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier_fingerprint?: string
+          identifier_sealed?: string
+          label_sealed?: string | null
+          pseudonym?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
