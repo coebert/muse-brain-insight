@@ -978,6 +978,7 @@ function Monitor() {
               configured={monitor.settings}
               applied={monitor.effectiveSettings}
               gate={monitor.seizureGate}
+              guard={monitor.seizureGuard}
               profile={deviceProfile}
             />
             <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
