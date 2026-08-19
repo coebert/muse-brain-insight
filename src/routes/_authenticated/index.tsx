@@ -42,6 +42,7 @@ import { useCaseAi } from "@/hooks/useCaseAi";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { SeizureAlertCards } from "@/components/monitor/SeizureAlertCards";
+import { SeizureValidationPanel } from "@/components/monitor/SeizureValidationPanel";
 import { AssessmentConfidencePanel } from "@/components/monitor/AssessmentConfidencePanel";
 import { useClinicalDerivations } from "@/hooks/useClinicalDerivations";
 import { SignalQualityPanel } from "@/components/monitor/SignalQualityPanel";
@@ -909,6 +910,9 @@ function Monitor() {
                 dismiss={seizureRisk.dismiss}
               />
             ) : null}
+
+            {/* What the seizure alarm is worth at the thresholds now in force. */}
+            <SeizureValidationPanel settings={monitor.settings} className="mt-3" />
 
             {/* Event rail — the last few entries stay visible beside the trace. */}
             {caseState !== "idle" ? (
