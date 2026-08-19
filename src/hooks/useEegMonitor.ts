@@ -557,6 +557,13 @@ export function useEegMonitor() {
     }
     const last = lastConnectRef.current;
     if (!last) return false;
+    if (last.kind === "ingest") {
+      // Replaying the file again would append the whole recording a second
+      // time; the clinician starts a fresh case instead.
+      setStatus("error");
+      setError("Imported recordings cannot be resumed — start a new case to replay the file again.");
+      return false;
+    }
     await sourceRef.current?.stop();
     sourceRef.current = null;
     await connect(last.kind, {
