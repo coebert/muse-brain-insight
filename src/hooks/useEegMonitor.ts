@@ -1,4 +1,5 @@
 import { applySeizureGate, gateSeizureDetector } from "@/lib/eeg/model-lineage";
+import { guardSeizureRuntime } from "@/lib/eeg/runtime-guard";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
