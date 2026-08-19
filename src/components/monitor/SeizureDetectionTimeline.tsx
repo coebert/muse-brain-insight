@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { SeizureValidationPanel } from "@/components/monitor/SeizureValidationPanel";
 import { DEFAULT_SETTINGS } from "@/lib/eeg/analysis";
+import { RECORDED_FALSE_ALARMS_PER_HOUR } from "@/lib/eeg/seizure-validation";
 import {
   expectedFalseRuns,
   summariseSeizureDetections,
@@ -33,6 +34,7 @@ export function SeizureDetectionTimeline({
   durationSeconds,
   onSeek,
   cursor = null,
+  falseAlarmsPerHour = RECORDED_FALSE_ALARMS_PER_HOUR,
   className,
 }: {
   events: StoredSeizureEvent[];
@@ -40,13 +42,15 @@ export function SeizureDetectionTimeline({
   /** Moves the shared scrubber to a detection. */
   onSeek?: (seconds: number) => void;
   cursor?: number | null;
+  /** Validated false-alarm rate used to contextualise the run count. */
+  falseAlarmsPerHour?: number;
   className?: string;
 }) {
   const summary = summariseSeizureDetections(events, durationSeconds);
   const span = Math.max(1, durationSeconds);
   const pos = (t: number) => `${Math.min(100, Math.max(0, (t / span) * 100))}%`;
   // Contextualises the count against the detector's validated false-alarm rate.
-  const expectedFalse = expectedFalseRuns(durationSeconds, DEFAULT_SETTINGS.seizureFalseAlarmsPerHour ?? 0);
+  const expectedFalse = expectedFalseRuns(durationSeconds, falseAlarmsPerHour);
 
   return (
     <section className={cn("panel px-3 py-3 sm:px-4", className)}>

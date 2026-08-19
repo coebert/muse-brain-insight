@@ -263,3 +263,10 @@ export function seizureValidationMarkdown(report: SeizureValidationReport): stri
     "",
   ].join("\n");
 }
+
+/**
+ * False alarms per hour measured on the non-ictal vignettes at the shipped
+ * detection settings (see `seizure-validation.md`). Used to contextualise how
+ * many alerting runs a recording of a given length could produce from noise.
+ */
+export const RECORDED_FALSE_ALARMS_PER_HOUR = 0;
