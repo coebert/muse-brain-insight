@@ -163,6 +163,7 @@ export type Database = {
           reliable: boolean
           session_id: string | null
           source: string
+          source_lineage: string | null
           source_site: string | null
           sqi: number | null
           stability: string | null
@@ -189,6 +190,7 @@ export type Database = {
           reliable?: boolean
           session_id?: string | null
           source?: string
+          source_lineage?: string | null
           source_site?: string | null
           sqi?: number | null
           stability?: string | null
@@ -215,6 +217,7 @@ export type Database = {
           reliable?: boolean
           session_id?: string | null
           source?: string
+          source_lineage?: string | null
           source_site?: string | null
           sqi?: number | null
           stability?: string | null
@@ -362,6 +365,7 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          lineage: string | null
           locked_at: string
           model_family: string
           model_version: number | null
@@ -376,6 +380,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          lineage?: string | null
           locked_at?: string
           model_family?: string
           model_version?: number | null
@@ -390,6 +395,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          lineage?: string | null
           locked_at?: string
           model_family?: string
           model_version?: number | null
@@ -419,6 +425,8 @@ export type Database = {
           id: string
           is_active: boolean
           knots: Json
+          lineage: string | null
+          lineage_detail: Json
           mae_after: number | null
           mae_before: number | null
           model_family: string
@@ -440,6 +448,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           knots?: Json
+          lineage?: string | null
+          lineage_detail?: Json
           mae_after?: number | null
           mae_before?: number | null
           model_family?: string
@@ -461,6 +471,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           knots?: Json
+          lineage?: string | null
+          lineage_detail?: Json
           mae_after?: number | null
           mae_before?: number | null
           model_family?: string
