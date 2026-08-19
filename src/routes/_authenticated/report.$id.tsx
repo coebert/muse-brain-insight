@@ -267,7 +267,11 @@ function CaseReport() {
               <PatientLinkBadge
                 linkId={s.patient_link_id ?? null}
                 pseudonym={s.patient_pseudonym ?? null}
-                findings={(Array.isArray(s.deid_findings) ? s.deid_findings : []) as DeidFinding[]}
+                findings={
+                  (Array.isArray(s.deid_findings)
+                    ? (s.deid_findings as unknown as DeidFinding[])
+                    : []) as DeidFinding[]
+                }
               />
 
               {s.admission_diagnosis ? (
