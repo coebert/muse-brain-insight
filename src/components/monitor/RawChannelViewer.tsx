@@ -258,6 +258,7 @@ export function RawChannelViewer({
   markers = [],
   onAnnotateChannel,
 }: RawChannelViewerProps) {
+  const profile = useDeviceProfile();
   const [live, setLive] = useState(true);
   const [windowSeconds, setWindowSeconds] = useState<number>(10);
   const [gainUv, setGainUv] = useState<number>(100);
