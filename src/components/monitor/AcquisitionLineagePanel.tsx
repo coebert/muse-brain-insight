@@ -29,6 +29,7 @@ import {
   MIN_USABLE_SAMPLE_RATE,
   type GateMode,
 } from "@/lib/eeg/model-lineage";
+import { guardCoebisRuntime } from "@/lib/eeg/runtime-guard";
 import { cn } from "@/lib/utils";
 
 type Row = {
@@ -119,6 +120,28 @@ export function AcquisitionLineagePanel({ profile, className }: AcquisitionLinea
 
   const seizure = gateSeizureDetector(device);
   const coebisGate = data?.gate ?? null;
+  const active = data?.active ?? null;
+  /**
+   * Schema check on the model itself, run before it is allowed to correct a
+   * live depth index. A malformed or mislabelled model is held off even when
+   * the montage would otherwise permit it.
+   */
+  const coebisSchema = guardCoebisRuntime(
+    active
+      ? {
+          modelVersion: active.modelVersion,
+          modelFamily: active.modelFamily,
+          lineageKey: active.lineage,
+          gain: active.gain,
+          offset: active.offset,
+          knots: active.knots,
+          terms: active.terms,
+          nPoints: active.nPoints,
+          nSessions: active.nSessions,
+        }
+      : null,
+    { profile: device },
+  );
   const bilateral = isBilateral(device);
   const rateOk = device.sampleRate >= MIN_USABLE_SAMPLE_RATE;
 
@@ -126,13 +149,25 @@ export function AcquisitionLineagePanel({ profile, className }: AcquisitionLinea
     {
       key: "coebis",
       name: "COEBIS depth index",
-      mode: coebisGate ? coebisGate.mode : "blocked",
-      headline: coebisGate
+      mode:
+        coebisSchema.status === "blocked"
+          ? "blocked"
+          : coebisGate
+            ? coebisGate.mode
+            : "blocked",
+      headline: coebisSchema.status === "blocked"
+        ? coebisSchema.headline
+        : coebisGate
         ? coebisGate.headline
         : "No fitted COEBIS model applies to this setup — the published open index is shown instead.",
-      reasons: coebisGate?.comparison.reasons ?? [],
+      reasons:
+        coebisSchema.status === "blocked"
+          ? coebisSchema.issues
+          : [...(coebisGate?.comparison.reasons ?? []), ...coebisSchema.warnings],
       action:
-        coebisGate?.action ??
+        (coebisSchema.status === "blocked"
+          ? "Refit COEBIS on this setup — the stored model cannot be validated against the current schema."
+          : coebisGate?.action) ??
         "Enter paired commercial BIS readings on this device to fit a model for it.",
     },
     {
