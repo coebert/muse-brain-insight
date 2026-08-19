@@ -445,6 +445,7 @@ export function selectBestPreset(caps: MuseCapabilities): {
 
 export class MuseClient implements EegSource {
   name = "Muse";
+  readonly profile = MUSE_2_PROFILE;
   private device: BluetoothDevice | null = null;
   private preset: string = DEFAULT_MUSE_PRESET;
   private control: BluetoothRemoteGATTCharacteristic | null = null;
@@ -853,6 +854,7 @@ export class MuseClient implements EegSource {
  */
 export class SimulatedSource implements EegSource {
   name = "Simulated signal";
+  readonly profile = SIMULATED_PROFILE;
   private timer: ReturnType<typeof setInterval> | null = null;
   private t = 0;
 
