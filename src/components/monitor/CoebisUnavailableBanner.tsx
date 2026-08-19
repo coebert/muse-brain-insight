@@ -7,6 +7,7 @@
  * linkage, signal quality — with the count required for each, and offers an
  * immediate refit once they are in place.
  */
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, RefreshCw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -46,7 +47,7 @@ export function CoebisUnavailableBanner({ className }: { className?: string }) {
 
   const { data, isLoading } = useQuery({
     queryKey: ["bis-drift"],
-    queryFn: () => fetchDrift({}),
+    queryFn: () => fetchDrift({ data: { lineage: activeLineageKey() } }),
     enabled: !model,
     staleTime: 60_000,
   });
@@ -59,7 +60,10 @@ export function CoebisUnavailableBanner({ className }: { className?: string }) {
   if (model) return null;
 
   const analysis = data?.analysis ?? null;
-  const sufficiency = evaluateCoebisSufficiency(analysis, null);
+  const sufficiency = evaluateCoebisSufficiency(analysis, null, {
+    summary: data?.lineages ?? null,
+    gate: data?.gate ?? null,
+  });
   // Only the inputs that are actually holding the model back.
   const blocking = sufficiency.checks.filter((c) => c.status === "fail" || c.status === "partial");
 

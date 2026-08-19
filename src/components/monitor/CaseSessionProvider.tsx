@@ -1,3 +1,4 @@
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import {
   createContext,
   useCallback,
@@ -661,12 +662,13 @@ function useCaseSessionState() {
                 context: meta.context,
                 device: bisReadings.find((r) => r.device)?.device ?? null,
                 points: paired,
+                lineage: activeLineageKey(),
               },
             });
             autoRefit.markFiled(unfiledReadings.map((r) => r.id));
             // New paired data: refit COEBIS and pick the new model up locally.
             try {
-              await refreshCoebis({});
+              await refreshCoebis({ data: { lineage: activeLineageKey() } });
               await syncBisAlignment();
               await refreshSef({});
               await syncSefAlignment();
@@ -687,7 +689,7 @@ function useCaseSessionState() {
           await linkBisPoints({
             data: { sessionId, sinceIso: new Date(sessionStartedAtMs).toISOString() },
           });
-          await refreshCoebis({});
+          await refreshCoebis({ data: { lineage: activeLineageKey() } });
           await syncBisAlignment();
         } catch {
           // Linkage is a refinement; the points remain in the pooled fit.

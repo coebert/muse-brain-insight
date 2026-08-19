@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CoebisTrainingPoint } from "./coebis-covariates";
+import { summariseLineages, type LineageSummary } from "./model-lineage";
 
 type Client = SupabaseClient<any, any, any>;
 
@@ -29,6 +30,8 @@ export interface TrainingMatrix {
   /** Readings whose case has no age band recorded. */
   missingAge: number;
   missingRegimen: number;
+  /** Which acquisition setups the pooled readings actually span. */
+  lineages: LineageSummary;
 }
 
 /** Load every paired reading with its patient covariates attached. */
@@ -39,7 +42,7 @@ export async function loadTrainingMatrix(
   const { data: pointRows, error } = await supabase
     .from("bis_paired_points")
     .select(
-      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features",
+      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
     )
     .order("recorded_at", { ascending: true })
     .limit(limit);
@@ -99,6 +102,7 @@ export async function loadTrainingMatrix(
       recordedAt: String(r["recorded_at"]),
       context: (r["context"] as string | null) ?? null,
       ce: (r["ce"] as Record<string, number> | null) ?? null,
+      lineageKey: (r["source_lineage"] as string | null) ?? null,
       cov: {
         ageBand: cov?.age_band ?? null,
         sex: cov?.sex ?? null,
@@ -115,5 +119,6 @@ export async function loadTrainingMatrix(
     unfiled,
     missingAge,
     missingRegimen,
+    lineages: summariseLineages(usable),
   };
 }

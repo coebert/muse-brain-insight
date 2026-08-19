@@ -41,6 +41,11 @@ export interface CoebisTrainingPoint extends BisDriftPoint {
   appSr?: number | null;
   /** Stated depth-index confidence at the reading, 0–1. */
   depthConfidence?: number | null;
+  /**
+   * Acquisition setup the reading came from (see model-lineage.ts). Null on
+   * readings filed before lineage was recorded.
+   */
+  lineageKey?: string | null;
 }
 
 export type CoebisFamily = "raw" | "affine" | "covariate" | "mixed";

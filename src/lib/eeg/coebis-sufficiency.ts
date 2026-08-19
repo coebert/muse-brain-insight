@@ -19,6 +19,7 @@ import {
   PROVISIONAL_MIN_SESSIONS,
   type BisDriftAnalysis,
 } from "./bis-drift";
+import { describeLineage, type LineageGate, type LineageSummary } from "./model-lineage";
 
 /** Residual bias (BIS units) below which the fitted model is centred. */
 export const MAX_RESIDUAL_BIAS = 2;
@@ -108,6 +109,12 @@ const signed = (v: number | null | undefined, dp = 1) =>
 export function evaluateCoebisSufficiency(
   analysis: BisDriftAnalysis | null | undefined,
   active: { gain: number; offset: number; nPoints: number; maeBefore: number | null; maeAfter: number | null } | null = null,
+  /**
+   * Which acquisition setups the readings came from, and whether the model in
+   * force is entitled to run on the device now streaming. Optional so existing
+   * callers keep working; when supplied it adds check 10.
+   */
+  lineage: { summary?: LineageSummary | null; gate?: LineageGate | null } | null = null,
 ): CoebisSufficiency {
   if (!analysis) {
     return {
@@ -291,6 +298,46 @@ export function evaluateCoebisSufficiency(
         ? "Not enough recent readings to judge."
         : `Last ${analysis.recent.n} readings offset ${signed(analysis.recent.bias)} vs pooled ${signed(analysis.bias)} (difference ${divergence.toFixed(1)}).`,
   });
+
+  // 10. Calibration lineage — a correction fitted on one headband is only
+  //     evidence for that headband's montage and sample rate.
+  if (lineage) {
+    const summary = lineage.summary ?? null;
+    const gate = lineage.gate ?? null;
+    const gateStatus: CheckStatus =
+      gate == null ? "n/a" : gate.mode === "run" ? "pass" : gate.mode === "provisional" ? "partial" : "fail";
+    const mixedStatus: CheckStatus = summary
+      ? summary.mixed || summary.unlabelled > 0
+        ? "partial"
+        : summary.tallies.length === 1
+          ? "pass"
+          : "n/a"
+      : "n/a";
+    const status: CheckStatus =
+      gateStatus === "fail"
+        ? "fail"
+        : gateStatus === "partial" || mixedStatus === "partial"
+          ? "partial"
+          : gateStatus === "n/a"
+            ? mixedStatus
+            : gateStatus;
+    checks.push({
+      id: "lineage",
+      label: "Calibration lineage",
+      status,
+      requirement: "Model fitted on the montage and sample rate now streaming",
+      detail: [
+        gate
+          ? gate.headline
+          : summary?.dominant?.lineage
+            ? `Readings come from ${describeLineage(summary.dominant.lineage)}.`
+            : "No model in force yet.",
+        summary?.note,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    });
+  }
 
   const passed = checks.filter((c) => c.status === "pass").length;
   const failed = checks.filter((c) => c.status === "fail").length;
