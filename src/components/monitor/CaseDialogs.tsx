@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Bluetooth, FlaskConical, Save, Trash2 } from "lucide-react";
 
 import { CaseFields } from "@/components/monitor/CaseFields";
+import { IngestPanel } from "@/components/monitor/IngestPanel";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
 import { PreCaseChecklist, type ChecklistKey } from "@/components/monitor/PreCaseChecklist";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import type { CaseMeta } from "@/lib/eeg/case-meta";
 import { formatClock } from "@/lib/eeg/format";
+import type { EegSource } from "@/lib/eeg/muse";
 
 interface Props {
   meta: CaseMeta;
@@ -37,8 +39,8 @@ interface Props {
   caseOpen: boolean;
   onCaseOpenChange: (open: boolean) => void;
   onStart: (
-    kind: "muse" | "simulated",
-    options?: { device?: BluetoothDevice; preset?: string },
+    kind: "muse" | "simulated" | "ingest",
+    options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
   ) => void;
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
@@ -147,6 +149,8 @@ export function CaseDialogs({
               onConfirm={(device, preset) => onStart("muse", { device, preset })}
             />
           ) : null}
+          {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
+          <IngestPanel onStart={(source) => onStart("ingest", { source })} />
           <DialogFooter className="gap-2">
             <Button variant="secondary" onClick={() => onStart("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
