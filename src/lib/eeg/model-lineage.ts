@@ -510,6 +510,11 @@ export function summariseLineages(
 /**
  * Readings a model for `target` may honestly be fitted on: the same lineage,
  * plus any lineage whose montage transfers to it.
+ *
+ * Transfer has to hold in both directions. A reading taken on a thinner
+ * montage is a different measurement — its index never saw the positions the
+ * target model will run on — so it is excluded even though the thin montage
+ * adds nothing the target lacks.
  */
 export function selectTrainingForLineage<T extends { lineageKey?: string | null }>(
   points: T[],
@@ -528,8 +533,9 @@ export function selectTrainingForLineage<T extends { lineageKey?: string | null 
       continue;
     }
     const parsed = parseLineageKey(key);
-    const match = compareLineage(parsed, target).match;
-    if (match === "incompatible") excluded.push(p);
+    const forward = compareLineage(parsed, target).match;
+    const reverse = parsed ? compareLineage(target, parsed).match : "incompatible";
+    if (forward === "incompatible" || reverse === "incompatible") excluded.push(p);
     else used.push(p);
   }
   return { used, excluded, unlabelled };

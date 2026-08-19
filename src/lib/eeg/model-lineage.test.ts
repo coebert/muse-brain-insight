@@ -81,7 +81,13 @@ describe("training selection", () => {
     // Unlabelled historic readings are kept rather than discarding early data.
     expect(sel.unlabelled).toHaveLength(1);
     for (const p of sel.excluded) {
-      expect(compareLineage(parseLineageKey(p.lineageKey!), muse).match).toBe("incompatible");
+      const parsed = parseLineageKey(p.lineageKey!)!;
+      // Excluded either way round: the reading cannot transfer to the target,
+      // or the target's montage cannot be reproduced by the reading.
+      expect([
+        compareLineage(parsed, muse).match,
+        compareLineage(muse, parsed).match,
+      ]).toContain("incompatible");
     }
   });
 

@@ -78,7 +78,7 @@ function DetectorRow({ row }: { row: Row }) {
           {row.name}
         </span>
         <span
-          className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", MODE_TONE[row.mode])}
+          className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide", MODE_TONE[row.mode])}
         >
           {MODE_LABEL[row.mode]}
         </span>
@@ -195,7 +195,7 @@ export function AcquisitionLineagePanel({ profile, className }: AcquisitionLinea
               )}
             >
               <p className="metric-value text-xs">{c}</p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {present ? CHANNEL_REGION[c] : "not populated"}
               </p>
             </div>
