@@ -184,7 +184,34 @@ export function BisDriftPanel() {
               </p>
             ) : null}
 
-            <CoebisSufficiencyPanel analysis={a} active={data?.active ?? null} />
+            {data?.gate && data.gate.mode !== "run" ? (
+              <p
+                className={cn(
+                  "rounded-md border px-3 py-2 text-[11px]",
+                  data.gate.mode === "blocked"
+                    ? "border-critical/40 bg-critical/5 text-critical"
+                    : "border-caution/40 bg-caution/5 text-caution",
+                )}
+                role="status"
+              >
+                {data.gate.headline} {data.gate.detail}
+              </p>
+            ) : null}
+
+            {data?.excludedByLineage ? (
+              <p className="text-[11px] text-muted-foreground">
+                {data.excludedByLineage} reading
+                {data.excludedByLineage === 1 ? "" : "s"} taken on a different headband setup
+                {data.excludedByLineage === 1 ? " is" : " are"} held out of this fit, so one
+                device's readings cannot shift another device's correction.
+              </p>
+            ) : null}
+
+            <CoebisSufficiencyPanel
+              analysis={a}
+              active={data?.active ?? null}
+              lineage={{ summary: data?.lineages ?? null, gate: data?.gate ?? null }}
+            />
 
             {data?.active ? (
               <div className="rounded-md border border-border px-3 py-2 text-xs">
