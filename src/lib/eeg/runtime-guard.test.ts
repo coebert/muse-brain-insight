@@ -4,7 +4,7 @@ import { guardCoebisRuntime, guardSeizureRuntime } from "./runtime-guard";
 import { lineageKey, lineageFromProfile } from "./model-lineage";
 import { DEVICE_PROFILES, getActiveDeviceProfile } from "./device-profile";
 
-const muse = DEVICE_PROFILES["muse-2"] ?? getActiveDeviceProfile();
+const muse = DEVICE_PROFILES.find((p) => p.id === "muse-2") ?? getActiveDeviceProfile();
 
 const goodThresholds = {
   seizureThreshold: 0.6,
