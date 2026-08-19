@@ -23,12 +23,19 @@ import {
   type SignalQuality,
 } from "@/lib/eeg/dsp";
 import {
-  MUSE_CHANNELS,
   MuseClient,
   SimulatedSource,
   type EegSource,
   type MuseChannel,
 } from "@/lib/eeg/muse";
+import {
+  ANALYSIS_SAMPLE_RATE,
+  MUSE_2_PROFILE,
+  channelPairs,
+  hemisphereChannels,
+  setActiveDeviceProfile,
+  type DeviceProfile,
+} from "@/lib/eeg/device-profile";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
@@ -70,9 +77,13 @@ function compactEpochs(list: Epoch[]): Epoch[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
-/** Muse 2 electrode groupings by hemisphere. */
-export const LEFT_CHANNELS: MuseChannel[] = ["TP9", "AF7"];
-export const RIGHT_CHANNELS: MuseChannel[] = ["AF8", "TP10"];
+/**
+ * Default electrode groupings, kept for callers that render the standard
+ * four-electrode montage. Live analysis uses the active device profile
+ * instead, so a reduced montage groups by what the device actually provides.
+ */
+export const LEFT_CHANNELS: MuseChannel[] = hemisphereChannels(MUSE_2_PROFILE, "left");
+export const RIGHT_CHANNELS: MuseChannel[] = hemisphereChannels(MUSE_2_PROFILE, "right");
 
 export interface HemiSpectra {
   left: number[];
@@ -356,6 +367,12 @@ export function useEegMonitor() {
   } | null>(null);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
+  /**
+   * Montage of the source currently streaming. Every per-channel loop below
+   * reads it, so an absent electrode is never analysed as a flat one.
+   */
+  const profileRef = useRef<DeviceProfile>(MUSE_2_PROFILE);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile>(MUSE_2_PROFILE);
   const sourceRef = useRef<EegSource | null>(null);
   /** Last successful connection request, so a manual retry can repeat it. */
   const lastConnectRef = useRef<{
@@ -384,8 +401,15 @@ export function useEegMonitor() {
   const channelRef = useRef(channel);
   channelRef.current = channel;
 
+  /** Allocates a fresh ring buffer for every electrode in the montage. */
+  const allocateBuffers = useCallback((p: DeviceProfile) => {
+    const next: Record<string, ChannelBuffer> = {};
+    for (const c of p.channels) next[c] = makeBuffer();
+    buffersRef.current = next;
+  }, []);
+
   if (Object.keys(buffersRef.current).length === 0) {
-    for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
+    allocateBuffers(profileRef.current);
   }
 
   useEffect(() => {
@@ -396,11 +420,19 @@ export function useEegMonitor() {
 
   const activeSignal = useCallback((length: number): Float64Array => {
     const sel = channelRef.current;
-    if (sel !== "average") return readLast(buffersRef.current[sel]!, length);
+    const channels = profileRef.current.channels;
+    if (sel !== "average") {
+      const buffer = buffersRef.current[sel];
+      // The selected electrode may not exist on this device.
+      if (buffer) return readLast(buffer, length);
+    }
     const out = new Float64Array(length);
-    for (const c of MUSE_CHANNELS) {
-      const seg = readLast(buffersRef.current[c]!, length);
-      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / MUSE_CHANNELS.length;
+    if (channels.length === 0) return out;
+    for (const c of channels) {
+      const buf = buffersRef.current[c];
+      if (!buf) continue;
+      const seg = readLast(buf, length);
+      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / channels.length;
     }
     return out;
   }, []);
@@ -408,8 +440,13 @@ export function useEegMonitor() {
   /** Mean of the given electrodes, used for the per-hemisphere DSAs. */
   const groupSignal = useCallback((group: MuseChannel[], length: number): Float64Array => {
     const out = new Float64Array(length);
+    // A hemisphere with no electrodes on this device stays at zero: the
+    // side then reads as absent rather than as a failed electrode pair.
+    if (group.length === 0) return out;
     for (const c of group) {
-      const seg = readLast(buffersRef.current[c]!, length);
+      const buf = buffersRef.current[c];
+      if (!buf) continue;
+      const seg = readLast(buf, length);
       for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / group.length;
     }
     return out;
@@ -436,14 +473,14 @@ export function useEegMonitor() {
     });
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
-    channelTalliesRef.current = emptyChannelTallies();
+    channelTalliesRef.current = emptyChannelTallies(profileRef.current.channels);
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
     rawArchiveRef.current.reset();
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
-    for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
-  }, []);
+    allocateBuffers(profileRef.current);
+  }, [allocateBuffers]);
 
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
