@@ -18,6 +18,8 @@ import { DsaLegend } from "@/components/monitor/DsaChart";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
+import { PatientLinkBadge } from "@/components/monitor/PatientLinkBadge";
+import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { computeCoebis } from "@/lib/eeg/depth";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
@@ -261,6 +263,16 @@ function CaseReport() {
                   }
                 />
               </dl>
+
+              <PatientLinkBadge
+                linkId={s.patient_link_id ?? null}
+                pseudonym={s.patient_pseudonym ?? null}
+                findings={
+                  (Array.isArray(s.deid_findings)
+                    ? (s.deid_findings as unknown as DeidFinding[])
+                    : []) as DeidFinding[]
+                }
+              />
 
               {s.admission_diagnosis ? (
                 <p className="mt-3 text-sm">

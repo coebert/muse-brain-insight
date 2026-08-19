@@ -2,6 +2,11 @@
 export interface CaseMeta {
   caseCode: string;
   context: string;
+  /**
+   * Hospital identifier used only to build the sealed linkage record. It is
+   * never stored with the recording — the case keeps a pseudonym instead.
+   */
+  patientIdentifier: string;
   location: string;
   notes: string;
   /** Free-text clinical summary of the case, mined by the AI for patterns. */
@@ -19,6 +24,7 @@ export interface CaseMeta {
 export const EMPTY_CASE_META: CaseMeta = {
   caseCode: "",
   context: "general_anaesthesia",
+  patientIdentifier: "",
   location: "",
   notes: "",
   caseSummary: "",

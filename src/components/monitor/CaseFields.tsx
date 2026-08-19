@@ -1,4 +1,4 @@
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, EyeOff, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
+import { scrubCaseText, summariseFindings } from "@/lib/eeg/deid";
 import { FRAILTY_LEVELS, REGIMENS } from "@/lib/eeg/covariates";
 import { Button } from "@/components/ui/button";
 import { generateCaseCode } from "@/lib/eeg/case-startup";
@@ -34,6 +35,13 @@ export function CaseFields({
   usedCaseCodes?: string[];
 }) {
   const duplicate = isCaseCodeUsed(meta.caseCode, usedCaseCodes);
+  // Live preview of what automatic de-identification will strip on filing.
+  const scrub = scrubCaseText({
+    location: meta.location || null,
+    notes: meta.notes || null,
+    admissionDiagnosis: meta.admissionDiagnosis || null,
+    caseSummary: meta.caseSummary || null,
+  });
 
   function reroll() {
     const result = generateUniqueCaseCode(usedCaseCodes, () => generateCaseCode(meta.context));
@@ -80,6 +88,23 @@ export function CaseFields({
         <p className="mt-1 text-[11px] text-muted-foreground">
           Generated automatically and contains no patient identifiers — overwrite it if your unit
           uses its own numbering.
+        </p>
+      </div>
+      <div>
+        <Label htmlFor={`${idPrefix}-pid`}>Hospital identifier (for secure linkage)</Label>
+        <Input
+          id={`${idPrefix}-pid`}
+          className="mt-1.5"
+          autoComplete="off"
+          placeholder="e.g. RXH1234567 — optional"
+          value={meta.patientIdentifier}
+          onChange={(e) => onChange({ ...meta, patientIdentifier: e.target.value })}
+        />
+        <p className="mt-1 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+          <ShieldCheck className="mt-px size-3.5 shrink-0 text-signal" />
+          Never stored with the recording. It is encrypted into a private linkage record and the
+          case keeps only a pseudonym, so the same patient’s recordings group together while the
+          record itself stays anonymous. Leave blank for a fully unlinked case.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -243,6 +268,15 @@ export function CaseFields({
           across your cases. Never include names, dates of birth or hospital numbers.
         </p>
       </div>
+      {scrub.findings.length ? (
+        <p className="flex items-start gap-1.5 rounded-md border border-caution/40 bg-caution/10 px-2.5 py-2 text-[11px] text-caution">
+          <EyeOff className="mt-px size-3.5 shrink-0" />
+          <span>
+            Automatic de-identification will clean this case before it is filed.{" "}
+            {summariseFindings(scrub.findings)}
+          </span>
+        </p>
+      ) : null}
     </div>
   );
 }
