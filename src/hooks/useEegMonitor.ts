@@ -46,7 +46,7 @@ export type { RawArchive } from "@/lib/eeg/raw-archive";
 export type { SideDecision } from "@/lib/eeg/side-preference";
 
 export type MonitorStatus = "idle" | "connecting" | "streaming" | "reconnecting" | "error";
-export type SourceKind = "muse" | "simulated";
+export type SourceKind = "muse" | "simulated" | "ingest";
 
 const BUFFER_SECONDS = 8;
 const BUFFER_LEN = MUSE_SAMPLE_RATE * BUFFER_SECONDS;
@@ -362,6 +362,7 @@ export function useEegMonitor() {
     kind: SourceKind;
     device?: BluetoothDevice;
     preset?: string;
+    source?: EegSource;
   } | null>(null);
   const analyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
   const leftAnalyzerRef = useRef(new EegAnalyzer(DEFAULT_SETTINGS));
@@ -456,18 +457,30 @@ export function useEegMonitor() {
   const connect = useCallback(
     async (
       kind: SourceKind,
-      options?: { preserveTimeline?: boolean; device?: BluetoothDevice; preset?: string },
+      options?: {
+        preserveTimeline?: boolean;
+        device?: BluetoothDevice;
+        preset?: string;
+        /** Pre-built source for generic ingest (file replay, serial, LSL bridge). */
+        source?: EegSource;
+      },
     ) => {
       setError(null);
       setStatus("connecting");
       try {
-        const source: EegSource =
-          kind === "muse"
-            ? new MuseClient({
-                ...(options?.device ? { device: options.device } : {}),
-                ...(options?.preset ? { preset: options.preset } : {}),
-              })
-            : new SimulatedSource();
+        let source: EegSource;
+        if (kind === "ingest") {
+          if (!options?.source)
+            throw new Error("No ingest source was configured for this recording.");
+          source = options.source;
+        } else if (kind === "muse") {
+          source = new MuseClient({
+            ...(options?.device ? { device: options.device } : {}),
+            ...(options?.preset ? { preset: options.preset } : {}),
+          });
+        } else {
+          source = new SimulatedSource();
+        }
         source.onDisconnect(() => {
           setBatteryPercent(null);
           // The case keeps running: hold the source so a manual retry can
@@ -508,6 +521,7 @@ export function useEegMonitor() {
           kind,
           ...(options?.device ? { device: options.device } : {}),
           ...(options?.preset ? { preset: options.preset } : {}),
+          ...(options?.source ? { source: options.source } : {}),
         };
         setSourceName(source.name);
         if (!options?.preserveTimeline) reset();
@@ -543,6 +557,13 @@ export function useEegMonitor() {
     }
     const last = lastConnectRef.current;
     if (!last) return false;
+    if (last.kind === "ingest") {
+      // Replaying the file again would append the whole recording a second
+      // time; the clinician starts a fresh case instead.
+      setStatus("error");
+      setError("Imported recordings cannot be resumed — start a new case to replay the file again.");
+      return false;
+    }
     await sourceRef.current?.stop();
     sourceRef.current = null;
     await connect(last.kind, {

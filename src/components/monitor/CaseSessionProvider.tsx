@@ -28,6 +28,7 @@ import {
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
+import type { EegSource } from "@/lib/eeg/muse";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
@@ -379,8 +380,8 @@ function useCaseSessionState() {
   }
 
   async function startCase(
-    kind: "muse" | "simulated",
-    options?: { device?: BluetoothDevice; preset?: string },
+    kind: "muse" | "simulated" | "ingest",
+    options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
   ) {
     if (!meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
@@ -424,6 +425,7 @@ function useCaseSessionState() {
     await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
+      ...(options?.source ? { source: options.source } : {}),
     });
   }
 
