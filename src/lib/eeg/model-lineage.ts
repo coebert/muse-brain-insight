@@ -534,7 +534,7 @@ export function selectTrainingForLineage<T extends { lineageKey?: string | null 
     }
     const parsed = parseLineageKey(key);
     const forward = compareLineage(parsed, target).match;
-    const reverse = compareLineage(target, parsed ?? undefined).match;
+    const reverse = parsed ? compareLineage(target, parsed).match : "incompatible";
     if (forward === "incompatible" || reverse === "incompatible") excluded.push(p);
     else used.push(p);
   }
