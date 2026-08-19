@@ -83,14 +83,34 @@ export async function saveSession(
   stageSave(meta.caseCode, { meta, summary, elapsed, events: events.length });
 
   // Free-text fields are encrypted (AES-256-GCM) before they leave the browser session.
+  // Everything is de-identified first, so nothing readable can survive even if
+  // an identifier was typed into a note by accident.
+  const scrub = scrubCaseText({
+    caseCode: meta.caseCode,
+    location: meta.location || null,
+    notes: meta.notes || null,
+    admissionDiagnosis: meta.admissionDiagnosis.trim() || null,
+    caseSummary: meta.caseSummary.trim() || null,
+  });
+  const deidFindings: DeidFinding[] = scrub.findings;
+
+  // Secure linkage: the identifier becomes a pseudonym held in a sealed table.
+  let patientLinkId: string | null = null;
+  let patientPseudonym: string | null = null;
+  if (meta.patientIdentifier.trim()) {
+    const link = await linkPatient({ data: { identifier: meta.patientIdentifier.trim() } });
+    patientLinkId = link.id;
+    patientPseudonym = link.pseudonym;
+  }
+
   const { values: sealed } = await sealTexts({
     data: {
       values: [
-        meta.caseCode,
-        meta.location || null,
-        meta.notes || null,
-        meta.admissionDiagnosis.trim() || null,
-        meta.caseSummary.trim() || null,
+        scrub.fields.caseCode,
+        scrub.fields.location,
+        scrub.fields.notes,
+        scrub.fields.admissionDiagnosis,
+        scrub.fields.caseSummary,
       ],
     },
   });
@@ -109,6 +129,9 @@ export async function saveSession(
       .insert({
         user_id: userId,
         case_code: sealedCase ?? meta.caseCode,
+        patient_link_id: patientLinkId,
+        patient_pseudonym: patientPseudonym,
+        deid_findings: deidFindings,
         context: meta.context,
         location: sealedLocation ?? null,
         notes: sealedNotes ?? null,
