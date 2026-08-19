@@ -109,6 +109,12 @@ export type BatteryHandler = (percent: number) => void;
 
 export interface EegSource {
   readonly name: string;
+  /**
+   * What this source actually provides — populated electrodes, hemispheres
+   * and native sample rate. Sources that omit it are treated as the default
+   * four-electrode 256 Hz montage.
+   */
+  readonly profile?: import("@/lib/eeg/device-profile").DeviceProfile;
   start(onSamples: SampleHandler): Promise<void>;
   stop(): Promise<void>;
   onDisconnect(cb: () => void): void;
