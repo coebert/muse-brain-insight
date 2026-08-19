@@ -143,6 +143,8 @@ function Monitor() {
   // The whole case lives above the router outlet, so streaming, alarms and
   // everything recorded survive navigating to Cases, Trends or Settings.
   const session = useCaseSession();
+  // The montage actually being streamed drives every channel picker below.
+  const deviceProfile = useDeviceProfile();
   const {
     monitor,
     user,
