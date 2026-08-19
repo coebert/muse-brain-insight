@@ -37,7 +37,8 @@ jobs:
             src/lib/eeg/model-config-schema.test.ts \
             src/lib/eeg/model-migration.test.ts \
             src/lib/eeg/runtime-guard.test.ts \
-            src/components/monitor/lineage-blocked.e2e.test.tsx
+            src/components/monitor/lineage-blocked.e2e.test.tsx \
+            src/components/monitor/dsa-ingest.e2e.test.tsx
 
   full-suite:
     name: Types and full test suite
