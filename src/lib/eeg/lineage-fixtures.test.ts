@@ -192,7 +192,7 @@ describe("seizure gating under fixture stress", () => {
 
   it("keeps the fixture oracle honest for the unusable rates it advertises", () => {
     for (const rate of UNUSABLE_RATES) {
-      const l = { channels: [...ANALYSIS_CHANNELS], sampleRate: rate } as const;
+      const l = { channels: [...ANALYSIS_CHANNELS], sampleRate: rate as number };
       expect(
         expectedMatch(
           { deviceId: "a", deviceLabel: "a", transport: "ingest", ...l },

@@ -86,7 +86,7 @@ export function allMontages(): AnalysisChannel[][] {
   return out;
 }
 
-export function randomMontage(rng: Rng, opts: { allowEmpty?: boolean } = {}): AnalysisChannel[] {
+export function randomMontage(rng: Rng, opts: { allowEmpty?: boolean | undefined } = {}): AnalysisChannel[] {
   const montages = allMontages();
   if (opts.allowEmpty && rng.bool(0.08)) return [];
   return rng.pick(montages);
@@ -95,11 +95,11 @@ export function randomMontage(rng: Rng, opts: { allowEmpty?: boolean } = {}): An
 export function randomLineage(
   rng: Rng,
   opts: {
-    channels?: AnalysisChannel[];
-    sampleRate?: number;
-    deviceId?: string;
-    usableRate?: boolean;
-    allowEmpty?: boolean;
+    channels?: AnalysisChannel[] | undefined;
+    sampleRate?: number | undefined;
+    deviceId?: string | undefined;
+    usableRate?: boolean | undefined;
+    allowEmpty?: boolean | undefined;
   } = {},
 ): DataLineage {
   const deviceId = opts.deviceId ?? rng.pick(DEVICE_IDS);
@@ -278,7 +278,11 @@ export function generateLineageFixtures(count: number, seed = 20260819): Lineage
 
 /** Exhaustive montage-by-montage sweep at a fixed rate, for coverage of every subset pair. */
 export function exhaustiveMontageFixtures(
-  opts: { fittedRate?: number; currentRate?: number; sameDevice?: boolean } = {},
+  opts: {
+    fittedRate?: number | undefined;
+    currentRate?: number | undefined;
+    sameDevice?: boolean | undefined;
+  } = {},
 ): LineageFixture[] {
   const fittedRate = opts.fittedRate ?? 256;
   const currentRate = opts.currentRate ?? 256;
