@@ -150,26 +150,28 @@ export function BisPanel({
         {showPrompt ? (
           <div className="mb-3 flex flex-wrap items-start gap-2 rounded-md border border-signal/40 bg-signal/10 p-2">
             <Sparkles className="mt-0.5 size-4 shrink-0 text-signal" />
-            <div className="min-w-[12rem] flex-1">
+            <div className="min-w-[10rem] flex-1 basis-full sm:basis-auto">
               <p className="text-xs font-semibold">{prompt.title}</p>
               <p className="text-[11px] text-muted-foreground">{prompt.why}</p>
             </div>
-            <Button
-              size="sm"
-              className="h-9"
-              onClick={log}
-              aria-label={`Capture BIS ${clampBis(bis)} now`}
-            >
-              Capture {clampBis(bis)}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9"
-              onClick={() => setDismissed(prompt.kind)}
-            >
-              Not now
-            </Button>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Button
+                size="sm"
+                className="h-11 flex-1 sm:h-9 sm:flex-none"
+                onClick={log}
+                aria-label={`Capture BIS ${clampBis(bis)} now`}
+              >
+                Capture {clampBis(bis)}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-11 flex-1 sm:h-9 sm:flex-none"
+                onClick={() => setDismissed(prompt.kind)}
+              >
+                Not now
+              </Button>
+            </div>
           </div>
         ) : null}
         <div className="flex items-center gap-3">
@@ -272,14 +274,18 @@ export function BisPanel({
           </label>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             value={note}
             placeholder="Note (e.g. after propofol bolus, diathermy running)"
             onChange={(e) => setNote(e.target.value)}
-            className="h-10 flex-1 text-xs"
+            className="h-11 w-full text-xs sm:h-10 sm:flex-1"
           />
-          <Button className="h-10" disabled={!running} onClick={log}>
+          <Button
+            className="h-11 w-full sm:h-10 sm:w-auto"
+            disabled={!running}
+            onClick={log}
+          >
             Log at {formatClock(elapsed)}
           </Button>
         </div>
@@ -289,7 +295,12 @@ export function BisPanel({
         className="mt-3"
         series={coebisSeries}
         action={
-          <Button size="sm" className="h-9" disabled={!running} onClick={log}>
+          <Button
+            size="sm"
+            className="h-11 w-full sm:h-9 sm:w-auto"
+            disabled={!running}
+            onClick={log}
+          >
             Capture {clampBis(bis)}
           </Button>
         }
@@ -310,7 +321,7 @@ export function BisPanel({
             .map((r) => (
               <li
                 key={r.id}
-                className="flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
+                className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md bg-muted/40 px-2 py-1.5 text-xs"
               >
                 <span className="metric-value opacity-80">{formatClock(r.at)}</span>
                 <span className="font-semibold">BIS {r.bis}</span>
@@ -326,11 +337,15 @@ export function BisPanel({
                 {r.sqi != null ? (
                   <span className="text-muted-foreground">SQI {r.sqi} %</span>
                 ) : null}
-                {r.note ? <span className="truncate text-muted-foreground">{r.note}</span> : null}
+                {r.note ? (
+                  <span className="min-w-0 basis-full truncate text-muted-foreground sm:basis-auto">
+                    {r.note}
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   aria-label={`Remove BIS reading at ${formatClock(r.at)}`}
-                  className="ml-auto opacity-70 hover:opacity-100"
+                  className="-my-1.5 ml-auto flex min-h-11 min-w-11 items-center justify-end opacity-70 hover:opacity-100 sm:min-h-8 sm:min-w-8"
                   onClick={() =>
                     commit(
                       readings.filter((x) => x.id !== r.id),
