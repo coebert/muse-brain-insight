@@ -76,13 +76,18 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           OpenIBIS / COEBIS vs commercial BIS — last {stats.n} paired readings
         </h3>
-        <div className="ml-auto flex items-center gap-1">
+        <div
+          role="group"
+          aria-label="Paired readings window"
+          className="flex w-full items-center gap-1 sm:ml-auto sm:w-auto"
+        >
           {WINDOWS.filter((w) => w <= Math.max(30, series.length)).map((w) => (
             <Button
               key={w}
               size="sm"
               variant={n === w ? "secondary" : "ghost"}
-              className={cn("h-7 px-2 text-[11px]")}
+              aria-pressed={n === w}
+              className={cn("h-11 flex-1 px-2 text-[11px] sm:h-8 sm:flex-none")}
               onClick={() => setN(w)}
             >
               {w}
@@ -91,7 +96,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
         </div>
       </div>
 
-      <div className="h-56">
+      <div className="h-56 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
