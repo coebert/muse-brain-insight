@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
-import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
+import { type MuseChannel } from "@/lib/eeg/muse";
+import { useDeviceProfile } from "@/hooks/useDeviceProfile";
 import {
   channelStateRuns,
   type ChannelState,
@@ -48,14 +49,15 @@ export function ChannelStateTimeline({ history, hopSeconds = 2, className }: Cha
   const width = Math.max(1, span.end - span.start);
   const pct = (seconds: number) => ((seconds - span.start) / width) * 100;
 
+  const profile = useDeviceProfile();
   const lanes = useMemo(
     () =>
-      MUSE_CHANNELS.map((channel) => ({
+      profile.channels.map((channel) => ({
         channel,
         runs: channelStateRuns(history, channel, hopSeconds),
         emg: history.map((p) => ({ t: p.t, v: p.emg[channel] ?? 0 })),
       })),
-    [history, hopSeconds],
+    [history, hopSeconds, profile],
   );
 
   const ticks = useMemo(() => {

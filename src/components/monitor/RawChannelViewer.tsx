@@ -11,7 +11,8 @@ import { Pause, Play, Rewind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
+import { type MuseChannel } from "@/lib/eeg/muse";
+import { useDeviceProfile } from "@/hooks/useDeviceProfile";
 import type { SignalQuality } from "@/lib/eeg/dsp";
 import { EPOCH_SECONDS, type DetectedEvent, type Epoch } from "@/lib/eeg/analysis";
 import { RAW_ARCHIVE_HZ, type RawArchive } from "@/lib/eeg/raw-archive";
@@ -257,6 +258,7 @@ export function RawChannelViewer({
   markers = [],
   onAnnotateChannel,
 }: RawChannelViewerProps) {
+  const profile = useDeviceProfile();
   const [live, setLive] = useState(true);
   const [windowSeconds, setWindowSeconds] = useState<number>(10);
   const [gainUv, setGainUv] = useState<number>(100);
@@ -283,10 +285,10 @@ export function RawChannelViewer({
     return {
       from,
       to,
-      data: MUSE_CHANNELS.map((c) => ({ channel: c, samples: archive.read(c, from, to) })),
+      data: profile.channels.map((c) => ({ channel: c, samples: archive.read(c, from, to) })),
     };
     // `tick` and `span` drive the live refresh.
-  }, [archive, live, span, windowSeconds, cursor, maxCursor, tick]);
+  }, [archive, live, span, windowSeconds, cursor, maxCursor, tick, profile]);
 
   const empty = span < 0.5;
 
@@ -478,7 +480,7 @@ export function RawChannelViewer({
                     overlays={visible}
                     from={traces.from}
                     to={traces.to}
-                    showLabels={channel === MUSE_CHANNELS[0]}
+                    showLabels={channel === profile.channels[0]}
                   />
                   <ChannelNotes
                     notes={channelNotes.get(channel) ?? []}

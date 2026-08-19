@@ -23,12 +23,19 @@ import {
   type SignalQuality,
 } from "@/lib/eeg/dsp";
 import {
-  MUSE_CHANNELS,
   MuseClient,
   SimulatedSource,
   type EegSource,
   type MuseChannel,
 } from "@/lib/eeg/muse";
+import {
+  ANALYSIS_SAMPLE_RATE,
+  MUSE_2_PROFILE,
+  channelPairs,
+  hemisphereChannels,
+  setActiveDeviceProfile,
+  type DeviceProfile,
+} from "@/lib/eeg/device-profile";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
@@ -70,9 +77,13 @@ function compactEpochs(list: Epoch[]): Epoch[] {
   return [...older, ...list.slice(keepFrom)];
 }
 
-/** Muse 2 electrode groupings by hemisphere. */
-export const LEFT_CHANNELS: MuseChannel[] = ["TP9", "AF7"];
-export const RIGHT_CHANNELS: MuseChannel[] = ["AF8", "TP10"];
+/**
+ * Default electrode groupings, kept for callers that render the standard
+ * four-electrode montage. Live analysis uses the active device profile
+ * instead, so a reduced montage groups by what the device actually provides.
+ */
+export const LEFT_CHANNELS: MuseChannel[] = hemisphereChannels(MUSE_2_PROFILE, "left");
+export const RIGHT_CHANNELS: MuseChannel[] = hemisphereChannels(MUSE_2_PROFILE, "right");
 
 export interface HemiSpectra {
   left: number[];
@@ -356,6 +367,12 @@ export function useEegMonitor() {
   } | null>(null);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
+  /**
+   * Montage of the source currently streaming. Every per-channel loop below
+   * reads it, so an absent electrode is never analysed as a flat one.
+   */
+  const profileRef = useRef<DeviceProfile>(MUSE_2_PROFILE);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile>(MUSE_2_PROFILE);
   const sourceRef = useRef<EegSource | null>(null);
   /** Last successful connection request, so a manual retry can repeat it. */
   const lastConnectRef = useRef<{
@@ -384,8 +401,15 @@ export function useEegMonitor() {
   const channelRef = useRef(channel);
   channelRef.current = channel;
 
+  /** Allocates a fresh ring buffer for every electrode in the montage. */
+  const allocateBuffers = useCallback((p: DeviceProfile) => {
+    const next: Record<string, ChannelBuffer> = {};
+    for (const c of p.channels) next[c] = makeBuffer();
+    buffersRef.current = next;
+  }, []);
+
   if (Object.keys(buffersRef.current).length === 0) {
-    for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
+    allocateBuffers(profileRef.current);
   }
 
   useEffect(() => {
@@ -396,11 +420,19 @@ export function useEegMonitor() {
 
   const activeSignal = useCallback((length: number): Float64Array => {
     const sel = channelRef.current;
-    if (sel !== "average") return readLast(buffersRef.current[sel]!, length);
+    const channels = profileRef.current.channels;
+    if (sel !== "average") {
+      const buffer = buffersRef.current[sel];
+      // The selected electrode may not exist on this device.
+      if (buffer) return readLast(buffer, length);
+    }
     const out = new Float64Array(length);
-    for (const c of MUSE_CHANNELS) {
-      const seg = readLast(buffersRef.current[c]!, length);
-      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / MUSE_CHANNELS.length;
+    if (channels.length === 0) return out;
+    for (const c of channels) {
+      const buf = buffersRef.current[c];
+      if (!buf) continue;
+      const seg = readLast(buf, length);
+      for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / channels.length;
     }
     return out;
   }, []);
@@ -408,8 +440,13 @@ export function useEegMonitor() {
   /** Mean of the given electrodes, used for the per-hemisphere DSAs. */
   const groupSignal = useCallback((group: MuseChannel[], length: number): Float64Array => {
     const out = new Float64Array(length);
+    // A hemisphere with no electrodes on this device stays at zero: the
+    // side then reads as absent rather than as a failed electrode pair.
+    if (group.length === 0) return out;
     for (const c of group) {
-      const seg = readLast(buffersRef.current[c]!, length);
+      const buf = buffersRef.current[c];
+      if (!buf) continue;
+      const seg = readLast(buf, length);
       for (let i = 0; i < length; i++) out[i] = out[i]! + seg[i]! / group.length;
     }
     return out;
@@ -436,14 +473,14 @@ export function useEegMonitor() {
     });
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
-    channelTalliesRef.current = emptyChannelTallies();
+    channelTalliesRef.current = emptyChannelTallies(profileRef.current.channels);
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
     rawArchiveRef.current.reset();
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
-    for (const c of MUSE_CHANNELS) buffersRef.current[c] = makeBuffer();
-  }, []);
+    allocateBuffers(profileRef.current);
+  }, [allocateBuffers]);
 
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
@@ -481,6 +518,16 @@ export function useEegMonitor() {
         } else {
           source = new SimulatedSource();
         }
+        // Adopt the source's montage before any sample arrives, so buffers,
+        // tallies and the hemisphere grouping match the hardware.
+        const sourceProfile = source.profile ?? MUSE_2_PROFILE;
+        profileRef.current = sourceProfile;
+        setDeviceProfile(sourceProfile);
+        setActiveDeviceProfile(sourceProfile);
+        allocateBuffers(sourceProfile);
+        if (channelRef.current !== "average" && !sourceProfile.channels.includes(channelRef.current)) {
+          setChannel("average");
+        }
         source.onDisconnect(() => {
           setBatteryPercent(null);
           // The case keeps running: hold the source so a manual retry can
@@ -514,7 +561,7 @@ export function useEegMonitor() {
             buf.write = (buf.write + 1) % BUFFER_LEN;
             if (buf.count < BUFFER_LEN) buf.count++;
           }
-          rawArchiveRef.current.push(ch, filtered, MUSE_SAMPLE_RATE);
+          rawArchiveRef.current.push(ch, filtered, ANALYSIS_SAMPLE_RATE);
         });
         sourceRef.current = source;
         lastConnectRef.current = {
@@ -532,7 +579,7 @@ export function useEegMonitor() {
         setError(e instanceof Error ? e.message : "Could not connect to the headband.");
       }
     },
-    [reset],
+    [reset, allocateBuffers],
   );
 
   /**
@@ -579,8 +626,10 @@ export function useEegMonitor() {
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting" && status !== "error") return;
     const id = setInterval(() => {
-      const anyBuffer = buffersRef.current[MUSE_CHANNELS[0]]!;
-      if (anyBuffer.count < EPOCH_LEN) return;
+      const profile = profileRef.current;
+      const channels = profile.channels;
+      const anyBuffer = channels.length ? buffersRef.current[channels[0]!] : null;
+      if (!anyBuffer || anyBuffer.count < EPOCH_LEN) return;
       const t = (Date.now() - startedAtRef.current) / 1000;
 
       // No fresh samples: leave a real gap in the trend rather than
@@ -611,11 +660,11 @@ export function useEegMonitor() {
       const quality: Record<string, SignalQuality> = {};
       // Channels are rated in pairs: two real spectra come out of one complex
       // FFT, halving the per-second transform load with identical numbers.
-      for (let i = 0; i < MUSE_CHANNELS.length; i += 2) {
-        const ca = MUSE_CHANNELS[i]!;
-        const cb = MUSE_CHANNELS[i + 1];
-        const segA = readLast(buffersRef.current[ca]!, MUSE_SAMPLE_RATE * 2);
-        if (!cb) {
+      for (const [ca, cb] of channelPairs(profile)) {
+        const bufA = buffersRef.current[ca];
+        if (!bufA) continue;
+        const segA = readLast(bufA, MUSE_SAMPLE_RATE * 2);
+        if (!cb || !buffersRef.current[cb]) {
           const q = signalQuality(segA, computePsd(segA, MUSE_SAMPLE_RATE), MUSE_SAMPLE_RATE);
           quality[ca] = q;
           contact[ca] = !q.flat && q.grade !== "poor";
@@ -635,6 +684,8 @@ export function useEegMonitor() {
       // Depth index, suppression ratio and SEF95 come from the four-electrode
       // average unless one hemisphere is clearly cleaner, in which case that
       // side alone drives them so a bad electrode pair cannot degrade them.
+      const leftChannels = hemisphereChannels(profile, "left");
+      const rightChannels = hemisphereChannels(profile, "right");
       const sideQuality = (group: MuseChannel[]): SideQuality => {
         const grades = group.map((c) => quality[c]);
         return {
@@ -647,13 +698,20 @@ export function useEegMonitor() {
               : "good",
         };
       };
+      // Side preference only means something when both sides are populated.
       const decision =
-        channelRef.current === "average"
+        channelRef.current === "average" && leftChannels.length > 0 && rightChannels.length > 0
           ? sidePreferenceRef.current.update(
-              sideQuality(LEFT_CHANNELS),
-              sideQuality(RIGHT_CHANNELS),
+              sideQuality(leftChannels),
+              sideQuality(rightChannels),
             )
-          : {
+          : channelRef.current === "average"
+            ? {
+                side: null,
+                advantage: 0,
+                reason: `${profile.label}: unilateral montage — primary metrics use every available electrode`,
+              }
+            : {
               side: null,
               advantage: 0,
               reason: `Single electrode (${channelRef.current}) selected — primary metrics use it directly`,
@@ -664,7 +722,7 @@ export function useEegMonitor() {
           : decision,
       );
       const primarySignal = decision.side
-        ? groupSignal(decision.side === "left" ? LEFT_CHANNELS : RIGHT_CHANNELS, EPOCH_LEN)
+        ? groupSignal(decision.side === "left" ? leftChannels : rightChannels, EPOCH_LEN)
         : activeSignal(EPOCH_LEN);
       const epoch = analyzerRef.current.analyze(primarySignal, t);
 
@@ -725,6 +783,24 @@ export function useEegMonitor() {
         psd: Psd,
       ): { metrics: HemiMetrics; spectrum: number[] } => {
         const e = analyzer.analyze(signal, t, psd);
+        // No electrode on this side for this device: report it as absent and
+        // raise nothing, rather than alarming on a synthetic flat trace.
+        if (group.length === 0) {
+          return {
+            metrics: {
+              suppressionRatio: 0,
+              seizureScore: 0,
+              seizureAlert: false,
+              qualityGrade: "poor",
+              flat: true,
+              qualityScore: 0,
+              spectralConfidence: 0,
+              emgIndex: 0,
+              reasons: [`No ${side} electrode on ${profile.label}`],
+            },
+            spectrum: e.spectrum.map(() => Number.NaN),
+          };
+        }
         const grades = group.map((c) => quality[c]);
         const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
           ? "poor"
@@ -771,13 +847,13 @@ export function useEegMonitor() {
         return { metrics, spectrum: e.spectrum };
       };
       // Both hemisphere spectra also come from a single paired FFT.
-      const leftSignal = groupSignal(LEFT_CHANNELS, EPOCH_LEN);
-      const rightSignal = groupSignal(RIGHT_CHANNELS, EPOCH_LEN);
+      const leftSignal = groupSignal(leftChannels, EPOCH_LEN);
+      const rightSignal = groupSignal(rightChannels, EPOCH_LEN);
       const [leftPsd, rightPsd] = computePsdPair(leftSignal, rightSignal, MUSE_SAMPLE_RATE);
-      const left = sideMetrics("left", LEFT_CHANNELS, leftAnalyzerRef.current, leftSignal, leftPsd);
+      const left = sideMetrics("left", leftChannels, leftAnalyzerRef.current, leftSignal, leftPsd);
       const right = sideMetrics(
         "right",
-        RIGHT_CHANNELS,
+        rightChannels,
         rightAnalyzerRef.current,
         rightSignal,
         rightPsd,
@@ -816,10 +892,11 @@ export function useEegMonitor() {
         contactOk: contact,
         channelQuality: quality,
         channelCompleteness: summariseChannelCompleteness(
-          accumulateChannelQuality(channelTalliesRef.current, quality),
+          accumulateChannelQuality(channelTalliesRef.current, quality, channels),
           HOP_SECONDS,
+          channels,
         ),
-        channelState: channelStatePoint(t, quality),
+        channelState: channelStatePoint(t, quality, channels),
       });
     }, HOP_SECONDS * 1000);
     return () => clearInterval(id);
@@ -890,6 +967,7 @@ export function useEegMonitor() {
     channelCompleteness,
     channelStateHistory,
     summary,
+    deviceProfile,
     reconnectAttempt,
     analysisSource,
     dataGapSeconds,

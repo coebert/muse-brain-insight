@@ -13,7 +13,16 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MUSE_SAMPLE_RATE } from "@/lib/eeg/dsp";
-import { MUSE_CHANNELS, type EegSource, type MuseChannel } from "@/lib/eeg/muse";
+import { type EegSource, type MuseChannel } from "@/lib/eeg/muse";
+import {
+  ANALYSIS_CHANNELS,
+  CHANNEL_REGION,
+  DEVICE_PROFILES,
+  deviceProfileById,
+  describeDeviceProfile,
+  profileFromChannelMap,
+  type DeviceProfile,
+} from "@/lib/eeg/device-profile";
 import {
   AMPLITUDE_UNITS,
   EMPTY_CHANNEL_MAP,
@@ -33,6 +42,11 @@ import {
   type IngestConfig,
   type ParsedCsv,
 } from "@/lib/eeg/ingest";
+
+/** Clinical caveats of a montage, listed under the mapping controls. */
+function profileLimitations(profile: DeviceProfile): string[] {
+  return describeDeviceProfile(profile).limitations;
+}
 
 interface Props {
   /** Hands a fully configured source to the case starter. */
@@ -63,6 +77,8 @@ export function IngestPanel({ onStart, disabled }: Props) {
   const [uvPerCount, setUvPerCount] = useState("0.02235");
   const [speed, setSpeed] = useState("1");
   const [map, setMap] = useState<ChannelMap>(EMPTY_CHANNEL_MAP);
+  /** Known non-Bluetooth devices whose montage can be applied in one click. */
+  const [presetId, setPresetId] = useState("custom");
   const [baud, setBaud] = useState("115200");
   const [streamColumns, setStreamColumns] = useState("TP9, AF7, AF8, TP10");
   const [bridgeUrl, setBridgeUrl] = useState("ws://localhost:8765");
@@ -81,11 +97,40 @@ export function IngestPanel({ onStart, disabled }: Props) {
 
   const scale = unitScale(unit, Number(uvPerCount));
   const described = describeChannelMap(map);
+  /** What this mapping means as a montage: which positions exist, and the cost. */
+  const resolvedProfile: DeviceProfile = useMemo(
+    () =>
+      profileFromChannelMap({
+        label: fileName ?? "Imported recording",
+        sampleRate: Number(rate) || MUSE_SAMPLE_RATE,
+        map,
+      }),
+    [fileName, rate, map],
+  );
+
+  /**
+   * Applies a known device's montage: its positions are filled from the
+   * available columns in order, and the rest are explicitly left unmapped so
+   * the analysis treats them as absent rather than as failed electrodes.
+   */
+  function applyPreset(id: string) {
+    setPresetId(id);
+    const preset = deviceProfileById(id);
+    if (!preset) return;
+    setRate(String(preset.sampleRate));
+    const columns = [...dataColumns];
+    const next: ChannelMap = { ...EMPTY_CHANNEL_MAP };
+    for (const electrode of preset.channels) {
+      const column = columns.shift();
+      next[electrode] = column ?? null;
+    }
+    setMap(next);
+  }
 
   /** Amplitude sanity per mapped electrode, using the file's own samples. */
   const amplitude = useMemo(() => {
     if (!parsed) return [];
-    return MUSE_CHANNELS.filter((c) => map[c]).map((electrode) => {
+    return ANALYSIS_CHANNELS.filter((c) => map[c]).map((electrode) => {
       const column = map[electrode]!;
       const index = parsed.columns.indexOf(column);
       const samples = (parsed.data[index] ?? []).slice(0, 20_000);
@@ -105,7 +150,7 @@ export function IngestPanel({ onStart, disabled }: Props) {
       const suggestion = suggestChannelMap(result.columns, skip);
       setMap(suggestion);
       // Guess the unit from the first mapped column's own amplitude.
-      const firstColumn = MUSE_CHANNELS.map((c) => suggestion[c]).find(Boolean);
+      const firstColumn = ANALYSIS_CHANNELS.map((c) => suggestion[c]).find(Boolean);
       if (firstColumn) {
         const index = result.columns.indexOf(firstColumn);
         setUnit(inferUnit((result.data[index] ?? []).slice(0, 20_000)).unit);
@@ -131,7 +176,7 @@ export function IngestPanel({ onStart, disabled }: Props) {
   function startReplay() {
     if (!parsed) return;
     const columns: Record<string, number[]> = {};
-    for (const electrode of MUSE_CHANNELS) {
+    for (const electrode of ANALYSIS_CHANNELS) {
       const column = map[electrode];
       if (!column || columns[column]) continue;
       const index = parsed.columns.indexOf(column);
@@ -404,11 +449,35 @@ export function IngestPanel({ onStart, disabled }: Props) {
           </div>
         ) : null}
 
+        <div>
+          <Label htmlFor="ingest-device" className="text-xs">
+            Device montage
+          </Label>
+          <Select value={presetId} onValueChange={applyPreset}>
+            <SelectTrigger id="ingest-device" className="min-h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="custom">Custom mapping</SelectItem>
+              {DEVICE_PROFILES.filter((p) => p.transport !== "simulated").map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.label} · {p.channels.length} ch @ {p.sampleRate} Hz
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Picking a device fills the electrode mapping and sample rate for you. Anything else
+            stays unmapped and is treated as absent, not as a failed electrode.
+          </p>
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-2">
-          {MUSE_CHANNELS.map((electrode: MuseChannel) => (
+          {ANALYSIS_CHANNELS.map((electrode: MuseChannel) => (
             <div key={electrode}>
               <Label htmlFor={`ingest-map-${electrode}`} className="text-xs">
-                {electrode}
+                {electrode}{" "}
+                <span className="text-muted-foreground">· {CHANNEL_REGION[electrode]}</span>
               </Label>
               <Select
                 value={map[electrode] ?? "__none__"}
@@ -437,6 +506,23 @@ export function IngestPanel({ onStart, disabled }: Props) {
         >
           {described.note}
         </p>
+
+        {resolvedProfile.channels.length > 0 ? (
+          <ul className="space-y-1">
+            {[`Montage: ${resolvedProfile.channels.join(", ")} at ${resolvedProfile.sampleRate} Hz`]
+              .concat(
+                profileLimitations(resolvedProfile),
+              )
+              .map((line, i) => (
+                <li
+                  key={line}
+                  className={`text-[11px] ${i === 0 ? "text-muted-foreground" : "text-caution"}`}
+                >
+                  {line}
+                </li>
+              ))}
+          </ul>
+        ) : null}
 
         {amplitude.length > 0 ? (
           <ul className="space-y-1">

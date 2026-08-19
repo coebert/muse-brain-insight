@@ -18,7 +18,11 @@
 
 import { MUSE_SAMPLE_RATE } from "@/lib/eeg/dsp";
 import {
-  MUSE_CHANNELS,
+  ANALYSIS_CHANNELS,
+  profileFromChannelMap,
+  type DeviceProfile,
+} from "@/lib/eeg/device-profile";
+import {
   type EegSource,
   type MuseChannel,
   type SampleHandler,
@@ -317,6 +321,15 @@ export function parseEegCsv(text: string, maxRows = 2_000_000): ParsedCsv {
 /** Maps each analysis electrode onto a source column name (or null). */
 export type ChannelMap = Record<MuseChannel, string | null>;
 
+/** The device profile a given ingest configuration produces. */
+export function ingestProfile(config: IngestConfig): DeviceProfile {
+  return profileFromChannelMap({
+    label: config.label ?? "Imported recording",
+    sampleRate: config.sampleRate,
+    map: config.channelMap,
+  });
+}
+
 export const EMPTY_CHANNEL_MAP: ChannelMap = { TP9: null, AF7: null, AF8: null, TP10: null };
 
 /**
@@ -331,7 +344,7 @@ export function suggestChannelMap(columns: string[], skip: number[] = []): Chann
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   // 1. Exact electrode names (TP9/AF7/AF8/TP10) anywhere in the column name.
-  for (const electrode of MUSE_CHANNELS) {
+  for (const electrode of ANALYSIS_CHANNELS) {
     const hit = usable.find((c) => !taken.has(c) && norm(c).includes(norm(electrode)));
     if (hit) {
       map[electrode] = hit;
@@ -345,7 +358,7 @@ export function suggestChannelMap(columns: string[], skip: number[] = []): Chann
     TP9: /(^|[^a-z])(t3|t7|left ?temp)/i,
     TP10: /(^|[^a-z])(t4|t8|right ?temp)/i,
   };
-  for (const electrode of MUSE_CHANNELS) {
+  for (const electrode of ANALYSIS_CHANNELS) {
     if (map[electrode]) continue;
     const pattern = aliases[electrode];
     if (!pattern) continue;
@@ -357,7 +370,7 @@ export function suggestChannelMap(columns: string[], skip: number[] = []): Chann
   }
   // 3. Fill what is left in column order.
   const remaining = usable.filter((c) => !taken.has(c));
-  for (const electrode of MUSE_CHANNELS) {
+  for (const electrode of ANALYSIS_CHANNELS) {
     if (map[electrode]) continue;
     const next = remaining.shift();
     if (!next) break;
@@ -373,8 +386,8 @@ export function describeChannelMap(map: ChannelMap): {
   bilateral: boolean;
   note: string;
 } {
-  const mapped = MUSE_CHANNELS.filter((c) => map[c]);
-  const missing = MUSE_CHANNELS.filter((c) => !map[c]);
+  const mapped = ANALYSIS_CHANNELS.filter((c) => map[c]);
+  const missing = ANALYSIS_CHANNELS.filter((c) => !map[c]);
   const left = Boolean(map.TP9 || map.AF7);
   const right = Boolean(map.AF8 || map.TP10);
   const bilateral = left && right;
@@ -422,7 +435,7 @@ export class IngestPipeline {
     private readonly onSamples: SampleHandler,
   ) {
     this.scale = unitScale(config.unit, config.uvPerCount ?? 1);
-    for (const electrode of MUSE_CHANNELS) {
+    for (const electrode of ANALYSIS_CHANNELS) {
       const column = config.channelMap[electrode];
       if (!column) continue;
       const list = this.inverse.get(column) ?? [];
@@ -478,6 +491,7 @@ export interface ReplayProgress {
  */
 export class ReplaySource implements EegSource {
   readonly name: string;
+  readonly profile: DeviceProfile;
   private timer: ReturnType<typeof setInterval> | null = null;
   private pipeline: IngestPipeline | null = null;
   private cursor = 0;
@@ -493,6 +507,7 @@ export class ReplaySource implements EegSource {
     private readonly config: IngestConfig,
   ) {
     this.name = config.label ?? "File replay";
+    this.profile = ingestProfile(config);
     this.speed = config.speed && config.speed > 0 ? config.speed : 1;
     this.totalSamples = Math.max(
       0,
@@ -654,6 +669,7 @@ interface SerialOptions {
  */
 export class SerialIngestSource implements EegSource {
   readonly name: string;
+  readonly profile: DeviceProfile;
   private port: any = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private pipeline: IngestPipeline | null = null;
@@ -664,6 +680,7 @@ export class SerialIngestSource implements EegSource {
 
   constructor(private readonly options: SerialOptions) {
     this.name = options.config.label ?? `Serial ${options.baudRate} baud`;
+    this.profile = ingestProfile(options.config);
   }
 
   onDisconnect(cb: () => void) {
@@ -750,6 +767,7 @@ interface BridgeOptions {
  */
 export class LslBridgeSource implements EegSource {
   readonly name: string;
+  readonly profile: DeviceProfile;
   private socket: WebSocket | null = null;
   private pipeline: IngestPipeline | null = null;
   private stopping = false;
@@ -758,6 +776,7 @@ export class LslBridgeSource implements EegSource {
 
   constructor(private readonly options: BridgeOptions) {
     this.name = options.config.label ?? `LSL bridge (${options.url})`;
+    this.profile = ingestProfile(options.config);
   }
 
   onDisconnect(cb: () => void) {

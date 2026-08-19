@@ -84,7 +84,9 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
-import { MUSE_CHANNELS, isWebBluetoothAvailable } from "@/lib/eeg/muse";
+import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
+import { channelLabel } from "@/lib/eeg/device-profile";
+import { useDeviceProfile } from "@/hooks/useDeviceProfile";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
@@ -141,6 +143,8 @@ function Monitor() {
   // The whole case lives above the router outlet, so streaming, alarms and
   // everything recorded survive navigating to Cases, Trends or Settings.
   const session = useCaseSession();
+  // The montage actually being streamed drives every channel picker below.
+  const deviceProfile = useDeviceProfile();
   const {
     monitor,
     user,
@@ -571,9 +575,9 @@ function Monitor() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="average">All channels (mean)</SelectItem>
-                      {MUSE_CHANNELS.map((c) => (
+                      {deviceProfile.channels.map((c) => (
                         <SelectItem key={c} value={c}>
-                          {c}
+                          {channelLabel(deviceProfile, c)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -957,7 +961,7 @@ function Monitor() {
             <div id="mon-signal-quality" className="scroll-mt-24 rounded-lg transition-shadow">
             <SignalQualityPanel
               quality={latest?.quality ?? null}
-              channels={MUSE_CHANNELS}
+              channels={deviceProfile.channels}
               channelQuality={monitor.channelQuality}
               usableFraction={summary.usableFraction}
               depthArtifact={latest?.depthArtifact ?? null}
@@ -1022,7 +1026,7 @@ function Monitor() {
                       0.5–45 Hz, 50 Hz notch · ±80 µV
                     </span>
                     <div className="flex gap-1.5 sm:ml-auto">
-                      {MUSE_CHANNELS.map((c) => (
+                      {deviceProfile.channels.map((c) => (
                         <span
                           key={c}
                           className={cn(

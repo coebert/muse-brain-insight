@@ -1,5 +1,18 @@
 import type { SignalQuality } from "@/lib/eeg/dsp";
-import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
+import {
+  CHANNEL_SIDE,
+  getActiveDeviceProfile,
+  type AnalysisChannel as MuseChannel,
+} from "@/lib/eeg/device-profile";
+
+/**
+ * Electrodes to tally. Defaults to the montage the active device actually
+ * provides, so a position the hardware does not have is left out of the
+ * completeness report rather than being reported as permanently missing.
+ */
+function activeChannels(channels?: readonly MuseChannel[]): readonly MuseChannel[] {
+  return channels ?? getActiveDeviceProfile().channels;
+}
 
 /** Running per-electrode tallies accumulated once per analysis hop. */
 export interface ChannelTally {
@@ -23,9 +36,9 @@ export interface ChannelTally {
 
 export type ChannelTallies = Record<MuseChannel, ChannelTally>;
 
-export function emptyChannelTallies(): ChannelTallies {
+export function emptyChannelTallies(channels?: readonly MuseChannel[]): ChannelTallies {
   const out = {} as ChannelTallies;
-  for (const channel of MUSE_CHANNELS) {
+  for (const channel of activeChannels(channels)) {
     out[channel] = {
       channel,
       epochs: 0,
@@ -46,11 +59,12 @@ export function emptyChannelTallies(): ChannelTallies {
 export function accumulateChannelQuality(
   tallies: ChannelTallies,
   quality: Record<string, SignalQuality | undefined>,
+  channels?: readonly MuseChannel[],
 ): ChannelTallies {
-  for (const channel of MUSE_CHANNELS) {
+  for (const channel of activeChannels(channels)) {
     const q = quality[channel];
     const tally = tallies[channel];
-    if (!q) continue;
+    if (!q || !tally) continue;
     tally.epochs += 1;
     tally.scoreSum += q.score;
     tally.emgSum += q.emgIndex;
@@ -88,20 +102,27 @@ export interface ChannelCompleteness {
   note: string | null;
 }
 
-const SIDE: Record<MuseChannel, "left" | "right"> = {
-  TP9: "left",
-  AF7: "left",
-  AF8: "right",
-  TP10: "right",
-};
-
 /** Turns raw tallies into per-electrode completeness rows for the UI. */
 export function summariseChannelCompleteness(
   tallies: ChannelTallies,
   hopSeconds: number,
+  channels?: readonly MuseChannel[],
 ): ChannelCompleteness[] {
-  return MUSE_CHANNELS.map((channel) => {
-    const t = tallies[channel];
+  return activeChannels(channels).map((channel) => {
+    const t =
+      tallies[channel] ??
+      ({
+        channel,
+        epochs: 0,
+        good: 0,
+        fair: 0,
+        poor: 0,
+        flat: 0,
+        scoreSum: 0,
+        emgSum: 0,
+        worstRunEpochs: 0,
+        currentRunEpochs: 0,
+      } satisfies ChannelTally);
     const n = Math.max(0, t.epochs);
     const usableFraction = n ? Math.max(0, Math.min(1, (n - Math.max(t.poor, t.flat)) / n)) : 0;
     const flatFraction = n ? t.flat / n : 0;
@@ -118,7 +139,7 @@ export function summariseChannelCompleteness(
     else if (meanEmg > 0.4) note = "High muscle contamination";
     return {
       channel,
-      side: SIDE[channel],
+      side: CHANNEL_SIDE[channel],
       usableFraction,
       flatFraction,
       poorFraction,
@@ -149,10 +170,11 @@ export interface ChannelStatePoint {
 export function channelStatePoint(
   t: number,
   quality: Record<string, SignalQuality | undefined>,
+  channels?: readonly MuseChannel[],
 ): ChannelStatePoint {
   const states = {} as Record<MuseChannel, ChannelState>;
   const emg = {} as Record<MuseChannel, number>;
-  for (const channel of MUSE_CHANNELS) {
+  for (const channel of activeChannels(channels)) {
     const q = quality[channel];
     states[channel] = !q ? "missing" : q.flat ? "flat" : q.grade === "good" ? "good" : q.grade === "fair" ? "fair" : "poor";
     emg[channel] = q?.emgIndex ?? 0;

@@ -4,11 +4,23 @@
  * Streams the four scalp electrodes at 256 Hz.
  */
 
+import {
+  ANALYSIS_CHANNELS,
+  MUSE_2_PROFILE,
+  SIMULATED_PROFILE,
+  type AnalysisChannel,
+} from "@/lib/eeg/device-profile";
+
 export const MUSE_SERVICE = "0000fe8d-0000-1000-8000-00805f9b34fb";
 const CONTROL_CHAR = "273e0001-4c4d-454d-96be-f03bac821358";
 
-export const MUSE_CHANNELS = ["TP9", "AF7", "AF8", "TP10"] as const;
-export type MuseChannel = (typeof MUSE_CHANNELS)[number];
+/**
+ * The canonical analysis positions live in device-profile.ts, which is the
+ * device-agnostic definition; these aliases keep the historical names working
+ * for existing recordings and imports.
+ */
+export const MUSE_CHANNELS = ANALYSIS_CHANNELS;
+export type MuseChannel = AnalysisChannel;
 
 const EEG_CHARS: Record<MuseChannel, string> = {
   TP9: "273e0003-4c4d-454d-96be-f03bac821358",
@@ -109,6 +121,12 @@ export type BatteryHandler = (percent: number) => void;
 
 export interface EegSource {
   readonly name: string;
+  /**
+   * What this source actually provides — populated electrodes, hemispheres
+   * and native sample rate. Sources that omit it are treated as the default
+   * four-electrode 256 Hz montage.
+   */
+  readonly profile?: import("@/lib/eeg/device-profile").DeviceProfile;
   start(onSamples: SampleHandler): Promise<void>;
   stop(): Promise<void>;
   onDisconnect(cb: () => void): void;
@@ -439,6 +457,7 @@ export function selectBestPreset(caps: MuseCapabilities): {
 
 export class MuseClient implements EegSource {
   name = "Muse";
+  readonly profile = MUSE_2_PROFILE;
   private device: BluetoothDevice | null = null;
   private preset: string = DEFAULT_MUSE_PRESET;
   private control: BluetoothRemoteGATTCharacteristic | null = null;
@@ -847,6 +866,7 @@ export class MuseClient implements EegSource {
  */
 export class SimulatedSource implements EegSource {
   name = "Simulated signal";
+  readonly profile = SIMULATED_PROFILE;
   private timer: ReturnType<typeof setInterval> | null = null;
   private t = 0;
 
