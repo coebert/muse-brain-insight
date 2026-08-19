@@ -19,7 +19,7 @@ import {
   lineageFromProfile,
   lineageKey,
   parseLineageKey,
-  transferCompatibility,
+  compareLineage,
   type SeizureGate,
 } from "./model-lineage";
 
@@ -173,8 +173,8 @@ export function guardCoebisRuntime(
     };
   }
 
-  const transfer = transferCompatibility(modelLineage, current);
-  if (!transfer.compatible) {
+  const transfer = compareLineage(modelLineage, current);
+  if (transfer.match === "incompatible") {
     return {
       status: "blocked",
       issues: transfer.reasons,
@@ -186,6 +186,6 @@ export function guardCoebisRuntime(
     status: "warn",
     issues: [],
     warnings: transfer.reasons,
-    headline: "COEBIS model transfers to this setup, but was fitted on a different one.",
+    headline: transfer.headline,
   };
 }
