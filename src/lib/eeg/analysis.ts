@@ -498,6 +498,11 @@ export class EegAnalyzer {
     // let a chewing or shivering artefact cross the alarm threshold and merely
     // be labelled low-confidence; the score itself has to carry the penalty.
     const emgContamination = clamp01((quality.emgIndex - 0.15) / 0.35);
+    // Bursts inside burst suppression are stereotyped, high-amplitude and
+    // rhythmic, so they score like an ictal run. When the trailing window is
+    // already substantially suppressed, treat rhythmic bursts as part of that
+    // pattern rather than as a seizure.
+    const burstContext = clamp01((suppressionRatio - 8) / 22);
     if (
       !artifact &&
       !gapAffected &&
@@ -508,7 +513,8 @@ export class EegAnalyzer {
         0.45 * rhythmic +
         0.3 * Math.min(1, Math.max(0, (llRatio - 1.6) / 2.4)) +
         0.25 * Math.min(1, Math.max(0, (ictalFraction - 0.35) / 0.45));
-      seizureScore = Math.min(1, seizureScore) * (1 - 0.6 * emgContamination);
+      seizureScore =
+        Math.min(1, seizureScore) * (1 - 0.6 * emgContamination) * (1 - 0.7 * burstContext);
     }
 
     if (!artifact && !gapAffected && !isSuppressed && seizureScore < 0.4) {
