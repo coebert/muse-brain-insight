@@ -22,17 +22,17 @@
  */
 
 import { MUSE_SAMPLE_RATE } from "@/lib/eeg/dsp";
-import { MUSE_CHANNELS, type MuseChannel } from "@/lib/eeg/muse";
 
 /**
  * Canonical analysis positions. Named after the Muse electrode set for
  * continuity with existing recordings, but treated as generic
  * left/right × temporal/frontal slots that any device can be mapped onto.
+ * This is the single definition of the set; muse.ts re-exports it under its
+ * historical names.
  */
-export type AnalysisChannel = MuseChannel;
+export const ANALYSIS_CHANNELS = ["TP9", "AF7", "AF8", "TP10"] as const;
 
-/** Every position the analysis understands, in display order. */
-export const ANALYSIS_CHANNELS: readonly AnalysisChannel[] = MUSE_CHANNELS;
+export type AnalysisChannel = (typeof ANALYSIS_CHANNELS)[number];
 
 /** Rate every metric is computed at; sources are resampled onto it. */
 export const ANALYSIS_SAMPLE_RATE = MUSE_SAMPLE_RATE;
