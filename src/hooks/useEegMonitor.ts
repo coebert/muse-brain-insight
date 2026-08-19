@@ -783,6 +783,24 @@ export function useEegMonitor() {
         psd: Psd,
       ): { metrics: HemiMetrics; spectrum: number[] } => {
         const e = analyzer.analyze(signal, t, psd);
+        // No electrode on this side for this device: report it as absent and
+        // raise nothing, rather than alarming on a synthetic flat trace.
+        if (group.length === 0) {
+          return {
+            metrics: {
+              suppressionRatio: 0,
+              seizureScore: 0,
+              seizureAlert: false,
+              qualityGrade: "poor",
+              flat: true,
+              qualityScore: 0,
+              spectralConfidence: 0,
+              emgIndex: 0,
+              reasons: [`No ${side} electrode on ${profile.label}`],
+            },
+            spectrum: e.spectrum.map(() => Number.NaN),
+          };
+        }
         const grades = group.map((c) => quality[c]);
         const worst: SignalQuality["grade"] = grades.some((q) => q?.grade === "poor")
           ? "poor"
