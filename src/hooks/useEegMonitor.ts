@@ -420,10 +420,27 @@ export function useEegMonitor() {
    * never quoted for a configuration it was never measured on.
    */
   const seizureGate = useMemo(() => gateSeizureDetector(deviceProfile), [deviceProfile]);
-  const effectiveSettings = useMemo(
-    () => applySeizureGate(settings, seizureGate),
-    [settings, seizureGate],
+  /**
+   * Last check before the detector sees live data: threshold metadata that
+   * does not match the current schema blocks alerting outright rather than
+   * letting the analyzer fall back to values nobody validated.
+   */
+  const seizureGuard = useMemo(
+    () =>
+      guardSeizureRuntime(settings as unknown as Record<string, unknown>, {
+        profile: deviceProfile,
+        gate: seizureGate,
+      }),
+    [settings, deviceProfile, seizureGate],
   );
+  const effectiveSettings = useMemo(() => {
+    const gated = applySeizureGate(settings, seizureGate);
+    if (seizureGuard.status === "blocked") {
+      // Threshold above the score ceiling: the detector can never fire.
+      return { ...gated, seizureThreshold: 2 };
+    }
+    return gated;
+  }, [settings, seizureGate, seizureGuard]);
 
   useEffect(() => {
     analyzerRef.current.updateSettings(effectiveSettings);
