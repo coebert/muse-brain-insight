@@ -32,6 +32,7 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import type { EegSource } from "@/lib/eeg/muse";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
+import { describeMigration, migrateBrowserModelConfigs } from "@/lib/eeg/model-migration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { setActiveCaseCovariates } from "@/lib/eeg/depth";
 import { ageBand } from "@/lib/eeg/save";
@@ -93,6 +94,16 @@ function useCaseSessionState() {
   // Apply the locally saved depth calibration (if any) to the live estimator.
   useEffect(() => {
     setActiveDepthCalibration(loadStoredCalibration());
+  }, []);
+
+  // Upgrade any saved model or threshold record written by an older build, so
+  // a legacy field name cannot leave the detector on a default value while the
+  // saved one is displayed. Runs once, and rewrites the record in place.
+  useEffect(() => {
+    const reports = migrateBrowserModelConfigs();
+    for (const report of reports) {
+      console.info(`Migrated saved config ${report.key}: ${describeMigration(report.changes)}`);
+    }
   }, []);
 
   // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
