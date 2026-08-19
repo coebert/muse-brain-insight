@@ -268,6 +268,15 @@ export function CaseFields({
           across your cases. Never include names, dates of birth or hospital numbers.
         </p>
       </div>
+      {scrub.findings.length ? (
+        <p className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2 text-[11px] text-warning">
+          <EyeOff className="mt-px size-3.5 shrink-0" />
+          <span>
+            Automatic de-identification will clean this case before it is filed.{" "}
+            {summariseFindings(scrub.findings)}
+          </span>
+        </p>
+      ) : null}
     </div>
   );
 }
