@@ -11,6 +11,7 @@ import {
   type CoebisSufficiency,
 } from "@/lib/eeg/coebis-sufficiency";
 import type { BisDriftAnalysis } from "@/lib/eeg/bis-drift";
+import type { LineageGate, LineageSummary } from "@/lib/eeg/model-lineage";
 import { cn } from "@/lib/utils";
 
 const TONE_TEXT: Record<CoebisSufficiency["tone"], string> = {
@@ -37,15 +38,18 @@ const STATUS_STYLE: Record<CheckStatus, { icon: typeof Check; className: string;
 export function CoebisSufficiencyPanel({
   analysis,
   active,
+  lineage,
   className,
 }: {
   analysis: BisDriftAnalysis | null | undefined;
   active?:
     | { gain: number; offset: number; nPoints: number; maeBefore: number | null; maeAfter: number | null }
     | null;
+  /** Acquisition setups behind the training data, and the gate on this device. */
+  lineage?: { summary?: LineageSummary | null; gate?: LineageGate | null } | null;
   className?: string;
 }) {
-  const s = evaluateCoebisSufficiency(analysis, active ?? null);
+  const s = evaluateCoebisSufficiency(analysis, active ?? null, lineage ?? null);
 
   return (
     <section className={cn("rounded-md border border-border", className)}>

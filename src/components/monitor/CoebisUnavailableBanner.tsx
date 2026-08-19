@@ -60,7 +60,10 @@ export function CoebisUnavailableBanner({ className }: { className?: string }) {
   if (model) return null;
 
   const analysis = data?.analysis ?? null;
-  const sufficiency = evaluateCoebisSufficiency(analysis, null);
+  const sufficiency = evaluateCoebisSufficiency(analysis, null, {
+    summary: data?.lineages ?? null,
+    gate: data?.gate ?? null,
+  });
   // Only the inputs that are actually holding the model back.
   const blocking = sufficiency.checks.filter((c) => c.status === "fail" || c.status === "partial");
 
