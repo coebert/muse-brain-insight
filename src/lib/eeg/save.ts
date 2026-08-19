@@ -1,11 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
+import { scrubCaseText, type DeidFinding } from "@/lib/eeg/deid";
+import { linkPatient } from "@/lib/eeg/patient-link.functions";
 import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
 
 export interface SessionMeta {
   caseCode: string;
   context: string;
+  /** Hospital identifier, converted to a sealed link and never stored raw. */
+  patientIdentifier: string;
   location: string;
   notes: string;
   /** Free-text clinical summary written by the clinician. */
