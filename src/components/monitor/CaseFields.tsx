@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
+import { scrubCaseText, summariseFindings } from "@/lib/eeg/deid";
 import { FRAILTY_LEVELS, REGIMENS } from "@/lib/eeg/covariates";
 import { Button } from "@/components/ui/button";
 import { generateCaseCode } from "@/lib/eeg/case-startup";
@@ -34,6 +35,13 @@ export function CaseFields({
   usedCaseCodes?: string[];
 }) {
   const duplicate = isCaseCodeUsed(meta.caseCode, usedCaseCodes);
+  // Live preview of what automatic de-identification will strip on filing.
+  const scrub = scrubCaseText({
+    location: meta.location || null,
+    notes: meta.notes || null,
+    admissionDiagnosis: meta.admissionDiagnosis || null,
+    caseSummary: meta.caseSummary || null,
+  });
 
   function reroll() {
     const result = generateUniqueCaseCode(usedCaseCodes, () => generateCaseCode(meta.context));
