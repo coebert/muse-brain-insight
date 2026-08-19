@@ -987,6 +987,8 @@ export function useEegMonitor() {
     effectiveSettings,
     /** Whether the validated seizure thresholds apply to this montage. */
     seizureGate,
+    /** Schema/lineage check on the thresholds actually in force. */
+    seizureGuard,
     epochs,
     hemiSpectra,
     hemiLatest,
