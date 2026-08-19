@@ -262,6 +262,12 @@ function CaseReport() {
                 />
               </dl>
 
+              <PatientLinkBadge
+                linkId={s.patient_link_id ?? null}
+                pseudonym={s.patient_pseudonym ?? null}
+                findings={(Array.isArray(s.deid_findings) ? s.deid_findings : []) as DeidFinding[]}
+              />
+
               {s.admission_diagnosis ? (
                 <p className="mt-3 text-sm">
                   <span className="text-muted-foreground">Admission details: </span>
