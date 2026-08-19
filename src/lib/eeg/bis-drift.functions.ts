@@ -300,9 +300,15 @@ export const getBisDrift = createServerFn({ method: "GET" })
      * lineage it was fitted on; otherwise the published open index is shown
      * and a model for this device is fitted from this device's readings.
      */
+    /**
+     * Models fitted before lineage was recorded predate multi-device support,
+     * so they are grandfathered onto the headband they can only have come from
+     * rather than being discarded.
+     */
+    const rowLineage = (row: ActiveAlignment): DataLineage =>
+      parseLineageKey(row.lineage ?? "") ?? lineageFromProfile(MUSE_2_PROFILE);
     let active =
-      activeRow && compareLineage(parseLineageKey(activeRow.lineage ?? ""), target).match !==
-        "incompatible"
+      activeRow && compareLineage(rowLineage(activeRow), target).match !== "incompatible"
         ? activeRow
         : null;
 
@@ -355,7 +361,8 @@ export const getBisDrift = createServerFn({ method: "GET" })
         .from("depth_bis_alignments")
         .update({ is_active: false })
         .eq("user_id", context.userId)
-        .eq("lineage", targetKey);
+        // Legacy rows carry no lineage; retiring them keeps one model in force.
+        .or(`lineage.is.null,lineage.eq.${targetKey}`);
       const { data: inserted, error: insertError } = await context.supabase
         .from("depth_bis_alignments")
         .insert({
@@ -457,7 +464,7 @@ export const getBisDrift = createServerFn({ method: "GET" })
       justApplied,
       history: history.slice(0, 10),
       series,
-      gate: active ? gateCoebisModel(parseLineageKey(active.lineage ?? ""), target) : null,
+      gate: active ? gateCoebisModel(rowLineage(active), target) : null,
       lineages: matrix.lineages,
       excludedByLineage: selection.excluded.length,
     };
