@@ -22,6 +22,7 @@ import { CoebisModelPicker } from "@/components/monitor/CoebisModelPicker";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { SessionAlertTimeline } from "@/components/monitor/SessionAlertTimeline";
+import { SeizureDetectionTimeline } from "@/components/monitor/SeizureDetectionTimeline";
 import { TimelineScrubber, type ScrubWindow } from "@/components/monitor/TimelineScrubber";
 import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
 import { SessionCoverageSummary } from "@/components/monitor/SessionCoverageSummary";
@@ -585,6 +586,16 @@ function Trends() {
                 cursor={cursor}
                 epochs={coverageEpochs}
                 thresholds={thresholds}
+              />
+            </div>
+
+            {/* Detector output for this case, on the same time base as the DSA. */}
+            <div className="mt-4">
+              <SeizureDetectionTimeline
+                events={markers}
+                durationSeconds={summary.duration}
+                cursor={cursor}
+                onSeek={setCursor}
               />
             </div>
 
