@@ -451,7 +451,7 @@ export function IngestPanel({ onStart, disabled }: Props) {
           </ul>
         ) : null}
 
-        {error ? <p className="text-xs text-danger">{error}</p> : null}
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
       </div>
     </div>
   );
