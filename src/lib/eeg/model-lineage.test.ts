@@ -51,7 +51,7 @@ describe("gating", () => {
 
   it("keeps validated seizure thresholds on the full montage", () => {
     const gate = gateSeizureDetector(MUSE_2_PROFILE);
-    const settings = { seizureScoreThreshold: 0.5, seizureMinEpochs: 2 };
+    const settings = { seizureThreshold: 0.5, seizureEpochs: 2 };
     expect(applySeizureGate(settings, gate)).toEqual(settings);
   });
 
@@ -59,11 +59,11 @@ describe("gating", () => {
     const profile = deviceProfileById("focuscalm");
     if (!profile) return;
     const gate = gateSeizureDetector(profile);
-    const gated = applySeizureGate({ seizureScoreThreshold: 0.5, seizureMinEpochs: 2 }, gate);
+    const gated = applySeizureGate({ seizureThreshold: 0.5, seizureEpochs: 2 }, gate);
     expect(
       gate.mode === "blocked" ||
-        gated.seizureScoreThreshold > 0.5 ||
-        gated.seizureMinEpochs > 2,
+        gated.seizureThreshold > 0.5 ||
+        gated.seizureEpochs > 2,
     ).toBe(true);
   });
 });
