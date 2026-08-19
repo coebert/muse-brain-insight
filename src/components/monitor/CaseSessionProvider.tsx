@@ -32,6 +32,7 @@ import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
 import type { EegSource } from "@/lib/eeg/muse";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
+import { describeMigration, migrateBrowserModelConfigs } from "@/lib/eeg/model-migration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { setActiveCaseCovariates } from "@/lib/eeg/depth";
 import { ageBand } from "@/lib/eeg/save";
