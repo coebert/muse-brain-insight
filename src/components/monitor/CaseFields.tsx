@@ -269,7 +269,7 @@ export function CaseFields({
         </p>
       </div>
       {scrub.findings.length ? (
-        <p className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-2 text-[11px] text-warning">
+        <p className="flex items-start gap-1.5 rounded-md border border-caution/40 bg-caution/10 px-2.5 py-2 text-[11px] text-caution">
           <EyeOff className="mt-px size-3.5 shrink-0" />
           <span>
             Automatic de-identification will clean this case before it is filed.{" "}
