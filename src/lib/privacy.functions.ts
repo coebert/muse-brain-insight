@@ -96,6 +96,7 @@ export const deleteAllMyData = createServerFn({ method: "POST" })
       "eeg_events",
       "depth_state_labels",
       "eeg_sessions",
+      "patient_links",
     ] as const) {
       const { error } = await supabase.from(table).delete().eq("user_id", userId);
       if (error) throw error;
