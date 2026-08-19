@@ -12,6 +12,21 @@ import {
 import { type CoebisTrainingPoint } from "@/lib/eeg/coebis-covariates";
 import { selectCoebisTier, tierModelVersion } from "@/lib/eeg/coebis-tiers";
 import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
+import {
+  MUSE_2_PROFILE,
+} from "@/lib/eeg/device-profile";
+import {
+  compareLineage,
+  gateCoebisModel,
+  lineageFromProfile,
+  lineageKey,
+  parseLineageKey,
+  selectTrainingForLineage,
+  summariseLineages,
+  type DataLineage,
+  type LineageGate,
+  type LineageSummary,
+} from "@/lib/eeg/model-lineage";
 
 export interface ActiveAlignment {
   id: string;
@@ -32,6 +47,10 @@ export interface ActiveAlignment {
   autoApplied: boolean;
   createdAt: string;
   note: string | null;
+  /** Acquisition setup this model was fitted on, if recorded. */
+  lineage: string | null;
+  /** Setups the training readings spanned, as a plain-language note. */
+  lineageNote: string | null;
 }
 
 /** One point of the side-by-side comparison series, oldest first. */
@@ -56,6 +75,12 @@ export interface BisDriftReport {
   history: ActiveAlignment[];
   /** Most recent paired readings for the side-by-side chart, oldest first. */
   series: BisDriftSeriesPoint[];
+  /** Whether the active model may run on the device that asked, and why. */
+  gate: LineageGate | null;
+  /** Acquisition setups behind the pooled readings. */
+  lineages: LineageSummary;
+  /** Readings excluded from this fit because their setup does not transfer. */
+  excludedByLineage: number;
 }
 
 interface AlignmentRow {
@@ -76,6 +101,8 @@ interface AlignmentRow {
   model_version?: string | null;
   model_family?: string | null;
   coefficients?: unknown;
+  lineage?: string | null;
+  lineage_detail?: unknown;
 }
 
 const num = (v: number | string | null): number | null =>
@@ -119,11 +146,14 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
     autoApplied: row.auto_applied,
     createdAt: row.created_at,
     note: row.note,
+    lineage: row.lineage ?? null,
+    lineageNote:
+      ((row.lineage_detail as { note?: unknown } | null)?.note as string | undefined) ?? null,
   };
 }
 
 const ALIGNMENT_COLUMNS =
-  'id, gain, "offset", knots, model_version, model_family, coefficients, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
+  'id, gain, "offset", knots, model_version, model_family, coefficients, lineage, lineage_detail, n_points, n_sessions, bias_before, bias_after, mae_before, mae_after, auto_applied, is_active, created_at, note';
 
 /** File the paired BIS/app values from a case so the pooled watch can use them. */
 export const recordBisPoints = createServerFn({ method: "POST" })
