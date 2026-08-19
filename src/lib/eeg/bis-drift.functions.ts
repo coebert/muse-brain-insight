@@ -12,6 +12,7 @@ import {
 import { type CoebisTrainingPoint } from "@/lib/eeg/coebis-covariates";
 import { selectCoebisTier, tierModelVersion } from "@/lib/eeg/coebis-tiers";
 import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
+import { covariateTermSchema, knotSchema } from "@/lib/eeg/model-config-schema";
 import {
   MUSE_2_PROFILE,
 } from "@/lib/eeg/device-profile";
