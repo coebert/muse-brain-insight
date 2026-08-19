@@ -194,7 +194,7 @@ export function BisDriftPanel() {
                 )}
                 role="status"
               >
-                {data.gate.headline} {data.gate.detail}
+                {data.gate.headline} {data.gate.action}
               </p>
             ) : null}
 
