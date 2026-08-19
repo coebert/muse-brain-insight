@@ -114,6 +114,7 @@ import { useBatteryAlert } from "@/lib/eeg/battery-alert";
 import { useBatteryHealth } from "@/lib/eeg/battery-health";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
+import { AcquisitionLineagePanel } from "@/components/monitor/AcquisitionLineagePanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { cn } from "@/lib/utils";
 
@@ -968,6 +969,9 @@ function Monitor() {
               depthGatedFraction={latest?.depth.gatedFraction}
               analysisSource={monitor.analysisSource}
             />
+            </div>
+            <div id="mon-lineage" className="scroll-mt-24 rounded-lg transition-shadow">
+              <AcquisitionLineagePanel profile={deviceProfile} />
             </div>
             <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
               <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
