@@ -81,9 +81,13 @@ function renderGrid(epochs: Epoch[], suppressionSeconds: number) {
 
 /** The number rendered on a named tile. */
 function tileValue(label: string): number {
-  const tile = screen.getByText(new RegExp(`^${label}`, "i")).closest("div")!.parentElement!;
-  const text = tile.textContent ?? "";
-  const match = text.replace(new RegExp(`^${label}[^0-9-]*`, "i"), "").match(/-?\d+(\.\d+)?/);
+  let node: HTMLElement | null = screen.getByText(new RegExp(`^${label}`, "i")) as HTMLElement;
+  let valueEl: HTMLElement | null = null;
+  while (node && !valueEl) {
+    valueEl = node.querySelector<HTMLElement>(".metric-value");
+    node = node.parentElement;
+  }
+  const match = (valueEl?.textContent ?? "").match(/-?\d+(\.\d+)?/);
   return Number(match?.[0]);
 }
 
