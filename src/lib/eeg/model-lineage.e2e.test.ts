@@ -71,17 +71,21 @@ describe("training-set selection across lineages", () => {
     expect(summary.dominant?.key).toBe(museKey);
   });
 
-  it("excludes single-channel readings from a full-montage fit", () => {
+  it("excludes readings from montages that cannot reproduce the target", () => {
     const { used, excluded, unlabelled } = selectTrainingForLineage(
       MIXED_POOL,
       lineageFromProfile(MUSE_2_PROFILE),
     );
-    expect(excluded.every((p) => p.lineageKey === singleKey)).toBe(true);
-    expect(excluded).toHaveLength(15);
+    // Both the single frontal channel and the frontal-only pair lack the
+    // temporal positions the full-montage index is built from.
+    expect(excluded.every((p) => p.lineageKey === singleKey || p.lineageKey === frontalKey)).toBe(
+      true,
+    );
+    expect(excluded).toHaveLength(30);
     // Pre-lineage readings are grandfathered rather than discarded.
     expect(unlabelled).toHaveLength(5);
-    expect(used.some((p) => p.lineageKey === singleKey)).toBe(false);
-    expect(used.some((p) => p.lineageKey === frontalKey)).toBe(true);
+    expect(used.every((p) => p.lineageKey === museKey || p.lineageKey === null)).toBe(true);
+    expect(used).toHaveLength(25);
   });
 
   it("keeps the fit on the true map instead of averaging two measurements", () => {
@@ -89,9 +93,10 @@ describe("training-set selection across lineages", () => {
     const gated = fitAlignment(selectTrainingForLineage(MIXED_POOL, target).used)!;
     const ungated = fitAlignment(MIXED_POOL)!;
     // Compatible readings all sit +6 above the monitor, so the gated fit must
-    // subtract about six points; the contaminated pool cannot.
-    expect(gated.biasAfter).toBeLessThan(1);
-    expect(Math.abs(gated.maeAfter)).toBeLessThan(Math.abs(ungated.maeAfter));
+    // remove most of that offset; the contaminated pool cannot.
+    expect(Math.abs(gated.biasAfter)).toBeLessThan(Math.abs(gated.biasBefore) / 2);
+    expect(Math.abs(gated.biasAfter)).toBeLessThan(Math.abs(ungated.biasAfter));
+    expect(gated.maeAfter).toBeLessThan(ungated.maeAfter);
   });
 
   it("excludes full-montage readings when the target is a single channel", () => {
