@@ -115,6 +115,7 @@ import { useBatteryHealth } from "@/lib/eeg/battery-health";
 import { MONITOR_JUMP, focusMonitorSection, type MonitorJumpTarget } from "@/lib/monitor-jump";
 import { ChannelCompletenessPanel } from "@/components/monitor/ChannelCompletenessPanel";
 import { AcquisitionLineagePanel } from "@/components/monitor/AcquisitionLineagePanel";
+import { SeizureThresholdPanel } from "@/components/monitor/SeizureThresholdPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { cn } from "@/lib/utils";
 
@@ -973,6 +974,12 @@ function Monitor() {
             <div id="mon-lineage" className="scroll-mt-24 rounded-lg transition-shadow">
               <AcquisitionLineagePanel profile={deviceProfile} />
             </div>
+            <SeizureThresholdPanel
+              configured={monitor.settings}
+              applied={monitor.effectiveSettings}
+              gate={monitor.seizureGate}
+              profile={deviceProfile}
+            />
             <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
               <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
             </div>
