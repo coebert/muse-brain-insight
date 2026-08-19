@@ -63,7 +63,7 @@ describe("seizure gating consistency across lineage changes", () => {
     // times, as a case that keeps switching devices would.
     const rng = makeRng(4242);
     for (let i = 0; i < 1500; i += 1) {
-      const p = profiles[Math.floor(rng() * profiles.length)]!;
+      const p = profiles[Math.floor(rng.next() * profiles.length)]!;
       const key = lineageKey(lineageFromProfile(p));
       expect(applyFor(p)).toEqual(first.get(key));
     }
@@ -106,14 +106,19 @@ describe("seizure gating consistency across lineage changes", () => {
   });
 
   it("keeps the runtime guard aligned with the gate on every lineage", () => {
+    // The guard sees the full stored threshold shape, as the monitor hands it.
+    const stored = { ...CONFIGURED, suppressionThresholdUv: 10, srWindowSeconds: 120 };
     for (const p of seizureGateFixtures()) {
       const gate = gateSeizureDetector(p);
-      const guard = guardSeizureRuntime({ ...CONFIGURED }, { profile: p, gate });
+      const guard = guardSeizureRuntime({ ...stored }, { profile: p, gate });
       expect(guard.status === "blocked").toBe(!gate.allowed);
-      if (guard.status !== "blocked") {
-        expect(guard.thresholds?.seizureThreshold).toBe(applyFor(p).seizureThreshold);
-        expect(guard.thresholds?.seizureEpochs).toBe(applyFor(p).seizureEpochs);
+      if (gate.allowed) {
+        expect(guard.status).toBe(gate.mode === "provisional" ? "warn" : "ok");
       }
+      // The guard reports the configured values; stiffening is the gate's job,
+      // and the two must not disagree about what was configured.
+      expect(guard.thresholds?.seizureThreshold).toBe(CONFIGURED.seizureThreshold);
+      expect(guard.thresholds?.seizureEpochs).toBe(CONFIGURED.seizureEpochs);
     }
   });
 
