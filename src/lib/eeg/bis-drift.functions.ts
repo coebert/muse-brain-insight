@@ -12,6 +12,7 @@ import {
 import { type CoebisTrainingPoint } from "@/lib/eeg/coebis-covariates";
 import { selectCoebisTier, tierModelVersion } from "@/lib/eeg/coebis-tiers";
 import { covariateAdjustment, type CovariateTerm } from "@/lib/eeg/covariates";
+import { covariateTermSchema, knotSchema } from "@/lib/eeg/model-config-schema";
 import {
   MUSE_2_PROFILE,
 } from "@/lib/eeg/device-profile";
@@ -108,20 +109,18 @@ interface AlignmentRow {
 const num = (v: number | string | null): number | null =>
   v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null;
 
+/**
+ * Covariate terms are validated rather than coerced: a term written by an
+ * older build, or with an out-of-range correction, is dropped instead of being
+ * cast into a number that would then shift the displayed index.
+ */
 function toTerms(value: unknown): CovariateTerm[] {
   const raw = (value as { terms?: unknown } | null)?.terms;
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map((t) => {
-      const r = t as { group?: unknown; level?: unknown; dy?: unknown; n?: unknown };
-      return {
-        group: String(r.group ?? ""),
-        level: String(r.level ?? ""),
-        dy: Number(r.dy),
-        n: Number(r.n) || 0,
-      };
-    })
-    .filter((t) => t.group && t.level && Number.isFinite(t.dy));
+  return raw.flatMap((t) => {
+    const parsed = covariateTermSchema.safeParse(t);
+    return parsed.success ? [parsed.data as CovariateTerm] : [];
+  });
 }
 
 function toAlignment(row: AlignmentRow): ActiveAlignment {
@@ -130,9 +129,10 @@ function toAlignment(row: AlignmentRow): ActiveAlignment {
     gain: num(row.gain) ?? 1,
     offset: num(row.offset) ?? 0,
     knots: Array.isArray(row.knots)
-      ? (row.knots as { x: number; dy: number }[])
-          .map((k) => ({ x: Number(k.x), dy: Number(k.dy) }))
-          .filter((k) => Number.isFinite(k.x) && Number.isFinite(k.dy))
+      ? row.knots.flatMap((k) => {
+          const parsed = knotSchema.safeParse(k);
+          return parsed.success ? [parsed.data] : [];
+        })
       : [],
     modelVersion: row.model_version ?? "coebis-1",
     modelFamily: row.model_family ?? "affine",

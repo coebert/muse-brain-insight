@@ -50,7 +50,7 @@ export const analysisChannelSchema = z.enum(
 export const dataLineageSchema = z.object({
   deviceId: z.string().min(1),
   deviceLabel: z.string().min(1),
-  transport: z.enum(["bluetooth", "serial", "file", "lsl"]),
+  transport: z.enum(["ble", "ingest", "simulated"]),
   channels: z.array(analysisChannelSchema),
   sampleRate: finite.min(1).max(20000),
 });
