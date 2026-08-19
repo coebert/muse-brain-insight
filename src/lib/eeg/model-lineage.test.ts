@@ -75,10 +75,14 @@ describe("training selection", () => {
     { lineageKey: null, v: 3 },
   ];
 
-  it("holds incompatible setups out of the fit", () => {
+  it("keeps same-setup readings and drops ones that cannot transfer", () => {
     const sel = selectTrainingForLineage(points, muse);
-    expect(sel.used.some((p) => p.v === 2)).toBe(false);
     expect(sel.used.some((p) => p.v === 1)).toBe(true);
+    // Unlabelled historic readings are kept rather than discarding early data.
+    expect(sel.unlabelled).toHaveLength(1);
+    for (const p of sel.excluded) {
+      expect(compareLineage(parseLineageKey(p.lineageKey!), muse).match).toBe("incompatible");
+    }
   });
 
   it("reports a mixed training set", () => {
