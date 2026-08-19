@@ -1,3 +1,4 @@
+import { applySeizureGate, gateSeizureDetector } from "@/lib/eeg/model-lineage";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
@@ -412,11 +413,23 @@ export function useEegMonitor() {
     allocateBuffers(profileRef.current);
   }
 
+  /**
+   * The seizure thresholds were validated on a full four-electrode montage. On
+   * a thinner montage they are stiffened, and on a montage that cannot support
+   * the detector at all it is held off, so the published false-alarm rate is
+   * never quoted for a configuration it was never measured on.
+   */
+  const seizureGate = useMemo(() => gateSeizureDetector(deviceProfile), [deviceProfile]);
+  const effectiveSettings = useMemo(
+    () => applySeizureGate(settings, seizureGate),
+    [settings, seizureGate],
+  );
+
   useEffect(() => {
-    analyzerRef.current.updateSettings(settings);
-    leftAnalyzerRef.current.updateSettings(settings);
-    rightAnalyzerRef.current.updateSettings(settings);
-  }, [settings]);
+    analyzerRef.current.updateSettings(effectiveSettings);
+    leftAnalyzerRef.current.updateSettings(effectiveSettings);
+    rightAnalyzerRef.current.updateSettings(effectiveSettings);
+  }, [effectiveSettings]);
 
   const activeSignal = useCallback((length: number): Float64Array => {
     const sel = channelRef.current;
@@ -952,6 +965,10 @@ export function useEegMonitor() {
     setChannel,
     settings,
     setSettings,
+    /** Detector settings actually in force, after the montage gate. */
+    effectiveSettings,
+    /** Whether the validated seizure thresholds apply to this montage. */
+    seizureGate,
     epochs,
     hemiSpectra,
     hemiLatest,
