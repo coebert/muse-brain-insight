@@ -20,6 +20,8 @@ import {
   type GateMode,
   type SeizureGate,
 } from "@/lib/eeg/model-lineage";
+import type { SeizureGuardResult } from "@/lib/eeg/runtime-guard";
+import { guardSeizureRuntime } from "@/lib/eeg/runtime-guard";
 import { cn } from "@/lib/utils";
 
 const MODE_LABEL: Record<GateMode, string> = {
@@ -70,6 +72,8 @@ export interface SeizureThresholdPanelProps {
   applied: { seizureThreshold: number; seizureEpochs: number };
   /** Gate decision; recomputed from the profile when omitted. */
   gate?: SeizureGate;
+  /** Schema/lineage check on these thresholds; recomputed when omitted. */
+  guard?: SeizureGuardResult;
   profile?: DeviceProfile;
   className?: string;
 }
@@ -78,11 +82,18 @@ export function SeizureThresholdPanel({
   configured,
   applied,
   gate,
+  guard,
   profile,
   className,
 }: SeizureThresholdPanelProps) {
   const device = profile ?? getActiveDeviceProfile();
   const decision = gate ?? gateSeizureDetector(device);
+  const check =
+    guard ??
+    guardSeizureRuntime(configured as unknown as Record<string, unknown>, {
+      profile: device,
+      gate: decision,
+    });
   const Icon = MODE_ICON[decision.mode];
 
   return (
@@ -138,6 +149,29 @@ export function SeizureThresholdPanel({
       ) : null}
       {decision.action ? (
         <p className="mt-1 text-[11px] text-foreground/80">Next: {decision.action}</p>
+      ) : null}
+      {check.status === "blocked" && check.issues.length ? (
+        <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-2">
+          <p className="text-[11px] font-semibold text-destructive">
+            Threshold schema rejected — detection is held off before analysis runs.
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {check.issues.map((i) => (
+              <li key={i} className="text-[11px] text-destructive">
+                · {i}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {check.status === "warn" && check.warnings.length ? (
+        <ul className="mt-2 space-y-0.5">
+          {check.warnings.map((w) => (
+            <li key={w} className="text-[11px] text-caution">
+              · {w}
+            </li>
+          ))}
+        </ul>
       ) : null}
       {decision.mode === "blocked" ? (
         <p className="mt-1 text-[11px] text-destructive">
