@@ -95,6 +95,16 @@ function useCaseSessionState() {
     setActiveDepthCalibration(loadStoredCalibration());
   }, []);
 
+  // Upgrade any saved model or threshold record written by an older build, so
+  // a legacy field name cannot leave the detector on a default value while the
+  // saved one is displayed. Runs once, and rewrites the record in place.
+  useEffect(() => {
+    const reports = migrateBrowserModelConfigs();
+    for (const report of reports) {
+      console.info(`Migrated saved config ${report.key}: ${describeMigration(report.changes)}`);
+    }
+  }, []);
+
   // Apply the alignment fitted from pooled commercial-BIS comparisons, so the
   // live index reflects any correction the app has already earned the right to
   // make. The hook keeps re-checking during a case, so a model refitted while
