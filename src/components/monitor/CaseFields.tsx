@@ -90,6 +90,23 @@ export function CaseFields({
           uses its own numbering.
         </p>
       </div>
+      <div>
+        <Label htmlFor={`${idPrefix}-pid`}>Hospital identifier (for secure linkage)</Label>
+        <Input
+          id={`${idPrefix}-pid`}
+          className="mt-1.5"
+          autoComplete="off"
+          placeholder="e.g. RXH1234567 — optional"
+          value={meta.patientIdentifier}
+          onChange={(e) => onChange({ ...meta, patientIdentifier: e.target.value })}
+        />
+        <p className="mt-1 flex items-start gap-1.5 text-[11px] text-muted-foreground">
+          <ShieldCheck className="mt-px size-3.5 shrink-0 text-signal" />
+          Never stored with the recording. It is encrypted into a private linkage record and the
+          case keeps only a pseudonym, so the same patient’s recordings group together while the
+          record itself stays anonymous. Leave blank for a fully unlinked case.
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label>Context</Label>
