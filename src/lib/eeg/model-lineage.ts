@@ -19,6 +19,7 @@
  */
 
 import {
+  getActiveDeviceProfile,
   ANALYSIS_CHANNELS,
   ANALYSIS_SAMPLE_RATE,
   CHANNEL_SIDE,
@@ -532,4 +533,14 @@ export function selectTrainingForLineage<T extends { lineageKey?: string | null 
     else used.push(p);
   }
   return { used, excluded, unlabelled };
+}
+
+/** Lineage of the source currently feeding the analysis. */
+export function activeLineage(): DataLineage {
+  return lineageFromProfile(getActiveDeviceProfile());
+}
+
+/** Convenience for server calls that file or fit against the live setup. */
+export function activeLineageKey(): string {
+  return lineageKey(activeLineage());
 }

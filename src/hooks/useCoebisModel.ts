@@ -1,3 +1,4 @@
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import { useCallback, useEffect, useState } from "react";
 
 import {
@@ -27,7 +28,7 @@ async function fitIfNoModelYet(): Promise<BisAlignment | null> {
   if (fitAttempted || getSyncedBisAlignment()) return null;
   fitAttempted = true;
   try {
-    await getBisDrift({});
+    await getBisDrift({ data: { lineage: activeLineageKey() } });
   } catch {
     return null;
   }

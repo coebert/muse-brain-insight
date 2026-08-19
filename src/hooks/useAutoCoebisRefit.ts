@@ -8,6 +8,7 @@
  * data, so the displayed number reflects every reading already logged.
  */
 
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -126,10 +127,11 @@ export function useAutoCoebisRefit(opts: {
               context: s.context ?? null,
               device: s.readings.find((r) => r.device)?.device ?? null,
               points,
+              lineage: activeLineageKey(),
             },
           });
           markFiled(points.map((p) => byId.get(p.at)?.id).filter((id): id is string => !!id));
-          await refreshCoebis({});
+          await refreshCoebis({ data: { lineage: activeLineageKey() } });
           const model = await syncBisAlignment();
           recordCoebisRefit({
             trigger: "auto",

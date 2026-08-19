@@ -4,6 +4,7 @@
  * older model for comparison. Pinning is display-only: the live model keeps
  * syncing underneath and releasing the pin returns to it immediately.
  */
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, History, Loader2, RefreshCw, RotateCcw } from "lucide-react";
@@ -293,7 +294,7 @@ export function useCoebisRefit(onDone?: () => void | Promise<void>) {
     const beforeModel = getLatestBisAlignment();
     const before = beforeModel?.id ?? null;
     try {
-      const report = await fetchDrift({});
+      const report = await fetchDrift({ data: { lineage: activeLineageKey() } });
       const model = await syncBisAlignment();
       const changed = report.justApplied || (!!model?.id && model.id !== before);
       recordCoebisRefit({ trigger: "manual", before: beforeModel, after: model, changed });

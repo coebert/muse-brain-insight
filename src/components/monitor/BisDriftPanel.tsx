@@ -1,3 +1,4 @@
+import { activeLineageKey } from "@/lib/eeg/model-lineage";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -63,7 +64,7 @@ export function BisDriftPanel() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["bis-drift"],
     queryFn: async () => {
-      const report = await fetchDrift({ data: undefined });
+      const report = await fetchDrift({ data: { lineage: activeLineageKey() } });
       // Keep the live estimator in step with whatever is now active.
       await syncBisAlignment();
       if (report.justApplied) {
