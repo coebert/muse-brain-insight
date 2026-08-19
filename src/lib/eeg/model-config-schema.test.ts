@@ -80,7 +80,8 @@ describe("COEBIS model config", () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.value.knots).toEqual([]);
-      expect(r.value.warnings ?? r.value.lineageKey).toBeNull();
+      expect(r.value.lineageKey).toBeNull();
+      expect(r.warnings[0]).toContain("no lineage");
     }
   });
 
