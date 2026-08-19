@@ -131,7 +131,7 @@ export async function saveSession(
         case_code: sealedCase ?? meta.caseCode,
         patient_link_id: patientLinkId,
         patient_pseudonym: patientPseudonym,
-        deid_findings: deidFindings,
+        deid_findings: deidFindings.map((f) => ({ kind: f.kind, count: f.count })),
         context: meta.context,
         location: sealedLocation ?? null,
         notes: sealedNotes ?? null,
