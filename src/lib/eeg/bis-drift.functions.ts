@@ -163,6 +163,8 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       sessionId?: string | null;
       context?: string | null;
       device?: string | null;
+      /** Acquisition setup key of the headband these readings were taken with. */
+      lineage?: string | null;
       points: {
         at: number;
         bis: number;
@@ -210,6 +212,7 @@ export const recordBisPoints = createServerFn({ method: "POST" })
       ce: (p.ce ?? {}) as unknown as never,
       context: data.context ?? null,
       device: data.device ?? null,
+      source_lineage: data.lineage ?? null,
     }));
     const { error } = await context.supabase.from("bis_paired_points").insert(rows);
     if (error) throw new Error(error.message);
@@ -265,10 +268,22 @@ export const linkBisPointsToSession = createServerFn({ method: "POST" })
  */
 export const getBisDrift = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<BisDriftReport> => {
+  .inputValidator((input?: { lineage?: string | null } | null) => ({
+    lineage: input?.lineage?.trim() || null,
+  }))
+  .handler(async ({ data, context }): Promise<BisDriftReport> => {
     const { loadTrainingMatrix } = await import("@/lib/eeg/coebis-training.server");
     const matrix = await loadTrainingMatrix(context.supabase);
-    const training: CoebisTrainingPoint[] = matrix.points;
+    /**
+     * The setup the caller is streaming on. A model is only ever fitted from
+     * readings whose acquisition setup transfers to it, so a four-electrode
+     * headband and a single-channel band never average into one correction.
+     */
+    const target: DataLineage =
+      parseLineageKey(data.lineage ?? "") ?? lineageFromProfile(MUSE_2_PROFILE);
+    const targetKey = lineageKey(target);
+    const selection = selectTrainingForLineage(matrix.points, target);
+    const training: CoebisTrainingPoint[] = selection.used;
     const points: BisDriftPoint[] = training;
 
     const { data: rows, error } = await context.supabase
@@ -278,8 +293,18 @@ export const getBisDrift = createServerFn({ method: "GET" })
       .limit(20);
     if (error) throw new Error(error.message);
     const history = ((rows ?? []) as unknown as AlignmentRow[]).map(toAlignment);
-    let active =
+    const activeRow =
       history.find((_, i) => ((rows ?? []) as unknown as AlignmentRow[])[i]!.is_active) ?? null;
+    /**
+     * A stored model only stays in force while the device still matches the
+     * lineage it was fitted on; otherwise the published open index is shown
+     * and a model for this device is fitted from this device's readings.
+     */
+    let active =
+      activeRow && compareLineage(parseLineageKey(activeRow.lineage ?? ""), target).match !==
+        "incompatible"
+        ? activeRow
+        : null;
 
     let analysis = analyseBisDrift(points, active);
     let justApplied = false;
@@ -325,11 +350,12 @@ export const getBisDrift = createServerFn({ method: "GET" })
        * How much model the paired data can honestly carry: a higher tier is
        * only taken when it beats the simpler one on cases it never saw.
        */
-      const selection = selectCoebisTier(training);
+      const tierSelection = selectCoebisTier(training);
       await context.supabase
         .from("depth_bis_alignments")
         .update({ is_active: false })
-        .eq("user_id", context.userId);
+        .eq("user_id", context.userId)
+        .eq("lineage", targetKey);
       const { data: inserted, error: insertError } = await context.supabase
         .from("depth_bis_alignments")
         .insert({
@@ -337,18 +363,28 @@ export const getBisDrift = createServerFn({ method: "GET" })
           gain: fit.gain,
           offset: fit.offset,
           knots: fit.knots.map((k) => ({ x: k.x, dy: k.dy })) as unknown as Record<string, number>[],
-          model_version: tierModelVersion(selection.tier, confirmed),
-          model_family: selection.family,
+          model_version: `${tierModelVersion(tierSelection.tier, confirmed)}·${targetKey}`,
+          model_family: tierSelection.family,
+          lineage: targetKey,
+          lineage_detail: {
+            device: target.deviceId,
+            label: target.deviceLabel,
+            channels: target.channels,
+            sampleRate: target.sampleRate,
+            note: summariseLineages(training).note,
+            excluded: selection.excluded.length,
+            unlabelled: selection.unlabelled.length,
+          } as unknown as never,
           coefficients: {
-            terms: selection.terms,
-            tier: selection.tier,
+            terms: tierSelection.terms,
+            tier: tierSelection.tier,
           } as unknown as never,
           cv_metrics: {
-            tier: selection.tier,
-            gainOverPooled: selection.gainOverPooled,
-            outOfSample: selection.cv?.outOfSample ?? null,
-            folds: selection.cv?.folds ?? 0,
-            candidates: selection.candidates.map((c) => ({
+            tier: tierSelection.tier,
+            gainOverPooled: tierSelection.gainOverPooled,
+            outOfSample: tierSelection.cv?.outOfSample ?? null,
+            folds: tierSelection.cv?.folds ?? 0,
+            candidates: tierSelection.candidates.map((c) => ({
               tier: c.tier,
               eligible: c.eligible,
               mae: c.mae,
@@ -368,9 +404,10 @@ export const getBisDrift = createServerFn({ method: "GET" })
             (confirmed
               ? `COEBIS refitted automatically from ${fit.n} paired readings across ${fit.sessions} cases.`
               : `Provisional COEBIS fitted from ${fit.n} paired readings across ${fit.sessions} cases — indicative until 30 readings across 3 cases confirm it.`) +
-            ` ${selection.note}` +
-            (selection.terms.length
-              ? ` ${selection.terms.length} patient-specific adjustment${selection.terms.length === 1 ? "" : "s"} in force.`
+            ` Fitted on ${target.deviceLabel} (${target.channels.join(", ") || "no electrodes"} @ ${Math.round(target.sampleRate)} Hz).` +
+            ` ${tierSelection.note}` +
+            (tierSelection.terms.length
+              ? ` ${tierSelection.terms.length} patient-specific adjustment${tierSelection.terms.length === 1 ? "" : "s"} in force.`
               : ""),
         })
         .select(ALIGNMENT_COLUMNS)
@@ -414,7 +451,16 @@ export const getBisDrift = createServerFn({ method: "GET" })
       sessionId: p.sessionId,
     }));
 
-    return { analysis, active, justApplied, history: history.slice(0, 10), series };
+    return {
+      analysis,
+      active,
+      justApplied,
+      history: history.slice(0, 10),
+      series,
+      gate: active ? gateCoebisModel(parseLineageKey(active.lineage ?? ""), target) : null,
+      lineages: matrix.lineages,
+      excludedByLineage: selection.excluded.length,
+    };
   });
 
 /** Turn the automatic correction off and go back to the published scale. */
