@@ -97,7 +97,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-md border border-border px-2.5 py-2">
-      <p className="text-[10px] tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</p>
       <p
         className={cn(
           "metric-value text-lg",
@@ -254,7 +254,7 @@ export function SeizureValidationPanel({
         </p>
       )}
 
-      <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
         Shaped synthetic traces, not human recordings: they bound detector behaviour against known
         patterns and artefacts and are not evidence of clinical sensitivity in patients.
       </p>

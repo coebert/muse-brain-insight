@@ -100,7 +100,7 @@ export function SeizureDetectionTimeline({
           />
         ) : null}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
         <span>{formatClock(0)}</span>
         <span>{formatClock(durationSeconds)}</span>
       </div>
