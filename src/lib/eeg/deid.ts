@@ -124,8 +124,15 @@ const RULES: Rule[] = [
   { kind: "email", re: /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/gi },
   // NHS number: 10 digits, optionally spaced 3-3-4.
   { kind: "nhs_number", re: /\b\d{3}[ -]?\d{3}[ -]?\d{4}\b/g },
-  // UK phone numbers (11 digits starting 0, or +44 form).
-  { kind: "phone", re: /\b(?:\+44\s?\d{3,4}|\(?0\d{3,4}\)?)[\s-]?\d{3}[\s-]?\d{3,4}\b/g },
+  // UK phone numbers: 10–11 digits starting 0, or the +44 form, however spaced.
+  {
+    kind: "phone",
+    re: /(?:\+44\s?)?\(?0\d{1,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b/g,
+    skip: (m) => {
+      const digits = m.replace(/\D/g, "").length;
+      return digits < 10 || digits > 12;
+    },
+  },
   // Hospital / MRN style: letters+digits or a labelled number.
   {
     kind: "hospital_number",
