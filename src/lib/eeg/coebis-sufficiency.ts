@@ -314,7 +314,7 @@ export function evaluateCoebisSufficiency(
           : "n/a"
       : "n/a";
     const status: CheckStatus =
-      gateStatus === "fail" || mixedStatus === "fail"
+      gateStatus === "fail"
         ? "fail"
         : gateStatus === "partial" || mixedStatus === "partial"
           ? "partial"
