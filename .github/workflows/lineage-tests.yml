@@ -1,0 +1,62 @@
+# Gating regressions are clinical safety regressions: if a change lets COEBIS or
+# the seizure detector run on a montage they were never calibrated on, that must
+# stop the pull request before anything else is spent on it.
+name: Model lineage gating
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: lineage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lineage-gating:
+    name: Lineage gating (fail fast)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Fails on the first failing file, so a broken gate reports in seconds.
+      - name: Lineage compatibility, gating and fixtures
+        run: |
+          bunx vitest run --bail=1 --reporter=verbose \
+            src/lib/eeg/model-lineage.test.ts \
+            src/lib/eeg/model-lineage.e2e.test.ts \
+            src/lib/eeg/lineage-fixtures.test.ts \
+            src/lib/eeg/model-config-schema.test.ts \
+            src/lib/eeg/model-migration.test.ts \
+            src/lib/eeg/runtime-guard.test.ts \
+            src/components/monitor/lineage-blocked.e2e.test.tsx
+
+  full-suite:
+    name: Types and full test suite
+    runs-on: ubuntu-latest
+    # Only worth running once the gating checks are green.
+    needs: lineage-gating
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsgo --noEmit -p tsconfig.json
+
+      - name: Test suite
+        run: bun run test
