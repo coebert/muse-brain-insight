@@ -234,12 +234,6 @@ const persistenceSweep = SEIZURE_EPOCH_GRID.map((n) => replay({ seizureEpochs: n
 const allCells = [...uvSweep, ...windowSweep, ...scoreSweep, ...persistenceSweep];
 
 describe("threshold sweep: seizure and burst-suppression detection", () => {
-  it("probe", () => {
-    const c = uvSweep[1]!;
-    const rows = c.epochs.filter((e) => e.t > 200 && e.t < 260).map((e) => `${e.t}:${e.seizureScore.toFixed(2)}`);
-    console.log(rows.join(" "));
-  });
-
   it("produces finite, in-range outputs in every grid cell", () => {
     for (const cell of allCells) {
       expect(cell.finite).toBe(true);
@@ -344,7 +338,7 @@ describe("threshold sweep: seizure and burst-suppression detection", () => {
   it("keeps every seizure alert inside the labelled ictal run", () => {
     for (const cell of allCells) {
       for (const event of cell.events.filter((e) => e.kind === "seizure")) {
-        expect({ t: event.t, d: event.duration, ok: inIctalSpan(event) }).toMatchObject({ ok: true });
+        expect(inIctalSpan(event)).toBe(true);
       }
       // Nothing fires during the quiet anaesthetic baseline in any cell.
       const baselineAlerts = cell.events.filter(
