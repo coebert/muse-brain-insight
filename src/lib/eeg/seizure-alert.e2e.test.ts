@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS, EegAnalyzer, type Epoch, type ClinicalEvent } from "./analysis";
+import { DEFAULT_SETTINGS, EegAnalyzer, type Epoch, type DetectedEvent } from "./analysis";
 import { MUSE_SAMPLE_RATE } from "./dsp";
 import {
   SEIZURE_VIGNETTES,
@@ -25,7 +25,7 @@ const FS = MUSE_SAMPLE_RATE;
 interface Replay {
   epochs: Epoch[];
   alerts: number[];
-  events: ClinicalEvent[];
+  events: DetectedEvent[];
   peakScore: number;
 }
 
@@ -42,8 +42,7 @@ function replay(v: SeizureVignette, settings = DEFAULT_SETTINGS): Replay {
     if (epoch.seizureAlert) alerts.push(t);
   }
   // Drain any run still open at the end of the recording.
-  const events = analyzer.drainEvents?.() ?? (analyzer as unknown as { events: ClinicalEvent[] }).events;
-  return { epochs, alerts, events: [...events], peakScore };
+  return { epochs, alerts, events: [...analyzer.events], peakScore };
 }
 
 function vignette(id: string): SeizureVignette {
