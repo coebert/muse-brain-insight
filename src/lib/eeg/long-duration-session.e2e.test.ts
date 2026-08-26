@@ -520,3 +520,4 @@ describe("45-minute emulator session: memory and latency stability", () => {
     const busiestEarlier = Math.max(...medians.slice(0, -1));
     expect(medians[medians.length - 1]!).toBeLessThan(busiestEarlier * 1.25);
   }, TIMEOUT);
+});
