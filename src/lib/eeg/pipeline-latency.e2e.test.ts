@@ -143,7 +143,6 @@ describe("per-stage pipeline instrumentation during playback", () => {
   it("keeps every stage inside its latency budget", () => {
     for (const [stage, budget] of Object.entries(BUDGET)) {
       const s = run.profiler.stats(stage);
-      expect(`${stage} p95=${s.p95Ms.toFixed(1)}`).toBe(`${stage} p95=${s.p95Ms.toFixed(1)}`);
       expect(s.p95Ms).toBeLessThan(budget.p95);
       expect(s.maxMs).toBeLessThan(budget.max);
     }
