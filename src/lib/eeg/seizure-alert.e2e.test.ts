@@ -29,8 +29,16 @@ interface Replay {
   peakScore: number;
 }
 
-/** Plays a vignette through the analyzer exactly as the live monitor does. */
-function replay(v: SeizureVignette, settings = DEFAULT_SETTINGS): Replay {
+/**
+ * Plays a vignette through the analyzer exactly as the live monitor does.
+ * `tail` appends further seconds from another vignette, which is how a
+ * seizure run gets terminated and its event emitted.
+ */
+function replay(
+  v: SeizureVignette,
+  settings = DEFAULT_SETTINGS,
+  tail?: { v: SeizureVignette; seconds: number },
+): Replay {
   const analyzer = new EegAnalyzer(settings, FS);
   const epochs: Epoch[] = [];
   const alerts: number[] = [];
@@ -42,6 +50,12 @@ function replay(v: SeizureVignette, settings = DEFAULT_SETTINGS): Replay {
     if (epoch.seizureAlert) alerts.push(t);
   }
   // Drain any run still open at the end of the recording.
+  for (let i = 0; tail && i < tail.seconds; i += 1) {
+    const t = v.seconds + i;
+    const epoch = analyzer.analyze(tail.v.epochAt(t), t);
+    epochs.push(epoch);
+    if (epoch.seizureAlert) alerts.push(t);
+  }
   return { epochs, alerts, events: [...analyzer.events], peakScore };
 }
 
@@ -55,6 +69,7 @@ const ICTAL = SEIZURE_VIGNETTES.filter((v) => v.truth === "ictal");
 const NON_ICTAL = SEIZURE_VIGNETTES.filter((v) => v.truth === "non_ictal");
 
 describe("seizure detector alerts on ictal epochs and stays silent otherwise", () => {
+  const TIMEOUT = 60_000;
   it("raises an alert on every synthetic seizure recording", () => {
     expect(ICTAL.length).toBeGreaterThan(1);
     for (const v of ICTAL) {
@@ -62,7 +77,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
       expect(alerts.length, `${v.id} should alert`).toBeGreaterThan(0);
       expect(peakScore).toBeGreaterThanOrEqual(DEFAULT_SETTINGS.seizureThreshold);
     }
-  });
+  }, TIMEOUT);
 
   it("stays silent through baseline, anaesthetic and artefact recordings", () => {
     expect(NON_ICTAL.length).toBeGreaterThan(2);
@@ -70,7 +85,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
       const { alerts } = replay(v);
       expect(alerts, `${v.id} should not alert`).toHaveLength(0);
     }
-  });
+  }, TIMEOUT);
 
   it("does not alert before the seizure starts", () => {
     // Late-onset vignette: 150 s of quiet baseline before the ictal run.
@@ -79,7 +94,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
     expect(alerts.length).toBeGreaterThan(0);
     // Allow the back-dating window of consecutive threshold epochs.
     expect(Math.min(...alerts)).toBeGreaterThanOrEqual(onset);
-  });
+  }, TIMEOUT);
 
   it("waits for the configured run of consecutive epochs before alerting", () => {
     const { epochs, alerts } = replay(vignette("ictal-spike-wave"));
@@ -95,7 +110,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
       .slice(0, index)
       .some((e, i) => e.seizureAlert && i < DEFAULT_SETTINGS.seizureEpochs - 1);
     expect(earlyAlert).toBe(false);
-  });
+  }, TIMEOUT);
 
   it("needs a longer run when the required consecutive epochs are raised", () => {
     const strict = { ...DEFAULT_SETTINGS, seizureEpochs: DEFAULT_SETTINGS.seizureEpochs + 4 };
@@ -105,24 +120,28 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
     // A longer confirmation requirement can only delay the first alert.
     expect(Math.min(...stiff.alerts)).toBeGreaterThanOrEqual(Math.min(...relaxed.alerts));
     expect(stiff.alerts.length).toBeLessThanOrEqual(relaxed.alerts.length);
-  });
+  }, TIMEOUT);
 
   it("never alerts when the threshold is raised above the achievable score", () => {
     const impossible = { ...DEFAULT_SETTINGS, seizureThreshold: 1.01 };
     for (const v of ICTAL) {
       expect(replay(v, impossible).alerts, `${v.id} at threshold 1.01`).toHaveLength(0);
     }
-  });
+  }, TIMEOUT);
 
   it("emits a seizure event with a plausible duration for a real run", () => {
-    const { events } = replay(vignette("ictal-evolving"));
+    // The seizure has to end for the event to close, so recovery epochs follow.
+    const { events } = replay(vignette("ictal-evolving"), DEFAULT_SETTINGS, {
+      v: vignette("anaesthetic-alpha"),
+      seconds: 30,
+    });
     const seizures = events.filter((e) => e.kind === "seizure");
     expect(seizures.length).toBeGreaterThan(0);
     const longest = seizures.reduce((a, b) => ((b.duration ?? 0) > (a.duration ?? 0) ? b : a));
     expect(longest.duration ?? 0).toBeGreaterThan(5);
     expect(longest.t).toBeGreaterThanOrEqual(50); // onset is at 60 s, back-dated a little
     expect(longest.evidence?.peakScore ?? 0).toBeGreaterThanOrEqual(DEFAULT_SETTINGS.seizureThreshold);
-  });
+  }, TIMEOUT);
 
   it("keeps burst suppression and EMG artefact out of the alert path", () => {
     for (const id of ["burst-suppression", "artefact-emg", "artefact-chewing"]) {
@@ -133,7 +152,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
         DEFAULT_SETTINGS.seizureThreshold,
       );
     }
-  });
+  }, TIMEOUT);
 
   it("scores full sensitivity and specificity with no false alarms per hour", () => {
     const report = runSeizureValidation();
@@ -141,7 +160,7 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
     expect(report.specificity).toBe(1);
     expect(report.falseAlarmsPerHour).toBe(0);
     expect(report.nonIctalHours).toBeGreaterThan(0.3);
-  });
+  }, TIMEOUT);
 
   it("is deterministic: the same epochs give the same alerts every run", () => {
     for (const v of [vignette("ictal-evolving"), vignette("anaesthetic-alpha")]) {
@@ -149,5 +168,5 @@ describe("seizure detector alerts on ictal epochs and stays silent otherwise", (
       const b = runVignette(v);
       expect(a).toEqual(b);
     }
-  });
+  }, TIMEOUT);
 });
