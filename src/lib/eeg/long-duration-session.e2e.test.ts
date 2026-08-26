@@ -180,7 +180,7 @@ function flush(writer: Writer) {
   const payload = JSON.stringify(
     batch.map((e) => ({
       t_offset_seconds: e.t,
-      depth_index: e.depthIndex ?? null,
+      depth_index: e.depth.index,
       spectral_edge_95: e.sef95,
       suppression_ratio: e.suppressionRatio,
       seizure_score: e.seizureScore,
@@ -266,7 +266,7 @@ function replay(): Run {
     CHANNELS.reduce((sum, ch) => sum + Math.min(archive.duration(ch), RAW_ARCHIVE_SECONDS) * RAW_ARCHIVE_HZ * 4, 0);
 
   for (const frame of emulator()) {
-    const ingest = profiler.enqueue("ingest", written / FS);
+    const ingestTicket = profiler.enqueue("ingest", written / FS);
     const frameStart = performance.now();
     CHANNELS.forEach((ch, ci) => {
       const buf = buffers[ch]!;
@@ -284,15 +284,17 @@ function replay(): Run {
     written += CHUNK;
     const frameEnd = performance.now();
     frameMs.push(frameEnd - frameStart);
-    ingest.start();
-    ingest.done();
+    profiler.record("ingest", {
+      t: written / FS,
+      queueMs: Math.max(0, frameStart - ingestTicket.enqueuedAt),
+      workMs: frameEnd - frameStart,
+    });
 
     if (written < nextEpochAt) continue;
     nextEpochAt += FS;
 
     // Signal quality: one paired FFT per electrode pair.
     const qTicket = profiler.enqueue("quality", written / FS);
-    qTicket.start();
     const qStart = performance.now();
     for (const [a, b] of PAIRS) {
       const segA = readLast(buffers[a]!, FS * 2);
@@ -301,12 +303,16 @@ function replay(): Run {
       signalQuality(segA, psdA, FS);
       signalQuality(segB, psdB, FS);
     }
-    qualityMs.push(performance.now() - qStart);
-    qTicket.done();
+    const qEnd = performance.now();
+    qualityMs.push(qEnd - qStart);
+    profiler.record("quality", {
+      t: written / FS,
+      queueMs: Math.max(0, qStart - qTicket.enqueuedAt),
+      workMs: qEnd - qStart,
+    });
 
     // Analyse the four-electrode average.
     const aTicket = profiler.enqueue("analyze", written / FS);
-    aTicket.start();
     const aStart = performance.now();
     const avg = new Float64Array(EPOCH_LEN);
     for (const ch of CHANNELS) {
@@ -314,8 +320,13 @@ function replay(): Run {
       for (let i = 0; i < EPOCH_LEN; i += 1) avg[i]! += seg[i]! / CHANNELS.length;
     }
     const epoch = analyzer.analyze(avg, written / FS);
-    analyzeMs.push(performance.now() - aStart);
-    aTicket.done();
+    const aEnd = performance.now();
+    analyzeMs.push(aEnd - aStart);
+    profiler.record("analyze", {
+      t: written / FS,
+      queueMs: Math.max(0, aStart - aTicket.enqueuedAt),
+      workMs: aEnd - aStart,
+    });
     columnMs.push(performance.now() - frameEnd);
     epochs += 1;
 
@@ -349,7 +360,7 @@ function replay(): Run {
         writer.pending.length * 512 +
         analyzer.events.length * 256 +
         analyzerHistoryLength(analyzer) * 32 +
-        profiler.stats().reduce((s, st) => s + st.count * 24, 0);
+        profiler.stages().reduce((s, st) => s + profiler.stats(st).count * 24, 0);
       blocks.push({
         minute: seconds / 60,
         retainedBytes: retained,
@@ -357,7 +368,9 @@ function replay(): Run {
         archiveSeconds: archive.span(),
         analyzerHistory: analyzerHistoryLength(analyzer),
         events: analyzer.events.length,
-        profilerSamples: profiler.stats().reduce((s, st) => s + st.count, 0),
+        profilerSamples: profiler
+          .stages()
+          .reduce((s, st) => s + profiler.stats(st).count, 0),
         heapUsedMb:
           typeof process !== "undefined" && typeof process.memoryUsage === "function"
             ? process.memoryUsage().heapUsed / 1e6
@@ -368,11 +381,10 @@ function replay(): Run {
 
   flush(writer);
 
-  const degrading = profiler.stability().map((s) => ({
-    stage: s.stage,
-    ratio: s.ratio,
-    slope: s.slopeMsPerMinute,
-  }));
+  const degrading = profiler.stages().map((stage) => {
+    const s = profiler.stability(stage);
+    return { stage: s.stage, ratio: s.ratio, slope: s.slopeMsPerMinute };
+  });
 
   return {
     blocks,
