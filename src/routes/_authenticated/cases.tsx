@@ -6,6 +6,7 @@ import { AppNav } from "@/components/AppNav";
 import { CaseFactsEditor } from "@/components/monitor/CaseFactsEditor";
 import { CaseNoteInsightsPanel } from "@/components/monitor/CaseNoteInsightsPanel";
 import { Button } from "@/components/ui/button";
+import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
@@ -202,6 +203,12 @@ function Cases() {
                       Handover report
                     </Link>
                   </Button>
+                  <SessionPdfButton
+                    sessionId={c.id}
+                    variant="ghost"
+                    label="PDF report"
+                    className="min-h-11 sm:min-h-9"
+                  />
                   <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
                     <Link to="/trends">Trends</Link>
                   </Button>
