@@ -82,10 +82,14 @@ interface Result {
   finite: boolean;
 }
 
+/** Loss above this fraction of a window makes it gap-affected and unscorable. */
+const MAX_MISSING_FRACTION = 0.15;
+
 /**
- * Replays the recording through ingest and analysis. Dropped packets leave a
- * hole in the ring buffer; a window containing any missing samples is treated
- * as gap-affected and skipped, exactly as the monitor's gap handling does.
+ * Replays the recording through ingest and analysis. Dropped packets leave the
+ * ring buffer un-advanced, so the monitor reads the last value it held; a
+ * window that lost more than {@link MAX_MISSING_FRACTION} of its samples is
+ * treated as gap-affected and is not scored at all.
  */
 function replay(signal: Float64Array, faults: FaultRates, seed: number): Result {
   const totalSeconds = Math.floor(signal.length / FS);
@@ -113,6 +117,13 @@ function replay(signal: Float64Array, faults: FaultRates, seed: number): Result 
     }
   }
 
+  // A gap in the stream is not new data: the buffer holds its last value.
+  let held = 0;
+  for (let i = 0; i < buffer.length; i += 1) {
+    if (present[i]) held = buffer[i]!;
+    else buffer[i] = held;
+  }
+
   const analyzer = new EegAnalyzer(DEFAULT_SETTINGS, FS);
   const clock: number[] = [];
   let analysed = 0;
@@ -123,9 +134,7 @@ function replay(signal: Float64Array, faults: FaultRates, seed: number): Result 
     const from = (second - EPOCH_SECONDS) * FS;
     let missing = 0;
     for (let i = from; i < from + EPOCH_LEN; i += 1) if (!present[i]) missing += 1;
-    // Any real loss inside the window makes it gap-affected: the monitor does
-    // not score a window it does not fully have.
-    if (missing > 0) {
+    if (missing / EPOCH_LEN > MAX_MISSING_FRACTION) {
       skipped += 1;
       continue;
     }
