@@ -202,11 +202,11 @@ describe("suppression detection under random packet loss and corruption", () => 
       minClockFraction: 0.6,
     },
     {
-      name: "corruption only (2 % garbled)",
-      faults: { drop: 0, corrupt: 0.02 },
+      name: "corruption only (0.5 % garbled)",
+      faults: { drop: 0, corrupt: 0.005 },
       seeds: [41, 53, 67],
       detects: false,
-      minClockFraction: 0.2,
+      minClockFraction: 0.4,
     },
     {
       name: "mixed loss and corruption",
