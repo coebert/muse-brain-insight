@@ -73,7 +73,7 @@ function makeCanvas(w: number, h: number) {
 /** Whole-session DSA rendered to a standalone bitmap with its own axes. */
 function renderDsa(spectra: number[][], times: number[], w: number, h: number): string {
   const { canvas, ctx } = makeCanvas(w, h);
-  const margin = { top: 14, right: 16, bottom: 34, left: 46 };
+  const margin = { top: 14, right: 20, bottom: 34, left: 62 };
   const plotW = Math.max(1, w - margin.left - margin.right);
   const plotH = Math.max(1, h - margin.top - margin.bottom);
 
@@ -138,7 +138,7 @@ function renderDsa(spectra: number[][], times: number[], w: number, h: number): 
   }
 
   ctx.save();
-  ctx.translate(14, margin.top + plotH / 2);
+  ctx.translate(18, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
   ctx.font = "600 16px sans-serif";
@@ -151,6 +151,7 @@ function renderDsa(spectra: number[][], times: number[], w: number, h: number): 
   for (let i = 0; i <= 6; i++) {
     const frac = i / 6;
     const x = margin.left + frac * plotW;
+    ctx.textAlign = i === 0 ? "left" : i === 6 ? "right" : "center";
     ctx.fillText(formatClock(tStart + frac * span), x, margin.top + plotH + 8);
   }
   return canvas.toDataURL("image/png");
@@ -159,7 +160,7 @@ function renderDsa(spectra: number[][], times: number[], w: number, h: number): 
 /** Suppression ratio trace with suppressed epochs shaded underneath. */
 function renderSuppression(rows: Row[], w: number, h: number): string {
   const { canvas, ctx } = makeCanvas(w, h);
-  const margin = { top: 14, right: 16, bottom: 34, left: 46 };
+  const margin = { top: 14, right: 20, bottom: 34, left: 62 };
   const plotW = Math.max(1, w - margin.left - margin.right);
   const plotH = Math.max(1, h - margin.top - margin.bottom);
 
@@ -220,7 +221,7 @@ function renderSuppression(rows: Row[], w: number, h: number): string {
   ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
   ctx.save();
-  ctx.translate(14, margin.top + plotH / 2);
+  ctx.translate(18, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.textAlign = "center";
@@ -234,6 +235,7 @@ function renderSuppression(rows: Row[], w: number, h: number): string {
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   for (let i = 0; i <= 6; i++) {
     const frac = i / 6;
+    ctx.textAlign = i === 0 ? "left" : i === 6 ? "right" : "center";
     ctx.fillText(formatClock(tStart + frac * span), margin.left + frac * plotW, margin.top + plotH + 8);
   }
   return canvas.toDataURL("image/png");
@@ -242,7 +244,7 @@ function renderSuppression(rows: Row[], w: number, h: number): string {
 /** Seizure score trace with detected ictal runs marked. */
 function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): string {
   const { canvas, ctx } = makeCanvas(w, h);
-  const margin = { top: 14, right: 16, bottom: 34, left: 46 };
+  const margin = { top: 14, right: 20, bottom: 34, left: 62 };
   const plotW = Math.max(1, w - margin.left - margin.right);
   const plotH = Math.max(1, h - margin.top - margin.bottom);
 
@@ -302,7 +304,7 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
   ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
   ctx.save();
-  ctx.translate(14, margin.top + plotH / 2);
+  ctx.translate(18, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.textAlign = "center";
@@ -316,6 +318,7 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   for (let i = 0; i <= 6; i++) {
     const frac = i / 6;
+    ctx.textAlign = i === 0 ? "left" : i === 6 ? "right" : "center";
     ctx.fillText(formatClock(tStart + frac * span), margin.left + frac * plotW, margin.top + plotH + 8);
   }
   return canvas.toDataURL("image/png");
