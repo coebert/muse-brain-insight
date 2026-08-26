@@ -216,6 +216,12 @@ const persistenceSweep = SEIZURE_EPOCH_GRID.map((n) => replay({ seizureEpochs: n
 const allCells = [...uvSweep, ...windowSweep, ...scoreSweep, ...persistenceSweep];
 
 describe("threshold sweep: seizure and burst-suppression detection", () => {
+  it("probe", () => {
+    const c = uvSweep[1]!;
+    const rows = c.epochs.filter((e) => e.t > 200 && e.t < 260).map((e) => `${e.t}:${e.seizureScore.toFixed(2)}`);
+    console.log(rows.join(" "));
+  });
+
   it("produces finite, in-range outputs in every grid cell", () => {
     for (const cell of allCells) {
       expect(cell.finite).toBe(true);
