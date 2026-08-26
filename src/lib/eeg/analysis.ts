@@ -306,6 +306,15 @@ export class EegAnalyzer {
   suppressionSeconds = 0;
   /** Seconds of missing EEG excluded from every analysis. */
   excludedGapSeconds = 0;
+  /**
+   * Seconds of analysed EEG that actually fed the suppression clock — the
+   * denominator a clinician needs before trusting a suppression burden.
+   */
+  analysedSeconds = 0;
+  /** Seconds skipped because the epoch was artefact-laden or off the head. */
+  excludedArtifactSeconds = 0;
+  /** Seconds skipped because the epoch straddled (or was) a data gap. */
+  excludedGapEpochSeconds = 0;
   readonly events: DetectedEvent[] = [];
 
   constructor(settings: AnalysisSettings = DEFAULT_SETTINGS, fs = MUSE_SAMPLE_RATE) {
@@ -335,6 +344,9 @@ export class EegAnalyzer {
     this.compositeEstimator.reset();
     this.suppressionSeconds = 0;
     this.excludedGapSeconds = 0;
+    this.analysedSeconds = 0;
+    this.excludedArtifactSeconds = 0;
+    this.excludedGapEpochSeconds = 0;
     this.lastEpochT = null;
     this.gapRecoveryUntilT = -Infinity;
     this.firstValidEpochT = null;
@@ -425,6 +437,11 @@ export class EegAnalyzer {
     if (!artifact && !gapAffected) {
       this.suppressionHistory.push({ t, fraction: epochSuppression });
       this.suppressionSeconds += epochSuppression * HOP_SECONDS;
+      this.analysedSeconds += HOP_SECONDS;
+    } else if (gapAffected) {
+      this.excludedGapEpochSeconds += HOP_SECONDS;
+    } else {
+      this.excludedArtifactSeconds += HOP_SECONDS;
     }
     const cutoff = t - this.settings.srWindowSeconds;
     while (this.suppressionHistory.length && this.suppressionHistory[0]!.t < cutoff) {
