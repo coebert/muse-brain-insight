@@ -5,6 +5,7 @@ import { TimeZoneControl } from "@/components/TimeZoneControl";
 import { CaseNotes } from "@/components/sessions/CaseNotes";
 
 import { Button } from "@/components/ui/button";
+import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { formatRangeInZone, formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
@@ -158,6 +159,12 @@ function Sessions() {
                     End-of-case report
                   </Link>
                 </Button>
+                <SessionPdfButton
+                  sessionId={s.id}
+                  variant="ghost"
+                  label="PDF report"
+                  className="min-h-11 sm:min-h-9"
+                />
                 <Button
                   variant="ghost"
                   size="sm"

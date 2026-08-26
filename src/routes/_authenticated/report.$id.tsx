@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { PatientLinkBadge } from "@/components/monitor/PatientLinkBadge";
+import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
 import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { computeCoebis } from "@/lib/eeg/depth";
@@ -199,8 +200,13 @@ function CaseReport() {
             End-of-case report
           </span>
           <div className="ml-auto flex flex-wrap gap-2">
-            <Button size="sm" onClick={printReport}>
-              <Printer className="size-4" /> Print / save PDF
+            <SessionPdfButton
+              sessionId={id}
+              session={s ?? undefined}
+              modelNote={describeCoebisModel(coebisModel)}
+            />
+            <Button size="sm" variant="outline" onClick={printReport}>
+              <Printer className="size-4" /> Print
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/sessions">
