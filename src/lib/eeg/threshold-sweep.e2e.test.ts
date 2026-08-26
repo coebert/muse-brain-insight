@@ -158,7 +158,7 @@ function replay(overrides: Partial<AnalysisSettings>): CellResult {
     }
     flags.push(
       [
-        epoch.quality.level,
+        epoch.quality.grade,
         epoch.artifact ? 1 : 0,
         epoch.depthReliability.level,
         epoch.confidence.spectral.toFixed(4),
@@ -296,7 +296,7 @@ describe("threshold sweep: seizure and burst-suppression detection", () => {
     const onsets = persistenceSweep.map((c) => c.firstSeizureT);
     for (let i = 1; i < onsets.length; i += 1) {
       const prev = onsets[i - 1]!;
-      const next = onsets[i];
+      const next = onsets[i] ?? null;
       if (next !== null && prev !== null) {
         expect(next).toBeGreaterThanOrEqual(prev - 1e-9);
         // Each extra required epoch costs at most one second of latency.
