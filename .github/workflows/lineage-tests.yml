@@ -44,7 +44,8 @@ jobs:
             src/lib/eeg/anonymised-save.e2e.test.ts \
             src/components/monitor/playback-alignment.e2e.test.tsx \
             src/lib/eeg/dsa-spectral-mapping.e2e.test.ts \
-            src/components/monitor/playback-performance.e2e.test.tsx
+            src/components/monitor/playback-performance.e2e.test.tsx \
+            src/lib/eeg/seizure-alert.e2e.test.ts
 
   full-suite:
     name: Types and full test suite
