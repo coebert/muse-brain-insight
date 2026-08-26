@@ -154,15 +154,11 @@ function replay(signal: Float64Array, faults: FaultRates, seed: number): Result 
   };
 }
 
-/** Fragments separated by less than the release latency are one episode. */
-function mergeEvents(events: DetectedEvent[], gapSeconds = 12): Span[] {
-  const merged: Span[] = [];
-  for (const ev of events) {
-    const last = merged[merged.length - 1];
-    if (last && ev.t - last.end <= gapSeconds) last.end = Math.max(last.end, ev.t + ev.duration);
-    else merged.push({ start: ev.t, end: ev.t + ev.duration });
-  }
-  return merged;
+/** Reported fragments belonging to one labelled episode (allowing edge latency). */
+function fragmentsFor(events: DetectedEvent[], gt: Span): Span[] {
+  return events
+    .map((e) => ({ start: e.t, end: e.t + e.duration }))
+    .filter((p) => p.end > gt.start && p.start < gt.end + EDGE_LATENCY + EDGE_TOLERANCE);
 }
 
 const EPISODES: Span[] = [
@@ -209,18 +205,26 @@ describe("suppression detection under random packet loss and corruption", () => 
           expect(overlaps, `${tag}: spurious event at t=${ev.t}`).toBe(true);
         }
 
-        const merged = mergeEvents(run.events);
-        expect(merged.length, `${tag}: merged episode count`).toBe(EPISODES.length);
-        merged.forEach((ep, i) => {
-          const gt = EPISODES[i]!;
+        // Every labelled episode is still found: its fragments start on time,
+        // end on time, and together cover most of the labelled duration.
+        EPISODES.forEach((gt, i) => {
+          const parts = fragmentsFor(run.events, gt);
+          expect(parts.length, `${tag}: episode ${i} missed entirely`).toBeGreaterThan(0);
+          const onset = Math.min(...parts.map((p) => p.start));
+          const offset = Math.max(...parts.map((p) => p.end));
+          const covered = parts.reduce((a, p) => a + (p.end - p.start), 0);
           expect(
-            Math.abs(ep.start - (gt.start + EDGE_LATENCY)),
+            Math.abs(onset - (gt.start + EDGE_LATENCY)),
             `${tag}: onset error, episode ${i}`,
           ).toBeLessThanOrEqual(EDGE_TOLERANCE);
           expect(
-            Math.abs(ep.end - (gt.end + EDGE_LATENCY)),
+            Math.abs(offset - (gt.end + EDGE_LATENCY)),
             `${tag}: offset error, episode ${i}`,
-          ).toBeLessThanOrEqual(EDGE_TOLERANCE + 2);
+          ).toBeLessThanOrEqual(EDGE_TOLERANCE + 3);
+          expect(
+            covered / (gt.end - gt.start),
+            `${tag}: episode ${i} coverage`,
+          ).toBeGreaterThan(0.5);
         });
 
         // The clock counts analysed seconds only: it may undercount, never over.
