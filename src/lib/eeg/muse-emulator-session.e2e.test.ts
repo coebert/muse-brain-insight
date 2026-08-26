@@ -110,13 +110,18 @@ function emulatedSample(t: number, ch: number, noise: () => number): number {
       4 * noise()
     );
   }
-  // Maintenance anaesthesia: dominant delta with waxing/waning alpha spindles.
+  // Maintenance anaesthesia: broadband delta with waxing/waning alpha
+  // spindles, deliberately not a pure tone — real cortical activity drifts in
+  // frequency and amplitude.
   const spindle = 0.55 + 0.45 * Math.sin(2 * Math.PI * 0.06 * t + ch);
+  const drift = 0.35 * Math.sin(2 * Math.PI * 0.017 * t + ch * 1.3);
   return (
-    30 * Math.sin(2 * Math.PI * jitterFreq * t) +
-    16 * Math.sin(2 * Math.PI * 10.2 * t) * spindle +
-    6 * Math.sin(2 * Math.PI * 4.3 * t + ch) +
-    7 * noise()
+    26 * Math.sin(2 * Math.PI * (jitterFreq + drift) * t) +
+    14 * Math.sin(2 * Math.PI * 2.7 * t + 1.1 * Math.sin(2 * Math.PI * 0.11 * t)) +
+    13 * Math.sin(2 * Math.PI * (10.2 + 0.6 * drift) * t) * spindle +
+    7 * Math.sin(2 * Math.PI * 5.9 * t + ch) +
+    5 * Math.sin(2 * Math.PI * 14.3 * t + 0.7 * ch) +
+    16 * noise()
   );
 }
 
@@ -201,6 +206,7 @@ function replay(): Run {
   let nextEpochAt = EPOCH_LEN;
   let lastFrameEnd = 0;
   let prevWindow: Float64Array | null = null;
+  let prevWrittenAtTick = 0;
 
   for (const frame of emulator()) {
     drops += frame.seq - lastSeq - 1;
@@ -244,7 +250,9 @@ function replay(): Run {
       }
     }
     if (prevWindow) {
-      const hop = FS; // one second between ticks
+      // Ticks land on notification boundaries, so the hop is one second
+      // rounded up to the next whole frame.
+      const hop = written - prevWrittenAtTick;
       for (let i = 0; i < EPOCH_LEN - hop; i += 1) {
         if (prevWindow[i + hop] !== ref[i]) {
           overlapMismatches += 1;
@@ -253,6 +261,7 @@ function replay(): Run {
       }
     }
     prevWindow = ref;
+    prevWrittenAtTick = written;
 
     // Primary window: four-electrode average.
     const avg = new Float64Array(EPOCH_LEN);
