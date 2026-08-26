@@ -50,7 +50,8 @@ jobs:
             src/lib/eeg/ingest-latency.e2e.test.ts \
             src/lib/eeg/suppression-onset-offset.e2e.test.ts \
             src/components/monitor/dropout-resilience.e2e.test.tsx \
-            src/lib/eeg/pipeline-latency.e2e.test.ts
+            src/lib/eeg/pipeline-latency.e2e.test.ts \
+            src/lib/eeg/artefact-suppression.e2e.test.ts
 
   full-suite:
     name: Types and full test suite
