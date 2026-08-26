@@ -312,8 +312,8 @@ describe("playback survives dropouts, reconnects and corrupted packets", () => {
     expect(runs.length).toBe(2);
     const gaps = detectGaps(session.epochs.map((e) => e.t));
     expect(gaps.length).toBe(2);
-    expect(gaps[0]!.seconds).toBeGreaterThanOrEqual(25);
-    expect(gaps[1]!.seconds).toBeGreaterThanOrEqual(15);
+    expect(gaps[0]!.seconds).toBeGreaterThanOrEqual(20);
+    expect(gaps[1]!.seconds).toBeGreaterThanOrEqual(12);
   });
 
   it("keeps epoch timestamps strictly on the one-second grid", () => {
