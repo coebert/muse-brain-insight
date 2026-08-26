@@ -106,11 +106,11 @@ function background(t: number, noise: () => number): number {
   const drift = 0.35 * Math.sin(2 * Math.PI * 0.017 * t);
   const spindle = 0.55 + 0.45 * Math.sin(2 * Math.PI * 0.06 * t);
   return (
-    26 * Math.sin(2 * Math.PI * (1.2 + drift) * t) +
-    14 * Math.sin(2 * Math.PI * 2.7 * t + 1.1 * Math.sin(2 * Math.PI * 0.11 * t)) +
-    13 * Math.sin(2 * Math.PI * (10.2 + 0.6 * drift) * t) * spindle +
-    6 * Math.sin(2 * Math.PI * 5.9 * t) +
-    16 * noise()
+    26 * Math.sin(2 * Math.PI * (1.2 + drift) * t + 0.8 * Math.sin(2 * Math.PI * 0.043 * t)) +
+    14 * Math.sin(2 * Math.PI * (2.7 + 0.5 * drift) * t + 1.1 * Math.sin(2 * Math.PI * 0.11 * t)) +
+    9 * Math.sin(2 * Math.PI * (10.2 + 1.4 * drift) * t) * spindle +
+    6 * Math.sin(2 * Math.PI * (5.9 - 0.7 * drift) * t) +
+    22 * noise()
   );
 }
 
