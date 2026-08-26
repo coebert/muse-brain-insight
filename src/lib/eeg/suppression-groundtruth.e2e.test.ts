@@ -199,14 +199,16 @@ describe("burst-suppression ratio and time match ground-truth labels", () => {
   it("rolls old suppression out of the ratio window but keeps the total time", () => {
     // Suppression only in the first 60 s, then continuous bursting.
     const rec = makeRecording("early suppression only", 240, (s) => s * SEG_SECONDS < 60);
-    const { ratios, suppressionSeconds } = replay(rec);
+    const { ratios, suppressionSeconds, truthSuppressionSeconds } = replay(rec);
 
     const peak = Math.max(...ratios.map((r) => r.sr));
     expect(peak).toBeGreaterThan(90);
     // Well past the trailing window, the ratio has returned to zero...
     expect(ratios.at(-1)!.sr).toBe(0);
     // ...while the cumulative suppression time still records those seconds.
-    expect(suppressionSeconds).toBeCloseTo(60 - EPOCH_SECONDS + HOP_SECONDS, 0);
+    // Epochs straddling the 60 s boundary contribute their suppressed fraction.
+    expect(suppressionSeconds).toBeCloseTo(truthSuppressionSeconds, 0);
+    expect(Math.abs(suppressionSeconds - 60)).toBeLessThan(EPOCH_SECONDS);
   }, TIMEOUT);
 
   it("does not count a flat, disconnected electrode as suppression", () => {
