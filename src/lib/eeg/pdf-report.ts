@@ -138,7 +138,7 @@ function renderDsa(spectra: number[][], times: number[], w: number, h: number): 
   }
 
   ctx.save();
-  ctx.translate(18, margin.top + plotH / 2);
+  ctx.translate(11, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.textAlign = "center";
   ctx.font = "600 16px sans-serif";
@@ -221,7 +221,7 @@ function renderSuppression(rows: Row[], w: number, h: number): string {
   ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
   ctx.save();
-  ctx.translate(18, margin.top + plotH / 2);
+  ctx.translate(11, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.textAlign = "center";
@@ -278,7 +278,7 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
     ctx.moveTo(margin.left, y);
     ctx.lineTo(margin.left + plotW, y);
     ctx.stroke();
-    ctx.fillText(v.toFixed(2), margin.left - 6, y);
+    ctx.fillText(v.toFixed(2), margin.left - 8, y);
   }
 
   ctx.strokeStyle = "rgb(56,214,175)";
@@ -304,7 +304,7 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
   ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
   ctx.save();
-  ctx.translate(18, margin.top + plotH / 2);
+  ctx.translate(11, margin.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.textAlign = "center";
