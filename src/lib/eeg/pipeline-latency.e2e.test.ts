@@ -108,13 +108,17 @@ function replayInstrumented(): Run {
 
     profiler.run(qualityTicket, () => {
       for (const [a, b] of PAIRS) {
-        const pair = computePsdPair(readLast(buffers[a]!, EPOCH_LEN), readLast(buffers[b]!, EPOCH_LEN), FS);
-        signalQuality(pair.a, FS);
-        signalQuality(pair.b, FS);
+        const [psdA, psdB] = computePsdPair(
+          readLast(buffers[a]!, EPOCH_LEN),
+          readLast(buffers[b]!, EPOCH_LEN),
+          FS,
+        );
+        signalQuality(psdA, FS);
+        signalQuality(psdB, FS);
       }
     });
 
-    const epoch = profiler.run(analyzeTicket, () => analyzer.analyze(readLast(buffers.TP9!, EPOCH_LEN), t));
+    const epoch = profiler.run(analyzeTicket, () => analyzer.analyze(readLast(buffers['TP9']!, EPOCH_LEN), t));
     epochs.push(epoch);
     tickTotals.push({ t, ms: profiler.totalForTick(t) });
   }
