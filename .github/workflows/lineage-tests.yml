@@ -52,7 +52,8 @@ jobs:
             src/components/monitor/dropout-resilience.e2e.test.tsx \
             src/lib/eeg/pipeline-latency.e2e.test.ts \
             src/lib/eeg/artefact-suppression.e2e.test.ts \
-            src/lib/eeg/packet-loss-suppression.e2e.test.ts
+            src/lib/eeg/packet-loss-suppression.e2e.test.ts \
+            src/lib/eeg/muse-emulator-session.e2e.test.ts
 
   full-suite:
     name: Types and full test suite
