@@ -221,6 +221,14 @@ function analyzerHistoryLength(analyzer: EegAnalyzer): number {
   return total;
 }
 
+interface StageDrift {
+  stage: string;
+  ratio: number;
+  slope: number;
+  degrading: boolean;
+  secondHalfMedianMs: number;
+}
+
 interface Run {
   blocks: BlockSample[];
   frameMs: number[];
@@ -233,7 +241,7 @@ interface Run {
   archiveSpan: number;
   ringBytes: number;
   finite: boolean;
-  degrading: { stage: string; ratio: number; slope: number }[];
+  degrading: StageDrift[];
 }
 
 function replay(): Run {
@@ -391,7 +399,13 @@ function replay(): Run {
 
   const degrading = profiler.stages().map((stage) => {
     const s = profiler.stability(stage);
-    return { stage: s.stage, ratio: s.ratio, slope: s.slopeMsPerMinute };
+    return {
+      stage: s.stage,
+      ratio: s.ratio,
+      slope: s.slopeMsPerMinute,
+      degrading: s.degrading,
+      secondHalfMedianMs: s.secondHalfMedianMs,
+    };
   });
 
   return {
@@ -487,8 +501,14 @@ describe("45-minute emulator session: memory and latency stability", () => {
 
   it("reports no degrading stage from the pipeline profiler", () => {
     for (const stage of run.degrading) {
-      expect(stage.ratio).toBeLessThan(MAX_DEGRADE_RATIO);
+      // Sub-millisecond stages have noisy ratios, so the profiler's own
+      // verdict (which applies an absolute floor) is the signal that matters.
+      expect(stage.degrading).toBe(false);
       expect(Math.abs(stage.slope)).toBeLessThan(2);
+      expect(stage.secondHalfMedianMs).toBeLessThan(BUDGETS.analyze);
+      if (stage.secondHalfMedianMs > 1) {
+        expect(stage.ratio).toBeLessThan(MAX_DEGRADE_RATIO);
+      }
     }
   }, TIMEOUT);
 });
