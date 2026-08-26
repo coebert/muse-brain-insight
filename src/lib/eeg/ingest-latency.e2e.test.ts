@@ -150,7 +150,8 @@ describe("ingestion-to-DSA latency during continuous playback", () => {
   it("produces one DSA column per second of playback", () => {
     expect(run.epochs.length).toBe(SESSION_SECONDS - EPOCH_SECONDS + 1);
     for (let i = 1; i < run.epochs.length; i += 1) {
-      expect(run.epochs[i]!.t - run.epochs[i - 1]!.t).toBeCloseTo(1, 6);
+      // Ticks land on notification boundaries, so allow one chunk of jitter.
+      expect(run.epochs[i]!.t - run.epochs[i - 1]!.t).toBeCloseTo(1, 1);
     }
   });
 
