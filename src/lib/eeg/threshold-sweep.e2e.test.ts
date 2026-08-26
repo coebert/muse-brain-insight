@@ -40,7 +40,7 @@ const SESSION_SECONDS = 420;
 
 /** Scripted spans, in seconds. */
 const BASELINE = { start: 0, end: 90 };
-const SUPPRESSION = { start: 120, end: 210 };
+const SUPPRESSION = { start: 120, end: 165 };
 const ICTAL = { start: 260, end: 330 };
 /** Half the analysis window: an episode is recognised ~2 s after it starts. */
 const EDGE_LATENCY = EPOCH_SECONDS / 2;
