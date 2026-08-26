@@ -188,6 +188,7 @@ describe("suppression detection under random packet loss and corruption", () => 
 
         // No spurious episodes: never more than the labelled count, and every
         // reported episode overlaps a labelled one.
+        console.log(tag, JSON.stringify(run.events.map((e) => [e.kind, e.t, e.duration])), run.skippedSeconds);
         expect(run.events.length, `${tag}: event count`).toBeLessThanOrEqual(EPISODES.length);
         for (const ev of run.events) {
           const overlaps = EPISODES.some(
