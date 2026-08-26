@@ -154,6 +154,17 @@ function replay(signal: Float64Array, faults: FaultRates, seed: number): Result 
   };
 }
 
+/** Fragments separated by less than the release latency are one episode. */
+function mergeEvents(events: DetectedEvent[], gapSeconds = 12): Span[] {
+  const merged: Span[] = [];
+  for (const ev of events) {
+    const last = merged[merged.length - 1];
+    if (last && ev.t - last.end <= gapSeconds) last.end = Math.max(last.end, ev.t + ev.duration);
+    else merged.push({ start: ev.t, end: ev.t + ev.duration });
+  }
+  return merged;
+}
+
 const EPISODES: Span[] = [
   { start: 45, end: 95 },
   { start: 160, end: 215 },
@@ -188,8 +199,9 @@ describe("suppression detection under random packet loss and corruption", () => 
 
         // No spurious episodes: never more than the labelled count, and every
         // reported episode overlaps a labelled one.
-        console.log(tag, JSON.stringify(run.events.map((e) => [e.kind, e.t, e.duration])), run.skippedSeconds);
-        expect(run.events.length, `${tag}: event count`).toBeLessThanOrEqual(EPISODES.length);
+        // Corrupted packets inside an episode can briefly break the run, so
+        // fragments closer together than the detector's own release latency
+        // are one clinical episode. No fragment may fall outside the labels.
         for (const ev of run.events) {
           const overlaps = EPISODES.some(
             (gt) => ev.t + ev.duration > gt.start && ev.t < gt.end + EDGE_LATENCY + EDGE_TOLERANCE,
@@ -197,15 +209,18 @@ describe("suppression detection under random packet loss and corruption", () => 
           expect(overlaps, `${tag}: spurious event at t=${ev.t}`).toBe(true);
         }
 
-        // Onsets still land where the labels say, allowing for skipped windows.
-        run.events.forEach((ev) => {
-          const gt = EPISODES.reduce((best, cand) =>
-            Math.abs(cand.start - ev.t) < Math.abs(best.start - ev.t) ? cand : best,
-          );
+        const merged = mergeEvents(run.events);
+        expect(merged.length, `${tag}: merged episode count`).toBe(EPISODES.length);
+        merged.forEach((ep, i) => {
+          const gt = EPISODES[i]!;
           expect(
-            Math.abs(ev.t - (gt.start + EDGE_LATENCY)),
-            `${tag}: onset error at t=${ev.t}`,
-          ).toBeLessThanOrEqual(EDGE_TOLERANCE + run.skippedSeconds * 0.1 + 5);
+            Math.abs(ep.start - (gt.start + EDGE_LATENCY)),
+            `${tag}: onset error, episode ${i}`,
+          ).toBeLessThanOrEqual(EDGE_TOLERANCE);
+          expect(
+            Math.abs(ep.end - (gt.end + EDGE_LATENCY)),
+            `${tag}: offset error, episode ${i}`,
+          ).toBeLessThanOrEqual(EDGE_TOLERANCE + 2);
         });
 
         // The clock counts analysed seconds only: it may undercount, never over.
