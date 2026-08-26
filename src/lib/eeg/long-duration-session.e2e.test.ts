@@ -208,6 +208,8 @@ interface BlockSample {
   analyzerHistory: number;
   events: number;
   profilerSamples: number;
+  /** Median analyse-stage cost within this five-minute block. */
+  analyzeMedianMs: number;
   heapUsedMb: number | null;
 }
 
@@ -271,6 +273,7 @@ function replay(): Run {
   let written = 0;
   let nextEpochAt = EPOCH_LEN;
   let nextBlockAt = BLOCK_SECONDS;
+  let lastBlockAnalyzeIndex = 0;
 
   const ringBytes = CHANNELS.length * BUFFER_LEN * 8;
   // The archive pre-allocates one capped ring per channel, so its footprint is
@@ -377,7 +380,10 @@ function replay(): Run {
         analyzer.events.length * 256 +
         analyzerHistoryLength(analyzer) * 32 +
         profiler.stages().reduce((s, st) => s + profiler.stats(st).count * 24, 0);
+      const blockAnalyze = analyzeMs.slice(lastBlockAnalyzeIndex);
+      lastBlockAnalyzeIndex = analyzeMs.length;
       blocks.push({
+        analyzeMedianMs: median(blockAnalyze),
         minute: seconds / 60,
         retainedBytes: retained,
         pendingRows: writer.pending.length,
@@ -508,6 +514,7 @@ describe("45-minute emulator session: memory and latency stability", () => {
       expect(stage.degrading, JSON.stringify(stage)).toBe(false);
       expect(Math.abs(stage.slope)).toBeLessThan(2);
       expect(stage.secondHalfMedianMs).toBeLessThan(BUDGETS.analyze);
+      expect(run.blocks.map((b) => Math.round(b.analyzeMedianMs * 100) / 100)).toEqual([]);
       if (stage.secondHalfMedianMs > 2) {
         expect(stage.ratio, JSON.stringify(stage)).toBeLessThan(MAX_DEGRADE_RATIO);
       }
