@@ -27,7 +27,7 @@ import {
   type DetectedEvent,
   type Epoch,
 } from "./analysis";
-import { MUSE_SAMPLE_RATE } from "./dsp";
+import { MUSE_SAMPLE_RATE, makeEegFilter } from "./dsp";
 
 const FS = MUSE_SAMPLE_RATE;
 const SEG_SECONDS = 0.5;
@@ -95,8 +95,6 @@ function contaminate(rec: Recording, kind: Artefact, spans: Span[], amplitude: n
     if (kind === "emg") {
       // Broadband 25–120 Hz muscle activity, amplitude-modulated like chewing.
       const env = 0.6 + 0.4 * Math.sin(2 * Math.PI * 3 * t);
-      signal[i]! +
-        0; // keep tsc happy about definite assignment below
       signal[i] =
         signal[i]! +
         amplitude *
@@ -129,7 +127,16 @@ interface Replayed {
   truthRatios: Array<{ t: number; sr: number }>;
 }
 
-function replay(rec: Recording): Replayed {
+/** The live monitor filters every sample (bandpass + mains notch) before analysis. */
+function frontEndFilter(signal: Float64Array): Float64Array {
+  const filter = makeEegFilter();
+  const out = new Float64Array(signal.length);
+  for (let i = 0; i < signal.length; i += 1) out[i] = filter.process(signal[i]!);
+  return out;
+}
+
+function replay(raw: Recording): Replayed {
+  const rec: Recording = { ...raw, signal: frontEndFilter(raw.signal) };
   const analyzer = new EegAnalyzer(DEFAULT_SETTINGS, FS);
   const segsPerEpoch = EPOCH_SECONDS / SEG_SECONDS;
   const epochs: Epoch[] = [];
