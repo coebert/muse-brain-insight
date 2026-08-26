@@ -212,11 +212,10 @@ export class StreamIntegrityMonitor {
     };
 
     // Grade on the rolling window once it has settled, else on the case so far.
-    const judgeOn = windowSeconds >= 10 ? recent : { ...recent, ...{
-      dropoutPercent,
-      nonFinitePerThousand,
-      spikesPerMinute,
-    } };
+    const judgeOn =
+      windowSeconds >= 10
+        ? recent
+        : { dropoutPercent, nonFinitePerThousand, spikesPerMinute };
     const reasons: string[] = [];
     let grade: IntegritySnapshot["grade"] = "good";
     const note = (level: "fair" | "poor", text: string) => {
