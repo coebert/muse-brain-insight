@@ -360,8 +360,17 @@ export class FilterChain {
     this.stages = coeffs.map((c) => new Biquad(c));
   }
   process(x: number): number {
+    // A corrupted packet (NaN/Infinity from a truncated or garbled Bluetooth
+    // frame) would otherwise enter the recursive state and poison every later
+    // sample. Drop it instead: the epoch reads as a flat/artefact second and
+    // recovers as soon as clean samples arrive.
+    if (!Number.isFinite(x)) return 0;
     let y = x;
     for (const s of this.stages) y = s.process(y);
+    if (!Number.isFinite(y)) {
+      this.reset();
+      return 0;
+    }
     return y;
   }
   reset() {
