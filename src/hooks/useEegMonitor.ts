@@ -38,6 +38,12 @@ import {
   setActiveDeviceProfile,
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
+import {
+  StreamIntegrityMonitor,
+  suppressionClock,
+  type IntegritySnapshot,
+  type SuppressionClock,
+} from "@/lib/eeg/stream-integrity";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
@@ -363,6 +369,10 @@ export function useEegMonitor() {
   const waveformStoreRef = useRef(createWaveformStore());
   // Per-electrode rolling archive powering the raw-channel viewer.
   const rawArchiveRef = useRef(createRawArchive());
+  /** Live packet-loss / NaN / spike accounting for the incoming stream. */
+  const integrityRef = useRef(new StreamIntegrityMonitor(MUSE_SAMPLE_RATE));
+  const [integrity, setIntegrity] = useState<IntegritySnapshot | null>(null);
+  const [clock, setClock] = useState<SuppressionClock | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState<{
     attempt: number;
     attempts: number;
@@ -510,6 +520,9 @@ export function useEegMonitor() {
     rawArchiveRef.current.reset();
     gapStartRef.current = null;
     startedAtRef.current = Date.now();
+    integrityRef.current.start(startedAtRef.current);
+    setIntegrity(null);
+    setClock(null);
     allocateBuffers(profileRef.current);
   }, [allocateBuffers]);
 
@@ -583,7 +596,11 @@ export function useEegMonitor() {
         await source.start((ch, samples) => {
           const buf = buffersRef.current[ch];
           if (!buf) return;
-          lastSampleAtRef.current = Date.now();
+          const arrivedAt = Date.now();
+          lastSampleAtRef.current = arrivedAt;
+          // Count the notification exactly as the device sent it: dropouts,
+          // NaN/Infinity and out-of-range spikes are measured pre-filter.
+          integrityRef.current.record(ch, samples, arrivedAt);
           const filtered = new Float64Array(samples.length);
           for (let i = 0; i < samples.length; i++) {
             const v = buf.filter.process(samples[i]!);
@@ -662,6 +679,17 @@ export function useEegMonitor() {
       const anyBuffer = channels.length ? buffersRef.current[channels[0]!] : null;
       if (!anyBuffer || anyBuffer.count < EPOCH_LEN) return;
       const t = (Date.now() - startedAtRef.current) / 1000;
+      // Refresh the bedside integrity read-out once per analysis tick.
+      setIntegrity(integrityRef.current.snapshot());
+      setClock(
+        suppressionClock({
+          analysedSeconds: analyzerRef.current.analysedSeconds,
+          suppressionSeconds: analyzerRef.current.suppressionSeconds,
+          excludedArtifactSeconds: analyzerRef.current.excludedArtifactSeconds,
+          excludedGapSeconds: analyzerRef.current.excludedGapEpochSeconds,
+          elapsedSeconds: t,
+        }),
+      );
 
       // No fresh samples: leave a real gap in the trend rather than
       // re-analysing stale buffer contents.
@@ -1008,6 +1036,10 @@ export function useEegMonitor() {
     reconnectAttempt,
     analysisSource,
     dataGapSeconds,
+    /** Live packet dropout / NaN / spike rates for the incoming stream. */
+    integrity,
+    /** How the suppression timer spent the case (analysed vs excluded time). */
+    suppressionClock: clock,
     addEvent,
     connect,
     reconnect,
