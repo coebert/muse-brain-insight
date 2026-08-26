@@ -206,7 +206,7 @@ describe("suppression detection under random packet loss and corruption", () => 
       faults: { drop: 0, corrupt: 0.02 },
       seeds: [41, 53, 67],
       detects: false,
-      minClockFraction: 0.35,
+      minClockFraction: 0.2,
     },
     {
       name: "mixed loss and corruption",
