@@ -260,7 +260,7 @@ describe("storage integrity: checksummed batches and deterministic reload", () =
     expect(verifyReload(EVENT_MANIFEST, shifted).ok).toBe(false);
 
     const relabelled = clone(EVENT_ROWS);
-    relabelled[0]!.severity = relabelled[0]!.severity === "high" ? "low" : "high";
+    relabelled[0]!.severity = relabelled[0]!.severity === "critical" ? "warning" : "critical";
     const report = verifyReload(EVENT_MANIFEST, relabelled);
     expect(report.ok).toBe(false);
     expect(report.problems.some((p) => p.kind === "row_checksum")).toBe(true);
