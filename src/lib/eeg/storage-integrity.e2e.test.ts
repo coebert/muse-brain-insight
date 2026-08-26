@@ -121,8 +121,15 @@ const EVENT_MANIFEST = buildManifest("events", EVENT_ROWS, EPOCH_BATCH_SIZE);
  * A database round-trip: rows are serialised to JSON on insert, come back in
  * whatever order the query asked for, and arrive as plain objects.
  */
-function roundTrip<T>(rows: T[], { shuffle = false } = {}): T[] {
-  const out = JSON.parse(JSON.stringify(rows)) as T[];
+function roundTrip<T extends { t_offset_seconds: number }>(
+  rows: T[],
+  { shuffle = false } = {},
+): T[] {
+  // Reads always ask for `order(t_offset_seconds)`, so a reload arrives sorted
+  // even though events are written when their episode closes.
+  const out = (JSON.parse(JSON.stringify(rows)) as T[]).sort(
+    (a, b) => a.t_offset_seconds - b.t_offset_seconds,
+  );
   if (shuffle) {
     // Deterministic reversal of each batch — the worst case a missing
     // ORDER BY can produce.
