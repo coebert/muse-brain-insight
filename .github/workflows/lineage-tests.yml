@@ -56,7 +56,8 @@ jobs:
             src/lib/eeg/muse-emulator-session.e2e.test.ts \
             src/lib/eeg/dropout-seizure-grid.e2e.test.ts \
             src/lib/eeg/long-duration-session.e2e.test.ts \
-            src/lib/eeg/threshold-sweep.e2e.test.ts
+            src/lib/eeg/threshold-sweep.e2e.test.ts \
+            src/lib/eeg/storage-integrity.e2e.test.ts
 
   full-suite:
     name: Types and full test suite
