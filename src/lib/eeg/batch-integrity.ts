@@ -159,15 +159,21 @@ function tOf(row: { t_offset_seconds: number }): number {
   return row.t_offset_seconds;
 }
 
-/** Split rows into insert batches and checksum each one. */
+/**
+ * Split rows into batches and checksum each one. Batches are defined over the
+ * canonical time ordering rather than whatever order the rows happened to be
+ * inserted in (detected events are appended when an episode closes, and a
+ * reload comes back ordered by offset), so save and reload agree.
+ */
 export function buildManifest(
   kind: "epochs" | "events",
   rows: Array<{ t_offset_seconds: number }>,
   batchSize = EPOCH_BATCH_SIZE,
 ): SessionManifest {
+  const ordered = [...rows].sort((a, b) => tOf(a) - tOf(b));
   const batches: BatchManifest[] = [];
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const chunk = rows.slice(i, i + batchSize);
+  for (let i = 0; i < ordered.length; i += batchSize) {
+    const chunk = ordered.slice(i, i + batchSize);
     batches.push({
       index: batches.length,
       count: chunk.length,
@@ -177,14 +183,14 @@ export function buildManifest(
     });
   }
   const rowChecksums: Record<string, string> = {};
-  rows.forEach((row, i) => {
+  ordered.forEach((row, i) => {
     // Events can repeat an offset (a marker on the same second as an alert),
     // so the key carries the ordinal too.
     rowChecksums[`${tOf(row).toFixed(2)}#${i}`] = checksum(row);
   });
   return {
     kind,
-    rowCount: rows.length,
+    rowCount: ordered.length,
     batches,
     rootChecksum: checksum(batches.map((b) => b.checksum)),
     rowChecksums,

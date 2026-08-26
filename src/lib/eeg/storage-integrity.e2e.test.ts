@@ -285,9 +285,3 @@ describe("storage integrity: checksummed batches and deterministic reload", () =
   });
 });
 
-describe("debug", () => {
-  it("dump", () => {
-    console.log(JSON.stringify(verifyReload(EVENT_MANIFEST, roundTrip(EVENT_ROWS)).problems).slice(0, 800));
-    console.log(EVENT_ROWS.length, JSON.stringify(EVENT_ROWS.slice(0, 3)));
-  });
-});
