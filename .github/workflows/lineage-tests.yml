@@ -47,7 +47,8 @@ jobs:
             src/components/monitor/playback-performance.e2e.test.tsx \
             src/lib/eeg/seizure-alert.e2e.test.ts \
             src/lib/eeg/suppression-groundtruth.e2e.test.ts \
-            src/lib/eeg/ingest-latency.e2e.test.ts
+            src/lib/eeg/ingest-latency.e2e.test.ts \
+            src/lib/eeg/suppression-onset-offset.e2e.test.ts
 
   full-suite:
     name: Types and full test suite
