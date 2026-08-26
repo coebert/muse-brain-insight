@@ -45,6 +45,8 @@ const ICTAL = { start: 260, end: 330 };
 /** Half the analysis window: an episode is recognised ~2 s after it starts. */
 const EDGE_LATENCY = EPOCH_SECONDS / 2;
 const EDGE_TOLERANCE = 8;
+/** Amplitude cross-fade at the edges of the suppression episode, seconds. */
+const RAMP = 20;
 
 /**
  * Suppression amplitude in the scripted episode. Sits between the tight and
@@ -75,10 +77,15 @@ const rng = (seed: number) => {
 // ---------------------------------------------------------------------------
 
 function sample(t: number, noise: () => number): number {
-  if (t >= SUPPRESSION.start && t < SUPPRESSION.end) {
-    // Low-amplitude, near-isoelectric trace at a known peak-to-peak size.
+  if (t >= SUPPRESSION.start - RAMP && t < SUPPRESSION.end + RAMP) {
+    // Low-amplitude, near-isoelectric trace at a known peak-to-peak size, with
+    // graded entry and re-emergence rather than a step change in amplitude.
+    const into = Math.min(1, Math.max(0, (t - (SUPPRESSION.start - RAMP)) / RAMP));
+    const outOf = Math.min(1, Math.max(0, (SUPPRESSION.end + RAMP - t) / RAMP));
+    const blend = Math.min(into, outOf);
     const amp = SUPPRESSION_PP_UV / 2;
-    return amp * Math.sin(2 * Math.PI * 1.6 * t) + 0.35 * noise();
+    const suppressed = amp * Math.sin(2 * Math.PI * 1.6 * t) + 0.35 * noise();
+    return blend * suppressed + (1 - blend) * background(t, noise);
   }
   if (t >= ICTAL.start && t < ICTAL.end) {
     const ramp = Math.min(1, (t - ICTAL.start) / 10);
@@ -91,7 +98,11 @@ function sample(t: number, noise: () => number): number {
       4 * noise()
     );
   }
-  // Maintenance anaesthesia: drifting delta with waxing/waning alpha spindles.
+  return background(t, noise);
+}
+
+/** Maintenance anaesthesia: drifting delta with waxing/waning alpha spindles. */
+function background(t: number, noise: () => number): number {
   const drift = 0.35 * Math.sin(2 * Math.PI * 0.017 * t);
   const spindle = 0.55 + 0.45 * Math.sin(2 * Math.PI * 0.06 * t);
   return (
@@ -309,7 +320,7 @@ describe("threshold sweep: seizure and burst-suppression detection", () => {
   it("keeps every seizure alert inside the labelled ictal run", () => {
     for (const cell of allCells) {
       for (const event of cell.events.filter((e) => e.kind === "seizure")) {
-        expect({ t: event.t, d: event.duration, inSpan: inIctalSpan(event) }).toMatchObject({ inSpan: true });
+        expect(inIctalSpan(event)).toBe(true);
       }
       // Nothing fires during the quiet anaesthetic baseline in any cell.
       const baselineAlerts = cell.events.filter(
