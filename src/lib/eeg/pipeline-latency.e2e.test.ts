@@ -108,13 +108,11 @@ function replayInstrumented(): Run {
 
     profiler.run(qualityTicket, () => {
       for (const [a, b] of PAIRS) {
-        const [psdA, psdB] = computePsdPair(
-          readLast(buffers[a]!, EPOCH_LEN),
-          readLast(buffers[b]!, EPOCH_LEN),
-          FS,
-        );
-        signalQuality(psdA, FS);
-        signalQuality(psdB, FS);
+        const da = readLast(buffers[a]!, EPOCH_LEN);
+        const db = readLast(buffers[b]!, EPOCH_LEN);
+        const [psdA, psdB] = computePsdPair(da, db, FS);
+        signalQuality(da, psdA, FS);
+        signalQuality(db, psdB, FS);
       }
     });
 
