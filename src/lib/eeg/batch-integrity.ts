@@ -275,15 +275,29 @@ export function verifyReload(
     }
   }
 
-  // Pinpoint the offending rows inside any mismatched batch.
-  const expectedByT = new Map<string, string>();
+  // Pinpoint the offending rows inside any mismatched batch. Several events can
+  // share one offset, so checksums are compared as a multiset per offset.
+  const expectedByT = new Map<string, string[]>();
   for (const [key, sum] of Object.entries(expected.rowChecksums)) {
-    expectedByT.set(key.split("#")[0]!, sum);
+    const t = key.split("#")[0]!;
+    expectedByT.set(t, [...(expectedByT.get(t) ?? []), sum]);
   }
+  const actualByT = new Map<string, string[]>();
   for (const [key, sum] of Object.entries(actual.rowChecksums)) {
     const t = key.split("#")[0]!;
+    actualByT.set(t, [...(actualByT.get(t) ?? []), sum]);
+  }
+  for (const [t, sums] of actualByT) {
     const want = expectedByT.get(t);
-    if (want !== undefined && want !== sum) {
+    if (!want) continue;
+    const remaining = [...want];
+    let mismatched = false;
+    for (const sum of sums) {
+      const at = remaining.indexOf(sum);
+      if (at === -1) mismatched = true;
+      else remaining.splice(at, 1);
+    }
+    if (mismatched) {
       problems.push({
         kind: "row_checksum",
         t: Number(t),
