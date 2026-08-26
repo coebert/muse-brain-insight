@@ -496,10 +496,11 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   } else {
     body("No spectral data stored for this case.", M, y + 8);
   }
-  const paletteW = 40;
-  doc.addImage(renderPalette(400, 12), "PNG", pageW - M - paletteW, y - 2.6, paletteW, 2.2);
-  body("low", pageW - M - paletteW - 7, y - 0.9, 6.5);
-  body("high power", pageW - M - paletteW - 7, y - 0.9 + 0, 6.5);
+  const paletteW = 34;
+  doc.addImage(renderPalette(400, 12), "PNG", pageW - M - paletteW, y - 3.4, paletteW, 2.2);
+  body("power  low", pageW - M - paletteW - 20, y - 1.9, 6.5);
+  body("high", pageW - M + 0.5, y - 1.9, 6.5);
+
 
   // ---- Page 2: suppression + seizure ------------------------------------
   doc.addPage();
