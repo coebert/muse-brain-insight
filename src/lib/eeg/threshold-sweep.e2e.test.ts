@@ -76,50 +76,68 @@ const rng = (seed: number) => {
 // Scripted signal
 // ---------------------------------------------------------------------------
 
-function sample(t: number, noise: () => number): number {
-  if (t >= SUPPRESSION.start - RAMP && t < SUPPRESSION.end + RAMP) {
-    // Low-amplitude, near-isoelectric trace at a known peak-to-peak size, with
-    // graded entry and re-emergence rather than a step change in amplitude.
-    const into = Math.min(1, Math.max(0, (t - (SUPPRESSION.start - RAMP)) / RAMP));
-    const outOf = Math.min(1, Math.max(0, (SUPPRESSION.end + RAMP - t) / RAMP));
-    const blend = Math.min(into, outOf);
-    const amp = SUPPRESSION_PP_UV / 2;
-    const suppressed = amp * Math.sin(2 * Math.PI * 1.6 * t) + 0.35 * noise();
-    return blend * suppressed + (1 - blend) * background(t, noise);
-  }
-  if (t >= ICTAL.start && t < ICTAL.end) {
-    const ramp = Math.min(1, (t - ICTAL.start) / 10);
-    const amp = 60 * ramp;
-    const phase = 2 * Math.PI * 3 * t;
-    return (
-      amp * Math.sin(phase) +
-      0.45 * amp * Math.sin(2 * phase + 0.4) +
-      0.2 * amp * Math.sin(3 * phase) +
-      4 * noise()
-    );
-  }
-  return background(t, noise);
+/**
+ * Maintenance-anaesthesia background: narrowband components whose phase does a
+ * random walk, so the trace has realistic 1/f-ish structure and no metronomic
+ * rhythmicity for the seizure detector to latch onto.
+ */
+function makeBackground(noise: () => number) {
+  const bands = [
+    { f: 1.2, amp: 26, jitter: 0.055 },
+    { f: 2.7, amp: 15, jitter: 0.07 },
+    { f: 5.9, amp: 7, jitter: 0.1 },
+    { f: 10.2, amp: 10, jitter: 0.13 },
+  ].map((b) => ({ ...b, phase: noise() * Math.PI }));
+  const dt = 1 / FS;
+  return (t: number) => {
+    // Spindles wax and wane, as they do under a steady propofol infusion.
+    const spindle = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.06 * t + 0.9);
+    let v = 22 * noise();
+    for (const b of bands) {
+      b.phase += 2 * Math.PI * b.f * dt + b.jitter * noise();
+      const gain = b.f > 8 ? spindle : 1;
+      v += b.amp * gain * Math.sin(b.phase);
+    }
+    return v;
+  };
 }
 
-/** Maintenance anaesthesia: drifting delta with waxing/waning alpha spindles. */
-function background(t: number, noise: () => number): number {
-  const drift = 0.35 * Math.sin(2 * Math.PI * 0.017 * t);
-  const spindle = 0.55 + 0.45 * Math.sin(2 * Math.PI * 0.06 * t);
-  return (
-    26 * Math.sin(2 * Math.PI * (1.2 + drift) * t + 0.8 * Math.sin(2 * Math.PI * 0.043 * t)) +
-    14 * Math.sin(2 * Math.PI * (2.7 + 0.5 * drift) * t + 1.1 * Math.sin(2 * Math.PI * 0.11 * t)) +
-    9 * Math.sin(2 * Math.PI * (10.2 + 1.4 * drift) * t) * spindle +
-    6 * Math.sin(2 * Math.PI * (5.9 - 0.7 * drift) * t) +
-    22 * noise()
-  );
+function makeSignal() {
+  const noise = rng(4_211);
+  const background = makeBackground(noise);
+  return (t: number): number => {
+    const bg = background(t);
+    if (t >= SUPPRESSION.start - RAMP && t < SUPPRESSION.end + RAMP) {
+      // Low-amplitude, near-isoelectric trace at a known peak-to-peak size,
+      // with graded entry and re-emergence rather than a step in amplitude.
+      const into = Math.min(1, Math.max(0, (t - (SUPPRESSION.start - RAMP)) / RAMP));
+      const outOf = Math.min(1, Math.max(0, (SUPPRESSION.end + RAMP - t) / RAMP));
+      const blend = Math.min(into, outOf);
+      const amp = SUPPRESSION_PP_UV / 2;
+      const suppressed = amp * Math.sin(2 * Math.PI * 1.6 * t) + 0.35 * noise();
+      return blend * suppressed + (1 - blend) * bg;
+    }
+    if (t >= ICTAL.start && t < ICTAL.end) {
+      const ramp = Math.min(1, (t - ICTAL.start) / 10);
+      const amp = 60 * ramp;
+      const phase = 2 * Math.PI * 3 * t;
+      return (
+        amp * Math.sin(phase) +
+        0.45 * amp * Math.sin(2 * phase + 0.4) +
+        0.2 * amp * Math.sin(3 * phase) +
+        4 * noise()
+      );
+    }
+    return bg;
+  };
 }
 
 /** The whole session, filtered exactly as the monitor filters it, once. */
 function buildFiltered(): Float64Array {
-  const noise = rng(4_211);
+  const signal = makeSignal();
   const filter = makeEegFilter();
   const out = new Float64Array(SESSION_SECONDS * FS);
-  for (let i = 0; i < out.length; i += 1) out[i] = filter.process(sample(i / FS, noise));
+  for (let i = 0; i < out.length; i += 1) out[i] = filter.process(signal(i / FS));
   return out;
 }
 
