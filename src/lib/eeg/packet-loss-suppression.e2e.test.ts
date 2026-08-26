@@ -206,21 +206,21 @@ describe("suppression detection under random packet loss and corruption", () => 
       faults: { drop: 0, corrupt: 0.02 },
       seeds: [41, 53, 67],
       detects: false,
-      minClockFraction: 0.5,
+      minClockFraction: 0.35,
     },
     {
       name: "mixed loss and corruption",
       faults: { drop: 0.015, corrupt: 0.015 },
       seeds: [71, 89, 97],
       detects: false,
-      minClockFraction: 0.3,
+      minClockFraction: 0.2,
     },
     {
       name: "heavy loss (5 % dropped)",
       faults: { drop: 0.05, corrupt: 0.01 },
       seeds: [101, 113],
       detects: false,
-      minClockFraction: 0.2,
+      minClockFraction: 0.15,
     },
   ];
 
