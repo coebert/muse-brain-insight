@@ -50,6 +50,9 @@ const MAX_DEGRADE_RATIO = 1.6;
 /** Allowed growth in retained bytes between the first and last block. */
 const MAX_RETAINED_GROWTH = 1.02;
 
+/** Retained instrumentation samples per stage. */
+const PROFILER_WINDOW = 2_000;
+
 const TIMEOUT = 900_000;
 
 const rng = (seed: number) => {
@@ -239,7 +242,8 @@ function replay(): Run {
   const analyzer = new EegAnalyzer(DEFAULT_SETTINGS, FS);
   const archive = createRawArchive();
   const waveform = createWaveformStore();
-  const profiler = new PipelineProfiler();
+  // Diagnostics keep a bounded window of samples, as the live panel does.
+  const profiler = new PipelineProfiler({ maxSamples: PROFILER_WINDOW });
   const writer: Writer = {
     pending: [],
     written: 0,
