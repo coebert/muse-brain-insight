@@ -48,7 +48,8 @@ jobs:
             src/lib/eeg/seizure-alert.e2e.test.ts \
             src/lib/eeg/suppression-groundtruth.e2e.test.ts \
             src/lib/eeg/ingest-latency.e2e.test.ts \
-            src/lib/eeg/suppression-onset-offset.e2e.test.ts
+            src/lib/eeg/suppression-onset-offset.e2e.test.ts \
+            src/components/monitor/dropout-resilience.e2e.test.tsx
 
   full-suite:
     name: Types and full test suite
