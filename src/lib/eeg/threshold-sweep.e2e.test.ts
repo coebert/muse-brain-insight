@@ -320,7 +320,7 @@ describe("threshold sweep: seizure and burst-suppression detection", () => {
   it("keeps every seizure alert inside the labelled ictal run", () => {
     for (const cell of allCells) {
       for (const event of cell.events.filter((e) => e.kind === "seizure")) {
-        expect(inIctalSpan(event)).toBe(true);
+        expect({ t: event.t, d: event.duration, ok: inIctalSpan(event) }).toMatchObject({ ok: true });
       }
       // Nothing fires during the quiet anaesthetic baseline in any cell.
       const baselineAlerts = cell.events.filter(
