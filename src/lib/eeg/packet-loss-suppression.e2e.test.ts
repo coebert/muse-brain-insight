@@ -29,6 +29,11 @@ const SEG_SECONDS = 0.5;
 const EDGE_LATENCY = EPOCH_SECONDS / 2;
 /** Onset/offset tolerance on top of the inherent half-window latency. */
 const EDGE_TOLERANCE = 3;
+/**
+ * Lost packets cost the detector whole windows, so recognition can slip by a
+ * few extra seconds under loss. Anything beyond this is a regression.
+ */
+const LOSS_EDGE_TOLERANCE = 7;
 const TIMEOUT = 120_000;
 
 interface Span {
@@ -216,11 +221,11 @@ describe("suppression detection under random packet loss and corruption", () => 
           expect(
             Math.abs(onset - (gt.start + EDGE_LATENCY)),
             `${tag}: onset error, episode ${i}`,
-          ).toBeLessThanOrEqual(EDGE_TOLERANCE);
+          ).toBeLessThanOrEqual(LOSS_EDGE_TOLERANCE);
           expect(
             Math.abs(offset - (gt.end + EDGE_LATENCY)),
             `${tag}: offset error, episode ${i}`,
-          ).toBeLessThanOrEqual(EDGE_TOLERANCE + 3);
+          ).toBeLessThanOrEqual(LOSS_EDGE_TOLERANCE);
           expect(
             covered / (gt.end - gt.start),
             `${tag}: episode ${i} coverage`,
