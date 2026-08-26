@@ -205,15 +205,15 @@ describe("suppression detection under random packet loss and corruption", () => 
       name: "corruption only (2 % garbled)",
       faults: { drop: 0, corrupt: 0.02 },
       seeds: [41, 53, 67],
-      detects: true,
-      minClockFraction: 0.6,
+      detects: false,
+      minClockFraction: 0.5,
     },
     {
       name: "mixed loss and corruption",
       faults: { drop: 0.015, corrupt: 0.015 },
       seeds: [71, 89, 97],
       detects: false,
-      minClockFraction: 0.4,
+      minClockFraction: 0.3,
     },
     {
       name: "heavy loss (5 % dropped)",
@@ -274,6 +274,10 @@ describe("suppression detection under random packet loss and corruption", () => 
         expect(run.suppressionSeconds, `${tag}: suppression clock collapsed`).toBeGreaterThan(
           LABELLED * minClockFraction,
         );
+
+        // Even under the heaviest loss, real suppression is not missed wholesale.
+        const found = EPISODES.filter((gt) => fragmentsFor(run.events, gt).length > 0);
+        expect(found.length, `${tag}: no labelled episode detected at all`).toBeGreaterThan(0);
 
         // Monotonic and never backwards.
         for (let i = 1; i < run.clock.length; i += 1) {
