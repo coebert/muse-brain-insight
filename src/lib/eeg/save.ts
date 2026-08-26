@@ -4,6 +4,23 @@ import { sealTexts } from "@/lib/privacy.functions";
 import { scrubCaseText, type DeidFinding } from "@/lib/eeg/deid";
 import { linkPatient } from "@/lib/eeg/patient-link.functions";
 import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
+import {
+  EPOCH_BATCH_SIZE,
+  buildManifest,
+  epochPayload,
+  eventPayload,
+  type SessionManifest,
+} from "@/lib/eeg/batch-integrity";
+
+/**
+ * Checksums for the most recent save, so the reload path can prove the stored
+ * spectral arrays and events came back byte-identical.
+ */
+let lastSaveManifests: { epochs: SessionManifest; events: SessionManifest | null } | null = null;
+
+export function getLastSaveManifests() {
+  return lastSaveManifests;
+}
 
 export interface SessionMeta {
   caseCode: string;
@@ -162,71 +179,31 @@ export async function saveSession(
   );
   if (!session) throw new Error("The case was not saved — no record was returned.");
 
+  // Serialisation lives in batch-integrity so the checksums recorded for this
+  // save are taken over exactly the values that are inserted.
   const rows = decimate(epochs).map((e) => ({
     session_id: session.id,
     user_id: userId,
-    t_offset_seconds: Number(e.t.toFixed(2)),
-    suppression_ratio: Number(e.suppressionRatio.toFixed(2)),
-    is_suppressed: e.isSuppressed,
-    seizure_score: Number(e.seizureScore.toFixed(3)),
-    total_power: Number(e.totalPower.toFixed(3)),
-    spectral_edge_95: Number(e.sef95.toFixed(2)),
-    depth_index: e.depth.index === null ? null : Number(e.depth.index.toFixed(1)),
-    depth_state: e.depth.state,
-    consciousness_index: e.composite.cIndex,
-    nociception_index: e.composite.nIndex,
-    composite_components: {
-      fast_slow: Number(e.composite.components.fastSlow.toFixed(3)),
-      entropy: Number(e.composite.components.entropy.toFixed(3)),
-      bsr: Number(e.composite.components.bsr.toFixed(2)),
-      emg_drive: Number(e.composite.components.emgDrive.toFixed(3)),
-      reactivity: Number(e.composite.components.reactivity.toFixed(3)),
-      entropy_gap: Number(e.composite.components.entropyGap.toFixed(3)),
-    } as Record<string, number>,
-    depth_components: {
-      c1: Number.isFinite(e.depth.components.betaRatio)
-        ? Number(e.depth.components.betaRatio.toFixed(4))
-        : null,
-      c2: Number.isFinite(e.depth.components.synchFastSlow)
-        ? Number(e.depth.components.synchFastSlow.toFixed(4))
-        : null,
-      c3: Number.isFinite(e.depth.components.slowWave)
-        ? Number(e.depth.components.slowWave.toFixed(4))
-        : null,
-      bsr: Number(e.depth.components.bsr.toFixed(2)),
-    } as Record<string, number | null>,
-    bands: { ...e.bands } as Record<string, number>,
-    entropy: {
-      shannon: Number(e.entropy.shannon.toFixed(3)),
-      se95: Number(e.entropy.se95.toFixed(3)),
-      state: Number(e.entropy.state.toFixed(3)),
-      response: Number(e.entropy.response.toFixed(3)),
-    } as Record<string, number>,
-    power_ratios: {
-      delta_alpha: Number(e.ratios.deltaAlpha.toFixed(3)),
-      beta_alpha: Number(e.ratios.betaAlpha.toFixed(3)),
-      theta_alpha: Number(e.ratios.thetaAlpha.toFixed(3)),
-    } as Record<string, number>,
-    spectrum: e.spectrum.map((v) => Number(v.toFixed(1))),
+    ...epochPayload(e),
   }));
-  for (let i = 0; i < rows.length; i += 200) {
-    const chunk = rows.slice(i, i + 200);
+  const epochManifest = buildManifest("epochs", rows, EPOCH_BATCH_SIZE);
+  for (let i = 0; i < rows.length; i += EPOCH_BATCH_SIZE) {
+    const chunk = rows.slice(i, i + EPOCH_BATCH_SIZE);
     await write(() => supabase.from("eeg_epochs").insert(chunk));
   }
 
+  let eventManifest: SessionManifest | null = null;
   if (events.length) {
     const eventRows = events.map((ev) => ({
       session_id: session.id,
       user_id: userId,
-      kind: ev.kind,
-      severity: ev.severity,
-      t_offset_seconds: Number(ev.t.toFixed(2)),
-      duration_seconds: Number(ev.duration.toFixed(1)),
-      detail: ev.detail,
+      ...eventPayload(ev),
     }));
+    eventManifest = buildManifest("events", eventRows, EPOCH_BATCH_SIZE);
     await write(() => supabase.from("eeg_events").insert(eventRows));
   }
 
   clearStagedSave();
+  lastSaveManifests = { epochs: epochManifest, events: eventManifest };
   return session.id as string;
 }
