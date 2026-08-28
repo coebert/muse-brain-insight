@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Bluetooth, FlaskConical, Save, Trash2 } from "lucide-react";
 
+import { BleHeadsetPanel } from "@/components/monitor/BleHeadsetPanel";
 import { CaseFields } from "@/components/monitor/CaseFields";
 import { IngestPanel } from "@/components/monitor/IngestPanel";
 import { MuseCapabilityPanel } from "@/components/monitor/MuseCapabilityPanel";
@@ -148,6 +149,10 @@ export function CaseDialogs({
             <MuseCapabilityPanel
               onConfirm={(device, preset) => onStart("muse", { device, preset })}
             />
+          ) : null}
+          {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
+          {bleSupported ? (
+            <BleHeadsetPanel onStart={(source) => onStart("ingest", { source })} />
           ) : null}
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
           <IngestPanel onStart={(source) => onStart("ingest", { source })} />
