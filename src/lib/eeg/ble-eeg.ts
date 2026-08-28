@@ -353,12 +353,69 @@ export function friendlyBleError(error: unknown): string {
   return message || "FocusCalm could not be connected. Restart the headband and try again.";
 }
 
-const COLUMN = "ble";
 
 /**
  * A discovered BLE EEG stream presented as an ordinary `EegSource`, so the
  * monitor, lineage gating and every downstream metric treat it exactly like
  * any other non-Muse amplifier.
+ */
+/* ------------------------------------------------------------------ */
+/* Live connection health                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What the bedside needs to know before a case starts, and while it runs:
+ * is the link up, are packets decoding, is the stream at the rate discovery
+ * measured, and does the signal look like scalp EEG rather than a flat or
+ * railed electrode.
+ */
+export interface BleStreamHealth {
+  /** GATT link state. */
+  connected: boolean;
+  /** Auto-reconnect currently retrying. */
+  reconnecting: boolean;
+  /** Notifications arriving in the last few seconds. */
+  packetsPerSecond: number;
+  /** Notifications that decoded into samples (a decode failure shows as 0). */
+  decodedPacketsPerSecond: number;
+  samplesPerSecond: number;
+  /** Rate discovery settled on, for comparison. */
+  expectedSampleRate: number;
+  /** Delivered rate as a fraction of the expected rate. */
+  rateRatio: number;
+  /** Robust amplitude of the delivered signal, microvolts. */
+  amplitudeUv: number;
+  quality: "none" | "poor" | "fair" | "good";
+  qualityReason: string;
+  msSinceLastPacket: number;
+  totalPackets: number;
+  totalSamples: number;
+  /** True when every check passes and a case can safely begin. */
+  ready: boolean;
+}
+
+const COLUMN = "ble";
+const HEALTH_WINDOW_MS = 4_000;
+/** Backoff between automatic re-pairing attempts, seconds. */
+const BLE_RETRY_DELAYS = [1, 2, 4, 8, 15];
+/** No packets for this long with the link nominally up: treat it as dropped. */
+const BLE_STALL_MS = 6_000;
+
+/**
+ * A discovered BLE EEG stream presented as an ordinary `EegSource`, so the
+ * monitor, lineage gating and every downstream metric treat it exactly like
+ * any other non-Muse amplifier.
+ *
+ * Two behaviours beyond plain discovery matter at the bedside:
+ *
+ *   * **One-tap resume.** A band that slips, browns out or wanders out of
+ *     range is re-opened automatically with backoff, reusing the authorised
+ *     device handle and the characteristic discovery already settled on — no
+ *     chooser, no new case, no lost timeline. `reconnect()` short-cuts the
+ *     backoff when the clinician taps the button.
+ *   * **Live health.** Packets, decoded packets, delivered sample rate and a
+ *     robust amplitude are tracked continuously, so the panel can prove the
+ *     stream is real before the case starts and keep proving it afterwards.
  */
 export class BleHeadsetSource implements EegSource {
   name = "BLE headset";
@@ -370,11 +427,24 @@ export class BleHeadsetSource implements EegSource {
   private format: PacketFormat = "int16le";
   private scale = 1;
   private stopping = false;
+  private started = false;
+  private reconnecting = false;
+  private retryWake: (() => void) | null = null;
+  private linkWaiters: ((ok: boolean) => void)[] = [];
   private listener: ((event: Event) => void) | null = null;
+  private disconnectListener: (() => void) | null = null;
   private disconnectCb: (() => void) | null = null;
   private stateCb: SourceStateHandler | null = null;
   private batteryCb: ((percent: number) => void) | null = null;
   private discoveryCb: ((d: BleDiscovery) => void) | null = null;
+  private healthCb: ((h: BleStreamHealth) => void) | null = null;
+  private samplesCb: SampleHandler | null = null;
+  private healthTimer: ReturnType<typeof setInterval> | null = null;
+  /** Rolling packet log: [arrivedAt, decodedSamples, robust amplitude µV]. */
+  private packetLog: [number, number, number][] = [];
+  private totalPackets = 0;
+  private totalSamples = 0;
+  private lastPacketAt = 0;
   discovery: BleDiscovery | null = null;
 
   constructor(private readonly options: BleHeadsetOptions = {}) {
@@ -398,19 +468,47 @@ export class BleHeadsetSource implements EegSource {
     this.discoveryCb = cb;
   }
 
+  /** Live stream health, refreshed twice a second while the source is open. */
+  onHealth(cb: (h: BleStreamHealth) => void) {
+    this.healthCb = cb;
+    if (this.started) cb(this.health());
+  }
+
+  /**
+   * Opens the headset and begins delivering samples. Calling it again on an
+   * already-open source only re-points the sample sink — the pairing panel
+   * verifies health first, then the case adopts the same live stream without
+   * a second pairing round-trip.
+   */
   async start(onSamples: SampleHandler) {
+    this.samplesCb = onSamples;
+    if (this.started) {
+      this.stateCb?.({ kind: "connected" });
+      return;
+    }
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
     this.progress("choosing", "Choose FocusCalm from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
-    device.addEventListener("gattserverdisconnected", () => {
+    this.disconnectListener = () => {
       if (this.stopping) return;
-      this.stateCb?.({ kind: "lost", reason: "The headset disconnected." });
-      this.disconnectCb?.();
-    });
+      this.characteristic = null;
+      this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_DELAYS.length });
+      void this.attemptReconnect();
+    };
+    device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
+    await this.attach();
+    this.started = true;
+    this.startHealthLoop();
+  }
+
+  /** Opens GATT, discovers the stream and subscribes. Used by start and retry. */
+  private async attach() {
+    const device = this.device;
+    if (!device) throw new Error("No headset has been paired yet.");
     this.progress("connecting", `Connecting to ${this.name}`);
     const server = await device.gatt?.connect();
     if (!server) throw new Error("Could not open a GATT connection to the headset.");
@@ -423,6 +521,19 @@ export class BleHeadsetSource implements EegSource {
       );
 
     await this.attachBattery(server);
+
+    // Fast path on a resume: the characteristic and packet layout are already
+    // known, so re-subscribe directly instead of re-running the listen-and-
+    // score sweep the clinician already waited through once.
+    if (this.discovery) {
+      const known = await this.findKnownCharacteristic(services);
+      if (known) {
+        this.bindStream(known);
+        this.progress("ready", "EEG stream resumed");
+        this.stateCb?.({ kind: "connected" });
+        return;
+      }
+    }
 
     const notifying: {
       service: BluetoothRemoteGATTService;
@@ -467,30 +578,263 @@ export class BleHeadsetSource implements EegSource {
       label: this.name,
     };
     this.profile = this.buildProfile(channelMap, measuredRate);
-    this.pipeline = new IngestPipeline(config, onSamples);
+    this.pipeline = new IngestPipeline(config, (ch, samples) => this.samplesCb?.(ch, samples));
     if (this.pipeline.mappedCount === 0)
       throw new Error("Map the headset stream onto at least one analysis electrode.");
 
     // Re-subscribe to the winning characteristic only.
     await this.detachAll(notifying, chosen.characteristic);
-    this.characteristic = chosen.characteristic;
-    this.listener = (event: Event) => {
-      const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
-      if (!value) return;
-      const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-      const decoded = decodePacket(this.format, bytes);
-      if (!decoded.length) return;
-      this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
-    };
-    this.characteristic.addEventListener("characteristicvaluechanged", this.listener);
     this.discovery = { ...chosen.discovery, uvPerCount, sampleRate: measuredRate };
+    this.bindStream(chosen.characteristic);
     this.discoveryCb?.(this.discovery);
     this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
   }
 
+  /** Re-locates the characteristic discovery already chose, after a resume. */
+  private async findKnownCharacteristic(services: BluetoothRemoteGATTService[]) {
+    const target = this.discovery;
+    if (!target) return null;
+    for (const service of services) {
+      if (service.uuid !== target.serviceUuid) continue;
+      try {
+        const chars = await service.getCharacteristics();
+        return chars.find((c) => c.uuid === target.characteristicUuid) ?? null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /** Subscribes to the chosen characteristic and starts counting health. */
+  private bindStream(characteristic: BluetoothRemoteGATTCharacteristic) {
+    this.characteristic = characteristic;
+    this.listener = (event: Event) => {
+      const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
+      if (!value) return;
+      const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+      const decoded = decodePacket(this.format, bytes);
+      const now = Date.now();
+      this.lastPacketAt = now;
+      this.totalPackets++;
+      this.totalSamples += decoded.length;
+      this.packetLog.push([now, decoded.length, p95Abs(decoded) * this.scale]);
+      if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
+      if (!decoded.length) return;
+      this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
+    };
+    characteristic.addEventListener("characteristicvaluechanged", this.listener);
+    void characteristic.startNotifications().catch(() => {
+      /* already notifying from the discovery sweep */
+    });
+  }
+
   private progress(stage: BleConnectionStage, message: string) {
     this.options.onProgress?.({ stage, message });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Health                                                            */
+  /* ---------------------------------------------------------------- */
+
+  private startHealthLoop() {
+    if (this.healthTimer) return;
+    this.healthTimer = setInterval(() => {
+      if (this.stopping) return;
+      const health = this.health();
+      this.healthCb?.(health);
+      // Link nominally up but silent: the band has stopped streaming, which
+      // GATT does not always report. Rebuild it rather than sit on dead air.
+      if (
+        this.started &&
+        !this.reconnecting &&
+        this.lastPacketAt &&
+        Date.now() - this.lastPacketAt > BLE_STALL_MS
+      ) {
+        void this.attemptReconnect();
+      }
+    }, 500);
+  }
+
+  /** Current stream health, computed over the last few seconds of packets. */
+  health(): BleStreamHealth {
+    const now = Date.now();
+    const cutoff = now - HEALTH_WINDOW_MS;
+    const recent = this.packetLog.filter(([t]) => t >= cutoff);
+    const seconds = HEALTH_WINDOW_MS / 1000;
+    const packetsPerSecond = Number((recent.length / seconds).toFixed(1));
+    const decoded = recent.filter(([, n]) => n > 0);
+    const decodedPerSecond = Number((decoded.length / seconds).toFixed(1));
+    const samplesPerSecond = Number(
+      (recent.reduce((sum, [, n]) => sum + n, 0) / seconds).toFixed(1),
+    );
+    const amplitudes = decoded.map(([, , uv]) => uv).sort((a, b) => a - b);
+    const amplitudeUv = amplitudes.length
+      ? Number((amplitudes[Math.floor(amplitudes.length / 2)] as number).toFixed(1))
+      : 0;
+    const expectedSampleRate = this.discovery?.sampleRate ?? this.profile.sampleRate;
+    const rateRatio = expectedSampleRate ? samplesPerSecond / expectedSampleRate : 0;
+    const connected = Boolean(this.device?.gatt?.connected) && Boolean(this.characteristic);
+    const msSinceLastPacket = this.lastPacketAt ? now - this.lastPacketAt : Number.POSITIVE_INFINITY;
+
+    let quality: BleStreamHealth["quality"] = "good";
+    let qualityReason = "Amplitude and rate consistent with scalp EEG.";
+    if (!connected || !recent.length) {
+      quality = "none";
+      qualityReason = connected ? "No packets are arriving from the headset." : "The link is down.";
+    } else if (decodedPerSecond === 0) {
+      quality = "none";
+      qualityReason = "Packets arrive but none decode — the packet layout no longer matches.";
+    } else if (amplitudeUv < 1.5) {
+      quality = "poor";
+      qualityReason = "Signal is nearly flat — the electrodes are probably not touching skin.";
+    } else if (amplitudeUv > 250) {
+      quality = "poor";
+      qualityReason = "Very large excursions — movement, muscle or a loose electrode.";
+    } else if (rateRatio < 0.7 || rateRatio > 1.4) {
+      quality = "fair";
+      qualityReason = "Delivered sample rate is drifting from the rate discovery measured.";
+    } else if (amplitudeUv > 120) {
+      quality = "fair";
+      qualityReason = "Amplitude is high — settle the patient and reseat the band.";
+    }
+
+    return {
+      connected,
+      reconnecting: this.reconnecting,
+      packetsPerSecond,
+      decodedPacketsPerSecond: decodedPerSecond,
+      samplesPerSecond,
+      expectedSampleRate,
+      rateRatio: Number(rateRatio.toFixed(2)),
+      amplitudeUv,
+      quality,
+      qualityReason,
+      msSinceLastPacket,
+      totalPackets: this.totalPackets,
+      totalSamples: this.totalSamples,
+      ready:
+        connected &&
+        decodedPerSecond > 0 &&
+        samplesPerSecond > 0 &&
+        rateRatio >= 0.7 &&
+        rateRatio <= 1.4 &&
+        (quality === "good" || quality === "fair"),
+    };
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Reconnection                                                      */
+  /* ---------------------------------------------------------------- */
+
+  private detachStream() {
+    if (this.characteristic && this.listener) {
+      this.characteristic.removeEventListener("characteristicvaluechanged", this.listener);
+      try {
+        void this.characteristic.stopNotifications().catch(() => {});
+      } catch {
+        /* the link is already gone */
+      }
+    }
+    this.listener = null;
+    this.characteristic = null;
+  }
+
+  private settleWaiters(ok: boolean) {
+    const waiters = this.linkWaiters;
+    this.linkWaiters = [];
+    for (const resolve of waiters) resolve(ok);
+  }
+
+  private waitForRetry(seconds: number) {
+    return new Promise<void>((resolve) => {
+      const id = setTimeout(() => {
+        this.retryWake = null;
+        resolve();
+      }, seconds * 1000);
+      this.retryWake = () => {
+        clearTimeout(id);
+        this.retryWake = null;
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Automatic resume with backoff. The case keeps running throughout: the gap
+   * is recorded, the timeline is untouched, and the stream picks up where it
+   * left off as soon as the band answers.
+   */
+  private async attemptReconnect() {
+    if (this.reconnecting || this.stopping || !this.started) return;
+    this.reconnecting = true;
+    const attempts = BLE_RETRY_DELAYS.length;
+    let told = false;
+    for (let i = 0; !this.stopping; i++) {
+      this.stateCb?.({ kind: "reconnecting", attempt: Math.min(i + 1, attempts), attempts });
+      await this.waitForRetry(BLE_RETRY_DELAYS[Math.min(i, attempts - 1)]!);
+      if (this.stopping) break;
+      try {
+        this.detachStream();
+        try {
+          this.device?.gatt?.disconnect();
+        } catch {
+          /* already closed */
+        }
+        await this.attach();
+        this.lastPacketAt = Date.now();
+        this.reconnecting = false;
+        this.settleWaiters(true);
+        this.stateCb?.({ kind: "connected" });
+        return;
+      } catch {
+        this.settleWaiters(false);
+        if (i + 1 >= attempts && !told) {
+          told = true;
+          this.stateCb?.({
+            kind: "lost",
+            reason:
+              "FocusCalm has not come back yet — the case and its data are kept and reconnection keeps retrying. Check the band is on, charged and not held by the phone app.",
+          });
+          this.disconnectCb?.();
+        }
+      }
+    }
+    this.reconnecting = false;
+    this.settleWaiters(false);
+  }
+
+  /** One-tap manual resume: short-cuts the backoff and reports the outcome. */
+  async reconnect(): Promise<boolean> {
+    if (!this.device || !this.started) return false;
+    this.stopping = false;
+    if (this.reconnecting) {
+      const outcome = new Promise<boolean>((resolve) => this.linkWaiters.push(resolve));
+      this.retryWake?.();
+      return outcome;
+    }
+    this.reconnecting = true;
+    this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: 1 });
+    try {
+      this.detachStream();
+      try {
+        this.device.gatt?.disconnect();
+      } catch {
+        /* already closed */
+      }
+      await this.attach();
+      this.lastPacketAt = Date.now();
+      this.reconnecting = false;
+      this.stateCb?.({ kind: "connected" });
+      return true;
+    } catch (e) {
+      this.reconnecting = false;
+      this.stateCb?.({ kind: "lost", reason: friendlyBleError(e) });
+      // Keep trying quietly rather than leaving the case with no link.
+      void this.attemptReconnect();
+      return false;
+    }
   }
 
   /** Subscribes to everything that notifies and collects a burst of packets. */
@@ -664,17 +1008,19 @@ export class BleHeadsetSource implements EegSource {
 
   async stop() {
     this.stopping = true;
-    if (this.characteristic && this.listener) {
-      this.characteristic.removeEventListener("characteristicvaluechanged", this.listener);
-      try {
-        await this.characteristic.stopNotifications();
-      } catch {
-        /* ignore */
-      }
-    }
-    this.listener = null;
-    this.characteristic = null;
+    this.started = false;
+    this.reconnecting = false;
+    this.retryWake?.();
+    this.settleWaiters(false);
+    if (this.healthTimer) clearInterval(this.healthTimer);
+    this.healthTimer = null;
+    this.detachStream();
     this.batteryChar = null;
+    if (this.device && this.disconnectListener) {
+      this.device.removeEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.disconnectListener = null;
+    this.samplesCb = null;
     try {
       this.device?.gatt?.disconnect();
     } catch {
