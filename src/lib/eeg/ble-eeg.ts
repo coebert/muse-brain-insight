@@ -743,10 +743,17 @@ export class BleHeadsetSource implements EegSource {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
       try {
         services = await server.getPrimaryServices();
-      } catch {
+      } catch (error) {
+        bleDiagnostics.add("error", "Service discovery failed", {
+          attempt: attempt + 1,
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
         services = [];
       }
     }
+    bleDiagnostics.add("service", `Discovered ${services.length} primary service(s)`, {
+      services: services.map((s) => s.uuid),
+    });
     if (!services.length)
       throw new Error(
         "The headset connected but exposed no readable services. Close any phone app holding the band, unplug the charging cable, then switch it off and on and retry.",
