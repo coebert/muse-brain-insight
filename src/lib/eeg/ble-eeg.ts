@@ -923,6 +923,36 @@ export class BleHeadsetSource implements EegSource {
     }
   }
 
+  /**
+   * Sends the start commands consumer EEG firmware commonly waits for. Each is
+   * harmless to a band that streams unprompted, and one of them wakes a band
+   * that would otherwise sit silent behind a healthy link.
+   */
+  private async nudgeStream(writable: BluetoothRemoteGATTCharacteristic[]) {
+    const commands = [
+      Uint8Array.from([0x55, 0xaa, 0x01, 0x01, 0x01]),
+      Uint8Array.from([0x01]),
+      Uint8Array.from([0x02]),
+      Uint8Array.from([0x62]), // 'b' — start, used by several BLE UART bridges
+      new TextEncoder().encode("start\n"),
+    ];
+    for (const characteristic of writable) {
+      for (const command of commands) {
+        if (this.stopping) return;
+        try {
+          if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(command as BufferSource);
+          } else {
+            await characteristic.writeValue(command as BufferSource);
+          }
+        } catch {
+          /* the band rejected this command; try the next */
+        }
+        await new Promise((r) => setTimeout(r, 60));
+      }
+    }
+  }
+
   /** Subscribes to everything that notifies and collects a burst of packets. */
   private async listen(
     notifying: {
@@ -940,10 +970,10 @@ export class BleHeadsetSource implements EegSource {
       }
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
-    const ordered = [...notifying].sort((a, b) => {
-      const nordic = BLE_CANDIDATE_SERVICES[0];
-      return Number(b.service.uuid === nordic) - Number(a.service.uuid === nordic);
-    });
+    const ordered = [...notifying].sort(
+      (a, b) => Number(b.service.uuid === NORDIC_UART) - Number(a.service.uuid === NORDIC_UART),
+    );
+
     for (let index = 0; index < ordered.length; index++) {
       const entry = ordered[index]!;
       const key = entry.characteristic.uuid;
