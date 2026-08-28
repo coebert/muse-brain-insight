@@ -483,6 +483,7 @@ export class BleHeadsetSource implements EegSource {
   private retryWake: (() => void) | null = null;
   private linkWaiters: ((ok: boolean) => void)[] = [];
   private listener: ((event: Event) => void) | null = null;
+  private batteryListener: ((event: Event) => void) | null = null;
   private disconnectListener: (() => void) | null = null;
   private disconnectCb: (() => void) | null = null;
   private stateCb: SourceStateHandler | null = null;
@@ -569,7 +570,7 @@ export class BleHeadsetSource implements EegSource {
   private async releaseFailedStart() {
     this.stopping = true;
     this.detachStream();
-    this.batteryChar = null;
+    this.detachBattery();
     if (this.device && this.disconnectListener) {
       this.device.removeEventListener("gattserverdisconnected", this.disconnectListener);
     }
@@ -1086,14 +1087,11 @@ export class BleHeadsetSource implements EegSource {
     }[],
     keep: BluetoothRemoteGATTCharacteristic,
   ) {
-    for (const { characteristic } of notifying) {
-      if (characteristic === keep) continue;
-      try {
-        await characteristic.stopNotifications();
-      } catch {
-        /* ignore */
-      }
-    }
+    await Promise.allSettled(
+      notifying
+        .filter(({ characteristic }) => characteristic !== keep)
+        .map(({ characteristic }) => characteristic.stopNotifications()),
+    );
   }
 
   private async attachBattery(server: BluetoothRemoteGATTServer) {
@@ -1104,15 +1102,25 @@ export class BleHeadsetSource implements EegSource {
       const value = await characteristic.readValue();
       this.batteryCb?.(value.getUint8(0));
       if (characteristic.properties.notify) {
-        characteristic.addEventListener("characteristicvaluechanged", (event) => {
+        this.batteryListener = (event) => {
           const v = (event.target as BluetoothRemoteGATTCharacteristic).value;
           if (v) this.batteryCb?.(v.getUint8(0));
-        });
+        };
+        characteristic.addEventListener("characteristicvaluechanged", this.batteryListener);
         await characteristic.startNotifications();
       }
     } catch {
-      this.batteryChar = null;
+      this.detachBattery();
     }
+  }
+
+  private detachBattery() {
+    if (this.batteryChar && this.batteryListener) {
+      this.batteryChar.removeEventListener("characteristicvaluechanged", this.batteryListener);
+      void this.batteryChar.stopNotifications().catch(() => {});
+    }
+    this.batteryListener = null;
+    this.batteryChar = null;
   }
 
   /** Montage for the mapped stream, with the FocusCalm caveats when it fits. */
@@ -1154,7 +1162,7 @@ export class BleHeadsetSource implements EegSource {
     if (this.healthTimer) clearInterval(this.healthTimer);
     this.healthTimer = null;
     this.detachStream();
-    this.batteryChar = null;
+    this.detachBattery();
     if (this.device && this.disconnectListener) {
       this.device.removeEventListener("gattserverdisconnected", this.disconnectListener);
     }
