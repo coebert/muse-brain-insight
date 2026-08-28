@@ -1019,7 +1019,9 @@ function Monitor() {
               analysisSource={monitor.analysisSource}
             />
             </div>
+            <LiveSpectrumPanel latest={latest} epochs={monitor.epochs} />
             <DeviceOptimisationPanel profile={deviceProfile} tuning={tuning} />
+
             <div id="mon-lineage" className="scroll-mt-24 rounded-lg transition-shadow">
               <AcquisitionLineagePanel profile={deviceProfile} />
             </div>
