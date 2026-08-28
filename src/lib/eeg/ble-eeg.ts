@@ -314,7 +314,12 @@ export async function requestBleHeadset(extraServices: string[] = []): Promise<B
   const bluetooth = navigator.bluetooth as Bluetooth & {
     getDevices?: () => Promise<BluetoothDevice[]>;
   };
-  if (bluetooth.getDevices) {
+  // Bluefy can retain an authorised BluetoothDevice after iOS has discarded
+  // the underlying CBPeripheral. Reusing that stale handle makes the picker
+  // appear to work but gatt.connect() never opens. Always obtain a fresh
+  // peripheral handle from Bluefy's chooser; Chromium's getDevices() remains
+  // useful on platforms where the browser owns the BLE connection directly.
+  if (!ios && bluetooth.getDevices) {
     const approved = await bluetooth.getDevices();
     const known = approved.filter((device) =>
       BLE_NAME_HINTS.some((hint) => device.name?.toLowerCase().startsWith(hint.toLowerCase())),
@@ -611,21 +616,36 @@ export class BleHeadsetSource implements EegSource {
    * never connect"; three spaced attempts succeed.
    */
   private async connectGatt(device: BluetoothDevice): Promise<BluetoothRemoteGATTServer> {
+    const gatt = device.gatt;
+    if (!gatt) throw new Error("The selected device does not expose a Bluetooth GATT connection.");
+    const ios = isIosWebBleBrowser();
     let lastError: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       if (this.stopping) break;
       try {
         if (attempt > 0) {
           this.progress("connecting", `Retrying the link to ${this.name} (${attempt + 1} of 3)`);
-          try {
-            device.gatt?.disconnect();
-          } catch {
-            /* already closed */
+          // Do not disconnect a link which Bluefy/CoreBluetooth is still
+          // finishing asynchronously. That turns a recoverable delayed
+          // connection into a permanent "could not open GATT" loop.
+          if (gatt.connected) {
+            try {
+              gatt.disconnect();
+            } catch {
+              /* already closed */
+            }
           }
-          await new Promise((r) => setTimeout(r, 700 * attempt));
+          await new Promise((r) => setTimeout(r, (ios ? 1_500 : 700) * attempt));
         }
-        const server = await device.gatt?.connect();
-        if (server?.connected) return server;
+        const server = await gatt.connect();
+        // Bluefy may resolve connect() while its CoreBluetooth delegate is
+        // still promoting the peripheral to connected. Chromium normally has
+        // connected=true immediately, so this wait is effectively free there.
+        const settleUntil = Date.now() + (ios ? 4_000 : 500);
+        while (!server.connected && Date.now() < settleUntil && !this.stopping) {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        if (server.connected) return server;
         lastError = new Error("Could not open a GATT connection to the headset.");
       } catch (e) {
         lastError = e;

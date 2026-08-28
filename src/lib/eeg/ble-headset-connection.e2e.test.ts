@@ -1,6 +1,6 @@
 /// <reference types="web-bluetooth" />
 
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { BleHeadsetSource } from "@/lib/eeg/ble-eeg";
 
@@ -9,6 +9,10 @@ beforeAll(() => {
     configurable: true,
     value: { requestDevice: vi.fn() },
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function eegPacket(offset: number): DataView {
@@ -110,5 +114,33 @@ describe("Regul8 connection and ingest", () => {
 
     await source.stop();
     expect(server.connected).toBe(false);
+  });
+
+  it("waits for Bluefy to report a delayed CoreBluetooth connection", async () => {
+    vi.useFakeTimers();
+    const characteristic = new MockCharacteristic();
+    const service = {
+      uuid: "0000fff0-0000-1000-8000-00805f9b34fb",
+      async getCharacteristics() {
+        return [characteristic as unknown as BluetoothRemoteGATTCharacteristic];
+      },
+    } as BluetoothRemoteGATTService;
+    const { device, server } = mockDevice([service]);
+    server.connect = vi.fn(async function (this: typeof server) {
+      setTimeout(() => {
+        this.connected = true;
+      }, 300);
+      return this;
+    });
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Bluefy iPhone" });
+    const source = new BleHeadsetSource({ device, listenSeconds: 1 });
+
+    const starting = source.start(() => {});
+    await vi.advanceTimersByTimeAsync(1_500);
+    await starting;
+
+    expect(server.connect).toHaveBeenCalledTimes(1);
+    expect(server.connected).toBe(true);
+    await source.stop();
   });
 });
