@@ -358,21 +358,21 @@ export function friendlyBleError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
-    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose FocusCalm, FC-11, or its serial number.";
+    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose it from the list (Regul8, FocusCalm, FC-11, or a serial number).";
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
   }
   if (/gatt|network|disconnected|connection/i.test(message)) {
-    return "The headband was found but would not connect. Unplug its charging cable, close the FocusCalm app on other devices, then switch the band off and on.";
+    return "The headband was found but would not connect. Unplug its charging cable, close the headband’s own phone app on any nearby device, then switch the band off and on and retry.";
   }
   if (/no readable services|no streaming characteristic/i.test(message)) {
-    return "The headband connected but did not expose its EEG stream. Close the FocusCalm app, unplug the charging cable, restart the band, and retry.";
+    return "The headband connected but did not expose its EEG stream. Close the headband’s own phone app, unplug the charging cable, restart the band, and retry.";
   }
   if (/no stream decoded as eeg/i.test(message)) {
     return "Connected, but no usable EEG signal arrived. Wear the band snugly across a clean forehead, keep still for a few seconds, and retry.";
   }
-  return message || "FocusCalm could not be connected. Restart the headband and try again.";
+  return message || "The headband could not be connected. Restart it and try again.";
 }
 
 
@@ -1095,7 +1095,7 @@ export class BleHeadsetSource implements EegSource {
   /** Montage for the mapped stream, with the FocusCalm caveats when it fits. */
   private buildProfile(map: ChannelMap, sampleRate: number): DeviceProfile {
     const mapped = (Object.keys(map) as (keyof ChannelMap)[]).filter((c) => map[c]);
-    const looksFocusCalm = /focus|brainco/i.test(this.name);
+    const looksFocusCalm = /focus|brainco|regul8/i.test(this.name);
     if (looksFocusCalm && mapped.length === 1 && mapped[0] === "AF7") {
       return {
         ...FOCUSCALM_PROFILE,
