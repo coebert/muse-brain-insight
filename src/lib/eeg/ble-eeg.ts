@@ -698,6 +698,7 @@ export class BleHeadsetSource implements EegSource {
           }
           await new Promise((r) => setTimeout(r, (ios ? 1_500 : 700) * attempt));
         }
+        bleDiagnostics.add("gatt", `GATT connect attempt ${attempt + 1}`, { ios });
         const server = await gatt.connect();
         // Bluefy may resolve connect() while its CoreBluetooth delegate is
         // still promoting the peripheral to connected. Chromium normally has
