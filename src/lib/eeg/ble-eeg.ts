@@ -628,15 +628,27 @@ export class BleHeadsetSource implements EegSource {
         `No streaming characteristic was found on this headset (${services.length} services readable). It may need to be woken from its own app once, or it does not publish raw EEG over Bluetooth.`,
       );
 
-
     this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
-    const captured = await this.listen(notifying, listenMs);
-    const chosen = this.choose(captured, listenMs / 1000);
-    if (!chosen)
+    let captured = await this.listen(notifying, listenMs);
+    let chosen = this.choose(captured, listenMs / 1000);
+    if (!chosen && captured.every((c) => !c.packets.length) && writable.length) {
+      // Silent link: several bands stay idle until told to stream. Send the
+      // usual start commands and listen once more before giving up.
+      this.progress("checking", "Asking the headband to start streaming");
+      await this.nudgeStream(writable);
+      captured = await this.listen(notifying, listenMs);
+      chosen = this.choose(captured, listenMs / 1000);
+    }
+    if (!chosen) {
+      const silent = captured.every((c) => !c.packets.length);
       throw new Error(
-        "The headset connected but no stream decoded as EEG. Check the band is worn and powered, and that no other app holds the connection.",
+        silent
+          ? "The headband connected but sent no data. Make sure it is off the charger, not connected to its own phone app, and switched on until the light blinks, then retry."
+          : "The headset connected but no stream decoded as EEG. Check the band is worn and powered, and that no other app holds the connection.",
       );
+    }
+
 
     this.format = chosen.discovery.format;
     const measuredRate = this.options.sampleRate ?? chosen.discovery.sampleRate;
