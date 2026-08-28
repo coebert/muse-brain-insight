@@ -121,6 +121,7 @@ export const FOCUSCALM_PROFILE = profile({
   channels: ["AF7"],
   sampleRate: 250,
   sourceLabels: { AF7: "Fp1–Fp2" },
+  calibratedAmplitude: false,
   note: "One frontal channel only. Suppression ratio and spectral edge remain interpretable; hemispheric asymmetry, side preference and bilateral coherence are not available, and COEBIS runs without its bilateral adjunct.",
   capabilities: { battery: true, reconnect: false, contactSensing: false },
 });
