@@ -32,6 +32,8 @@ export interface BleLogEntry {
   data?: Record<string, unknown>;
   /** Hex dump of the raw bytes, when the entry carries a frame. */
   hex?: string;
+  /** Complete payload for deterministic offline replay (hex, no truncation). */
+  rawHex?: string;
   bytes?: number;
 }
 
@@ -89,6 +91,7 @@ export class BleDiagnosticLog {
     if (data && Object.keys(data).length) entry.data = data;
     if (bytes) {
       entry.hex = toHex(bytes);
+      entry.rawHex = toHex(bytes, bytes.length);
       entry.bytes = bytes.length;
     }
     this.entries.push(entry);
