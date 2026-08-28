@@ -769,7 +769,7 @@ export class BleHeadsetSource implements EegSource {
       const known = await this.findKnownCharacteristic(services);
       if (known) {
         await this.bindStream(known);
-        await this.zenliteHandshake(services);
+        await this.zenliteHandshake(services, "validate");
         this.progress("ready", "EEG stream resumed");
         this.stateCb?.({ kind: "connected" });
         return;
