@@ -861,6 +861,14 @@ export class BleHeadsetSource implements EegSource {
     }
 
 
+    bleDiagnostics.add("info", "EEG stream selected", {
+      service: chosen.discovery.serviceUuid,
+      characteristic: chosen.discovery.characteristicUuid,
+      format: chosen.discovery.format,
+      score: chosen.discovery.score,
+      captureMode: chosen.captureMode,
+      candidates: chosen.discovery.candidates,
+    });
     this.format = chosen.discovery.format;
     // The vendor protocol publishes its own rate, which is more trustworthy
     // than one measured over a couple of seconds of BLE-jittered packets.
