@@ -42,6 +42,20 @@ import {
   profileFromChannelMap,
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
+import {
+  decodeZenLitePacket,
+  nextZenLiteMsgId,
+  zenliteAfeCommand,
+  ZenLiteDeframer,
+  zenliteEegSamples,
+  zenlitePairCommand,
+  zenlitePairUuid,
+  ZENLITE_AFE,
+  ZENLITE_NOTIFY,
+  ZENLITE_SAMPLE_RATE,
+  ZENLITE_SERVICE,
+  ZENLITE_WRITE,
+} from "@/lib/eeg/brainco-zenlite";
 import { IngestPipeline, type ChannelMap, type IngestConfig } from "@/lib/eeg/ingest";
 import {
   isWebBluetoothAvailable,
@@ -67,6 +81,7 @@ const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
 /** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
+  ZENLITE_SERVICE, // BrainCo ZenLite (FocusCalm / Regul8 / OxyZen) data stream
   NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
   "0000180f-0000-1000-8000-00805f9b34fb", // battery
@@ -121,6 +136,7 @@ const BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
 /* ------------------------------------------------------------------ */
 
 export type PacketFormat =
+  | "brainco-zenlite"
   | "brainco-int24be"
   | "brainco-int16le"
   | "int16le"
@@ -130,6 +146,7 @@ export type PacketFormat =
   | "float32le";
 
 export const PACKET_FORMAT_LABEL: Record<PacketFormat, string> = {
+  "brainco-zenlite": "BrainCo ZenLite frames, 24-bit samples",
   "brainco-int24be": "BrainCo frame, 24-bit samples",
   "brainco-int16le": "BrainCo frame, 16-bit samples",
   int16le: "Raw 16-bit little-endian",
@@ -179,6 +196,7 @@ function readInt24(bytes: Uint8Array, offset: number, bigEndian: boolean): numbe
 /** Decodes one notification payload into signed sample values. */
 export function decodePacket(format: PacketFormat, bytes: Uint8Array): number[] {
   let body: Uint8Array = bytes;
+  if (format === "brainco-zenlite") return decodeZenLitePacket(bytes);
   if (format.startsWith("brainco-")) {
     const stripped = stripBrainCoFrames(bytes);
     if (!stripped) return [];
@@ -247,6 +265,7 @@ export interface FormatDetection {
 }
 
 const FORMATS: PacketFormat[] = [
+  "brainco-zenlite",
   "brainco-int24be",
   "brainco-int16le",
   "int24be",
@@ -268,6 +287,27 @@ export function detectPacketFormat(packets: Uint8Array[]): FormatDetection[] {
   for (const format of FORMATS) {
     const series: number[] = [];
     let decodedPackets = 0;
+    if (format === "brainco-zenlite") {
+      // Vendor frames span several notifications, so they can only be scored
+      // after the burst is reassembled in arrival order.
+      const total = packets.reduce((n, p) => n + p.length, 0);
+      const joined = new Uint8Array(total);
+      let at = 0;
+      for (const p of packets) {
+        joined.set(p, at);
+        at += p.length;
+      }
+      const values = decodeZenLitePacket(joined);
+      if (values.length >= 32) {
+        results.push({
+          format,
+          score: Number(eegLikeness(values).toFixed(4)),
+          samplesPerPacket: Number((values.length / packets.length).toFixed(2)),
+          p95: p95Abs(values),
+        });
+      }
+      continue;
+    }
     for (const p of packets) {
       const values = decodePacket(format, p);
       if (values.length) decodedPackets++;
@@ -508,6 +548,7 @@ export class BleHeadsetSource implements EegSource {
   private device: BluetoothDevice | null = null;
   private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private readPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private zenlite = new ZenLiteDeframer();
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
@@ -694,6 +735,8 @@ export class BleHeadsetSource implements EegSource {
       );
 
     await this.attachBattery(server);
+    this.zenlite.reset();
+    await this.zenliteHandshake(services);
 
     // Fast path on a resume: the characteristic and packet layout are already
     // known, so re-subscribe directly instead of re-running the listen-and-
@@ -726,7 +769,7 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!notifying.length)
       throw new Error(
-        `No streaming characteristic was found on this headset (${services.length} authorised services readable). The Regul8 EEG service UUID is not publicly documented, so MindGuard cannot request access to it until BrainCo/FocusCalm supplies its Web Bluetooth protocol.`,
+        `No streaming characteristic was found on this headset (${services.length} authorised services readable). If this is a BrainCo band (Regul8/FocusCalm), put it into pairing mode (blue flashing LED) and retry, since the EEG service is only exposed once pairing succeeds.`,
       );
 
     this.progress("checking", "Checking the EEG signal — keep still");
@@ -767,7 +810,11 @@ export class BleHeadsetSource implements EegSource {
 
 
     this.format = chosen.discovery.format;
-    const measuredRate = this.options.sampleRate ?? chosen.discovery.sampleRate;
+    // The vendor protocol publishes its own rate, which is more trustworthy
+    // than one measured over a couple of seconds of BLE-jittered packets.
+    const protocolRate =
+      chosen.discovery.format === "brainco-zenlite" ? ZENLITE_SAMPLE_RATE : undefined;
+    const measuredRate = this.options.sampleRate ?? protocolRate ?? chosen.discovery.sampleRate;
     const uvPerCount = this.options.uvPerCount ?? chosen.discovery.uvPerCount;
     this.scale = uvPerCount;
     const channelMap: ChannelMap =
@@ -795,6 +842,48 @@ export class BleHeadsetSource implements EegSource {
     this.discoveryCb?.(this.discovery);
     this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
+  }
+
+  /**
+   * Runs the BrainCo ZenLite pairing and start-stream handshake.
+   *
+   * Headbands in this family (FocusCalm, Regul8, OxyZen) open GATT and then
+   * stay silent until the host pairs and switches the EEG front end on. The
+   * commands are only ever sent to a band that actually exposes the vendor
+   * service, so no other device receives an unrecognised write.
+   */
+  private async zenliteHandshake(services: BluetoothRemoteGATTService[]) {
+    const service = services.find((s) => s.uuid.toLowerCase() === ZENLITE_SERVICE);
+    if (!service) return;
+    let write: BluetoothRemoteGATTCharacteristic | null = null;
+    try {
+      write = await service.getCharacteristic(ZENLITE_WRITE);
+    } catch {
+      return;
+    }
+    if (!write) return;
+    const send = async (frame: Uint8Array) => {
+      if (write!.properties.writeWithoutResponse) {
+        await write!.writeValueWithoutResponse(frame as BufferSource);
+      } else {
+        await write!.writeValue(frame as BufferSource);
+      }
+    };
+    this.progress("discovering", "Pairing with the headband");
+    try {
+      // Pair first (band in pairing mode); if it is already paired the same
+      // identity re-validates instead, which the firmware accepts silently.
+      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()));
+      await new Promise((r) => setTimeout(r, 300));
+      await send(zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()));
+      await new Promise((r) => setTimeout(r, 300));
+      this.progress("discovering", "Starting the EEG stream");
+      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256));
+      await new Promise((r) => setTimeout(r, 200));
+    } catch {
+      // A refused write is not fatal: discovery still listens for whatever the
+      // band emits, and the failure surfaces as the usual "no data" guidance.
+    }
   }
 
   /** Re-locates the characteristic discovery already chose, after a resume. */
@@ -862,7 +951,12 @@ export class BleHeadsetSource implements EegSource {
   }
 
   private processPacket(bytes: Uint8Array) {
-    const decoded = decodePacket(this.format, bytes);
+    // ZenLite frames are MTU-fragmented, so they are reassembled statefully
+    // rather than decoded notification by notification.
+    const decoded =
+      this.format === "brainco-zenlite"
+        ? this.zenlite.push(bytes).flatMap((payload) => zenliteEegSamples(payload))
+        : decodePacket(this.format, bytes);
     const now = Date.now();
     this.lastPacketAt = now;
     this.totalPackets++;
@@ -872,6 +966,7 @@ export class BleHeadsetSource implements EegSource {
     if (!decoded.length) return;
     this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
   }
+
 
   private progress(stage: BleConnectionStage, message: string) {
     this.options.onProgress?.({ stage, message });
