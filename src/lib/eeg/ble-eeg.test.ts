@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BLE_CANDIDATE_SERVICES,
   BLE_NAME_HINTS,
+  WEB_BLUETOOTH_BLOCKED_SERVICES,
   autoScaleUvPerCount,
   decodePacket,
   detectPacketFormat,
@@ -62,6 +63,13 @@ describe("BLE headset decoding", () => {
     expect(BLE_CANDIDATE_SERVICES).toContain("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
     expect(BLE_CANDIDATE_SERVICES).toContain("0000180f-0000-1000-8000-00805f9b34fb");
     expect(BLE_CANDIDATE_SERVICES).toContain("0000fff0-0000-1000-8000-00805f9b34fb");
+  });
+
+  it("never sends a browser-blocked service to the Bluetooth chooser", () => {
+    expect(BLE_CANDIDATE_SERVICES).not.toContain("00001812-0000-1000-8000-00805f9b34fb");
+    expect(
+      BLE_CANDIDATE_SERVICES.filter((uuid) => WEB_BLUETOOTH_BLOCKED_SERVICES.has(uuid)),
+    ).toEqual([]);
   });
 
   it("recognises the serial-like FC- names used by some FocusCalm units", () => {
@@ -129,5 +137,8 @@ describe("BLE headset decoding", () => {
       "Unplug its charging cable",
     );
     expect(friendlyBleError(new Error("no stream decoded as EEG"))).toContain("no usable EEG signal");
+    expect(
+      friendlyBleError(new DOMException("Service is on the blocklist", "SecurityError")),
+    ).toContain("browser rejected");
   });
 });

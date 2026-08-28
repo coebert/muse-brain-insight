@@ -75,6 +75,17 @@ const VENDOR_SERVICES: string[] = [
   "0000ffe5-0000-1000-8000-00805f9b34fb",
 ];
 
+/** Services websites are forbidden from requesting by the Web Bluetooth registry. */
+export const WEB_BLUETOOTH_BLOCKED_SERVICES = new Set([
+  "00001812-0000-1000-8000-00805f9b34fb", // HID
+  "00001530-1212-efde-1523-785feabcd123", // Nordic legacy DFU
+  "f000ffc0-0451-4000-b000-000000000000", // TI OTA
+  "00060000-0000-1000-8000-00805f9b34fb", // Cypress bootloader
+  "0000fffd-0000-1000-8000-00805f9b34fb", // FIDO
+  "0000fff9-0000-1000-8000-00805f9b34fb", // FIDO
+  "0000fde2-0000-1000-8000-00805f9b34fb", // FIDO
+]);
+
 function uuid16(value: number): string {
   return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
 }
@@ -83,16 +94,15 @@ function uuid16(value: number): string {
  * Services requested up front.
  *
  * Web Bluetooth only exposes services explicitly authorised in the chooser.
- * Chromium ignores blocklisted entries in optionalServices, so requesting the
- * standard and vendor 16-bit ranges preserves compatibility with headsets that
- * advertise a short UUID. A fully custom 128-bit Regul8 UUID still must come
- * from the manufacturer and can be supplied through `extraServices`.
+ * A blocklisted UUID makes Chromium reject the complete chooser request with a
+ * SecurityError, so generated ranges are filtered against the official list.
+ * A fully custom Regul8 UUID can still be supplied through `extraServices`.
  */
 export const BLE_CANDIDATE_SERVICES: string[] = (() => {
   const list: string[] = [...VENDOR_SERVICES];
   for (let value = 0x1800; value <= 0x18ff; value++) list.push(uuid16(value));
   for (let value = 0xfc00; value <= 0xffff; value++) list.push(uuid16(value));
-  return [...new Set(list)];
+  return [...new Set(list)].filter((uuid) => !WEB_BLUETOOTH_BLOCKED_SERVICES.has(uuid));
 })();
 
 const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
@@ -287,7 +297,9 @@ export function autoScaleUvPerCount(p95Counts: number, targetUv = 35): number {
  */
 export async function requestBleHeadset(extraServices: string[] = []): Promise<BluetoothDevice> {
   if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
-  const optionalServices = [...new Set([...BLE_CANDIDATE_SERVICES, ...extraServices])];
+  const optionalServices = [...new Set([...BLE_CANDIDATE_SERVICES, ...extraServices])].filter(
+    (uuid) => !WEB_BLUETOOTH_BLOCKED_SERVICES.has(uuid.toLowerCase()),
+  );
   // A previously approved FocusCalm can reconnect without making the clinician
   // hunt through the chooser again. Use it only when the match is unambiguous.
   const bluetooth = navigator.bluetooth as Bluetooth & {
@@ -352,6 +364,9 @@ export function friendlyBleError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
     return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose it from the list (Regul8, FocusCalm, FC-11, or a serial number).";
+  }
+  if (name === "SecurityError" && /blocklist|blocked service|invalid service/i.test(message)) {
+    return "The browser rejected a requested Bluetooth service. Reload MindGuard to use the corrected service list, then retry.";
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
