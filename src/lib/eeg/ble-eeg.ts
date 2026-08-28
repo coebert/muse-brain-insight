@@ -901,10 +901,14 @@ export class BleHeadsetSource implements EegSource {
     const target = this.discovery;
     if (!target) return null;
     for (const service of services) {
-      if (service.uuid !== target.serviceUuid) continue;
+      if (service.uuid.toLowerCase() !== target.serviceUuid.toLowerCase()) continue;
       try {
         const chars = await service.getCharacteristics();
-        return chars.find((c) => c.uuid === target.characteristicUuid) ?? null;
+        return (
+          chars.find(
+            (c) => c.uuid.toLowerCase() === target.characteristicUuid.toLowerCase(),
+          ) ?? null
+        );
       } catch {
         return null;
       }
@@ -1316,8 +1320,8 @@ export class BleHeadsetSource implements EegSource {
       notes.push(`Sample rate measured from the link: ${rate} Hz, resampled to the analysis rate.`);
       const discovery: BleDiscovery = {
         deviceName: this.name,
-        serviceUuid: entry.service.uuid,
-        characteristicUuid: entry.characteristic.uuid,
+        serviceUuid: entry.service.uuid.toLowerCase(),
+        characteristicUuid: entry.characteristic.uuid.toLowerCase(),
         format: top.format,
         score: top.score,
         packetsPerSecond: Number(packetsPerSecond.toFixed(1)),
