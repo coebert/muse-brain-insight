@@ -69,6 +69,12 @@ export interface DeviceProfile {
   sourceLabels: Partial<Record<AnalysisChannel, string>>;
   /** Free-text note about montage limitations, shown in the UI. */
   note: string;
+  /**
+   * Samples arrive in real microvolts. False when the ADC scale is unknown and
+   * the stream is auto-gained, which makes absolute µV thresholds relative.
+   * Absent means calibrated, for continuity with existing recordings.
+   */
+  calibratedAmplitude?: boolean;
   capabilities: {
     battery: boolean;
     reconnect: boolean;
