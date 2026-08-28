@@ -45,7 +45,15 @@ import type { ChannelMap } from "@/lib/eeg/ingest";
 import type { AnalysisChannel } from "@/lib/eeg/device-profile";
 import { isWebBluetoothAvailable, WEB_BLUETOOTH_HELP, type EegSource } from "@/lib/eeg/muse";
 import { bleDiagnostics, type BleLogEntry } from "@/lib/eeg/ble-diagnostics";
-import { bleDiagnosticJson, debugFilename, downloadDebugFile } from "@/lib/eeg/debug-export";
+import {
+  bleDiagnosticJson,
+  checkJsonExport,
+  debugExportMeta,
+  debugFilename,
+  downloadDebugFile,
+} from "@/lib/eeg/debug-export";
+import { DecoderReadyBadge } from "@/components/monitor/DecoderReadyBadge";
+import type { DiagnosticExportCheck } from "@/lib/eeg/export-schema";
 import { replayBleDiagnostic, type BleReplayResult } from "@/lib/eeg/ble-replay";
 
 interface Props {
@@ -342,15 +350,28 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
               variant="outline"
               className="mt-3 min-h-11"
               onClick={() =>
-                downloadDebugFile(
-                  debugFilename("ble-failed-attempt", "json"),
-                  bleDiagnosticJson(diagnosticEntries, bleDiagnostics.packetTotals()),
-                  "application/json",
-                )
+                {
+                  const contents = bleDiagnosticJson(
+                    diagnosticEntries,
+                    bleDiagnostics.packetTotals(),
+                    debugExportMeta("ble-log"),
+                  );
+                  setExportCheck(checkJsonExport(contents));
+                  void downloadDebugFile(
+                    debugFilename("ble-failed-attempt", "json"),
+                    contents,
+                    "application/json",
+                  );
+                }
               }
             >
               <Download className="size-3.5" aria-hidden /> Download diagnostic capture
             </Button>
+          ) : null}
+          {exportCheck ? (
+            <div className="mt-2">
+              <DecoderReadyBadge check={exportCheck} label="saved capture" />
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -389,7 +410,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         </Button>
         {replayError ? <p className="mt-2 text-critical">{replayError}</p> : null}
         {replay ? (
-          <div className="mt-3 rounded-md bg-muted/40 p-2" role="status">
+          <div className="mt-3 space-y-2 rounded-md bg-muted/40 p-2" role="status">
+            <DecoderReadyBadge check={replay.check} label="imported capture" />
             <p className="flex items-center gap-2 font-medium">
               <RotateCcw className="size-3.5 text-signal" aria-hidden />
               {replay.decodedSamples
