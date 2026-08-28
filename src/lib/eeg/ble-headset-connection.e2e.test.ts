@@ -51,6 +51,27 @@ class MockCharacteristic extends EventTarget {
   }
 }
 
+class SilentReadableCharacteristic extends EventTarget {
+  uuid = "0000fff2-0000-1000-8000-00805f9b34fb";
+  properties = { notify: true, indicate: false, read: true } as BluetoothCharacteristicProperties;
+  value: DataView | undefined;
+  private offset = 0;
+
+  async startNotifications() {
+    return this as unknown as BluetoothRemoteGATTCharacteristic;
+  }
+
+  async stopNotifications() {
+    return this as unknown as BluetoothRemoteGATTCharacteristic;
+  }
+
+  async readValue() {
+    const value = eegPacket(this.offset);
+    this.offset += 20;
+    return value;
+  }
+}
+
 function mockDevice(services: BluetoothRemoteGATTService[]) {
   const server = {
     connected: false,
@@ -142,5 +163,41 @@ describe("Regul8 connection and ingest", () => {
     expect(server.connect).toHaveBeenCalledTimes(1);
     expect(server.connected).toBe(true);
     await source.stop();
+  });
+
+  it("falls back to reading a stream buffer when notifications are silent", async () => {
+    const characteristic = new SilentReadableCharacteristic();
+    const service = {
+      uuid: "0000fff0-0000-1000-8000-00805f9b34fb",
+      async getCharacteristics() {
+        return [characteristic as unknown as BluetoothRemoteGATTCharacteristic];
+      },
+    } as BluetoothRemoteGATTService;
+    const { device } = mockDevice([service]);
+    const samples: number[] = [];
+    const source = new BleHeadsetSource({ device, listenSeconds: 1 });
+
+    await source.start((_channel, chunk) => samples.push(...chunk));
+
+    expect(source.discovery?.characteristicUuid).toBe(characteristic.uuid);
+    expect(source.discovery?.format).toBe("int16le");
+    await source.stop();
+  });
+
+  it("reports notification setup failures instead of claiming the band sent no data", async () => {
+    const characteristic = new MockCharacteristic();
+    characteristic.startNotifications = vi.fn(async () => {
+      throw new DOMException("Notifications are unavailable", "NotSupportedError");
+    });
+    const service = {
+      uuid: "0000fff0-0000-1000-8000-00805f9b34fb",
+      async getCharacteristics() {
+        return [characteristic as unknown as BluetoothRemoteGATTCharacteristic];
+      },
+    } as BluetoothRemoteGATTService;
+    const { device } = mockDevice([service]);
+    const source = new BleHeadsetSource({ device, listenSeconds: 1 });
+
+    await expect(source.start(() => {})).rejects.toThrow("notification subscription failed");
   });
 });
