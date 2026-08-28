@@ -4,6 +4,7 @@ import { Minimize2, Moon, Sun, TriangleAlert } from "lucide-react";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
 import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
+import { useDeviceTuning } from "@/hooks/useDeviceTuning";
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import type { CaseControls } from "@/components/monitor/case-controls";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
@@ -79,6 +80,8 @@ export function FullscreenMonitor({
 }: Props) {
   // Latest COEBIS fit, so the bedside tile names the model it is showing.
   const coebisModel = useCoebisModel();
+  // Only offer the layouts the connected montage can actually draw.
+  const tuning = useDeviceTuning();
   // Enter the browser's fullscreen mode where allowed, and mirror Esc/F11 exits.
   useEffect(() => {
     const el = document.documentElement;
@@ -252,7 +255,12 @@ export function FullscreenMonitor({
               DSA · {windowMinutes} min
             </span>
             <div className="absolute top-1 right-2 z-10">
-              <DsaViewToggle value={dsaView} onChange={onDsaViewChange} size="sm" />
+              <DsaViewToggle
+                value={dsaView}
+                onChange={onDsaViewChange}
+                available={tuning.dsaViews}
+                size="sm"
+              />
             </div>
             <HemiDsaPanel
               hemiSpectra={hemiSpectra}

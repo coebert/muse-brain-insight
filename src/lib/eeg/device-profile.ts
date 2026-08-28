@@ -69,6 +69,12 @@ export interface DeviceProfile {
   sourceLabels: Partial<Record<AnalysisChannel, string>>;
   /** Free-text note about montage limitations, shown in the UI. */
   note: string;
+  /**
+   * Samples arrive in real microvolts. False when the ADC scale is unknown and
+   * the stream is auto-gained, which makes absolute µV thresholds relative.
+   * Absent means calibrated, for continuity with existing recordings.
+   */
+  calibratedAmplitude?: boolean;
   capabilities: {
     battery: boolean;
     reconnect: boolean;
@@ -115,6 +121,7 @@ export const FOCUSCALM_PROFILE = profile({
   channels: ["AF7"],
   sampleRate: 250,
   sourceLabels: { AF7: "Fp1–Fp2" },
+  calibratedAmplitude: false,
   note: "One frontal channel only. Suppression ratio and spectral edge remain interpretable; hemispheric asymmetry, side preference and bilateral coherence are not available, and COEBIS runs without its bilateral adjunct.",
   capabilities: { battery: true, reconnect: false, contactSensing: false },
 });

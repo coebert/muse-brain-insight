@@ -577,15 +577,24 @@ export class BleHeadsetSource implements EegSource {
     const mapped = (Object.keys(map) as (keyof ChannelMap)[]).filter((c) => map[c]);
     const looksFocusCalm = /focus|brainco/i.test(this.name);
     if (looksFocusCalm && mapped.length === 1 && mapped[0] === "AF7") {
-      return { ...FOCUSCALM_PROFILE, label: this.name, sampleRate };
+      return {
+        ...FOCUSCALM_PROFILE,
+        label: this.name,
+        sampleRate,
+        calibratedAmplitude: Boolean(this.options.uvPerCount),
+        capabilities: { ...FOCUSCALM_PROFILE.capabilities, battery: Boolean(this.batteryChar) },
+      };
     }
-    return profileFromChannelMap({
+    const generic = profileFromChannelMap({
       id: "ble-headset",
       label: this.name,
       sampleRate,
       map: Object.fromEntries(mapped.map((c) => [c, this.name])) as ChannelMap,
       transport: "ble",
     });
+    generic.calibratedAmplitude = Boolean(this.options.uvPerCount);
+    generic.capabilities = { ...generic.capabilities, battery: Boolean(this.batteryChar) };
+    return generic;
   }
 
   /** µV per count in force, so the panel can show the calibration state. */
