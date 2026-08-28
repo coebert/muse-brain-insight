@@ -13,13 +13,19 @@ export function DsaViewToggle({
   onChange,
   size = "md",
   full = false,
+  available,
 }: {
   value: DsaView;
   onChange: (next: DsaView) => void;
   size?: "sm" | "md";
   /** Stretch to fill the available width (dashboard header row). */
   full?: boolean;
+  /** Layouts the connected montage can render; others are hidden. */
+  available?: DsaView[];
 }) {
+  const options = available ? OPTIONS.filter((o) => available.includes(o.key)) : OPTIONS;
+  // A unilateral headset leaves one layout: the control would be a no-op.
+  if (options.length < 2) return null;
   return (
     <div
       role="group"
@@ -29,7 +35,7 @@ export function DsaViewToggle({
         full && "flex w-full",
       )}
     >
-      {OPTIONS.map((o) => (
+      {options.map((o) => (
         <button
           key={o.key}
           type="button"

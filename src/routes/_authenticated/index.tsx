@@ -87,6 +87,9 @@ import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { isWebBluetoothAvailable } from "@/lib/eeg/muse";
 import { channelLabel } from "@/lib/eeg/device-profile";
 import { useDeviceProfile } from "@/hooks/useDeviceProfile";
+import { useDeviceTuning } from "@/hooks/useDeviceTuning";
+import { resolveDsaView } from "@/lib/eeg/device-tuning";
+import { DeviceOptimisationPanel } from "@/components/monitor/DeviceOptimisationPanel";
 import { TciPanel } from "@/components/monitor/TciPanel";
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
 import { QuickMarkBar } from "@/components/monitor/QuickMarkBar";
@@ -148,6 +151,8 @@ function Monitor() {
   const session = useCaseSession();
   // The montage actually being streamed drives every channel picker below.
   const deviceProfile = useDeviceProfile();
+  // What the app switches on or holds back for the headset now streaming.
+  const tuning = useDeviceTuning();
   const {
     monitor,
     user,
@@ -188,7 +193,7 @@ function Monitor() {
     setMarkerText,
     meta,
     setMeta,
-    dsaView,
+    dsaView: requestedDsaView,
     setDsaView,
     summary,
     streaming,
@@ -251,6 +256,9 @@ function Monitor() {
     reconnectAttempt: monitor.reconnectAttempt,
   });
 
+  // A stored bilateral preference cannot be honoured on a one-channel band.
+  const dsaView = resolveDsaView(tuning, requestedDsaView);
+
   const jumpTo = (target: MonitorJumpTarget) => {
     const { tab: targetTab, id } = MONITOR_JUMP[target];
     setTab(targetTab);
@@ -291,11 +299,13 @@ function Monitor() {
             </span>
           </div>
           <ConnectionStatusBadge status={connection} />
+          {tuning.showBattery ? (
           <BatteryIndicator
             percent={batteryHealth.display}
             connected={streaming || reconnecting}
             health={batteryHealth}
           />
+          ) : null}
           {caseState !== "idle" ? (
             <span className="metric-value text-sm text-muted-foreground">
               {formatClock(monitor.elapsed)}
@@ -600,7 +610,12 @@ function Monitor() {
                     </SelectContent>
                   </Select>
                   <div className="col-span-2 flex shrink-0">
-                    <DsaViewToggle value={dsaView} onChange={setDsaView} full />
+                    <DsaViewToggle
+                      value={dsaView}
+                      onChange={setDsaView}
+                      available={tuning.dsaViews}
+                      full
+                    />
                   </div>
                   <button
                     type="button"
@@ -972,6 +987,7 @@ function Monitor() {
               analysisSource={monitor.analysisSource}
             />
             </div>
+            <DeviceOptimisationPanel profile={deviceProfile} tuning={tuning} />
             <div id="mon-lineage" className="scroll-mt-24 rounded-lg transition-shadow">
               <AcquisitionLineagePanel profile={deviceProfile} />
             </div>
