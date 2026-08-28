@@ -782,9 +782,26 @@ export class BleHeadsetSource implements EegSource {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
-      } catch {
+      } catch (error) {
+        bleDiagnostics.add("error", `Characteristic discovery failed on ${service.uuid}`, {
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
         continue;
       }
+      bleDiagnostics.add("characteristic", `${service.uuid}: ${chars.length} characteristic(s)`, {
+        characteristics: chars.map((c) => ({
+          uuid: c.uuid,
+          properties: Object.entries({
+            read: c.properties.read,
+            write: c.properties.write,
+            writeWithoutResponse: c.properties.writeWithoutResponse,
+            notify: c.properties.notify,
+            indicate: c.properties.indicate,
+          })
+            .filter(([, on]) => on)
+            .map(([name]) => name),
+        })),
+      });
       for (const characteristic of chars) {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
