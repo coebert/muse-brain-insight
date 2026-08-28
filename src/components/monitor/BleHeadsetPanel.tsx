@@ -5,6 +5,7 @@ import {
   Bluetooth,
   Check,
   ChevronDown,
+  Download,
   Loader2,
   Play,
   Radio,
@@ -41,6 +42,8 @@ import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test"
 import type { ChannelMap } from "@/lib/eeg/ingest";
 import type { AnalysisChannel } from "@/lib/eeg/device-profile";
 import { isWebBluetoothAvailable, WEB_BLUETOOTH_HELP, type EegSource } from "@/lib/eeg/muse";
+import { bleDiagnostics, type BleLogEntry } from "@/lib/eeg/ble-diagnostics";
+import { bleDiagnosticJson, debugFilename, downloadDebugFile } from "@/lib/eeg/debug-export";
 
 interface Props {
   /** Hands the connected headset to the case starter. */
@@ -107,6 +110,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<StreamTestResult | null>(null);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
+  const [diagnosticEntries, setDiagnosticEntries] = useState<BleLogEntry[]>([]);
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
@@ -117,8 +121,13 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     },
     [],
   );
+  useEffect(() => bleDiagnostics.subscribe(setDiagnosticEntries), []);
 
   async function connect() {
+    // Failed physical-device attempts are otherwise impossible to reproduce.
+    // Capture raw notifications automatically; the bounded logger contains no
+    // patient or case data and can be exported directly from this panel.
+    bleDiagnostics.setEnabled(true);
     setBusy(true);
     setError(null);
     setDiscovery(null);
@@ -321,6 +330,22 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
               <summary className="cursor-pointer font-medium text-foreground">Connection details</summary>
               <code className="mt-1 block break-words text-[11px]">{diagnostic}</code>
             </details>
+          ) : null}
+          {diagnosticEntries.length ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 min-h-11"
+              onClick={() =>
+                downloadDebugFile(
+                  debugFilename("ble-failed-attempt", "json"),
+                  bleDiagnosticJson(diagnosticEntries, bleDiagnostics.packetTotals()),
+                  "application/json",
+                )
+              }
+            >
+              <Download className="size-3.5" aria-hidden /> Download diagnostic capture
+            </Button>
           ) : null}
         </div>
       ) : null}

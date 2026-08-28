@@ -41,7 +41,7 @@ const MAX_ENTRIES = 1_200;
 /** Bytes kept per frame — enough to see framing, header and CRC. */
 const MAX_HEX_BYTES = 64;
 /** Raw packets logged per characteristic, so a live stream cannot flood it. */
-const MAX_PACKETS_PER_SOURCE = 12;
+const MAX_PACKETS_PER_SOURCE = 200;
 
 export function toHex(bytes: Uint8Array, limit = MAX_HEX_BYTES): string {
   const slice = bytes.subarray(0, limit);
