@@ -72,11 +72,11 @@ export function parseBleReplayExport(text: string): Array<{ at: number; source: 
 /** Re-runs the same format ranking and packet decoders used by live discovery. */
 export function replayBleDiagnostic(text: string): BleReplayResult {
   const check = validateDiagnosticExport(text);
-  if (check.level === "invalid" && check.replayablePackets === 0) {
+  if (check.replayablePackets === 0) {
     throw new Error(
-      check.issues[0]?.includes("complete raw")
-        ? "This file contains no complete raw notification packets."
-        : `Malformed capture — ${check.issues[0] ?? "it does not match the diagnostic export schema."}`,
+      check.level === "invalid" && check.issues.some((issue) => !/metadata|schema v/i.test(issue))
+        ? `Malformed capture — ${check.issues.find((issue) => !/metadata|schema v/i.test(issue))}`
+        : "This file contains no complete raw notification packets.",
     );
   }
   const packets = parseBleReplayExport(text);

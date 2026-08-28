@@ -112,7 +112,8 @@ export function buildExportMeta(input: ExportMetaInput): ExportMeta {
 const hexSchema = z.string();
 
 export const bleLogEntrySchema = z.object({
-  t: z.number(),
+  /** Relative time; optional because early captures did not record it. */
+  t: z.number().optional(),
   at: z.number(),
   kind: z.enum([
     "session",

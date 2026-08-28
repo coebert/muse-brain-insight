@@ -414,7 +414,10 @@ function Monitor() {
                   <Button
                     size="sm"
                     className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                    onClick={() => setCaseOpen(true)}
+                    // Goes through requestNewCase so the intent resets to a
+                    // filed case even if the test dialog was opened and closed
+                    // beforehand.
+                    onClick={() => requestNewCase()}
                   >
                     <Bluetooth className="size-4" /> Start case
                   </Button>
