@@ -178,9 +178,11 @@ describe("Regul8 connection and ingest", () => {
     const source = new BleHeadsetSource({ device, listenSeconds: 1 });
 
     await source.start((_channel, chunk) => samples.push(...chunk));
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     expect(source.discovery?.characteristicUuid).toBe(characteristic.uuid);
     expect(source.discovery?.format).toBe("int16le");
+    expect(samples.length).toBeGreaterThan(0);
     await source.stop();
   });
 
