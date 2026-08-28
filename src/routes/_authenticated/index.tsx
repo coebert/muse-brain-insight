@@ -123,6 +123,8 @@ import { SeizureThresholdPanel } from "@/components/monitor/SeizureThresholdPane
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { StreamIntegrityPanel } from "@/components/monitor/StreamIntegrityPanel";
 import { BleDiagnosticsPanel } from "@/components/monitor/BleDiagnosticsPanel";
+import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
