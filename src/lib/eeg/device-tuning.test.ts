@@ -22,7 +22,7 @@ describe("device tuning", () => {
     expect(t.defaultDsaView).toBe("combined");
     expect(t.absoluteAmplitude).toBe(false);
     expect(t.stiffenedSeizureGating).toBe(true);
-    expect(t.autoReconnect).toBe(false);
+    expect(t.autoReconnect).toBe(true);
     expect(t.caveats.join(" ")).toMatch(/auto-gained/);
   });
 
