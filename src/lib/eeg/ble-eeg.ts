@@ -510,7 +510,7 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
-    this.progress("choosing", "Choose FocusCalm from the Bluetooth list");
+    this.progress("choosing", "Choose the headband from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
@@ -881,7 +881,7 @@ export class BleHeadsetSource implements EegSource {
           this.stateCb?.({
             kind: "lost",
             reason:
-              "FocusCalm has not come back yet — the case and its data are kept and reconnection keeps retrying. Check the band is on, charged and not held by the phone app.",
+              "The headband has not come back yet — the case and its data are kept and reconnection keeps retrying. Check the band is on, charged and not held by the phone app.",
           });
           this.disconnectCb?.();
         }
