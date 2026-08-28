@@ -317,7 +317,7 @@ function Monitor() {
               {formatClock(monitor.elapsed)}
             </span>
           ) : null}
-          {meta.caseCode && caseState !== "idle" ? (
+          {meta.caseCode && caseState !== "idle" && !testing ? (
             <span className="metric-value hidden truncate rounded bg-muted px-2 py-0.5 text-xs sm:inline">
               {meta.caseCode}
             </span>
