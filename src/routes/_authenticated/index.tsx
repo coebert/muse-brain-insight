@@ -322,6 +322,11 @@ function Monitor() {
               {meta.caseCode}
             </span>
           ) : null}
+          {testing ? (
+            <span className="rounded-full bg-caution/15 px-2 py-0.5 text-xs font-medium text-caution">
+              Testing — not saved
+            </span>
+          ) : null}
 
           <div
             role="group"
