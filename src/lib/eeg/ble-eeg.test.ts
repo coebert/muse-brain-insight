@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BLE_NAME_HINTS,
   autoScaleUvPerCount,
   decodePacket,
   detectPacketFormat,
@@ -52,6 +53,10 @@ function brainCoPackets(samples: number[], perPacket = 15): Uint8Array[] {
 }
 
 describe("BLE headset decoding", () => {
+  it("recognises the serial-like FC- names used by some FocusCalm units", () => {
+    expect(BLE_NAME_HINTS).toContain("FC-");
+  });
+
   it("recovers BrainCo-framed payloads and drops the header and checksum", () => {
     const framed = Uint8Array.from([0x55, 0xaa, 0x04, 0x11, 1, 2, 3, 0xff]);
     expect(Array.from(stripBrainCoFrames(framed) ?? [])).toEqual([]);
