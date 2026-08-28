@@ -608,7 +608,6 @@ export class BleHeadsetSource implements EegSource {
       service: BluetoothRemoteGATTService;
       characteristic: BluetoothRemoteGATTCharacteristic;
     }[] = [];
-    const writable: BluetoothRemoteGATTCharacteristic[] = [];
     for (const service of services) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
@@ -619,12 +618,6 @@ export class BleHeadsetSource implements EegSource {
       for (const characteristic of chars) {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
-        }
-        if (
-          characteristic.properties.write ||
-          characteristic.properties.writeWithoutResponse
-        ) {
-          writable.push(characteristic);
         }
       }
     }
