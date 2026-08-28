@@ -180,7 +180,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         {[
           "Unplug the charging cable",
           "Disconnect it and fully close the FocusCalm phone app",
-          "Switch the band on and wear it",
+          "Hold power until the light blinks blue, then wear it",
         ].map((step) => (
           <li key={step} className="flex items-start gap-2 rounded-md bg-muted/40 p-2">
             <Check className="mt-0.5 size-3.5 shrink-0 text-signal" aria-hidden />

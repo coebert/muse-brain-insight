@@ -327,7 +327,7 @@ export function friendlyBleError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
-    return "No headband was selected. Turn FocusCalm on, then try again and choose it from the list.";
+    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose FocusCalm, FC-11, or its serial number.";
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
