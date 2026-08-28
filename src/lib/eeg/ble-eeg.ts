@@ -52,28 +52,59 @@ import {
 } from "@/lib/eeg/muse";
 
 /** Advertised-name hints used only to recognise an already-authorised band. */
-export const BLE_NAME_HINTS = ["FocusCalm", "Focus", "BrainCo", "Crimson", "Mind", "EEG", "FC-"];
+export const BLE_NAME_HINTS = [
+  "Regul8",
+  "FocusCalm",
+  "Focus",
+  "BrainCo",
+  "Crimson",
+  "Mind",
+  "EEG",
+  "FC-",
+];
 
-/**
- * Services requested up front. Web Bluetooth only lets an app read services it
- * asked for at pairing time, so this list has to cover the plausible layouts
- * before the device is seen: Nordic UART (the usual transport for BrainCo-style
- * firmware), the common 16-bit vendor ranges, and the standard battery and
- * device-information services.
- */
-export const BLE_CANDIDATE_SERVICES: string[] = [
-  "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Nordic UART
-  "0000fff0-0000-1000-8000-00805f9b34fb",
-  "0000ffe0-0000-1000-8000-00805f9b34fb",
-  "0000ffb0-0000-1000-8000-00805f9b34fb",
-  "0000fee0-0000-1000-8000-00805f9b34fb",
+const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+
+/** Known 128-bit transports used by consumer EEG headband firmware. */
+const VENDOR_SERVICES: string[] = [
+  NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
   "0000180f-0000-1000-8000-00805f9b34fb", // battery
   "0000180a-0000-1000-8000-00805f9b34fb", // device information
+  "f000c0e0-0451-4000-b000-000000000000", // TI-style vendor range
+  "0000ffe5-0000-1000-8000-00805f9b34fb",
 ];
+
+function uuid16(value: number): string {
+  return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
+}
+
+/**
+ * Services requested up front.
+ *
+ * This is the single most common reason a headband pairs and then refuses to
+ * work: Web Bluetooth hides every service the page did not name in
+ * `optionalServices`, so `getPrimaryServices()` on a band with an undocumented
+ * vendor service comes back empty and the connection is abandoned even though
+ * the link is perfectly healthy. The Regul8 band is exactly that case — it
+ * does not use any of the handful of UUIDs originally guessed here.
+ *
+ * Rather than guess one UUID, the whole 16-bit assigned space that vendors
+ * actually use is requested: the standard GATT services (0x1800–0x18FF), the
+ * member/vendor range (0xFC00–0xFFFF) where consumer devices put proprietary
+ * streams, plus the known 128-bit transports. Blocklisted UUIDs are dropped by
+ * the browser rather than rejected, so a broad list is safe.
+ */
+export const BLE_CANDIDATE_SERVICES: string[] = (() => {
+  const list: string[] = [...VENDOR_SERVICES];
+  for (let v = 0x1800; v <= 0x18ff; v++) list.push(uuid16(v));
+  for (let v = 0xfc00; v <= 0xffff; v++) list.push(uuid16(v));
+  return [...new Set(list)];
+})();
 
 const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
 const BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
+
 
 /* ------------------------------------------------------------------ */
 /* Packet decoding                                                     */
