@@ -11,6 +11,8 @@
  * send it on from a phone.
  */
 
+import { buildExportMeta, type ExportMeta } from "@/lib/eeg/export-schema";
+
 export type BleLogKind =
   | "session"
   | "gatt"
@@ -176,11 +178,14 @@ export function formatBleDiagnosticText(
 export function bleDiagnosticJson(
   entries: BleLogEntry[],
   totals: Record<string, number> = {},
+  meta?: ExportMeta,
 ): string {
+  const header = meta ?? buildExportMeta({ kind: "ble-log" });
   return JSON.stringify(
     {
-      exportedAt: new Date().toISOString(),
-      userAgent: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
+      meta: header,
+      exportedAt: header.exportedAt,
+      userAgent: header.userAgent ?? "unknown",
       packetTotals: totals,
       entries,
     },
