@@ -396,6 +396,10 @@ export interface BleStreamHealth {
   connected: boolean;
   /** Auto-reconnect currently retrying. */
   reconnecting: boolean;
+  /** Which automatic attempt is in flight (0 when the link is healthy). */
+  reconnectAttempt: number;
+  /** Milliseconds until the next automatic attempt, 0 when none is scheduled. */
+  nextRetryInMs: number;
   /** Notifications arriving in the last few seconds. */
   packetsPerSecond: number;
   /** Notifications that decoded into samples (a decode failure shows as 0). */
@@ -418,8 +422,23 @@ export interface BleStreamHealth {
 
 const COLUMN = "ble";
 const HEALTH_WINDOW_MS = 4_000;
-/** Backoff between automatic re-pairing attempts, seconds. */
-const BLE_RETRY_DELAYS = [1, 2, 4, 8, 15];
+/** First automatic re-pairing delay, milliseconds. */
+export const BLE_RETRY_BASE_MS = 1_000;
+/** Longest gap between automatic attempts, milliseconds. */
+export const BLE_RETRY_MAX_MS = 60_000;
+/** Attempts made quietly before the bedside is told the link is lost. */
+export const BLE_RETRY_QUIET_ATTEMPTS = 5;
+
+/**
+ * Exponential backoff for automatic resume: 1s, 2s, 4s … capped at a minute,
+ * with ±20% jitter so a theatre full of bands does not retry in lockstep.
+ * Retrying never stops — a band that comes back an hour later rejoins the
+ * running case rather than requiring a new one.
+ */
+export function bleRetryDelayMs(attempt: number, random = Math.random): number {
+  const base = Math.min(BLE_RETRY_MAX_MS, BLE_RETRY_BASE_MS * 2 ** Math.max(0, attempt));
+  return Math.round(base * (0.8 + 0.4 * random()));
+}
 /** No packets for this long with the link nominally up: treat it as dropped. */
 const BLE_STALL_MS = 6_000;
 
@@ -451,6 +470,8 @@ export class BleHeadsetSource implements EegSource {
   private stopping = false;
   private started = false;
   private reconnecting = false;
+  private reconnectAttempt = 0;
+  private nextRetryAt = 0;
   private retryWake: (() => void) | null = null;
   private linkWaiters: ((ok: boolean) => void)[] = [];
   private listener: ((event: Event) => void) | null = null;
@@ -517,7 +538,7 @@ export class BleHeadsetSource implements EegSource {
     this.disconnectListener = () => {
       if (this.stopping) return;
       this.characteristic = null;
-      this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_DELAYS.length });
+      this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_QUIET_ATTEMPTS });
       void this.attemptReconnect();
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
@@ -789,6 +810,8 @@ export class BleHeadsetSource implements EegSource {
     return {
       connected,
       reconnecting: this.reconnecting,
+      reconnectAttempt: this.reconnectAttempt,
+      nextRetryInMs: this.nextRetryAt ? Math.max(0, this.nextRetryAt - Date.now()) : 0,
       packetsPerSecond,
       decodedPacketsPerSecond: decodedPerSecond,
       samplesPerSecond,
@@ -833,15 +856,18 @@ export class BleHeadsetSource implements EegSource {
     for (const resolve of waiters) resolve(ok);
   }
 
-  private waitForRetry(seconds: number) {
+  private waitForRetry(ms: number) {
+    this.nextRetryAt = Date.now() + ms;
     return new Promise<void>((resolve) => {
       const id = setTimeout(() => {
         this.retryWake = null;
+        this.nextRetryAt = 0;
         resolve();
-      }, seconds * 1000);
+      }, ms);
       this.retryWake = () => {
         clearTimeout(id);
         this.retryWake = null;
+        this.nextRetryAt = 0;
         resolve();
       };
     });
@@ -855,11 +881,12 @@ export class BleHeadsetSource implements EegSource {
   private async attemptReconnect() {
     if (this.reconnecting || this.stopping || !this.started) return;
     this.reconnecting = true;
-    const attempts = BLE_RETRY_DELAYS.length;
+    const attempts = BLE_RETRY_QUIET_ATTEMPTS;
     let told = false;
     for (let i = 0; !this.stopping; i++) {
+      this.reconnectAttempt = i + 1;
       this.stateCb?.({ kind: "reconnecting", attempt: Math.min(i + 1, attempts), attempts });
-      await this.waitForRetry(BLE_RETRY_DELAYS[Math.min(i, attempts - 1)]!);
+      await this.waitForRetry(bleRetryDelayMs(i));
       if (this.stopping) break;
       try {
         this.detachStream();
@@ -871,6 +898,8 @@ export class BleHeadsetSource implements EegSource {
         await this.attach();
         this.lastPacketAt = Date.now();
         this.reconnecting = false;
+        this.reconnectAttempt = 0;
+        this.nextRetryAt = 0;
         this.settleWaiters(true);
         this.stateCb?.({ kind: "connected" });
         return;
@@ -888,6 +917,8 @@ export class BleHeadsetSource implements EegSource {
       }
     }
     this.reconnecting = false;
+    this.reconnectAttempt = 0;
+    this.nextRetryAt = 0;
     this.settleWaiters(false);
   }
 

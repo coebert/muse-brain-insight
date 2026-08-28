@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   Bluetooth,
   Check,
@@ -30,7 +31,13 @@ import {
   type BleConnectionProgress,
   type BleStreamHealth,
 } from "@/lib/eeg/ble-eeg";
-import { ANALYSIS_CHANNELS, CHANNEL_REGION } from "@/lib/eeg/device-profile";
+import { StreamTestReport } from "@/components/monitor/StreamTestReport";
+import {
+  ANALYSIS_CHANNELS,
+  ANALYSIS_SAMPLE_RATE,
+  CHANNEL_REGION,
+} from "@/lib/eeg/device-profile";
+import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test";
 import type { ChannelMap } from "@/lib/eeg/ingest";
 import type { AnalysisChannel } from "@/lib/eeg/device-profile";
 import { isWebBluetoothAvailable, WEB_BLUETOOTH_HELP, type EegSource } from "@/lib/eeg/muse";
@@ -84,6 +91,9 @@ function HealthRow({
  * once those checks pass can the case begin, so a case never starts on a
  * headband that pairs but never streams.
  */
+/** Seconds of live stream captured by the one-tap test. */
+const STREAM_TEST_SECONDS = 6;
+
 export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const supported = isWebBluetoothAvailable();
   const [busy, setBusy] = useState(false);
@@ -94,6 +104,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [health, setHealth] = useState<BleStreamHealth | null>(null);
   const [electrode, setElectrode] = useState<AnalysisChannel>("AF7");
   const [uvPerCount, setUvPerCount] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<StreamTestResult | null>(null);
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
@@ -111,6 +123,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     setDiscovery(null);
     setProgress(null);
     setHealth(null);
+    setTestResult(null);
     if (sourceRef.current && !adoptedRef.current) await sourceRef.current.stop();
     try {
       const map: ChannelMap = { TP9: null, AF7: null, AF8: null, TP10: null };
@@ -133,6 +146,52 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       setError(friendlyBleError(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * One-tap proof that the headband is usable: a few seconds of the live
+   * stream are captured off the same source the case will use and pushed
+   * through the monitor's spectral path, so the clinician sees real packets
+   * turn into a real spectral array before any patient data is recorded.
+   */
+  async function runStreamTest() {
+    const source = sourceRef.current;
+    if (!source) return;
+    setTesting(true);
+    setError(null);
+    setTestResult(null);
+    const chunks: Float64Array[] = [];
+    const startPackets = source.health().totalPackets;
+    const startedAt = performance.now();
+    try {
+      source.start((_channel, samples) => {
+        chunks.push(Float64Array.from(samples));
+      });
+      await new Promise((r) => setTimeout(r, STREAM_TEST_SECONDS * 1000));
+      const total = chunks.reduce((n, c) => n + c.length, 0);
+      const signal = new Float64Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        signal.set(chunk, offset);
+        offset += chunk.length;
+      }
+      const captureSeconds = (performance.now() - startedAt) / 1000;
+      setTestResult(
+        analyseStreamTest(signal, {
+          sampleRate: ANALYSIS_SAMPLE_RATE,
+          expectedRate: ANALYSIS_SAMPLE_RATE,
+          captureSeconds,
+          packets: source.health().totalPackets - startPackets,
+        }),
+      );
+      setHealth(source.health());
+    } catch (e) {
+      setError(friendlyBleError(e));
+    } finally {
+      // Hand the stream back to the discard sink until the case adopts it.
+      sourceRef.current?.start(() => {});
+      setTesting(false);
     }
   }
 
@@ -258,7 +317,14 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
             <p className="font-medium">Live connection health</p>
             {health.reconnecting ? (
               <span className="flex items-center gap-1 text-caution">
-                <Loader2 className="size-3.5 animate-spin" aria-hidden /> Reconnecting…
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                {health.reconnectAttempt > 1
+                  ? `Reconnecting — attempt ${health.reconnectAttempt}${
+                      health.nextRetryInMs > 1_000
+                        ? `, next in ${Math.ceil(health.nextRetryInMs / 1000)}s`
+                        : ""
+                    }`
+                  : "Reconnecting…"}
               </span>
             ) : null}
           </div>
@@ -307,6 +373,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         </div>
       ) : null}
 
+      {testResult ? <StreamTestReport result={testResult} /> : null}
+
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <Button
           variant={connected ? "outline" : error ? "secondary" : "default"}
@@ -326,7 +394,23 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         </Button>
         {connected ? (
           <Button
+            variant="secondary"
             size="lg"
+            disabled={disabled || testing || starting}
+            onClick={() => void runStreamTest()}
+          >
+            {testing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Activity className="size-4" />
+            )}
+            {testing ? `Testing stream… ${STREAM_TEST_SECONDS}s` : "Run stream test"}
+          </Button>
+        ) : null}
+        {connected ? (
+          <Button
+            size="lg"
+            className="sm:col-span-2"
             disabled={disabled || !ready || starting}
             onClick={() => void beginCase()}
           >
