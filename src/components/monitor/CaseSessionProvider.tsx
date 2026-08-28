@@ -397,20 +397,26 @@ function useCaseSessionState() {
   ) {
     if (!meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
-      return;
+      return false;
     }
     if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
       toast.error("That case code is already used in your archive — press “New code”.");
       setCaseOpen(true);
-      return;
+      return false;
     }
     // Never silently overwrite an unfiled recording.
     if (caseState === "ended" && hasUnfiledData) {
       toast.error("File the previous case first, or exit it without saving.");
       setCaseOpen(false);
       setDiscardOpen(true);
-      return;
+      return false;
     }
+    const connected = await monitor.connect(kind, {
+      ...(options?.device ? { device: options.device } : {}),
+      ...(options?.preset ? { preset: options.preset } : {}),
+      ...(options?.source ? { source: options.source } : {}),
+    });
+    if (!connected) return false;
     setCaseOpen(false);
     saveCaseStartup({
       context: meta.context,
@@ -434,11 +440,7 @@ function useCaseSessionState() {
         ? "Pre-case checklist complete"
         : `Pre-case checklist: ${ticked.length ? ticked.join("; ") : "none ticked"}`,
     );
-    await monitor.connect(kind, {
-      ...(options?.device ? { device: options.device } : {}),
-      ...(options?.preset ? { preset: options.preset } : {}),
-      ...(options?.source ? { source: options.source } : {}),
-    });
+    return true;
   }
 
   function endCase(fileNow: boolean) {

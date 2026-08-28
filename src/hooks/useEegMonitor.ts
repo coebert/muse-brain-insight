@@ -622,9 +622,11 @@ export function useEegMonitor() {
         if (!options?.preserveTimeline) reset();
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
+        return true;
       } catch (e) {
         setStatus("error");
         setError(e instanceof Error ? e.message : "Could not connect to the headband.");
+        return false;
       }
     },
     [reset, allocateBuffers],

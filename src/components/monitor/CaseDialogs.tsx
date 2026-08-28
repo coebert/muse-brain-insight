@@ -42,7 +42,7 @@ interface Props {
   onStart: (
     kind: "muse" | "simulated" | "ingest",
     options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
-  ) => void;
+  ) => Promise<boolean>;
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
   onEnd: (fileNow: boolean) => void;
@@ -147,7 +147,7 @@ export function CaseDialogs({
           )}
           {bleSupported ? (
             <MuseCapabilityPanel
-              onConfirm={(device, preset) => onStart("muse", { device, preset })}
+              onConfirm={(device, preset) => void onStart("muse", { device, preset })}
             />
           ) : null}
           {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
@@ -155,12 +155,12 @@ export function CaseDialogs({
             <BleHeadsetPanel onStart={(source) => onStart("ingest", { source })} />
           ) : null}
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
-          <IngestPanel onStart={(source) => onStart("ingest", { source })} />
+          <IngestPanel onStart={(source) => void onStart("ingest", { source })} />
           <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => onStart("simulated")}>
+            <Button variant="secondary" onClick={() => void onStart("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
             </Button>
-            <Button variant="outline" disabled={!bleSupported} onClick={() => onStart("muse")}>
+            <Button variant="outline" disabled={!bleSupported} onClick={() => void onStart("muse")}>
               <Bluetooth className="size-4" /> Skip detection
             </Button>
           </DialogFooter>
