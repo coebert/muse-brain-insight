@@ -188,6 +188,12 @@ function useCaseSessionState() {
   const [testing, setTesting] = useState(false);
   /** Whether the connect dialog was opened to start a case or a test. */
   const [startIntent, setStartIntent] = useState<"case" | "test">("case");
+  /** Closing the start dialog always resets intent, so a dismissed test-mode
+      dialog can never make a later "Start case" start a throwaway session. */
+  const setCaseOpenAndResetIntent = (open: boolean) => {
+    if (!open) setStartIntent("case");
+    setCaseOpen(open);
+  };
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
   const [fullscreen, setFullscreen] = useState(false);
   const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
@@ -819,7 +825,7 @@ function useCaseSessionState() {
     saveOpen,
     setSaveOpen,
     caseOpen,
-    setCaseOpen,
+    setCaseOpen: setCaseOpenAndResetIntent,
     bleSupported,
     endOpen,
     setEndOpen,
