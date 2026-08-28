@@ -285,19 +285,29 @@ function p95Abs(values: number[]): number {
 /** Ranks candidate packet layouts against a captured burst of notifications. */
 export function detectPacketFormat(packets: Uint8Array[]): FormatDetection[] {
   const results: FormatDetection[] = [];
-  for (const format of FORMATS) {
+  const joinedLength = packets.reduce((n, packet) => n + packet.length, 0);
+  const joined = new Uint8Array(joinedLength);
+  let joinedAt = 0;
+  for (const packet of packets) {
+    joined.set(packet, joinedAt);
+    joinedAt += packet.length;
+  }
+  const containsBrnc = joined.some(
+    (byte, index) =>
+      byte === 0x42 &&
+      joined[index + 1] === 0x52 &&
+      joined[index + 2] === 0x4e &&
+      joined[index + 3] === 0x43,
+  );
+  // Once the vendor envelope is present, treating its headers and protobuf as
+  // plain integers can create a convincing but entirely false EEG trace.
+  const formats = containsBrnc ? (["brainco-zenlite"] as PacketFormat[]) : FORMATS;
+  for (const format of formats) {
     const series: number[] = [];
     let decodedPackets = 0;
     if (format === "brainco-zenlite") {
       // Vendor frames span several notifications, so they can only be scored
       // after the burst is reassembled in arrival order.
-      const total = packets.reduce((n, p) => n + p.length, 0);
-      const joined = new Uint8Array(total);
-      let at = 0;
-      for (const p of packets) {
-        joined.set(p, at);
-        at += p.length;
-      }
       const values = decodeZenLitePacket(joined);
       if (values.length >= 32) {
         results.push({

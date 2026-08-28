@@ -94,6 +94,16 @@ describe("ZenLite data decoding", () => {
     expect(out).toEqual(samples);
   });
 
+  it("accepts firmware transport-version changes while preserving CRC validation", () => {
+    const frame = eegFrame(samples);
+    frame[4] = 2;
+    frame[5] = 7;
+    const crc = crc16Modbus(frame.subarray(0, frame.length - 2));
+    frame[frame.length - 2] = crc & 0xff;
+    frame[frame.length - 1] = crc >> 8;
+    expect(decodeZenLitePacket(frame)).toEqual(samples);
+  });
+
   it("rejects frames with a corrupted checksum", () => {
     const frame = eegFrame(samples);
     frame[frame.length - 1] = (frame[frame.length - 1]! ^ 0xff) & 0xff;

@@ -16,9 +16,11 @@ describe("BLE diagnostic logger", () => {
     log = new BleDiagnosticLog();
   });
 
-  it("captures nothing until enabled", () => {
+  it("keeps lifecycle evidence but gates raw bytes until enabled", () => {
     log.add("gatt", "connect");
-    expect(log.all()).toHaveLength(0);
+    log.packet("svc/char", Uint8Array.from([1, 2]));
+    expect(log.all().map((entry) => entry.message)).toEqual(["connect"]);
+    expect(log.packetTotals()["svc/char"]).toBe(1);
     log.setEnabled(true);
     log.add("gatt", "connect");
     expect(log.all().some((e) => e.message === "connect")).toBe(true);
