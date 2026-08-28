@@ -149,6 +149,10 @@ export function CaseDialogs({
               onConfirm={(device, preset) => onStart("muse", { device, preset })}
             />
           ) : null}
+          {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
+          {bleSupported ? (
+            <BleHeadsetPanel onStart={(source) => onStart("ingest", { source })} />
+          ) : null}
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
           <IngestPanel onStart={(source) => onStart("ingest", { source })} />
           <DialogFooter className="gap-2">
