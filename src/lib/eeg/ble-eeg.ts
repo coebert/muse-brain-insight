@@ -75,6 +75,13 @@ const VENDOR_SERVICES: string[] = [
   "0000ffe5-0000-1000-8000-00805f9b34fb",
 ];
 
+/**
+ * Bluefy proxies Web Bluetooth through iOS CoreBluetooth and becomes unreliable
+ * when requestDevice receives hundreds of optional services. Keep its request
+ * deliberately small; these are the plausible published/standard transports.
+ */
+export const IOS_BLE_CANDIDATE_SERVICES = [...VENDOR_SERVICES];
+
 /** Services websites are forbidden from requesting by the Web Bluetooth registry. */
 export const WEB_BLUETOOTH_BLOCKED_SERVICES = new Set([
   "00001812-0000-1000-8000-00805f9b34fb", // HID
@@ -297,7 +304,9 @@ export function autoScaleUvPerCount(p95Counts: number, targetUv = 35): number {
  */
 export async function requestBleHeadset(extraServices: string[] = []): Promise<BluetoothDevice> {
   if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
-  const optionalServices = [...new Set([...BLE_CANDIDATE_SERVICES, ...extraServices])].filter(
+  const ios = isIosWebBleBrowser();
+  const candidates = ios ? IOS_BLE_CANDIDATE_SERVICES : BLE_CANDIDATE_SERVICES;
+  const optionalServices = [...new Set([...candidates, ...extraServices])].filter(
     (uuid) => !WEB_BLUETOOTH_BLOCKED_SERVICES.has(uuid.toLowerCase()),
   );
   // A previously approved FocusCalm can reconnect without making the clinician
@@ -313,6 +322,13 @@ export async function requestBleHeadset(extraServices: string[] = []): Promise<B
     if (known.length === 1) return known[0]!;
   }
   return navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+}
+
+/** iPadOS can identify as macOS, so touch capability is part of detection. */
+export function isIosWebBleBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
 
 /* ------------------------------------------------------------------ */
@@ -370,6 +386,9 @@ export function friendlyBleError(error: unknown): string {
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
+  }
+  if (/not supported|not implemented|ns(error|internal)|operation.*progress/i.test(message)) {
+    return "Bluefy could not complete this Bluetooth operation. Update Bluefy and retry once; if it fails at the same stage, use Chrome on Android or desktop because this headband’s notification stream is not compatible with the current iOS Bluetooth bridge.";
   }
   if (/gatt|network|disconnected|connection/i.test(message)) {
     return "The headband was found but would not connect. Unplug its charging cable, close the headband’s own phone app on any nearby device, then switch the band off and on and retry.";
@@ -649,7 +668,7 @@ export class BleHeadsetSource implements EegSource {
     if (this.discovery) {
       const known = await this.findKnownCharacteristic(services);
       if (known) {
-        this.bindStream(known);
+        await this.bindStream(known);
         this.progress("ready", "EEG stream resumed");
         this.stateCb?.({ kind: "connected" });
         return;
@@ -715,7 +734,7 @@ export class BleHeadsetSource implements EegSource {
     // Re-subscribe to the winning characteristic only.
     await this.detachAll(notifying, chosen.characteristic);
     this.discovery = { ...chosen.discovery, uvPerCount, sampleRate: measuredRate };
-    this.bindStream(chosen.characteristic);
+    await this.bindStream(chosen.characteristic);
     this.discoveryCb?.(this.discovery);
     this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
@@ -738,7 +757,7 @@ export class BleHeadsetSource implements EegSource {
   }
 
   /** Subscribes to the chosen characteristic and starts counting health. */
-  private bindStream(characteristic: BluetoothRemoteGATTCharacteristic) {
+  private async bindStream(characteristic: BluetoothRemoteGATTCharacteristic) {
     this.characteristic = characteristic;
     this.listener = (event: Event) => {
       const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
@@ -755,9 +774,16 @@ export class BleHeadsetSource implements EegSource {
       this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
     };
     characteristic.addEventListener("characteristicvaluechanged", this.listener);
-    void characteristic.startNotifications().catch(() => {
-      /* already notifying from the discovery sweep */
-    });
+    try {
+      await characteristic.startNotifications();
+    } catch (error) {
+      characteristic.removeEventListener("characteristicvaluechanged", this.listener);
+      this.listener = null;
+      this.characteristic = null;
+      throw new Error(
+        `EEG notification subscription failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private progress(stage: BleConnectionStage, message: string) {
@@ -1087,11 +1113,16 @@ export class BleHeadsetSource implements EegSource {
     }[],
     keep: BluetoothRemoteGATTCharacteristic,
   ) {
-    await Promise.allSettled(
-      notifying
-        .filter(({ characteristic }) => characteristic !== keep)
-        .map(({ characteristic }) => characteristic.stopNotifications()),
-    );
+    // CoreBluetooth permits one GATT operation at a time. Bluefy can wedge the
+    // peripheral if several stop requests race the final subscription.
+    for (const { characteristic } of notifying) {
+      if (characteristic === keep) continue;
+      try {
+        await characteristic.stopNotifications();
+      } catch {
+        /* a characteristic that refused start has nothing to stop */
+      }
+    }
   }
 
   private async attachBattery(server: BluetoothRemoteGATTServer) {
