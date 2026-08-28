@@ -171,6 +171,10 @@ function Monitor() {
     discardOpen,
     setDiscardOpen,
     caseState,
+    testing,
+    startIntent,
+    requestTestSession,
+    endTesting,
     tab,
     setTab,
     fullscreen,
@@ -353,9 +357,9 @@ function Monitor() {
                   variant="destructive"
                   size="sm"
                   className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                  onClick={() => setEndOpen(true)}
+                  onClick={() => (testing ? endTesting() : setEndOpen(true))}
                 >
-                  <CircleStop className="size-4" /> End case
+                  <CircleStop className="size-4" /> {testing ? "End test" : "End case"}
                 </Button>
                 <Button
                   variant="outline"
@@ -375,9 +379,11 @@ function Monitor() {
                     <DropdownMenuItem className="sm:hidden" onSelect={() => setFullscreen(true)}>
                       <Maximize2 className="size-4" /> Monitor view
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
-                      <Save className="size-4" /> File now
-                    </DropdownMenuItem>
+                    {testing ? null : (
+                      <DropdownMenuItem onSelect={() => setSaveOpen(true)}>
+                        <Save className="size-4" /> File now
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onSelect={() => setDim(!dim)}>
                       {dim ? <Sun className="size-4" /> : <Moon className="size-4" />}
                       {dim ? "Undim display" : "Dim for theatre"}
@@ -396,13 +402,23 @@ function Monitor() {
                   <Plus className="size-4" /> New case
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                  onClick={() => setCaseOpen(true)}
-                >
-                  <Bluetooth className="size-4" /> Start case
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                    onClick={() => setCaseOpen(true)}
+                  >
+                    <Bluetooth className="size-4" /> Start case
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                    onClick={() => requestTestSession()}
+                  >
+                    <FlaskConical className="size-4" /> Testing mode
+                  </Button>
+                </>
               )}
               {caseState === "ended" && monitor.epochs.length ? (
                 <>
@@ -475,6 +491,15 @@ function Monitor() {
             onNotifyChange={(v) => void batteryAlert.setNotify(v)}
             onDismiss={batteryAlert.dismiss}
           />
+        ) : null}
+        {testing ? (
+          <div className="panel flex flex-wrap items-center gap-3 border-caution/60 bg-caution/10 px-4 py-2 text-xs text-caution">
+            <FlaskConical className="size-4" aria-hidden />
+            <span className="min-w-0 flex-1">
+              Testing mode — live data only. Nothing is recorded to your records and everything is
+              lost when the app is closed or refreshed.
+            </span>
+          </div>
         ) : null}
         {caseState !== "idle" ? (
           <TciStatusStrip infusions={infusions} onOpen={() => setCaseSheet("tci")} />
