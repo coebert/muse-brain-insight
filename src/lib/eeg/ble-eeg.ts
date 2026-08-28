@@ -52,28 +52,59 @@ import {
 } from "@/lib/eeg/muse";
 
 /** Advertised-name hints used only to recognise an already-authorised band. */
-export const BLE_NAME_HINTS = ["FocusCalm", "Focus", "BrainCo", "Crimson", "Mind", "EEG", "FC-"];
+export const BLE_NAME_HINTS = [
+  "Regul8",
+  "FocusCalm",
+  "Focus",
+  "BrainCo",
+  "Crimson",
+  "Mind",
+  "EEG",
+  "FC-",
+];
 
-/**
- * Services requested up front. Web Bluetooth only lets an app read services it
- * asked for at pairing time, so this list has to cover the plausible layouts
- * before the device is seen: Nordic UART (the usual transport for BrainCo-style
- * firmware), the common 16-bit vendor ranges, and the standard battery and
- * device-information services.
- */
-export const BLE_CANDIDATE_SERVICES: string[] = [
-  "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Nordic UART
-  "0000fff0-0000-1000-8000-00805f9b34fb",
-  "0000ffe0-0000-1000-8000-00805f9b34fb",
-  "0000ffb0-0000-1000-8000-00805f9b34fb",
-  "0000fee0-0000-1000-8000-00805f9b34fb",
+const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+
+/** Known 128-bit transports used by consumer EEG headband firmware. */
+const VENDOR_SERVICES: string[] = [
+  NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
   "0000180f-0000-1000-8000-00805f9b34fb", // battery
   "0000180a-0000-1000-8000-00805f9b34fb", // device information
+  "f000c0e0-0451-4000-b000-000000000000", // TI-style vendor range
+  "0000ffe5-0000-1000-8000-00805f9b34fb",
 ];
+
+function uuid16(value: number): string {
+  return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
+}
+
+/**
+ * Services requested up front.
+ *
+ * This is the single most common reason a headband pairs and then refuses to
+ * work: Web Bluetooth hides every service the page did not name in
+ * `optionalServices`, so `getPrimaryServices()` on a band with an undocumented
+ * vendor service comes back empty and the connection is abandoned even though
+ * the link is perfectly healthy. The Regul8 band is exactly that case — it
+ * does not use any of the handful of UUIDs originally guessed here.
+ *
+ * Rather than guess one UUID, the whole 16-bit assigned space that vendors
+ * actually use is requested: the standard GATT services (0x1800–0x18FF), the
+ * member/vendor range (0xFC00–0xFFFF) where consumer devices put proprietary
+ * streams, plus the known 128-bit transports. Blocklisted UUIDs are dropped by
+ * the browser rather than rejected, so a broad list is safe.
+ */
+export const BLE_CANDIDATE_SERVICES: string[] = (() => {
+  const list: string[] = [...VENDOR_SERVICES];
+  for (let v = 0x1800; v <= 0x18ff; v++) list.push(uuid16(v));
+  for (let v = 0xfc00; v <= 0xffff; v++) list.push(uuid16(v));
+  return [...new Set(list)];
+})();
 
 const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
 const BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
+
 
 /* ------------------------------------------------------------------ */
 /* Packet decoding                                                     */
@@ -327,21 +358,21 @@ export function friendlyBleError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
-    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose FocusCalm, FC-11, or its serial number.";
+    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose it from the list (Regul8, FocusCalm, FC-11, or a serial number).";
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
   }
   if (/gatt|network|disconnected|connection/i.test(message)) {
-    return "The headband was found but would not connect. Unplug its charging cable, close the FocusCalm app on other devices, then switch the band off and on.";
+    return "The headband was found but would not connect. Unplug its charging cable, close the headband’s own phone app on any nearby device, then switch the band off and on and retry.";
   }
   if (/no readable services|no streaming characteristic/i.test(message)) {
-    return "The headband connected but did not expose its EEG stream. Close the FocusCalm app, unplug the charging cable, restart the band, and retry.";
+    return "The headband connected but did not expose its EEG stream. Close the headband’s own phone app, unplug the charging cable, restart the band, and retry.";
   }
   if (/no stream decoded as eeg/i.test(message)) {
     return "Connected, but no usable EEG signal arrived. Wear the band snugly across a clean forehead, keep still for a few seconds, and retry.";
   }
-  return message || "FocusCalm could not be connected. Restart the headband and try again.";
+  return message || "The headband could not be connected. Restart it and try again.";
 }
 
 
@@ -479,7 +510,7 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
-    this.progress("choosing", "Choose FocusCalm from the Bluetooth list");
+    this.progress("choosing", "Choose the headband from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
@@ -496,19 +527,61 @@ export class BleHeadsetSource implements EegSource {
     this.startHealthLoop();
   }
 
+  /**
+   * Opens GATT with retries. Chrome routinely fails the very first connect to
+   * a freshly advertised band with a bare "GATT operation failed" or
+   * "connection attempt failed" — the radio is still finishing the pairing
+   * handshake. One attempt therefore looks like "the app can see it but can
+   * never connect"; three spaced attempts succeed.
+   */
+  private async connectGatt(device: BluetoothDevice): Promise<BluetoothRemoteGATTServer> {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.stopping) break;
+      try {
+        if (attempt > 0) {
+          this.progress("connecting", `Retrying the link to ${this.name} (${attempt + 1} of 3)`);
+          try {
+            device.gatt?.disconnect();
+          } catch {
+            /* already closed */
+          }
+          await new Promise((r) => setTimeout(r, 700 * attempt));
+        }
+        const server = await device.gatt?.connect();
+        if (server?.connected) return server;
+        lastError = new Error("Could not open a GATT connection to the headset.");
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Could not open a GATT connection to the headset.");
+  }
+
   /** Opens GATT, discovers the stream and subscribes. Used by start and retry. */
   private async attach() {
     const device = this.device;
     if (!device) throw new Error("No headset has been paired yet.");
     this.progress("connecting", `Connecting to ${this.name}`);
-    const server = await device.gatt?.connect();
-    if (!server) throw new Error("Could not open a GATT connection to the headset.");
+    const server = await this.connectGatt(device);
 
     this.progress("discovering", "Finding the EEG stream");
-    const services = await server.getPrimaryServices();
+    // Some firmware answers service discovery only a moment after the link is
+    // up; a single empty result is not proof the band has nothing to offer.
+    let services: BluetoothRemoteGATTService[] = [];
+    for (let attempt = 0; attempt < 3 && !services.length; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
+      try {
+        services = await server.getPrimaryServices();
+      } catch {
+        services = [];
+      }
+    }
     if (!services.length)
       throw new Error(
-        "The headset exposed no readable services. Make sure it is not connected to the FocusCalm phone app at the same time.",
+        "The headset connected but exposed no readable services. Close any phone app holding the band, unplug the charging cable, then switch it off and on and retry.",
       );
 
     await this.attachBattery(server);
@@ -530,6 +603,7 @@ export class BleHeadsetSource implements EegSource {
       service: BluetoothRemoteGATTService;
       characteristic: BluetoothRemoteGATTCharacteristic;
     }[] = [];
+    const writable: BluetoothRemoteGATTCharacteristic[] = [];
     for (const service of services) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
@@ -541,19 +615,40 @@ export class BleHeadsetSource implements EegSource {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
         }
+        if (
+          characteristic.properties.write ||
+          characteristic.properties.writeWithoutResponse
+        ) {
+          writable.push(characteristic);
+        }
       }
     }
     if (!notifying.length)
-      throw new Error("No streaming characteristic was found on this headset.");
+      throw new Error(
+        `No streaming characteristic was found on this headset (${services.length} services readable). It may need to be woken from its own app once, or it does not publish raw EEG over Bluetooth.`,
+      );
 
     this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
-    const captured = await this.listen(notifying, listenMs);
-    const chosen = this.choose(captured, listenMs / 1000);
-    if (!chosen)
+    let captured = await this.listen(notifying, listenMs);
+    let chosen = this.choose(captured, listenMs / 1000);
+    if (!chosen && captured.every((c) => !c.packets.length) && writable.length) {
+      // Silent link: several bands stay idle until told to stream. Send the
+      // usual start commands and listen once more before giving up.
+      this.progress("checking", "Asking the headband to start streaming");
+      await this.nudgeStream(writable);
+      captured = await this.listen(notifying, listenMs);
+      chosen = this.choose(captured, listenMs / 1000);
+    }
+    if (!chosen) {
+      const silent = captured.every((c) => !c.packets.length);
       throw new Error(
-        "The headset connected but no stream decoded as EEG. Check the band is worn and powered, and that no other app holds the connection.",
+        silent
+          ? "The headband connected but sent no data. Make sure it is off the charger, not connected to its own phone app, and switched on until the light blinks, then retry."
+          : "The headset connected but no stream decoded as EEG. Check the band is worn and powered, and that no other app holds the connection.",
       );
+    }
+
 
     this.format = chosen.discovery.format;
     const measuredRate = this.options.sampleRate ?? chosen.discovery.sampleRate;
@@ -786,7 +881,7 @@ export class BleHeadsetSource implements EegSource {
           this.stateCb?.({
             kind: "lost",
             reason:
-              "FocusCalm has not come back yet — the case and its data are kept and reconnection keeps retrying. Check the band is on, charged and not held by the phone app.",
+              "The headband has not come back yet — the case and its data are kept and reconnection keeps retrying. Check the band is on, charged and not held by the phone app.",
           });
           this.disconnectCb?.();
         }
@@ -828,6 +923,36 @@ export class BleHeadsetSource implements EegSource {
     }
   }
 
+  /**
+   * Sends the start commands consumer EEG firmware commonly waits for. Each is
+   * harmless to a band that streams unprompted, and one of them wakes a band
+   * that would otherwise sit silent behind a healthy link.
+   */
+  private async nudgeStream(writable: BluetoothRemoteGATTCharacteristic[]) {
+    const commands = [
+      Uint8Array.from([0x55, 0xaa, 0x01, 0x01, 0x01]),
+      Uint8Array.from([0x01]),
+      Uint8Array.from([0x02]),
+      Uint8Array.from([0x62]), // 'b' — start, used by several BLE UART bridges
+      new TextEncoder().encode("start\n"),
+    ];
+    for (const characteristic of writable) {
+      for (const command of commands) {
+        if (this.stopping) return;
+        try {
+          if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(command as BufferSource);
+          } else {
+            await characteristic.writeValue(command as BufferSource);
+          }
+        } catch {
+          /* the band rejected this command; try the next */
+        }
+        await new Promise((r) => setTimeout(r, 60));
+      }
+    }
+  }
+
   /** Subscribes to everything that notifies and collects a burst of packets. */
   private async listen(
     notifying: {
@@ -845,10 +970,10 @@ export class BleHeadsetSource implements EegSource {
       }
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
-    const ordered = [...notifying].sort((a, b) => {
-      const nordic = BLE_CANDIDATE_SERVICES[0];
-      return Number(b.service.uuid === nordic) - Number(a.service.uuid === nordic);
-    });
+    const ordered = [...notifying].sort(
+      (a, b) => Number(b.service.uuid === NORDIC_UART) - Number(a.service.uuid === NORDIC_UART),
+    );
+
     for (let index = 0; index < ordered.length; index++) {
       const entry = ordered[index]!;
       const key = entry.characteristic.uuid;
@@ -970,7 +1095,7 @@ export class BleHeadsetSource implements EegSource {
   /** Montage for the mapped stream, with the FocusCalm caveats when it fits. */
   private buildProfile(map: ChannelMap, sampleRate: number): DeviceProfile {
     const mapped = (Object.keys(map) as (keyof ChannelMap)[]).filter((c) => map[c]);
-    const looksFocusCalm = /focus|brainco/i.test(this.name);
+    const looksFocusCalm = /focus|brainco|regul8/i.test(this.name);
     if (looksFocusCalm && mapped.length === 1 && mapped[0] === "AF7") {
       return {
         ...FOCUSCALM_PROFILE,

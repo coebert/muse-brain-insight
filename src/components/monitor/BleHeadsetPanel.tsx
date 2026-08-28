@@ -118,7 +118,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       const scale = Number(uvPerCount);
       const source = new BleHeadsetSource({
         channelMap: map,
-        label: "FocusCalm",
+        label: "Regul8 headband",
         onProgress: setProgress,
         ...(Number.isFinite(scale) && scale > 0 ? { uvPerCount: scale } : {}),
       });
@@ -163,11 +163,11 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     <section className="rounded-lg border border-border p-3">
       <header className="flex items-center gap-2">
         <Radio className="size-4 text-signal" aria-hidden />
-        <h3 className="text-sm font-medium">FocusCalm</h3>
+        <h3 className="text-sm font-medium">Bluetooth headband</h3>
       </header>
       <p className="mt-1 text-xs text-muted-foreground">
         Connect, confirm the live signal, then start the case. Dropouts re-pair themselves. The
-        Bluetooth list may show the band as FocusCalm, FC-11, or a serial number.
+        Bluetooth list may show the band as Regul8, FocusCalm, FC-11, or a serial number.
       </p>
 
       {supported ? null : (
@@ -179,7 +179,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       <ol className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
         {[
           "Unplug the charging cable",
-          "Disconnect it and fully close the FocusCalm phone app",
+          "Disconnect it and fully close the headband’s own phone app",
           "Hold power until the light blinks blue, then wear it",
         ].map((step) => (
           <li key={step} className="flex items-start gap-2 rounded-md bg-muted/40 p-2">
@@ -212,7 +212,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
               </SelectContent>
             </Select>
             <p className="text-[11px] text-muted-foreground">
-              FocusCalm measures across the forehead; AF7 keeps it in the frontal montage.
+              The band measures across the forehead; AF7 keeps it in the frontal montage.
             </p>
           </div>
           <div className="space-y-1">
@@ -243,7 +243,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
 
       {error ? (
         <div className="mt-2 rounded-md border border-critical/40 bg-critical/10 p-3 text-xs">
-          <p className="font-medium text-critical">Couldn’t connect FocusCalm</p>
+          <p className="font-medium text-critical">Couldn’t connect the headband</p>
           <p className="mt-1 text-muted-foreground">{error}</p>
         </div>
       ) : null}
@@ -322,7 +322,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
           ) : (
             <Bluetooth className="size-4" />
           )}
-          {busy ? "Connecting…" : connected ? "Reconnect" : error ? "Try again" : "Connect FocusCalm"}
+          {busy ? "Connecting…" : connected ? "Reconnect" : error ? "Try again" : "Connect headband"}
         </Button>
         {connected ? (
           <Button
