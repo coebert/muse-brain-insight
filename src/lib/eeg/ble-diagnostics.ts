@@ -183,3 +183,113 @@ export function bleDiagnosticJson(
     2,
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Packet inspector                                                    */
+/* ------------------------------------------------------------------ */
+
+export interface BlePacketRecord {
+  at: number;
+  source: string;
+  format: string;
+  hex: string;
+  bytes: number;
+  decodedSamples: number;
+  amplitudeUv: number;
+  /** ms since the previous notification on this stream. */
+  deltaMs: number;
+}
+
+export interface BlePacketRecordInput {
+  at: number;
+  source: string;
+  format: string;
+  bytes: Uint8Array;
+  decodedSamples: number;
+  amplitudeUv: number;
+}
+
+const INSPECTOR_CAPACITY = 400;
+
+/**
+ * Rolling, timestamped view of the live notification stream. Kept separate
+ * from the connection log: this one runs during a case, so it is a small
+ * fixed ring and only fills while the clinician has the inspector open.
+ */
+export class BlePacketInspector {
+  private records: BlePacketRecord[] = [];
+  private lastAt = new Map<string, number>();
+  private listeners = new Set<(records: BlePacketRecord[]) => void>();
+  enabled = false;
+  totalSeen = 0;
+
+  setEnabled(on: boolean) {
+    this.enabled = on;
+    if (!on) this.lastAt.clear();
+    this.emit();
+  }
+
+  record(input: BlePacketRecordInput) {
+    if (!this.enabled) return;
+    const previous = this.lastAt.get(input.source);
+    this.lastAt.set(input.source, input.at);
+    this.totalSeen++;
+    this.records.push({
+      at: input.at,
+      source: input.source,
+      format: input.format,
+      hex: toHex(input.bytes, 32),
+      bytes: input.bytes.length,
+      decodedSamples: input.decodedSamples,
+      amplitudeUv: Number(input.amplitudeUv.toFixed(1)),
+      deltaMs: previous ? input.at - previous : 0,
+    });
+    if (this.records.length > INSPECTOR_CAPACITY) {
+      this.records.splice(0, this.records.length - INSPECTOR_CAPACITY);
+    }
+    this.emit();
+  }
+
+  all(): BlePacketRecord[] {
+    return this.records;
+  }
+
+  clear() {
+    this.records = [];
+    this.lastAt.clear();
+    this.totalSeen = 0;
+    this.emit();
+  }
+
+  subscribe(cb: (records: BlePacketRecord[]) => void): () => void {
+    this.listeners.add(cb);
+    cb(this.records);
+    return () => {
+      this.listeners.delete(cb);
+    };
+  }
+
+  private emit() {
+    for (const cb of this.listeners) cb([...this.records]);
+  }
+}
+
+export const blePacketInspector = new BlePacketInspector();
+
+export function packetsToCsv(records: BlePacketRecord[]): string {
+  const header = "iso_time,epoch_ms,delta_ms,source,format,bytes,decoded_samples,amplitude_uv,hex";
+  const rows = records.map((r) =>
+    [
+      new Date(r.at).toISOString(),
+      r.at,
+      r.deltaMs,
+      `"${r.source}"`,
+      r.format,
+      r.bytes,
+      r.decodedSamples,
+      r.amplitudeUv,
+      `"${r.hex}"`,
+    ].join(","),
+  );
+  return [header, ...rows].join("\n");
+}
