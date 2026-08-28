@@ -820,8 +820,26 @@ export class BleHeadsetSource implements EegSource {
     // notification characteristic. Subscribe first, then send the activation
     // sequence; doing this in the opposite order can leave Bluefy with a live
     // GATT link but a permanently silent EEG stream.
-    let captured = await this.listen(notifying, listenMs, () => this.zenliteHandshake(services));
+    let captured = await this.listen(notifying, listenMs, () =>
+      this.zenliteHandshake(services, "validate"),
+    );
     let chosen = this.choose(captured, listenMs / 1000);
+    // The advertisement bit used by the native SDK to distinguish a first
+    // pairing from a returning device is not exposed by Web Bluetooth. Try the
+    // non-destructive validation path first; if the documented BrainCo channel
+    // remains undecodable, perform one real pairing attempt and start AFE again.
+    // Sending pair and validate back-to-back (the old behaviour) could cancel a
+    // successful pairing before Bluefy had delivered its response.
+    const zenliteCandidate = notifying.find(
+      (candidate) => candidate.characteristic.uuid.toLowerCase() === ZENLITE_NOTIFY,
+    );
+    if (!chosen && zenliteCandidate) {
+      bleDiagnostics.add("info", "Validated ZenLite start was silent — retrying in pairing mode");
+      captured = await this.listen([zenliteCandidate], listenMs, () =>
+        this.zenliteHandshake(services, "pair"),
+      );
+      chosen = this.choose(captured, listenMs / 1000);
+    }
     // Some iOS Web Bluetooth bridges acknowledge notification setup but never
     // forward characteristicvaluechanged events. A short, conservative read
     // fallback recovers firmware that exposes its current stream buffer through
@@ -912,7 +930,10 @@ export class BleHeadsetSource implements EegSource {
    * commands are only ever sent to a band that actually exposes the vendor
    * service, so no other device receives an unrecognised write.
    */
-  private async zenliteHandshake(services: BluetoothRemoteGATTService[]) {
+  private async zenliteHandshake(
+    services: BluetoothRemoteGATTService[],
+    mode: "validate" | "pair",
+  ) {
     const service = services.find((s) => s.uuid.toLowerCase() === ZENLITE_SERVICE);
     if (!service) {
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
@@ -951,15 +972,15 @@ export class BleHeadsetSource implements EegSource {
     };
     this.progress("discovering", "Pairing with the headband");
     try {
-      // Pair first (band in pairing mode); if it is already paired the same
-      // identity re-validates instead, which the firmware accepts silently.
-      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()), "ZenLite pair");
-      await new Promise((r) => setTimeout(r, 300));
+      const pairing = mode === "pair";
       await send(
-        zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()),
-        "ZenLite re-validate",
+        zenlitePairCommand(nextZenLiteMsgId(), pairing, zenlitePairUuid()),
+        pairing ? "ZenLite pair" : "ZenLite validate pairing",
       );
-      await new Promise((r) => setTimeout(r, 300));
+      // The vendor SDK starts data only from its asynchronous pairing callback.
+      // Bluefy does not expose that callback, so leave enough time for the
+      // response notification before sending the acknowledged AFE write.
+      await new Promise((r) => setTimeout(r, 650));
       this.progress("discovering", "Starting the EEG stream");
       await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256), "ZenLite AFE start 256 Hz");
       await new Promise((r) => setTimeout(r, 200));
@@ -1321,7 +1342,12 @@ export class BleHeadsetSource implements EegSource {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
         const bucket = captured.get(key);
-        const bytes = new Uint8Array(value.buffer.slice(0) as ArrayBuffer);
+        // DataView may point at a small window inside a pooled ArrayBuffer.
+        // Copy that exact window; copying from offset zero prepended unrelated
+        // bytes on Bluefy and made valid BRNC frames impossible to recognise.
+        const bytes = new Uint8Array(
+          value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
+        );
         bleDiagnostics.packet(key, bytes, "discovery notification");
         if (!bucket || bucket.packets.length > 600) return;
         bucket.packets.push(bytes);
