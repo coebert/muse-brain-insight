@@ -1,8 +1,15 @@
 /// <reference types="web-bluetooth" />
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { BleHeadsetSource } from "@/lib/eeg/ble-eeg";
+
+beforeAll(() => {
+  Object.defineProperty(navigator, "bluetooth", {
+    configurable: true,
+    value: { requestDevice: vi.fn() },
+  });
+});
 
 function eegPacket(offset: number): DataView {
   const buffer = new ArrayBuffer(40);
