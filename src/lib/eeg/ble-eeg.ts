@@ -619,10 +619,16 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
+    bleDiagnostics.beginSession(this.options.label ?? this.name);
     this.progress("choosing", "Choose the headband from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
+    bleDiagnostics.add("session", "Device selected", {
+      name: device.name ?? null,
+      id: device.id ? `${String(device.id).slice(0, 6)}…` : null,
+      ios: isIosWebBleBrowser(),
+    });
     this.disconnectListener = () => {
       if (this.stopping) return;
       this.characteristic = null;
