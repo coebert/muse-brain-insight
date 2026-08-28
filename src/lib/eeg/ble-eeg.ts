@@ -845,6 +845,12 @@ export class BleHeadsetSource implements EegSource {
             `${candidate.service.uuid}/${candidate.characteristic.uuid}: ${candidate.packets.length} packets`,
         )
         .join(", ");
+      bleDiagnostics.add("error", "No characteristic decoded as EEG", {
+        subscriptions,
+        subscriptionErrors,
+        perCharacteristic: characteristicSummary || "none",
+        packetTotals: bleDiagnostics.packetTotals(),
+      });
       throw new Error(
         subscriptions === 0 && subscriptionErrors.length
           ? `The headband connected, but notification subscription failed (${subscriptionErrors.join("; ")}).`
