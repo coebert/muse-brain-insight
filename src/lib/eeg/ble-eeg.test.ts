@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BLE_CANDIDATE_SERVICES,
   BLE_NAME_HINTS,
   autoScaleUvPerCount,
   decodePacket,
@@ -53,6 +54,16 @@ function brainCoPackets(samples: number[], perPacket = 15): Uint8Array[] {
 }
 
 describe("BLE headset decoding", () => {
+  it("recognises the Regul8 product name", () => {
+    expect(BLE_NAME_HINTS).toContain("Regul8");
+  });
+
+  it("requests only known services rather than restricted UUID ranges", () => {
+    expect(BLE_CANDIDATE_SERVICES.length).toBeLessThan(20);
+    expect(BLE_CANDIDATE_SERVICES).not.toContain("00001800-0000-1000-8000-00805f9b34fb");
+    expect(BLE_CANDIDATE_SERVICES).toContain("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+  });
+
   it("recognises the serial-like FC- names used by some FocusCalm units", () => {
     expect(BLE_NAME_HINTS).toContain("FC-");
   });
