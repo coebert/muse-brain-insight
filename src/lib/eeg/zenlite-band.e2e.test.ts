@@ -78,11 +78,17 @@ class ZenLiteWrite {
   constructor(private readonly notify: ZenLiteNotify) {}
 
   async writeValue(value: BufferSource) {
-    const bytes = new Uint8Array(value instanceof ArrayBuffer ? value : value.buffer);
+    const bytes =
+      value instanceof ArrayBuffer
+        ? new Uint8Array(value)
+        : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     this.frames.push(bytes);
-    // Payload byte 2 identifies the submessage: field 3 (0x1a) is the AFE
-    // config, which is what actually starts the EEG stream.
-    if (bytes[10] === 0x1a) {
+    // Field 3 (0x1a) carrying enum value 3 switches the AFE to 256 Hz.
+    const afeStart = [0x1a, 0x02, 0x08, 0x03];
+    const startsAfe = bytes.some(
+      (_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte),
+    );
+    if (startsAfe) {
       this.notify.streaming = true;
       // Real firmware streams continuously once started, so keep emitting for
       // the whole discovery window rather than in one burst.
@@ -160,10 +166,18 @@ describe("BrainCo ZenLite headband", () => {
     const { device, write } = zenliteDevice();
     const source = new BleHeadsetSource({ device, listenSeconds: 1 });
     await source.start(() => {});
-    const afe = write.frames.find((frame) => frame[10] === 0x1a);
+    const afe = write.frames.find((frame) =>
+      frame.some(
+        (_, index) => [0x1a, 0x02, 0x08, 0x03].every((byte, offset) => frame[index + offset] === byte),
+      ),
+    );
     expect(afe).toBeDefined();
     // 0x1a submessage carrying sample-rate enum 3 (256 Hz).
-    expect([...afe!.subarray(10, 14)]).toEqual([0x1a, 0x02, 0x08, 0x03]);
+    expect(
+      afe?.some(
+        (_, index) => [0x1a, 0x02, 0x08, 0x03].every((byte, offset) => afe[index + offset] === byte),
+      ),
+    ).toBe(true);
     await source.stop();
   }, 20_000);
 });
