@@ -51,8 +51,8 @@ import {
   type SourceStateHandler,
 } from "@/lib/eeg/muse";
 
-/** Advertised-name hints for headsets known to work through this path. */
-export const BLE_NAME_HINTS = ["FocusCalm", "Focus", "BrainCo", "Crimson", "Mind", "EEG"];
+/** Advertised-name hints used only to recognise an already-authorised band. */
+export const BLE_NAME_HINTS = ["FocusCalm", "Focus", "BrainCo", "Crimson", "Mind", "EEG", "FC-"];
 
 /**
  * Services requested up front. Web Bluetooth only lets an app read services it
@@ -255,9 +255,11 @@ export function autoScaleUvPerCount(p95Counts: number, targetUv = 35): number {
 /* ------------------------------------------------------------------ */
 
 /**
- * Opens the pairing chooser. Name-filtered first so the known bands are easy
- * to spot, then accept-all so a headband advertising a nonstandard name (or
- * hiding it, as iOS does before bonding) is still reachable.
+ * Opens the pairing chooser without a name filter. FocusCalm firmware does not
+ * consistently advertise a product name (some FC-11 units advertise only a
+ * serial-like name), and a name-filtered Web Bluetooth chooser hides those
+ * devices completely. `optionalServices` grants access after selection; it
+ * does not restrict what the clinician can see in the chooser.
  */
 export async function requestBleHeadset(extraServices: string[] = []): Promise<BluetoothDevice> {
   if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
@@ -274,18 +276,7 @@ export async function requestBleHeadset(extraServices: string[] = []): Promise<B
     );
     if (known.length === 1) return known[0]!;
   }
-  try {
-    return await navigator.bluetooth.requestDevice({
-      filters: BLE_NAME_HINTS.map((namePrefix) => ({ namePrefix })),
-      optionalServices,
-    });
-  } catch (error) {
-    const cancelled = /cancel/i.test((error as Error)?.message ?? "");
-    if (error instanceof DOMException && error.name === "NotFoundError" && !cancelled) {
-      return await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
-    }
-    throw error;
-  }
+  return navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
 }
 
 /* ------------------------------------------------------------------ */
@@ -336,7 +327,7 @@ export function friendlyBleError(error: unknown): string {
   const name = error instanceof DOMException ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
-    return "No headband was selected. Turn FocusCalm on, then try again and choose it from the list.";
+    return "No headband was selected. Hold its power button until the light blinks blue, then retry and choose FocusCalm, FC-11, or its serial number.";
   }
   if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
     return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";

@@ -166,7 +166,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         <h3 className="text-sm font-medium">FocusCalm</h3>
       </header>
       <p className="mt-1 text-xs text-muted-foreground">
-        Connect, confirm the live signal, then start the case. Dropouts re-pair themselves.
+        Connect, confirm the live signal, then start the case. Dropouts re-pair themselves. The
+        Bluetooth list may show the band as FocusCalm, FC-11, or a serial number.
       </p>
 
       {supported ? null : (
@@ -178,8 +179,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       <ol className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
         {[
           "Unplug the charging cable",
-          "Close the FocusCalm phone app",
-          "Switch the band on and wear it",
+          "Disconnect it and fully close the FocusCalm phone app",
+          "Hold power until the light blinks blue, then wear it",
         ].map((step) => (
           <li key={step} className="flex items-start gap-2 rounded-md bg-muted/40 p-2">
             <Check className="mt-0.5 size-3.5 shrink-0 text-signal" aria-hidden />
