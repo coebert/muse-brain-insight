@@ -125,6 +125,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     setHealth(null);
     setTestResult(null);
     if (sourceRef.current && !adoptedRef.current) await sourceRef.current.stop();
+    sourceRef.current = null;
+    let pendingSource: BleHeadsetSource | null = null;
     try {
       const map: ChannelMap = { TP9: null, AF7: null, AF8: null, TP10: null };
       map[electrode] = "ble";
@@ -135,14 +137,20 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         onProgress: setProgress,
         ...(Number.isFinite(scale) && scale > 0 ? { uvPerCount: scale } : {}),
       });
+      pendingSource = source;
       source.onDiscovery((d) => setDiscovery(d));
       source.onHealth(setHealth);
       // Preflight: run the stream into a sink so health can be measured before
       // any patient data is recorded. The case adopts the same live stream.
       await source.start(() => {});
       sourceRef.current = source;
+      pendingSource = null;
       setHealth(source.health());
     } catch (e) {
+      // start() also performs defensive cleanup. Keeping this here protects
+      // the UI if a future source fails after opening the radio but before it
+      // can assign itself to sourceRef.
+      await pendingSource?.stop();
       setError(friendlyBleError(e));
     } finally {
       setBusy(false);
