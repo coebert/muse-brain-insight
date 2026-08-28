@@ -707,9 +707,19 @@ export class BleHeadsetSource implements EegSource {
         while (!server.connected && Date.now() < settleUntil && !this.stopping) {
           await new Promise((r) => setTimeout(r, 100));
         }
-        if (server.connected) return server;
+        if (server.connected) {
+          bleDiagnostics.add("gatt", "GATT connected", { attempt: attempt + 1 });
+          return server;
+        }
+        bleDiagnostics.add("error", "GATT connect resolved but link never became connected", {
+          attempt: attempt + 1,
+        });
         lastError = new Error("Could not open a GATT connection to the headset.");
       } catch (e) {
+        bleDiagnostics.add("error", "GATT connect threw", {
+          attempt: attempt + 1,
+          error: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+        });
         lastError = e;
       }
     }
