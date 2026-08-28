@@ -6,6 +6,11 @@ import {
   type PacketFormat,
 } from "@/lib/eeg/ble-eeg";
 import type { BleLogEntry, BlePacketRecord } from "@/lib/eeg/ble-diagnostics";
+import {
+  validateDiagnosticExport,
+  type DiagnosticExportCheck,
+  type ExportMeta,
+} from "@/lib/eeg/export-schema";
 
 interface ReplayExport {
   entries?: unknown;
@@ -23,6 +28,10 @@ export interface BleReplayResult {
   uvPerCount: number | null;
   durationMs: number;
   warnings: string[];
+  /** Schema/readiness verdict for the imported file. */
+  check: DiagnosticExportCheck;
+  /** Patient-safe metadata embedded by the exporting app, when present. */
+  meta: ExportMeta | null;
 }
 
 function hexToBytes(value: string): Uint8Array | null {
@@ -62,6 +71,14 @@ export function parseBleReplayExport(text: string): Array<{ at: number; source: 
 
 /** Re-runs the same format ranking and packet decoders used by live discovery. */
 export function replayBleDiagnostic(text: string): BleReplayResult {
+  const check = validateDiagnosticExport(text);
+  if (check.level === "invalid" && check.replayablePackets === 0) {
+    throw new Error(
+      check.issues[0]?.includes("complete raw")
+        ? "This file contains no complete raw notification packets."
+        : `Malformed capture — ${check.issues[0] ?? "it does not match the diagnostic export schema."}`,
+    );
+  }
   const packets = parseBleReplayExport(text);
   if (!packets.length) throw new Error("This file contains no complete raw notification packets.");
   const payloads = packets.map((packet) => packet.bytes);
@@ -85,6 +102,7 @@ export function replayBleDiagnostic(text: string): BleReplayResult {
   const lastAt = packets[packets.length - 1]?.at ?? firstAt;
   const warnings: string[] = [];
   if (!best) warnings.push("No supported packet layout produced enough EEG-like samples.");
+  warnings.push(...check.issues);
   if (packets.length >= 12) warnings.push("Capture may be sample-limited; retry with the latest app for complete replay data.");
   return {
     packetCount: packets.length,
@@ -96,5 +114,7 @@ export function replayBleDiagnostic(text: string): BleReplayResult {
     uvPerCount: best ? autoScaleUvPerCount(best.p95) : null,
     durationMs: Math.max(0, lastAt - firstAt),
     warnings,
+    check,
+    meta: check.meta,
   };
 }
