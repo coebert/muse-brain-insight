@@ -124,6 +124,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [diagnosticEntries, setDiagnosticEntries] = useState<BleLogEntry[]>([]);
   const [replay, setReplay] = useState<BleReplayResult | null>(null);
   const [replayError, setReplayError] = useState<string | null>(null);
+  const [exportCheck, setExportCheck] = useState<DiagnosticExportCheck | null>(null);
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
