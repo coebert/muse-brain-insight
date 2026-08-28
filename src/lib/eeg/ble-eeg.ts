@@ -65,7 +65,7 @@ export const BLE_NAME_HINTS = [
 
 const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
-/** Known 128-bit transports used by consumer EEG headband firmware. */
+/** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
   NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
@@ -82,23 +82,16 @@ function uuid16(value: number): string {
 /**
  * Services requested up front.
  *
- * This is the single most common reason a headband pairs and then refuses to
- * work: Web Bluetooth hides every service the page did not name in
- * `optionalServices`, so `getPrimaryServices()` on a band with an undocumented
- * vendor service comes back empty and the connection is abandoned even though
- * the link is perfectly healthy. The Regul8 band is exactly that case — it
- * does not use any of the handful of UUIDs originally guessed here.
- *
- * Rather than guess one UUID, the whole 16-bit assigned space that vendors
- * actually use is requested: the standard GATT services (0x1800–0x18FF), the
- * member/vendor range (0xFC00–0xFFFF) where consumer devices put proprietary
- * streams, plus the known 128-bit transports. Blocklisted UUIDs are dropped by
- * the browser rather than rejected, so a broad list is safe.
+ * Web Bluetooth only exposes services explicitly authorised in the chooser.
+ * Chromium ignores blocklisted entries in optionalServices, so requesting the
+ * standard and vendor 16-bit ranges preserves compatibility with headsets that
+ * advertise a short UUID. A fully custom 128-bit Regul8 UUID still must come
+ * from the manufacturer and can be supplied through `extraServices`.
  */
 export const BLE_CANDIDATE_SERVICES: string[] = (() => {
   const list: string[] = [...VENDOR_SERVICES];
-  for (let v = 0x1800; v <= 0x18ff; v++) list.push(uuid16(v));
-  for (let v = 0xfc00; v <= 0xffff; v++) list.push(uuid16(v));
+  for (let value = 0x1800; value <= 0x18ff; value++) list.push(uuid16(value));
+  for (let value = 0xfc00; value <= 0xffff; value++) list.push(uuid16(value));
   return [...new Set(list)];
 })();
 
@@ -624,7 +617,6 @@ export class BleHeadsetSource implements EegSource {
       service: BluetoothRemoteGATTService;
       characteristic: BluetoothRemoteGATTCharacteristic;
     }[] = [];
-    const writable: BluetoothRemoteGATTCharacteristic[] = [];
     for (const service of services) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
@@ -636,31 +628,19 @@ export class BleHeadsetSource implements EegSource {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
         }
-        if (
-          characteristic.properties.write ||
-          characteristic.properties.writeWithoutResponse
-        ) {
-          writable.push(characteristic);
-        }
       }
     }
     if (!notifying.length)
       throw new Error(
-        `No streaming characteristic was found on this headset (${services.length} services readable). It may need to be woken from its own app once, or it does not publish raw EEG over Bluetooth.`,
+        `No streaming characteristic was found on this headset (${services.length} authorised services readable). The Regul8 EEG service UUID is not publicly documented, so MindGuard cannot request access to it until BrainCo/FocusCalm supplies its Web Bluetooth protocol.`,
       );
 
     this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
     let captured = await this.listen(notifying, listenMs);
     let chosen = this.choose(captured, listenMs / 1000);
-    if (!chosen && captured.every((c) => !c.packets.length) && writable.length) {
-      // Silent link: several bands stay idle until told to stream. Send the
-      // usual start commands and listen once more before giving up.
-      this.progress("checking", "Asking the headband to start streaming");
-      await this.nudgeStream(writable);
-      captured = await this.listen(notifying, listenMs);
-      chosen = this.choose(captured, listenMs / 1000);
-    }
+    // Do not write guessed start commands to an undocumented medical-adjacent
+    // device. A verified command can be added when the vendor protocol is known.
     if (!chosen) {
       const silent = captured.every((c) => !c.packets.length);
       throw new Error(
@@ -951,36 +931,6 @@ export class BleHeadsetSource implements EegSource {
       // Keep trying quietly rather than leaving the case with no link.
       void this.attemptReconnect();
       return false;
-    }
-  }
-
-  /**
-   * Sends the start commands consumer EEG firmware commonly waits for. Each is
-   * harmless to a band that streams unprompted, and one of them wakes a band
-   * that would otherwise sit silent behind a healthy link.
-   */
-  private async nudgeStream(writable: BluetoothRemoteGATTCharacteristic[]) {
-    const commands = [
-      Uint8Array.from([0x55, 0xaa, 0x01, 0x01, 0x01]),
-      Uint8Array.from([0x01]),
-      Uint8Array.from([0x02]),
-      Uint8Array.from([0x62]), // 'b' — start, used by several BLE UART bridges
-      new TextEncoder().encode("start\n"),
-    ];
-    for (const characteristic of writable) {
-      for (const command of commands) {
-        if (this.stopping) return;
-        try {
-          if (characteristic.properties.writeWithoutResponse) {
-            await characteristic.writeValueWithoutResponse(command as BufferSource);
-          } else {
-            await characteristic.writeValue(command as BufferSource);
-          }
-        } catch {
-          /* the band rejected this command; try the next */
-        }
-        await new Promise((r) => setTimeout(r, 60));
-      }
     }
   }
 
