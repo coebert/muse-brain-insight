@@ -353,7 +353,6 @@ export function friendlyBleError(error: unknown): string {
   return message || "FocusCalm could not be connected. Restart the headband and try again.";
 }
 
-const COLUMN = "ble";
 
 /**
  * A discovered BLE EEG stream presented as an ordinary `EegSource`, so the
