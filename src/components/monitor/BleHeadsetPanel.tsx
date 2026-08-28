@@ -10,6 +10,8 @@ import {
   Play,
   Radio,
   RefreshCw,
+  RotateCcw,
+  Upload,
   X,
 } from "lucide-react";
 
@@ -44,6 +46,7 @@ import type { AnalysisChannel } from "@/lib/eeg/device-profile";
 import { isWebBluetoothAvailable, WEB_BLUETOOTH_HELP, type EegSource } from "@/lib/eeg/muse";
 import { bleDiagnostics, type BleLogEntry } from "@/lib/eeg/ble-diagnostics";
 import { bleDiagnosticJson, debugFilename, downloadDebugFile } from "@/lib/eeg/debug-export";
+import { replayBleDiagnostic, type BleReplayResult } from "@/lib/eeg/ble-replay";
 
 interface Props {
   /** Hands the connected headset to the case starter. */
@@ -111,6 +114,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [testResult, setTestResult] = useState<StreamTestResult | null>(null);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const [diagnosticEntries, setDiagnosticEntries] = useState<BleLogEntry[]>([]);
+  const [replay, setReplay] = useState<BleReplayResult | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
@@ -349,6 +354,59 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
           ) : null}
         </div>
       ) : null}
+
+      <details className="mt-3 rounded-md border border-border/70 p-3 text-xs">
+        <summary className="cursor-pointer font-medium text-foreground">Replay a diagnostic capture</summary>
+        <p className="mt-2 text-muted-foreground">
+          Import a previous JSON capture to rerun the current production decoder without reconnecting.
+        </p>
+        <Button asChild size="sm" variant="outline" className="mt-2 min-h-11">
+          <Label className="cursor-pointer">
+            <Upload className="size-3.5" aria-hidden /> Import diagnostic JSON
+            <input
+              className="sr-only"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setReplayError(null);
+                void file
+                  .text()
+                  .then((text) => setReplay(replayBleDiagnostic(text)))
+                  .catch((replayFailure: unknown) => {
+                    setReplay(null);
+                    setReplayError(
+                      replayFailure instanceof Error
+                        ? replayFailure.message
+                        : "Could not replay this file.",
+                    );
+                  });
+              }}
+            />
+          </Label>
+        </Button>
+        {replayError ? <p className="mt-2 text-critical">{replayError}</p> : null}
+        {replay ? (
+          <div className="mt-3 rounded-md bg-muted/40 p-2" role="status">
+            <p className="flex items-center gap-2 font-medium">
+              <RotateCcw className="size-3.5 text-signal" aria-hidden />
+              {replay.decodedSamples
+                ? `${replay.decodedSamples.toLocaleString()} samples recovered`
+                : "No EEG decoder matched"}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {replay.packetCount} packets from {replay.sourceCount} source(s) · decoder: {replay.format ?? "none"}
+            </p>
+            {replay.candidates.length ? (
+              <p className="mt-1 text-muted-foreground">
+                Candidates: {replay.candidates.map((candidate) => `${candidate.format} (${candidate.score.toFixed(2)})`).join(", ")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </details>
 
       {connected && health ? (
         <div
