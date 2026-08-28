@@ -736,7 +736,6 @@ export class BleHeadsetSource implements EegSource {
 
     await this.attachBattery(server);
     this.zenlite.reset();
-    await this.zenliteHandshake(services);
 
     // Fast path on a resume: the characteristic and packet layout are already
     // known, so re-subscribe directly instead of re-running the listen-and-
@@ -745,6 +744,7 @@ export class BleHeadsetSource implements EegSource {
       const known = await this.findKnownCharacteristic(services);
       if (known) {
         await this.bindStream(known);
+        await this.zenliteHandshake(services);
         this.progress("ready", "EEG stream resumed");
         this.stateCb?.({ kind: "connected" });
         return;
@@ -774,7 +774,11 @@ export class BleHeadsetSource implements EegSource {
 
     this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
-    let captured = await this.listen(notifying, listenMs);
+    // ZenLite pairing responses and stream acknowledgements arrive on the
+    // notification characteristic. Subscribe first, then send the activation
+    // sequence; doing this in the opposite order can leave Bluefy with a live
+    // GATT link but a permanently silent EEG stream.
+    let captured = await this.listen(notifying, listenMs, () => this.zenliteHandshake(services));
     let chosen = this.choose(captured, listenMs / 1000);
     // Some iOS Web Bluetooth bridges acknowledge notification setup but never
     // forward characteristicvaluechanged events. A short, conservative read
@@ -863,10 +867,15 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!write) return;
     const send = async (frame: Uint8Array) => {
-      if (write!.properties.writeWithoutResponse) {
-        await write!.writeValueWithoutResponse(frame as BufferSource);
+      // Prefer acknowledged writes. Some iOS Web Bluetooth bridges advertise
+      // write-without-response but silently drop it; the ZenLite command
+      // characteristic also supports ordinary writes on known firmware.
+      if (write?.properties.write) {
+        await write.writeValue(frame as BufferSource);
+      } else if (write?.properties.writeWithoutResponse) {
+        await write.writeValueWithoutResponse(frame as BufferSource);
       } else {
-        await write!.writeValue(frame as BufferSource);
+        throw new Error("The BrainCo command characteristic is not writable.");
       }
     };
     this.progress("discovering", "Pairing with the headband");
@@ -880,9 +889,10 @@ export class BleHeadsetSource implements EegSource {
       this.progress("discovering", "Starting the EEG stream");
       await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256));
       await new Promise((r) => setTimeout(r, 200));
-    } catch {
-      // A refused write is not fatal: discovery still listens for whatever the
-      // band emits, and the failure surfaces as the usual "no data" guidance.
+    } catch (error) {
+      throw new Error(
+        `The BrainCo EEG start command failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -1188,15 +1198,22 @@ export class BleHeadsetSource implements EegSource {
   }
 
   /** Subscribes to everything that notifies and collects a burst of packets. */
-  private async listen(notifying: BleStreamCandidate[], listenMs: number) {
+  private async listen(
+    notifying: BleStreamCandidate[],
+    listenMs: number,
+    afterSubscriptions?: () => Promise<void>,
+  ) {
     const captured = new Map<
       string,
       BleCapturedCandidate
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
-    const ordered = [...notifying].sort(
-      (a, b) => Number(b.service.uuid === NORDIC_UART) - Number(a.service.uuid === NORDIC_UART),
-    );
+    const priority = (entry: BleStreamCandidate) => {
+      if (entry.characteristic.uuid.toLowerCase() === ZENLITE_NOTIFY) return 2;
+      if (entry.service.uuid.toLowerCase() === NORDIC_UART) return 1;
+      return 0;
+    };
+    const ordered = [...notifying].sort((a, b) => priority(b) - priority(a));
 
     for (let index = 0; index < ordered.length; index++) {
       const entry = ordered[index]!;
@@ -1231,6 +1248,7 @@ export class BleHeadsetSource implements EegSource {
       // operations when several characteristics advertise notifications.
       if (index < ordered.length - 1) await new Promise((resolve) => setTimeout(resolve, 60));
     }
+    await afterSubscriptions?.();
     await new Promise((r) => setTimeout(r, listenMs));
     for (const [characteristic, handler] of handlers) {
       characteristic.removeEventListener("characteristicvaluechanged", handler);
