@@ -155,14 +155,14 @@ export function CaseDialogs({
               onConfirm={(device, preset) => void onStart("muse", { device, preset })}
             />
           ) : null}
-          {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
-          {bleSupported ? (
-            <BleHeadsetPanel
-              onStart={(source, onConnectionError) =>
-                onStart("ingest", { source, onConnectionError })
-              }
-            />
-          ) : null}
+          {/* Keep FocusCalm visible even when this browser cannot pair it, so
+              the clinician sees the exact browser/device remedy rather than a
+              missing connection option. */}
+          <BleHeadsetPanel
+            onStart={(source, onConnectionError) =>
+              onStart("ingest", { source, onConnectionError })
+            }
+          />
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
           <IngestPanel onStart={(source) => void onStart("ingest", { source })} />
           <DialogFooter className="gap-2">
