@@ -80,6 +80,8 @@ export function FullscreenMonitor({
 }: Props) {
   // Latest COEBIS fit, so the bedside tile names the model it is showing.
   const coebisModel = useCoebisModel();
+  // Only offer the layouts the connected montage can actually draw.
+  const tuning = useDeviceTuning();
   // Enter the browser's fullscreen mode where allowed, and mirror Esc/F11 exits.
   useEffect(() => {
     const el = document.documentElement;
