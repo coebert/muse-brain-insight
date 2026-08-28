@@ -121,6 +121,7 @@ import { AcquisitionLineagePanel } from "@/components/monitor/AcquisitionLineage
 import { SeizureThresholdPanel } from "@/components/monitor/SeizureThresholdPanel";
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { StreamIntegrityPanel } from "@/components/monitor/StreamIntegrityPanel";
+import { BleDiagnosticsPanel } from "@/components/monitor/BleDiagnosticsPanel";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -1001,6 +1002,11 @@ function Monitor() {
             <StreamIntegrityPanel
               integrity={monitor.integrity}
               clock={monitor.suppressionClock}
+            />
+            <BleDiagnosticsPanel
+              epochs={monitor.epochs}
+              deviceLabel={deviceProfile.label}
+              sampleRate={deviceProfile.sampleRate}
             />
             <div id="mon-channels" className="scroll-mt-24 rounded-lg transition-shadow">
               <ChannelCompletenessPanel rows={monitor.channelCompleteness} />
