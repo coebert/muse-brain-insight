@@ -527,19 +527,61 @@ export class BleHeadsetSource implements EegSource {
     this.startHealthLoop();
   }
 
+  /**
+   * Opens GATT with retries. Chrome routinely fails the very first connect to
+   * a freshly advertised band with a bare "GATT operation failed" or
+   * "connection attempt failed" — the radio is still finishing the pairing
+   * handshake. One attempt therefore looks like "the app can see it but can
+   * never connect"; three spaced attempts succeed.
+   */
+  private async connectGatt(device: BluetoothDevice): Promise<BluetoothRemoteGATTServer> {
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.stopping) break;
+      try {
+        if (attempt > 0) {
+          this.progress("connecting", `Retrying the link to ${this.name} (${attempt + 1} of 3)`);
+          try {
+            device.gatt?.disconnect();
+          } catch {
+            /* already closed */
+          }
+          await new Promise((r) => setTimeout(r, 700 * attempt));
+        }
+        const server = await device.gatt?.connect();
+        if (server?.connected) return server;
+        lastError = new Error("Could not open a GATT connection to the headset.");
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Could not open a GATT connection to the headset.");
+  }
+
   /** Opens GATT, discovers the stream and subscribes. Used by start and retry. */
   private async attach() {
     const device = this.device;
     if (!device) throw new Error("No headset has been paired yet.");
     this.progress("connecting", `Connecting to ${this.name}`);
-    const server = await device.gatt?.connect();
-    if (!server) throw new Error("Could not open a GATT connection to the headset.");
+    const server = await this.connectGatt(device);
 
     this.progress("discovering", "Finding the EEG stream");
-    const services = await server.getPrimaryServices();
+    // Some firmware answers service discovery only a moment after the link is
+    // up; a single empty result is not proof the band has nothing to offer.
+    let services: BluetoothRemoteGATTService[] = [];
+    for (let attempt = 0; attempt < 3 && !services.length; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
+      try {
+        services = await server.getPrimaryServices();
+      } catch {
+        services = [];
+      }
+    }
     if (!services.length)
       throw new Error(
-        "The headset exposed no readable services. Make sure it is not connected to the FocusCalm phone app at the same time.",
+        "The headset connected but exposed no readable services. Close any phone app holding the band, unplug the charging cable, then switch it off and on and retry.",
       );
 
     await this.attachBattery(server);
@@ -561,6 +603,7 @@ export class BleHeadsetSource implements EegSource {
       service: BluetoothRemoteGATTService;
       characteristic: BluetoothRemoteGATTCharacteristic;
     }[] = [];
+    const writable: BluetoothRemoteGATTCharacteristic[] = [];
     for (const service of services) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
@@ -572,10 +615,19 @@ export class BleHeadsetSource implements EegSource {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
         }
+        if (
+          characteristic.properties.write ||
+          characteristic.properties.writeWithoutResponse
+        ) {
+          writable.push(characteristic);
+        }
       }
     }
     if (!notifying.length)
-      throw new Error("No streaming characteristic was found on this headset.");
+      throw new Error(
+        `No streaming characteristic was found on this headset (${services.length} services readable). It may need to be woken from its own app once, or it does not publish raw EEG over Bluetooth.`,
+      );
+
 
     this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
