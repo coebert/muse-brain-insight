@@ -914,18 +914,33 @@ export class BleHeadsetSource implements EegSource {
    */
   private async zenliteHandshake(services: BluetoothRemoteGATTService[]) {
     const service = services.find((s) => s.uuid.toLowerCase() === ZENLITE_SERVICE);
-    if (!service) return;
+    if (!service) {
+      bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
+        expected: ZENLITE_SERVICE,
+      });
+      return;
+    }
     let write: BluetoothRemoteGATTCharacteristic | null = null;
     try {
       write = await service.getCharacteristic(ZENLITE_WRITE);
-    } catch {
+    } catch (error) {
+      bleDiagnostics.add("error", "BrainCo command characteristic not available", {
+        expected: ZENLITE_WRITE,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
       return;
     }
     if (!write) return;
-    const send = async (frame: Uint8Array) => {
+    const send = async (frame: Uint8Array, label: string) => {
       // Prefer acknowledged writes. Some iOS Web Bluetooth bridges advertise
       // write-without-response but silently drop it; the ZenLite command
       // characteristic also supports ordinary writes on known firmware.
+      const mode = write?.properties.write
+        ? "write"
+        : write?.properties.writeWithoutResponse
+        ? "writeWithoutResponse"
+        : "none";
+      bleDiagnostics.add("command", label, { characteristic: write?.uuid, mode }, frame);
       if (write?.properties.write) {
         await write.writeValue(frame as BufferSource);
       } else if (write?.properties.writeWithoutResponse) {
@@ -938,14 +953,21 @@ export class BleHeadsetSource implements EegSource {
     try {
       // Pair first (band in pairing mode); if it is already paired the same
       // identity re-validates instead, which the firmware accepts silently.
-      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()));
+      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()), "ZenLite pair");
       await new Promise((r) => setTimeout(r, 300));
-      await send(zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()));
+      await send(
+        zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()),
+        "ZenLite re-validate",
+      );
       await new Promise((r) => setTimeout(r, 300));
       this.progress("discovering", "Starting the EEG stream");
-      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256));
+      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256), "ZenLite AFE start 256 Hz");
       await new Promise((r) => setTimeout(r, 200));
+      bleDiagnostics.add("info", "ZenLite activation sequence sent");
     } catch (error) {
+      bleDiagnostics.add("error", "ZenLite activation failed", {
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
       throw new Error(
         `The BrainCo EEG start command failed: ${error instanceof Error ? error.message : String(error)}`,
       );
