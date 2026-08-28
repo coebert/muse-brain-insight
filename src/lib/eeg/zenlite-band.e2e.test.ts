@@ -139,6 +139,8 @@ describe("BrainCo ZenLite headband", () => {
     const source = new BleHeadsetSource({ device, listenSeconds: 1 });
 
     await source.start((_channel, chunk) => samples.push(...chunk));
+    // Let the live stream run past discovery so mapped samples reach the sink.
+    await new Promise((r) => setTimeout(r, 600));
 
     // pair, re-validate, then AFE start.
     expect(write.frames.length).toBe(3);
