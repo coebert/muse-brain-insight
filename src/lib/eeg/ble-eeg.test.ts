@@ -58,10 +58,10 @@ describe("BLE headset decoding", () => {
     expect(BLE_NAME_HINTS).toContain("Regul8");
   });
 
-  it("requests only known services rather than restricted UUID ranges", () => {
-    expect(BLE_CANDIDATE_SERVICES.length).toBeLessThan(20);
-    expect(BLE_CANDIDATE_SERVICES).not.toContain("00001800-0000-1000-8000-00805f9b34fb");
+  it("authorises standard and short vendor services used by headbands", () => {
     expect(BLE_CANDIDATE_SERVICES).toContain("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+    expect(BLE_CANDIDATE_SERVICES).toContain("0000180f-0000-1000-8000-00805f9b34fb");
+    expect(BLE_CANDIDATE_SERVICES).toContain("0000fff0-0000-1000-8000-00805f9b34fb");
   });
 
   it("recognises the serial-like FC- names used by some FocusCalm units", () => {

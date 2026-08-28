@@ -65,7 +65,7 @@ export const BLE_NAME_HINTS = [
 
 const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
-/** Known, browser-safe transports used by consumer EEG headband firmware. */
+/** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
   NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
@@ -75,16 +75,25 @@ const VENDOR_SERVICES: string[] = [
   "0000ffe5-0000-1000-8000-00805f9b34fb",
 ];
 
+function uuid16(value: number): string {
+  return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
+}
+
 /**
  * Services requested up front.
  *
  * Web Bluetooth only exposes services explicitly authorised in the chooser.
- * Requesting the entire 16-bit namespace is not a valid workaround: it includes
- * restricted services and can make Chromium reject the request before GATT is
- * opened. Unknown vendor UUIDs must be supplied by the manufacturer (or through
- * `extraServices`) rather than guessed.
+ * Chromium ignores blocklisted entries in optionalServices, so requesting the
+ * standard and vendor 16-bit ranges preserves compatibility with headsets that
+ * advertise a short UUID. A fully custom 128-bit Regul8 UUID still must come
+ * from the manufacturer and can be supplied through `extraServices`.
  */
-export const BLE_CANDIDATE_SERVICES: string[] = [...new Set(VENDOR_SERVICES)];
+export const BLE_CANDIDATE_SERVICES: string[] = (() => {
+  const list: string[] = [...VENDOR_SERVICES];
+  for (let value = 0x1800; value <= 0x18ff; value++) list.push(uuid16(value));
+  for (let value = 0xfc00; value <= 0xffff; value++) list.push(uuid16(value));
+  return [...new Set(list)];
+})();
 
 const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
 const BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
