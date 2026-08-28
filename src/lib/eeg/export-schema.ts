@@ -69,7 +69,7 @@ export function anonymisationTag(seed: string): string {
 
 export interface ExportMetaInput {
   kind: DiagnosticExportKind;
-  deviceLabel?: string | null;
+  deviceLabel?: string | null | undefined;
   deviceInfo?: Partial<ExportDeviceInfo> | null;
   sampleRate?: number | null;
   startedAt?: number | null;
