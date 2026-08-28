@@ -31,7 +31,7 @@ describe("BLE diagnostic logger", () => {
     log.add("command", "pair", { mode: "write" }, Uint8Array.from([0x42, 0x52, 0x4e, 0x43]));
     const entries = log.all();
     expect(entries[0]?.kind).toBe("session");
-    expect(entries.find((e) => e.kind === "service")?.data?.services).toEqual(["a", "b"]);
+    expect(entries.find((e) => e.kind === "service")?.data?.["services"]).toEqual(["a", "b"]);
     const command = entries.find((e) => e.kind === "command");
     expect(command?.hex).toBe("42 52 4e 43");
     expect(command?.bytes).toBe(4);
