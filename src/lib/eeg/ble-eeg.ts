@@ -262,6 +262,18 @@ export function autoScaleUvPerCount(p95Counts: number, targetUv = 35): number {
 export async function requestBleHeadset(extraServices: string[] = []): Promise<BluetoothDevice> {
   if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
   const optionalServices = [...new Set([...BLE_CANDIDATE_SERVICES, ...extraServices])];
+  // A previously approved FocusCalm can reconnect without making the clinician
+  // hunt through the chooser again. Use it only when the match is unambiguous.
+  const bluetooth = navigator.bluetooth as Bluetooth & {
+    getDevices?: () => Promise<BluetoothDevice[]>;
+  };
+  if (bluetooth.getDevices) {
+    const approved = await bluetooth.getDevices();
+    const known = approved.filter((device) =>
+      BLE_NAME_HINTS.some((hint) => device.name?.toLowerCase().startsWith(hint.toLowerCase())),
+    );
+    if (known.length === 1) return known[0]!;
+  }
   try {
     return await navigator.bluetooth.requestDevice({
       filters: BLE_NAME_HINTS.map((namePrefix) => ({ namePrefix })),
@@ -498,7 +510,12 @@ export class BleHeadsetSource implements EegSource {
       }
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
-    for (const entry of notifying) {
+    const ordered = [...notifying].sort((a, b) => {
+      const nordic = BLE_CANDIDATE_SERVICES[0];
+      return Number(b.service.uuid === nordic) - Number(a.service.uuid === nordic);
+    });
+    for (let index = 0; index < ordered.length; index++) {
+      const entry = ordered[index]!;
       const key = entry.characteristic.uuid;
       captured.set(key, { ...entry, packets: [] });
       const handler = (event: Event) => {
@@ -515,6 +532,9 @@ export class BleHeadsetSource implements EegSource {
       } catch {
         /* some characteristics refuse; the others still answer */
       }
+      // Avoid overwhelming compact headset firmware with back-to-back GATT
+      // operations when several characteristics advertise notifications.
+      if (index < ordered.length - 1) await new Promise((resolve) => setTimeout(resolve, 60));
     }
     await new Promise((r) => setTimeout(r, listenMs));
     for (const [characteristic, handler] of handlers) {

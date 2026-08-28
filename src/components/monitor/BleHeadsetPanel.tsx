@@ -63,7 +63,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       const started = await onStart(source, (connectionError) => {
         setError(friendlyBleError(connectionError));
       });
-      if (!started) throw new Error("The headset did not start streaming.");
+      if (!started) return;
     } catch (e) {
       setError(friendlyBleError(e));
     } finally {
@@ -77,7 +77,9 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         <Radio className="size-4 text-signal" aria-hidden />
         <h3 className="text-sm font-medium">FocusCalm</h3>
       </header>
-      <p className="mt-1 text-xs text-muted-foreground">Connect directly and start with the correct settings automatically.</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Connect directly and start with the correct settings automatically.
+      </p>
 
       {supported ? null : (
         <p className="mt-2 rounded-md border border-caution/40 bg-caution/10 p-2 text-xs text-muted-foreground">
@@ -86,7 +88,11 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       )}
 
       <ol className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-        {["Unplug the charging cable", "Close the FocusCalm phone app", "Switch the band on and wear it"].map((step) => (
+        {[
+          "Unplug the charging cable",
+          "Close the FocusCalm phone app",
+          "Switch the band on and wear it",
+        ].map((step) => (
           <li key={step} className="flex items-start gap-2 rounded-md bg-muted/40 p-2">
             <Check className="mt-0.5 size-3.5 shrink-0 text-signal" aria-hidden />
             {step}
@@ -100,42 +106,42 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
           <ChevronDown className="size-4" aria-hidden />
         </CollapsibleTrigger>
         <CollapsibleContent className="grid gap-3 pb-2 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="ble-electrode" className="text-xs">
-            Map the stream onto
-          </Label>
-          <Select value={electrode} onValueChange={(v) => setElectrode(v as AnalysisChannel)}>
-            <SelectTrigger id="ble-electrode">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ANALYSIS_CHANNELS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c} — {CHANNEL_REGION[c]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-muted-foreground">
-            FocusCalm measures across the forehead; AF7 keeps it in the frontal montage.
-          </p>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="ble-scale" className="text-xs">
-            µV per ADC count (optional)
-          </Label>
-          <Input
-            id="ble-scale"
-            inputMode="decimal"
-            placeholder="Leave blank to auto-scale"
-            value={uvPerCount}
-            onChange={(e) => setUvPerCount(e.target.value)}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Without it the amplitude is auto-gained: spectral and depth measures stay valid, the
-            absolute suppression µV threshold does not.
-          </p>
-        </div>
+          <div className="space-y-1">
+            <Label htmlFor="ble-electrode" className="text-xs">
+              Map the stream onto
+            </Label>
+            <Select value={electrode} onValueChange={(v) => setElectrode(v as AnalysisChannel)}>
+              <SelectTrigger id="ble-electrode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ANALYSIS_CHANNELS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c} — {CHANNEL_REGION[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              FocusCalm measures across the forehead; AF7 keeps it in the frontal montage.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ble-scale" className="text-xs">
+              µV per ADC count (optional)
+            </Label>
+            <Input
+              id="ble-scale"
+              inputMode="decimal"
+              placeholder="Leave blank to auto-scale"
+              value={uvPerCount}
+              onChange={(e) => setUvPerCount(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Without it the amplitude is auto-gained: spectral and depth measures stay valid, the
+              absolute suppression µV threshold does not.
+            </p>
+          </div>
         </CollapsibleContent>
       </Collapsible>
 
@@ -170,7 +176,13 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         disabled={disabled || busy || !supported}
         onClick={() => void connect()}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : error ? <RefreshCw className="size-4" /> : <Bluetooth className="size-4" />}
+        {busy ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : error ? (
+          <RefreshCw className="size-4" />
+        ) : (
+          <Bluetooth className="size-4" />
+        )}
         {busy ? "Connecting…" : error ? "Try again" : "Connect FocusCalm"}
       </Button>
     </section>
