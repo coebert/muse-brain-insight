@@ -37,6 +37,7 @@
  * uncalibrated until the clinician enters a µV-per-count factor.
  */
 
+import { bleDiagnostics, blePacketInspector } from "@/lib/eeg/ble-diagnostics";
 import {
   FOCUSCALM_PROFILE,
   profileFromChannelMap,
@@ -618,10 +619,16 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
+    bleDiagnostics.beginSession(this.options.label ?? this.name);
     this.progress("choosing", "Choose the headband from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
+    bleDiagnostics.add("session", "Device selected", {
+      name: device.name ?? null,
+      id: device.id ? `${String(device.id).slice(0, 6)}…` : null,
+      ios: isIosWebBleBrowser(),
+    });
     this.disconnectListener = () => {
       if (this.stopping) return;
       this.characteristic = null;
@@ -691,6 +698,7 @@ export class BleHeadsetSource implements EegSource {
           }
           await new Promise((r) => setTimeout(r, (ios ? 1_500 : 700) * attempt));
         }
+        bleDiagnostics.add("gatt", `GATT connect attempt ${attempt + 1}`, { ios });
         const server = await gatt.connect();
         // Bluefy may resolve connect() while its CoreBluetooth delegate is
         // still promoting the peripheral to connected. Chromium normally has
@@ -699,9 +707,19 @@ export class BleHeadsetSource implements EegSource {
         while (!server.connected && Date.now() < settleUntil && !this.stopping) {
           await new Promise((r) => setTimeout(r, 100));
         }
-        if (server.connected) return server;
+        if (server.connected) {
+          bleDiagnostics.add("gatt", "GATT connected", { attempt: attempt + 1 });
+          return server;
+        }
+        bleDiagnostics.add("error", "GATT connect resolved but link never became connected", {
+          attempt: attempt + 1,
+        });
         lastError = new Error("Could not open a GATT connection to the headset.");
       } catch (e) {
+        bleDiagnostics.add("error", "GATT connect threw", {
+          attempt: attempt + 1,
+          error: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+        });
         lastError = e;
       }
     }
@@ -725,10 +743,17 @@ export class BleHeadsetSource implements EegSource {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
       try {
         services = await server.getPrimaryServices();
-      } catch {
+      } catch (error) {
+        bleDiagnostics.add("error", "Service discovery failed", {
+          attempt: attempt + 1,
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
         services = [];
       }
     }
+    bleDiagnostics.add("service", `Discovered ${services.length} primary service(s)`, {
+      services: services.map((s) => s.uuid),
+    });
     if (!services.length)
       throw new Error(
         "The headset connected but exposed no readable services. Close any phone app holding the band, unplug the charging cable, then switch it off and on and retry.",
@@ -757,9 +782,26 @@ export class BleHeadsetSource implements EegSource {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
-      } catch {
+      } catch (error) {
+        bleDiagnostics.add("error", `Characteristic discovery failed on ${service.uuid}`, {
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
         continue;
       }
+      bleDiagnostics.add("characteristic", `${service.uuid}: ${chars.length} characteristic(s)`, {
+        characteristics: chars.map((c) => ({
+          uuid: c.uuid,
+          properties: Object.entries({
+            read: c.properties.read,
+            write: c.properties.write,
+            writeWithoutResponse: c.properties.writeWithoutResponse,
+            notify: c.properties.notify,
+            indicate: c.properties.indicate,
+          })
+            .filter(([, on]) => on)
+            .map(([name]) => name),
+        })),
+      });
       for (const characteristic of chars) {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
@@ -803,6 +845,12 @@ export class BleHeadsetSource implements EegSource {
             `${candidate.service.uuid}/${candidate.characteristic.uuid}: ${candidate.packets.length} packets`,
         )
         .join(", ");
+      bleDiagnostics.add("error", "No characteristic decoded as EEG", {
+        subscriptions,
+        subscriptionErrors,
+        perCharacteristic: characteristicSummary || "none",
+        packetTotals: bleDiagnostics.packetTotals(),
+      });
       throw new Error(
         subscriptions === 0 && subscriptionErrors.length
           ? `The headband connected, but notification subscription failed (${subscriptionErrors.join("; ")}).`
@@ -813,6 +861,14 @@ export class BleHeadsetSource implements EegSource {
     }
 
 
+    bleDiagnostics.add("info", "EEG stream selected", {
+      service: chosen.discovery.serviceUuid,
+      characteristic: chosen.discovery.characteristicUuid,
+      format: chosen.discovery.format,
+      score: chosen.discovery.score,
+      captureMode: chosen.captureMode,
+      candidates: chosen.discovery.candidates,
+    });
     this.format = chosen.discovery.format;
     // The vendor protocol publishes its own rate, which is more trustworthy
     // than one measured over a couple of seconds of BLE-jittered packets.
@@ -858,18 +914,33 @@ export class BleHeadsetSource implements EegSource {
    */
   private async zenliteHandshake(services: BluetoothRemoteGATTService[]) {
     const service = services.find((s) => s.uuid.toLowerCase() === ZENLITE_SERVICE);
-    if (!service) return;
+    if (!service) {
+      bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
+        expected: ZENLITE_SERVICE,
+      });
+      return;
+    }
     let write: BluetoothRemoteGATTCharacteristic | null = null;
     try {
       write = await service.getCharacteristic(ZENLITE_WRITE);
-    } catch {
+    } catch (error) {
+      bleDiagnostics.add("error", "BrainCo command characteristic not available", {
+        expected: ZENLITE_WRITE,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
       return;
     }
     if (!write) return;
-    const send = async (frame: Uint8Array) => {
+    const send = async (frame: Uint8Array, label: string) => {
       // Prefer acknowledged writes. Some iOS Web Bluetooth bridges advertise
       // write-without-response but silently drop it; the ZenLite command
       // characteristic also supports ordinary writes on known firmware.
+      const mode = write?.properties.write
+        ? "write"
+        : write?.properties.writeWithoutResponse
+        ? "writeWithoutResponse"
+        : "none";
+      bleDiagnostics.add("command", label, { characteristic: write?.uuid, mode }, frame);
       if (write?.properties.write) {
         await write.writeValue(frame as BufferSource);
       } else if (write?.properties.writeWithoutResponse) {
@@ -882,14 +953,21 @@ export class BleHeadsetSource implements EegSource {
     try {
       // Pair first (band in pairing mode); if it is already paired the same
       // identity re-validates instead, which the firmware accepts silently.
-      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()));
+      await send(zenlitePairCommand(nextZenLiteMsgId(), true, zenlitePairUuid()), "ZenLite pair");
       await new Promise((r) => setTimeout(r, 300));
-      await send(zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()));
+      await send(
+        zenlitePairCommand(nextZenLiteMsgId(), false, zenlitePairUuid()),
+        "ZenLite re-validate",
+      );
       await new Promise((r) => setTimeout(r, 300));
       this.progress("discovering", "Starting the EEG stream");
-      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256));
+      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256), "ZenLite AFE start 256 Hz");
       await new Promise((r) => setTimeout(r, 200));
+      bleDiagnostics.add("info", "ZenLite activation sequence sent");
     } catch (error) {
+      bleDiagnostics.add("error", "ZenLite activation failed", {
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
       throw new Error(
         `The BrainCo EEG start command failed: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -976,6 +1054,16 @@ export class BleHeadsetSource implements EegSource {
     this.totalPackets++;
     this.totalSamples += decoded.length;
     this.packetLog.push([now, decoded.length, p95Abs(decoded) * this.scale]);
+    blePacketInspector.record({
+      at: now,
+      source: this.discovery
+        ? `${this.discovery.serviceUuid}/${this.discovery.characteristicUuid}`
+        : this.characteristic?.uuid ?? "stream",
+      format: this.format,
+      bytes,
+      decodedSamples: decoded.length,
+      amplitudeUv: decoded.length ? p95Abs(decoded) * this.scale : 0,
+    });
     if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
     if (!decoded.length) return;
     this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
@@ -1233,8 +1321,10 @@ export class BleHeadsetSource implements EegSource {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
         const bucket = captured.get(key);
+        const bytes = new Uint8Array(value.buffer.slice(0) as ArrayBuffer);
+        bleDiagnostics.packet(key, bytes, "discovery notification");
         if (!bucket || bucket.packets.length > 600) return;
-        bucket.packets.push(new Uint8Array(value.buffer.slice(0) as ArrayBuffer));
+        bucket.packets.push(bytes);
       };
       entry.characteristic.addEventListener("characteristicvaluechanged", handler);
       handlers.push([entry.characteristic, handler]);
@@ -1242,11 +1332,15 @@ export class BleHeadsetSource implements EegSource {
         await entry.characteristic.startNotifications();
         const bucket = captured.get(key);
         if (bucket) bucket.notificationStarted = true;
+        bleDiagnostics.add("characteristic", `Subscribed to ${key}`);
       } catch (error) {
         const bucket = captured.get(key);
         if (bucket) {
           bucket.subscriptionError = error instanceof Error ? error.message : String(error);
         }
+        bleDiagnostics.add("error", `Subscription failed on ${key}`, {
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
       }
       // Avoid overwhelming compact headset firmware with back-to-back GATT
       // operations when several characteristics advertise notifications.

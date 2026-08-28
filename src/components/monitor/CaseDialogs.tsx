@@ -39,6 +39,8 @@ interface Props {
   onSave: () => void;
   caseOpen: boolean;
   onCaseOpenChange: (open: boolean) => void;
+  /** "test" hides case paperwork: the session is live-only and never filed. */
+  testing?: boolean;
   onStart: (
     kind: "muse" | "simulated" | "ingest",
     options?: {
@@ -77,6 +79,7 @@ export function CaseDialogs({
   onSave,
   caseOpen,
   onCaseOpenChange,
+  testing = false,
   onStart,
   endOpen,
   onEndOpenChange,
@@ -131,19 +134,24 @@ export function CaseDialogs({
       <Dialog open={caseOpen} onOpenChange={onCaseOpenChange}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Start a case</DialogTitle>
+            <DialogTitle>{testing ? "Start a test session" : "Start a case"}</DialogTitle>
             <DialogDescription>
-              Record the case details before streaming. The case then survives a headband dropout
-              and can be filed at the end without retyping anything.
+              {testing
+                ? "Connect a headband and watch the live traces without opening a case. No case code is used, nothing is filed, and the data disappears when the app is closed or refreshed."
+                : "Record the case details before streaming. The case then survives a headband dropout and can be filed at the end without retyping anything."}
             </DialogDescription>
           </DialogHeader>
-          <CaseFields
-            meta={meta}
-            onChange={onMetaChange}
-            usedCaseCodes={usedCaseCodes}
-            idPrefix="start"
-          />
-          <PreCaseChecklist checked={checklist} onToggle={onToggleChecklist} />
+          {testing ? null : (
+            <>
+              <CaseFields
+                meta={meta}
+                onChange={onMetaChange}
+                usedCaseCodes={usedCaseCodes}
+                idPrefix="start"
+              />
+              <PreCaseChecklist checked={checklist} onToggle={onToggleChecklist} />
+            </>
+          )}
           {bleSupported ? null : (
             <p className="rounded-md border border-caution/40 bg-caution/10 p-3 text-xs text-muted-foreground">
               This browser cannot reach Bluetooth devices. On iPhone or iPad open CortexTrace in
