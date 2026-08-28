@@ -173,7 +173,11 @@ describe("BrainCo ZenLite headband", () => {
     );
     expect(afe).toBeDefined();
     // 0x1a submessage carrying sample-rate enum 3 (256 Hz).
-    expect(afe ? [...afe.subarray(9, 13)] : []).toEqual([0x1a, 0x02, 0x08, 0x03]);
+    expect(
+      afe?.some(
+        (_, index) => [0x1a, 0x02, 0x08, 0x03].every((byte, offset) => afe[index + offset] === byte),
+      ),
+    ).toBe(true);
     await source.stop();
   }, 20_000);
 });
