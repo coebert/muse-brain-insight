@@ -1311,8 +1311,10 @@ export class BleHeadsetSource implements EegSource {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
         const bucket = captured.get(key);
+        const bytes = new Uint8Array(value.buffer.slice(0) as ArrayBuffer);
+        bleDiagnostics.packet(key, bytes, "discovery notification");
         if (!bucket || bucket.packets.length > 600) return;
-        bucket.packets.push(new Uint8Array(value.buffer.slice(0) as ArrayBuffer));
+        bucket.packets.push(bytes);
       };
       entry.characteristic.addEventListener("characteristicvaluechanged", handler);
       handlers.push([entry.characteristic, handler]);
@@ -1320,11 +1322,15 @@ export class BleHeadsetSource implements EegSource {
         await entry.characteristic.startNotifications();
         const bucket = captured.get(key);
         if (bucket) bucket.notificationStarted = true;
+        bleDiagnostics.add("characteristic", `Subscribed to ${key}`);
       } catch (error) {
         const bucket = captured.get(key);
         if (bucket) {
           bucket.subscriptionError = error instanceof Error ? error.message : String(error);
         }
+        bleDiagnostics.add("error", `Subscription failed on ${key}`, {
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        });
       }
       // Avoid overwhelming compact headset firmware with back-to-back GATT
       // operations when several characteristics advertise notifications.
