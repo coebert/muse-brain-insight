@@ -80,6 +80,24 @@ export const BLE_NAME_HINTS = [
 
 const NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
+const DEVICE_INFORMATION_SERVICE = "0000180a-0000-1000-8000-00805f9b34fb";
+
+/** Descriptive device identity read from the standard information service. */
+export interface BleDeviceInformation {
+  label: string;
+  manufacturer?: string;
+  model?: string;
+  hardwareVersion?: string;
+  firmwareVersion?: string;
+}
+
+let lastDeviceInformation: BleDeviceInformation | null = null;
+
+/** Identity of the most recently attached headset, for diagnostic exports. */
+export function getLastDeviceInformation(): BleDeviceInformation | null {
+  return lastDeviceInformation;
+}
+
 /** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
   ZENLITE_SERVICE, // BrainCo ZenLite (FocusCalm / Regul8 / OxyZen) data stream
@@ -770,6 +788,7 @@ export class BleHeadsetSource implements EegSource {
       );
 
     await this.attachBattery(server);
+    await this.readDeviceInformation(server);
     this.zenlite.reset();
 
     // Fast path on a resume: the characteristic and packet layout are already
@@ -1486,6 +1505,39 @@ export class BleHeadsetSource implements EegSource {
         /* a characteristic that refused start has nothing to stop */
       }
     }
+  }
+
+  /**
+   * Best-effort read of the standard Device Information service so exported
+   * captures can record firmware and model. Purely descriptive: absence of
+   * the service never blocks streaming.
+   */
+  private async readDeviceInformation(server: BluetoothRemoteGATTServer) {
+    const fields: Array<[keyof BleDeviceInformation, string]> = [
+      ["manufacturer", "00002a29-0000-1000-8000-00805f9b34fb"],
+      ["model", "00002a24-0000-1000-8000-00805f9b34fb"],
+      ["hardwareVersion", "00002a27-0000-1000-8000-00805f9b34fb"],
+      ["firmwareVersion", "00002a26-0000-1000-8000-00805f9b34fb"],
+    ];
+    const info: BleDeviceInformation = { label: this.name };
+    try {
+      const service = await server.getPrimaryService(DEVICE_INFORMATION_SERVICE);
+      const decoder = new TextDecoder();
+      for (const [key, uuid] of fields) {
+        try {
+          const characteristic = await service.getCharacteristic(uuid);
+          const value = await characteristic.readValue();
+          const text = decoder.decode(value.buffer).replace(/\0+$/, "").trim();
+          if (text) info[key] = text;
+        } catch {
+          /* optional field */
+        }
+      }
+    } catch {
+      /* device information service is optional */
+    }
+    lastDeviceInformation = info;
+    bleDiagnostics.add("info", "Device information", { ...info });
   }
 
   private async attachBattery(server: BluetoothRemoteGATTServer) {
