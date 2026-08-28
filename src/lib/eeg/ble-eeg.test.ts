@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   BLE_CANDIDATE_SERVICES,
@@ -12,6 +12,7 @@ import {
   friendlyBleError,
   isIosWebBleBrowser,
   stripBrainCoFrames,
+  requestBleHeadset,
 } from "@/lib/eeg/ble-eeg";
 
 /** Smooth, oversampled series with the temporal structure of scalp EEG. */
@@ -87,6 +88,24 @@ describe("BLE headset decoding", () => {
     expect(isIosWebBleBrowser()).toBe(true);
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: originalAgent });
     Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: originalTouches });
+  });
+
+  it("uses a fresh chooser handle on iOS instead of a stale approved device", async () => {
+    const originalAgent = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Bluefy iPhone" });
+    const stale = { name: "Regul8 headband" } as BluetoothDevice;
+    const fresh = { name: "Regul8 headband" } as BluetoothDevice;
+    const getDevices = vi.fn(async () => [stale]);
+    const requestDevice = vi.fn(async () => fresh);
+    Object.defineProperty(navigator, "bluetooth", {
+      configurable: true,
+      value: { getDevices, requestDevice },
+    });
+
+    await expect(requestBleHeadset()).resolves.toBe(fresh);
+    expect(getDevices).not.toHaveBeenCalled();
+    expect(requestDevice).toHaveBeenCalledOnce();
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: originalAgent });
   });
 
   it("recognises the serial-like FC- names used by some FocusCalm units", () => {
