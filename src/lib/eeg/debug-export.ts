@@ -146,17 +146,49 @@ export function suppressionToCsv(epochs: Epoch[]): string {
 
 export { formatBleDiagnosticText, bleDiagnosticJson, packetsToCsv };
 
-/** Triggers a browser download without leaving the monitor. */
-export function downloadDebugFile(filename: string, contents: string, mime: string) {
-  const blob = new Blob([contents], { type: `${mime};charset=utf-8` });
+function triggerBrowserDownload(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.rel = "noopener";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * Saves a debug export from desktop browsers and iOS Web Bluetooth browsers.
+ * Safari-derived browsers commonly ignore programmatic Blob downloads, so on
+ * touch Apple devices the native share sheet is used to expose “Save to Files”.
+ */
+export async function downloadDebugFile(filename: string, contents: string, mime: string) {
+  const blob = new Blob([contents], { type: `${mime};charset=utf-8` });
+  const file = new File([blob], filename, { type: blob.type });
+  const shareData: ShareData = { files: [file], title: filename };
+  const isAppleTouchDevice =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isAppleTouchDevice && navigator.share) {
+    let canShareFile = true;
+    try {
+      canShareFile = !navigator.canShare || navigator.canShare(shareData);
+    } catch {
+      canShareFile = false;
+    }
+    if (canShareFile) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+  }
+
+  triggerBrowserDownload(filename, blob);
 }
 
 export function debugFilename(kind: string, extension: string): string {
