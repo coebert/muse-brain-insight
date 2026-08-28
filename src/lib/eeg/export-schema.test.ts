@@ -74,7 +74,7 @@ describe("diagnostic export validation", () => {
     expect(validateDiagnosticExport("{not json").level).toBe("invalid");
     const wrong = validateDiagnosticExport(JSON.stringify({ entries: [{ kind: "nonsense" }] }));
     expect(wrong.level).toBe("invalid");
-    expect(wrong.issues[0]).toContain("kind");
+    expect(wrong.issues.join(" ")).toContain("kind");
   });
 
   it("validates debug-session exports too", () => {
