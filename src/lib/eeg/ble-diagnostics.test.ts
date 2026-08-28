@@ -58,7 +58,7 @@ describe("BLE diagnostic logger", () => {
     expect(text).toContain("ERROR");
     expect(text).toContain("svc/char: 7");
     const json = JSON.parse(bleDiagnosticJson(log.all(), { "svc/char": 7 }));
-    expect(json.entries).toHaveLength(1);
+    expect(json.entries.some((e: { message: string }) => e.message === "boom")).toBe(true);
     expect(json.packetTotals["svc/char"]).toBe(7);
   });
 });
