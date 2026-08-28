@@ -5,6 +5,7 @@ import {
   Activity,
   Bluetooth,
   CircleStop,
+  FlaskConical,
   Maximize2,
   Moon,
   MoreVertical,
