@@ -5,6 +5,7 @@ import {
   decodePacket,
   detectPacketFormat,
   eegLikeness,
+  friendlyBleError,
   stripBrainCoFrames,
 } from "@/lib/eeg/ble-eeg";
 
@@ -102,5 +103,15 @@ describe("BLE headset decoding", () => {
     expect(autoScaleUvPerCount(40)).toBe(1);
     const scale = autoScaleUvPerCount(80_000);
     expect(80_000 * scale).toBeCloseTo(35, 1);
+  });
+
+  it("turns common Bluetooth failures into actionable bedside guidance", () => {
+    expect(friendlyBleError(new DOMException("User cancelled", "NotFoundError"))).toContain(
+      "No headband was selected",
+    );
+    expect(friendlyBleError(new Error("GATT Server is disconnected"))).toContain(
+      "Unplug its charging cable",
+    );
+    expect(friendlyBleError(new Error("no stream decoded as EEG"))).toContain("no usable EEG signal");
   });
 });

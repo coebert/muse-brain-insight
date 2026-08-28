@@ -544,6 +544,8 @@ export function useEegMonitor() {
         preset?: string;
         /** Pre-built source for generic ingest (file replay, serial, LSL bridge). */
         source?: EegSource;
+        /** Lets a guided connection surface the original device failure locally. */
+        onConnectionError?: (error: unknown) => void;
       },
     ) => {
       setError(null);
@@ -622,9 +624,12 @@ export function useEegMonitor() {
         if (!options?.preserveTimeline) reset();
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
+        return true;
       } catch (e) {
+        options?.onConnectionError?.(e);
         setStatus("error");
         setError(e instanceof Error ? e.message : "Could not connect to the headband.");
+        return false;
       }
     },
     [reset, allocateBuffers],

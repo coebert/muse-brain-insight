@@ -41,8 +41,13 @@ interface Props {
   onCaseOpenChange: (open: boolean) => void;
   onStart: (
     kind: "muse" | "simulated" | "ingest",
-    options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
-  ) => void;
+    options?: {
+      device?: BluetoothDevice;
+      preset?: string;
+      source?: EegSource;
+      onConnectionError?: (error: unknown) => void;
+    },
+  ) => Promise<boolean>;
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
   onEnd: (fileNow: boolean) => void;
@@ -147,20 +152,24 @@ export function CaseDialogs({
           )}
           {bleSupported ? (
             <MuseCapabilityPanel
-              onConfirm={(device, preset) => onStart("muse", { device, preset })}
+              onConfirm={(device, preset) => void onStart("muse", { device, preset })}
             />
           ) : null}
-          {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
-          {bleSupported ? (
-            <BleHeadsetPanel onStart={(source) => onStart("ingest", { source })} />
-          ) : null}
+          {/* Keep FocusCalm visible even when this browser cannot pair it, so
+              the clinician sees the exact browser/device remedy rather than a
+              missing connection option. */}
+          <BleHeadsetPanel
+            onStart={(source, onConnectionError) =>
+              onStart("ingest", { source, onConnectionError })
+            }
+          />
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
-          <IngestPanel onStart={(source) => onStart("ingest", { source })} />
+          <IngestPanel onStart={(source) => void onStart("ingest", { source })} />
           <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => onStart("simulated")}>
+            <Button variant="secondary" onClick={() => void onStart("simulated")}>
               <FlaskConical className="size-4" /> Demo signal
             </Button>
-            <Button variant="outline" disabled={!bleSupported} onClick={() => onStart("muse")}>
+            <Button variant="outline" disabled={!bleSupported} onClick={() => void onStart("muse")}>
               <Bluetooth className="size-4" /> Skip detection
             </Button>
           </DialogFooter>

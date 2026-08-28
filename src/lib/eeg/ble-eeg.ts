@@ -262,6 +262,18 @@ export function autoScaleUvPerCount(p95Counts: number, targetUv = 35): number {
 export async function requestBleHeadset(extraServices: string[] = []): Promise<BluetoothDevice> {
   if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
   const optionalServices = [...new Set([...BLE_CANDIDATE_SERVICES, ...extraServices])];
+  // A previously approved FocusCalm can reconnect without making the clinician
+  // hunt through the chooser again. Use it only when the match is unambiguous.
+  const bluetooth = navigator.bluetooth as Bluetooth & {
+    getDevices?: () => Promise<BluetoothDevice[]>;
+  };
+  if (bluetooth.getDevices) {
+    const approved = await bluetooth.getDevices();
+    const known = approved.filter((device) =>
+      BLE_NAME_HINTS.some((hint) => device.name?.toLowerCase().startsWith(hint.toLowerCase())),
+    );
+    if (known.length === 1) return known[0]!;
+  }
   try {
     return await navigator.bluetooth.requestDevice({
       filters: BLE_NAME_HINTS.map((namePrefix) => ({ namePrefix })),
@@ -308,6 +320,37 @@ export interface BleHeadsetOptions {
   listenSeconds?: number;
   extraServices?: string[];
   label?: string;
+  /** Bedside-friendly progress updates while the device is being prepared. */
+  onProgress?: (progress: BleConnectionProgress) => void;
+}
+
+export type BleConnectionStage = "choosing" | "connecting" | "discovering" | "checking" | "ready";
+
+export interface BleConnectionProgress {
+  stage: BleConnectionStage;
+  message: string;
+}
+
+/** Converts low-level Web Bluetooth failures into a short recovery action. */
+export function friendlyBleError(error: unknown): string {
+  const name = error instanceof DOMException ? error.name : "";
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (name === "NotFoundError" || /cancel|no device selected/i.test(message)) {
+    return "No headband was selected. Turn FocusCalm on, then try again and choose it from the list.";
+  }
+  if (name === "SecurityError" || /permission|not allowed/i.test(message)) {
+    return "Bluetooth permission was blocked. Allow Bluetooth for this site in the browser settings, then retry.";
+  }
+  if (/gatt|network|disconnected|connection/i.test(message)) {
+    return "The headband was found but would not connect. Unplug its charging cable, close the FocusCalm app on other devices, then switch the band off and on.";
+  }
+  if (/no readable services|no streaming characteristic/i.test(message)) {
+    return "The headband connected but did not expose its EEG stream. Close the FocusCalm app, unplug the charging cable, restart the band, and retry.";
+  }
+  if (/no stream decoded as eeg/i.test(message)) {
+    return "Connected, but no usable EEG signal arrived. Wear the band snugly across a clean forehead, keep still for a few seconds, and retry.";
+  }
+  return message || "FocusCalm could not be connected. Restart the headband and try again.";
 }
 
 const COLUMN = "ble";
@@ -358,6 +401,7 @@ export class BleHeadsetSource implements EegSource {
   async start(onSamples: SampleHandler) {
     if (!isWebBluetoothAvailable()) throw new Error(WEB_BLUETOOTH_HELP);
     this.stopping = false;
+    this.progress("choosing", "Choose FocusCalm from the Bluetooth list");
     const device = this.options.device ?? (await requestBleHeadset(this.options.extraServices));
     this.device = device;
     this.name = this.options.label ?? device.name ?? "BLE headset";
@@ -367,9 +411,11 @@ export class BleHeadsetSource implements EegSource {
       this.disconnectCb?.();
     });
 
+    this.progress("connecting", `Connecting to ${this.name}`);
     const server = await device.gatt?.connect();
     if (!server) throw new Error("Could not open a GATT connection to the headset.");
 
+    this.progress("discovering", "Finding the EEG stream");
     const services = await server.getPrimaryServices();
     if (!services.length)
       throw new Error(
@@ -398,6 +444,7 @@ export class BleHeadsetSource implements EegSource {
     if (!notifying.length)
       throw new Error("No streaming characteristic was found on this headset.");
 
+    this.progress("checking", "Checking the EEG signal — keep still");
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
     const captured = await this.listen(notifying, listenMs);
     const chosen = this.choose(captured, listenMs / 1000);
@@ -438,7 +485,12 @@ export class BleHeadsetSource implements EegSource {
     this.characteristic.addEventListener("characteristicvaluechanged", this.listener);
     this.discovery = { ...chosen.discovery, uvPerCount, sampleRate: measuredRate };
     this.discoveryCb?.(this.discovery);
+    this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
+  }
+
+  private progress(stage: BleConnectionStage, message: string) {
+    this.options.onProgress?.({ stage, message });
   }
 
   /** Subscribes to everything that notifies and collects a burst of packets. */
@@ -458,7 +510,12 @@ export class BleHeadsetSource implements EegSource {
       }
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
-    for (const entry of notifying) {
+    const ordered = [...notifying].sort((a, b) => {
+      const nordic = BLE_CANDIDATE_SERVICES[0];
+      return Number(b.service.uuid === nordic) - Number(a.service.uuid === nordic);
+    });
+    for (let index = 0; index < ordered.length; index++) {
+      const entry = ordered[index]!;
       const key = entry.characteristic.uuid;
       captured.set(key, { ...entry, packets: [] });
       const handler = (event: Event) => {
@@ -475,6 +532,9 @@ export class BleHeadsetSource implements EegSource {
       } catch {
         /* some characteristics refuse; the others still answer */
       }
+      // Avoid overwhelming compact headset firmware with back-to-back GATT
+      // operations when several characteristics advertise notifications.
+      if (index < ordered.length - 1) await new Promise((resolve) => setTimeout(resolve, 60));
     }
     await new Promise((r) => setTimeout(r, listenMs));
     for (const [characteristic, handler] of handlers) {
