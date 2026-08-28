@@ -26,7 +26,7 @@ import { isWebBluetoothAvailable, WEB_BLUETOOTH_HELP, type EegSource } from "@/l
 
 interface Props {
   /** Hands the connected headset to the case starter. */
-  onStart: (source: EegSource) => Promise<boolean>;
+  onStart: (source: EegSource, onConnectionError: (error: unknown) => void) => Promise<boolean>;
   disabled?: boolean;
 }
 
@@ -60,7 +60,9 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         ...(Number.isFinite(scale) && scale > 0 ? { uvPerCount: scale } : {}),
       });
       source.onDiscovery((d) => setDiscovery(d));
-      const started = await onStart(source);
+      const started = await onStart(source, (connectionError) => {
+        setError(friendlyBleError(connectionError));
+      });
       if (!started) throw new Error("The headset did not start streaming.");
     } catch (e) {
       setError(friendlyBleError(e));
@@ -162,7 +164,6 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       ) : null}
 
       <Button
-        className="mt-3"
         variant={error ? "secondary" : "default"}
         size="lg"
         className="mt-3 w-full"

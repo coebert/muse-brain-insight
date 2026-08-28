@@ -41,7 +41,12 @@ interface Props {
   onCaseOpenChange: (open: boolean) => void;
   onStart: (
     kind: "muse" | "simulated" | "ingest",
-    options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
+    options?: {
+      device?: BluetoothDevice;
+      preset?: string;
+      source?: EegSource;
+      onConnectionError?: (error: unknown) => void;
+    },
   ) => Promise<boolean>;
   endOpen: boolean;
   onEndOpenChange: (open: boolean) => void;
@@ -152,7 +157,11 @@ export function CaseDialogs({
           ) : null}
           {/* Non-Muse Bluetooth bands: FocusCalm and similar single-channel headsets. */}
           {bleSupported ? (
-            <BleHeadsetPanel onStart={(source) => onStart("ingest", { source })} />
+            <BleHeadsetPanel
+              onStart={(source, onConnectionError) =>
+                onStart("ingest", { source, onConnectionError })
+              }
+            />
           ) : null}
           {/* Any other amplifier: CSV replay, serial firmware, or an LSL bridge. */}
           <IngestPanel onStart={(source) => void onStart("ingest", { source })} />

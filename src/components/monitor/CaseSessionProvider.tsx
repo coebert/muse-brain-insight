@@ -393,7 +393,12 @@ function useCaseSessionState() {
 
   async function startCase(
     kind: "muse" | "simulated" | "ingest",
-    options?: { device?: BluetoothDevice; preset?: string; source?: EegSource },
+    options?: {
+      device?: BluetoothDevice;
+      preset?: string;
+      source?: EegSource;
+      onConnectionError?: (error: unknown) => void;
+    },
   ) {
     if (!meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
@@ -415,6 +420,7 @@ function useCaseSessionState() {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
       ...(options?.source ? { source: options.source } : {}),
+      ...(options?.onConnectionError ? { onConnectionError: options.onConnectionError } : {}),
     });
     if (!connected) return false;
     setCaseOpen(false);

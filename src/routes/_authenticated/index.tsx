@@ -1156,7 +1156,7 @@ function Monitor() {
         onSave={() => void handleSave()}
         caseOpen={caseOpen}
         onCaseOpenChange={setCaseOpen}
-        onStart={(kind, options) => void startCase(kind, options)}
+        onStart={(kind, options) => startCase(kind, options)}
         endOpen={endOpen}
         onEndOpenChange={setEndOpen}
         onEnd={(fileNow) => endCase(fileNow)}
