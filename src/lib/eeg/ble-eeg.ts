@@ -1054,6 +1054,16 @@ export class BleHeadsetSource implements EegSource {
     this.totalPackets++;
     this.totalSamples += decoded.length;
     this.packetLog.push([now, decoded.length, p95Abs(decoded) * this.scale]);
+    blePacketInspector.record({
+      at: now,
+      source: this.discovery
+        ? `${this.discovery.serviceUuid}/${this.discovery.characteristicUuid}`
+        : this.characteristic?.uuid ?? "stream",
+      format: this.format,
+      bytes,
+      decodedSamples: decoded.length,
+      amplitudeUv: decoded.length ? p95Abs(decoded) * this.scale : 0,
+    });
     if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
     if (!decoded.length) return;
     this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
