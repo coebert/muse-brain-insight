@@ -37,6 +37,7 @@
  * uncalibrated until the clinician enters a µV-per-count factor.
  */
 
+import { bleDiagnostics } from "@/lib/eeg/ble-diagnostics";
 import {
   FOCUSCALM_PROFILE,
   profileFromChannelMap,
