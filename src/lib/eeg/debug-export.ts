@@ -21,6 +21,14 @@ import {
   type BleLogEntry,
   type BlePacketRecord,
 } from "@/lib/eeg/ble-diagnostics";
+import { getLastDeviceInformation } from "@/lib/eeg/ble-eeg";
+import {
+  buildExportMeta,
+  validateDiagnosticExport,
+  type DiagnosticExportCheck,
+  type DiagnosticExportKind,
+  type ExportMeta,
+} from "@/lib/eeg/export-schema";
 
 export interface DebugSessionMeta {
   deviceLabel: string;
@@ -28,6 +36,17 @@ export interface DebugSessionMeta {
   startedAt: number | null;
   dsaMinHz: number;
   dsaMaxHz: number;
+}
+
+/** Patient-safe export header shared by every diagnostic file. */
+export function debugExportMeta(kind: DiagnosticExportKind, meta?: DebugSessionMeta): ExportMeta {
+  return buildExportMeta({
+    kind,
+    deviceLabel: meta?.deviceLabel,
+    deviceInfo: getLastDeviceInformation(),
+    sampleRate: meta?.sampleRate ?? null,
+    startedAt: meta?.startedAt ?? null,
+  });
 }
 
 /** Per-epoch spectral and suppression signals, one row per analysed second. */
@@ -96,6 +115,7 @@ export function debugSessionJson(
 ): string {
   return JSON.stringify(
     {
+      meta: debugExportMeta("debug-session", meta),
       exportedAt: new Date().toISOString(),
       device: meta.deviceLabel,
       sampleRate: meta.sampleRate,
@@ -145,6 +165,14 @@ export function suppressionToCsv(epochs: Epoch[]): string {
 }
 
 export { formatBleDiagnosticText, bleDiagnosticJson, packetsToCsv };
+
+/**
+ * Validates a JSON export before it is written out, so a malformed or
+ * un-replayable capture is caught on the device rather than offline.
+ */
+export function checkJsonExport(contents: string): DiagnosticExportCheck {
+  return validateDiagnosticExport(contents);
+}
 
 function triggerBrowserDownload(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);

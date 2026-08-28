@@ -22,6 +22,9 @@ import {
   suppressionToCsv,
 } from "@/lib/eeg/debug-export";
 import { replayBleDiagnostic, type BleReplayResult } from "@/lib/eeg/ble-replay";
+import { checkJsonExport, debugExportMeta } from "@/lib/eeg/debug-export";
+import { DecoderReadyBadge } from "@/components/monitor/DecoderReadyBadge";
+import type { DiagnosticExportCheck } from "@/lib/eeg/export-schema";
 
 export interface BleDiagnosticsPanelProps {
   epochs: Epoch[];
@@ -50,6 +53,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
   const [packets, setPackets] = useState<BlePacketRecord[]>([]);
   const [replay, setReplay] = useState<BleReplayResult | null>(null);
   const [replayError, setReplayError] = useState<string | null>(null);
+  const [exportCheck, setExportCheck] = useState<{ file: string; check: DiagnosticExportCheck } | null>(null);
 
   useEffect(() => bleDiagnostics.subscribe(setEntries), []);
   useEffect(() => blePacketInspector.subscribe(setPackets), []);
@@ -62,6 +66,13 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
     dsaMaxHz: DSA_MAX_HZ,
   };
   const totals = bleDiagnostics.packetTotals();
+
+  /** Every JSON export is schema-checked before it is written out. */
+  const exportJson = (kind: string, contents: string) => {
+    const file = debugFilename(kind, "json");
+    setExportCheck({ file, check: checkJsonExport(contents) });
+    void downloadDebugFile(file, contents, "application/json");
+  };
   const recent = packets.slice(-25).reverse();
 
   return (
@@ -126,11 +137,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           className="min-h-11"
           disabled={!entries.length}
           onClick={() =>
-            downloadDebugFile(
-              debugFilename("ble-log", "json"),
-              bleDiagnosticJson(entries, totals),
-              "application/json",
-            )
+            exportJson("ble-log", bleDiagnosticJson(entries, totals, debugExportMeta("ble-log", meta)))
           }
         >
           <Download className="size-3.5" aria-hidden /> Log (.json)
@@ -185,13 +192,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           variant="outline"
           className="min-h-11"
           disabled={!epochs.length && !packets.length}
-          onClick={() =>
-            downloadDebugFile(
-              debugFilename("debug-session", "json"),
-              debugSessionJson(epochs, meta, packets, entries),
-              "application/json",
-            )
-          }
+          onClick={() => exportJson("debug-session", debugSessionJson(epochs, meta, packets, entries))}
         >
           <Download className="size-3.5" aria-hidden /> Everything (.json)
         </Button>
@@ -231,6 +232,12 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
         </Button>
       </div>
 
+      {exportCheck ? (
+        <div className="mt-3">
+          <DecoderReadyBadge check={exportCheck.check} label={exportCheck.file} />
+        </div>
+      ) : null}
+
       {replay || replayError ? (
         <div className="mt-3 rounded-md border border-border/70 p-3 text-xs" role="status">
           <div className="flex items-center gap-2 font-medium">
@@ -239,6 +246,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           {replayError ? <p className="mt-2 text-critical">{replayError}</p> : null}
           {replay ? (
             <div className="mt-2 space-y-2">
+              <DecoderReadyBadge check={replay.check} label="imported capture" />
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
                 <div><dt className="text-muted-foreground">Packets</dt><dd className="metric-value">{replay.packetCount}</dd></div>
                 <div><dt className="text-muted-foreground">Sources</dt><dd className="metric-value">{replay.sourceCount}</dd></div>
