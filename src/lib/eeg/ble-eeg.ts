@@ -536,9 +536,36 @@ export class BleHeadsetSource implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
-    await this.attach();
-    this.started = true;
-    this.startHealthLoop();
+    try {
+      await this.attach();
+      this.started = true;
+      this.startHealthLoop();
+    } catch (error) {
+      // A failed discovery still leaves Chrome's GATT link open. Without a
+      // full cleanup, the next click creates another source while this one
+      // continues to hold the Regul8 session, making every retry fail even
+      // after the original radio problem has cleared.
+      await this.releaseFailedStart();
+      throw error;
+    }
+  }
+
+  /** Releases every resource acquired before start() completed successfully. */
+  private async releaseFailedStart() {
+    this.stopping = true;
+    this.detachStream();
+    this.batteryChar = null;
+    if (this.device && this.disconnectListener) {
+      this.device.removeEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.disconnectListener = null;
+    try {
+      this.device?.gatt?.disconnect();
+    } catch {
+      /* the browser may already have closed the failed link */
+    }
+    this.device = null;
+    this.samplesCb = null;
   }
 
   /**
