@@ -356,6 +356,18 @@ export interface BleDiscovery {
   candidates: { characteristicUuid: string; format: PacketFormat | null; score: number }[];
 }
 
+interface BleStreamCandidate {
+  service: BluetoothRemoteGATTService;
+  characteristic: BluetoothRemoteGATTCharacteristic;
+}
+
+interface BleCapturedCandidate extends BleStreamCandidate {
+  packets: Uint8Array[];
+  notificationStarted: boolean;
+  subscriptionError: string | null;
+  captureMode: "notification" | "read";
+}
+
 export interface BleHeadsetOptions {
   device?: BluetoothDevice;
   /** Analysis electrodes the single stream should feed. */
@@ -495,6 +507,7 @@ export class BleHeadsetSource implements EegSource {
   profile: DeviceProfile = FOCUSCALM_PROFILE;
   private device: BluetoothDevice | null = null;
   private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+  private readPollTimer: ReturnType<typeof setTimeout> | null = null;
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
@@ -695,10 +708,8 @@ export class BleHeadsetSource implements EegSource {
       }
     }
 
-    const notifying: {
-      service: BluetoothRemoteGATTService;
-      characteristic: BluetoothRemoteGATTCharacteristic;
-    }[] = [];
+    const notifying: BleStreamCandidate[] = [];
+    const readable: BleStreamCandidate[] = [];
     for (const service of services) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
@@ -710,6 +721,7 @@ export class BleHeadsetSource implements EegSource {
         if (characteristic.properties.notify || characteristic.properties.indicate) {
           notifying.push({ service, characteristic });
         }
+        if (characteristic.properties.read) readable.push({ service, characteristic });
       }
     }
     if (!notifying.length)
@@ -721,13 +733,34 @@ export class BleHeadsetSource implements EegSource {
     const listenMs = Math.max(1_000, (this.options.listenSeconds ?? 3) * 1000);
     let captured = await this.listen(notifying, listenMs);
     let chosen = this.choose(captured, listenMs / 1000);
+    // Some iOS Web Bluetooth bridges acknowledge notification setup but never
+    // forward characteristicvaluechanged events. A short, conservative read
+    // fallback recovers firmware that exposes its current stream buffer through
+    // a readable characteristic, without writing undocumented start commands.
+    if (!chosen && captured.every((candidate) => !candidate.packets.length) && readable.length) {
+      const readCaptured = await this.pollReadable(readable, Math.min(listenMs, 3_000));
+      captured = [...captured, ...readCaptured];
+      chosen = this.choose(captured, listenMs / 1000);
+    }
     // Do not write guessed start commands to an undocumented medical-adjacent
     // device. A verified command can be added when the vendor protocol is known.
     if (!chosen) {
       const silent = captured.every((c) => !c.packets.length);
+      const subscriptions = captured.filter((candidate) => candidate.notificationStarted).length;
+      const subscriptionErrors = captured
+        .map((candidate) => candidate.subscriptionError)
+        .filter((message): message is string => Boolean(message));
+      const characteristicSummary = captured
+        .map(
+          (candidate) =>
+            `${candidate.service.uuid}/${candidate.characteristic.uuid}: ${candidate.packets.length} packets`,
+        )
+        .join(", ");
       throw new Error(
-        silent
-          ? "The headband connected but sent no data. Make sure it is off the charger, not connected to its own phone app, and switched on until the light blinks, then retry."
+        subscriptions === 0 && subscriptionErrors.length
+          ? `The headband connected, but notification subscription failed (${subscriptionErrors.join("; ")}).`
+          : silent
+          ? `The headband connected and ${subscriptions} notification stream${subscriptions === 1 ? " was" : "s were"} opened, but none sent data. Characteristics checked: ${characteristicSummary || "none"}. This firmware may require the vendor's private stream-start protocol.`
           : "The headset connected but no stream decoded as EEG. Check the band is worn and powered, and that no other app holds the connection.",
       );
     }
@@ -754,7 +787,11 @@ export class BleHeadsetSource implements EegSource {
     // Re-subscribe to the winning characteristic only.
     await this.detachAll(notifying, chosen.characteristic);
     this.discovery = { ...chosen.discovery, uvPerCount, sampleRate: measuredRate };
-    await this.bindStream(chosen.characteristic);
+    if (chosen.captureMode === "read") {
+      await this.bindReadableStream(chosen.characteristic);
+    } else {
+      await this.bindStream(chosen.characteristic);
+    }
     this.discoveryCb?.(this.discovery);
     this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
@@ -782,16 +819,7 @@ export class BleHeadsetSource implements EegSource {
     this.listener = (event: Event) => {
       const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
       if (!value) return;
-      const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-      const decoded = decodePacket(this.format, bytes);
-      const now = Date.now();
-      this.lastPacketAt = now;
-      this.totalPackets++;
-      this.totalSamples += decoded.length;
-      this.packetLog.push([now, decoded.length, p95Abs(decoded) * this.scale]);
-      if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
-      if (!decoded.length) return;
-      this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
+      this.processPacket(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
     };
     characteristic.addEventListener("characteristicvaluechanged", this.listener);
     try {
@@ -804,6 +832,45 @@ export class BleHeadsetSource implements EegSource {
         `EEG notification subscription failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  /** Keeps polling firmware whose live buffer is readable but does not notify. */
+  private async bindReadableStream(characteristic: BluetoothRemoteGATTCharacteristic) {
+    this.characteristic = characteristic;
+    try {
+      await characteristic.stopNotifications();
+    } catch {
+      /* It may never have accepted notification setup. */
+    }
+    const poll = async () => {
+      if (this.stopping || this.characteristic !== characteristic) return;
+      try {
+        const value = await characteristic.readValue();
+        if (value.byteLength > 0) {
+          this.processPacket(
+            new Uint8Array(value.buffer, value.byteOffset, value.byteLength),
+          );
+        }
+      } catch {
+        // The normal stall watchdog will rebuild the link if reads stay silent.
+      }
+      if (!this.stopping && this.characteristic === characteristic) {
+        this.readPollTimer = setTimeout(() => void poll(), 40);
+      }
+    };
+    await poll();
+  }
+
+  private processPacket(bytes: Uint8Array) {
+    const decoded = decodePacket(this.format, bytes);
+    const now = Date.now();
+    this.lastPacketAt = now;
+    this.totalPackets++;
+    this.totalSamples += decoded.length;
+    this.packetLog.push([now, decoded.length, p95Abs(decoded) * this.scale]);
+    if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
+    if (!decoded.length) return;
+    this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
   }
 
   private progress(stage: BleConnectionStage, message: string) {
@@ -907,6 +974,8 @@ export class BleHeadsetSource implements EegSource {
   /* ---------------------------------------------------------------- */
 
   private detachStream() {
+    if (this.readPollTimer) clearTimeout(this.readPollTimer);
+    this.readPollTimer = null;
     if (this.characteristic && this.listener) {
       this.characteristic.removeEventListener("characteristicvaluechanged", this.listener);
       try {
@@ -1024,20 +1093,10 @@ export class BleHeadsetSource implements EegSource {
   }
 
   /** Subscribes to everything that notifies and collects a burst of packets. */
-  private async listen(
-    notifying: {
-      service: BluetoothRemoteGATTService;
-      characteristic: BluetoothRemoteGATTCharacteristic;
-    }[],
-    listenMs: number,
-  ) {
+  private async listen(notifying: BleStreamCandidate[], listenMs: number) {
     const captured = new Map<
       string,
-      {
-        service: BluetoothRemoteGATTService;
-        characteristic: BluetoothRemoteGATTCharacteristic;
-        packets: Uint8Array[];
-      }
+      BleCapturedCandidate
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
     const ordered = [...notifying].sort(
@@ -1046,8 +1105,14 @@ export class BleHeadsetSource implements EegSource {
 
     for (let index = 0; index < ordered.length; index++) {
       const entry = ordered[index]!;
-      const key = entry.characteristic.uuid;
-      captured.set(key, { ...entry, packets: [] });
+      const key = `${entry.service.uuid}/${entry.characteristic.uuid}`;
+      captured.set(key, {
+        ...entry,
+        packets: [],
+        notificationStarted: false,
+        subscriptionError: null,
+        captureMode: "notification",
+      });
       const handler = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
@@ -1059,8 +1124,13 @@ export class BleHeadsetSource implements EegSource {
       handlers.push([entry.characteristic, handler]);
       try {
         await entry.characteristic.startNotifications();
-      } catch {
-        /* some characteristics refuse; the others still answer */
+        const bucket = captured.get(key);
+        if (bucket) bucket.notificationStarted = true;
+      } catch (error) {
+        const bucket = captured.get(key);
+        if (bucket) {
+          bucket.subscriptionError = error instanceof Error ? error.message : String(error);
+        }
       }
       // Avoid overwhelming compact headset firmware with back-to-back GATT
       // operations when several characteristics advertise notifications.
@@ -1073,19 +1143,45 @@ export class BleHeadsetSource implements EegSource {
     return [...captured.values()];
   }
 
+  /** Samples readable stream buffers when notification delivery is silent. */
+  private async pollReadable(readable: BleStreamCandidate[], listenMs: number) {
+    const captured: BleCapturedCandidate[] = readable.map((entry) => ({
+      ...entry,
+      packets: [],
+      notificationStarted: false,
+      subscriptionError: null,
+      captureMode: "read",
+    }));
+    const deadline = Date.now() + listenMs;
+    while (Date.now() < deadline) {
+      for (const entry of captured) {
+        try {
+          const value = await entry.characteristic.readValue();
+          if (value.byteLength > 0 && entry.packets.length <= 600) {
+            entry.packets.push(
+              new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)),
+            );
+          }
+        } catch {
+          /* Another readable characteristic may still expose the stream. */
+        }
+        await new Promise((resolve) => setTimeout(resolve, 40));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 160));
+    }
+    return captured;
+  }
+
   /** Picks the most EEG-like stream from the captured burst. */
   private choose(
-    captured: {
-      service: BluetoothRemoteGATTService;
-      characteristic: BluetoothRemoteGATTCharacteristic;
-      packets: Uint8Array[];
-    }[],
+    captured: BleCapturedCandidate[],
     seconds: number,
   ) {
     const candidates: BleDiscovery["candidates"] = [];
     let best: {
       characteristic: BluetoothRemoteGATTCharacteristic;
       discovery: BleDiscovery;
+      captureMode: BleCapturedCandidate["captureMode"];
     } | null = null;
     for (const entry of captured) {
       const ranked = detectPacketFormat(entry.packets);
@@ -1119,7 +1215,7 @@ export class BleHeadsetSource implements EegSource {
         candidates,
       };
       if (!best || top.score > best.discovery.score) {
-        best = { characteristic: entry.characteristic, discovery };
+        best = { characteristic: entry.characteristic, discovery, captureMode: entry.captureMode };
       }
     }
     if (best) best.discovery.candidates = candidates;
