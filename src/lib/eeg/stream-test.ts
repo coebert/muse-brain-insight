@@ -158,7 +158,7 @@ export function analyseStreamTest(
   // EEG declines with frequency; flat or beta-dominant power over a whole
   // capture is electrode noise or EMG, not cortex.
   const lowFraction = bands.delta + bands.theta + bands.alpha;
-  const spectrumOk = columns.length >= 2 && lowFraction >= 0.4 && sef95 > 2 && sef95 < 29.5;
+  const spectrumOk = columns.length >= 2 && lowFraction >= 0.55 && sef95 > 2 && sef95 < 28;
 
   const checks: StreamTestCheck[] = [
     {

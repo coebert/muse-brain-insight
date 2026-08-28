@@ -27,7 +27,7 @@ describe("analyseStreamTest", () => {
     expect(result.freqs[0]).toBeGreaterThanOrEqual(1);
     expect(result.passed).toBe(true);
     expect(result.sef95).toBeGreaterThan(2);
-    expect(result.sef95).toBeLessThan(29.5);
+    expect(result.sef95).toBeLessThan(28);
     expect(result.bands.delta + result.bands.theta).toBeGreaterThan(0.3);
   });
 
