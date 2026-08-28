@@ -28,8 +28,15 @@ describe("debug file downloads", () => {
 
   it("retains the normal file download on desktop", async () => {
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 Chrome");
-    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:debug");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const createObjectURL = vi.fn().mockReturnValue("blob:debug");
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
     await downloadDebugFile("capture.json", "{}", "application/json");
