@@ -26,7 +26,8 @@ export const ZENLITE_NOTIFY = "4de50003-a20c-ae01-bf63-0242ac130002";
 /** EEG sample rate the headband reports on this transport. */
 export const ZENLITE_SAMPLE_RATE = 256;
 
-const HEADER = [0x42, 0x52, 0x4e, 0x43, 0x01, 0x01];
+const MAGIC = [0x42, 0x52, 0x4e, 0x43];
+const HEADER = [...MAGIC, 0x01, 0x01];
 
 /** AFE (EEG front end) sample-rate enum from the vendor SDK. */
 export const ZENLITE_AFE = { off: 1, sr128: 2, sr256: 3 } as const;
@@ -215,11 +216,11 @@ export class ZenLiteDeframer {
     if (this.buffer.length > 8192) this.buffer.splice(0, this.buffer.length - 8192);
     const frames: Uint8Array[] = [];
     for (;;) {
-      const start = this.findHeader();
+      const start = this.findMagic();
       if (start < 0) {
         // Keep only a possible partial header.
-        if (this.buffer.length > HEADER.length) {
-          this.buffer = this.buffer.slice(this.buffer.length - (HEADER.length - 1));
+        if (this.buffer.length > MAGIC.length) {
+          this.buffer = this.buffer.slice(this.buffer.length - (MAGIC.length - 1));
         }
         break;
       }
@@ -245,11 +246,11 @@ export class ZenLiteDeframer {
     this.buffer = [];
   }
 
-  private findHeader(): number {
-    for (let i = 0; i + HEADER.length <= this.buffer.length; i++) {
+  private findMagic(): number {
+    for (let i = 0; i + MAGIC.length <= this.buffer.length; i++) {
       let match = true;
-      for (let k = 0; k < HEADER.length; k++) {
-        if (this.buffer[i + k] !== HEADER[k]) {
+      for (let k = 0; k < MAGIC.length; k++) {
+        if (this.buffer[i + k] !== MAGIC[k]) {
           match = false;
           break;
         }

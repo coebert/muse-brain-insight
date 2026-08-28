@@ -74,6 +74,7 @@ class ZenLiteWrite {
   uuid = ZENLITE_WRITE;
   properties = { write: true, writeWithoutResponse: false } as BluetoothCharacteristicProperties;
   frames: Uint8Array[] = [];
+  paired = false;
 
   constructor(private readonly notify: ZenLiteNotify) {}
 
@@ -83,12 +84,20 @@ class ZenLiteWrite {
         ? new Uint8Array(value)
         : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     this.frames.push(bytes);
+    const pair = [0x12, 0x14, 0x08, 0x01];
+    if (
+      bytes.some((_, index) =>
+        pair.every((byte, offset) => bytes[index + offset] === byte),
+      )
+    ) {
+      this.paired = true;
+    }
     // Field 3 (0x1a) carrying enum value 3 switches the AFE to 256 Hz.
     const afeStart = [0x1a, 0x02, 0x08, 0x03];
     const startsAfe = bytes.some(
       (_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte),
     );
-    if (startsAfe) {
+    if (startsAfe && this.paired) {
       this.notify.streaming = true;
       // Real firmware streams continuously once started, so keep emitting for
       // the whole discovery window rather than in one burst.
@@ -148,8 +157,10 @@ describe("BrainCo ZenLite headband", () => {
     // Let the live stream run past discovery so mapped samples reach the sink.
     await new Promise((r) => setTimeout(r, 600));
 
-    // pair, re-validate, then AFE start.
-    expect(write.frames.length).toBe(3);
+    // Validation + AFE is attempted first. Because this mock represents a new
+    // band, it stays silent; pairing + AFE then opens the stream.
+    expect(write.frames.length).toBe(4);
+    expect(write.paired).toBe(true);
     expect(notify.streaming).toBe(true);
     expect(source.discovery?.format).toBe("brainco-zenlite");
     expect(source.discovery?.serviceUuid).toBe(ZENLITE_SERVICE);
@@ -179,5 +190,27 @@ describe("BrainCo ZenLite headband", () => {
       ),
     ).toBe(true);
     await source.stop();
+  }, 20_000);
+
+  it("copies only the active DataView bytes when Bluefy uses pooled buffers", async () => {
+    const { device, notify } = zenliteDevice();
+    const originalEmit = notify.emit.bind(notify);
+    notify.emit = () => {
+      if (!notify.streaming) return;
+      const frame = eegMessage(0);
+      for (let i = 0; i < frame.length; i += 20) {
+        const chunk = frame.subarray(i, i + 20);
+        const pooled = new Uint8Array(chunk.length + 12);
+        pooled.fill(0xa5);
+        pooled.set(chunk, 7);
+        notify.value = new DataView(pooled.buffer, 7, chunk.length);
+        notify.dispatchEvent(new Event("characteristicvaluechanged"));
+      }
+    };
+    const source = new BleHeadsetSource({ device, listenSeconds: 1 });
+    await source.start(() => {});
+    expect(source.discovery?.format).toBe("brainco-zenlite");
+    await source.stop();
+    notify.emit = originalEmit;
   }, 20_000);
 });

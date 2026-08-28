@@ -77,7 +77,9 @@ export class BleDiagnosticLog {
   }
 
   add(kind: BleLogKind, message: string, data?: Record<string, unknown>, bytes?: Uint8Array) {
-    if (!this.enabled) return;
+    // Keep low-volume connection evidence automatically so a first failed
+    // attempt is diagnosable. Raw packet/command bytes remain opt-in.
+    if (!this.enabled && (kind === "packet" || bytes)) return;
     const entry: BleLogEntry = {
       t: Date.now() - this.started,
       at: Date.now(),
@@ -98,9 +100,9 @@ export class BleDiagnosticLog {
 
   /** Rate-limited raw packet capture, keyed by service/characteristic. */
   packet(source: string, bytes: Uint8Array, note?: string) {
-    if (!this.enabled) return;
     const seen = this.packetCounts.get(source) ?? 0;
     this.packetCounts.set(source, seen + 1);
+    if (!this.enabled) return;
     if (seen >= MAX_PACKETS_PER_SOURCE) {
       if (seen === MAX_PACKETS_PER_SOURCE) {
         this.add("info", `Further packets from ${source} not logged (sample limit reached)`);

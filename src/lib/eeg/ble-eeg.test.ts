@@ -14,6 +14,7 @@ import {
   stripBrainCoFrames,
   requestBleHeadset,
 } from "@/lib/eeg/ble-eeg";
+import { zenliteFrame } from "@/lib/eeg/brainco-zenlite";
 
 /** Smooth, oversampled series with the temporal structure of scalp EEG. */
 function eegCounts(n: number, amplitude = 8000): number[] {
@@ -149,6 +150,12 @@ describe("BLE headset decoding", () => {
     const best = detectPacketFormat(brainCoPackets(eegCounts(900, 40000)))[0];
     expect(best?.format).toBe("brainco-int24be");
     expect(best?.score).toBeGreaterThan(0.8);
+  });
+
+  it("never treats BRNC framing bytes as generic EEG", () => {
+    const framed = zenliteFrame(Array.from({ length: 120 }, (_, i) => i & 0x7f));
+    const detected = detectPacketFormat([framed]);
+    expect(detected.every((entry) => entry.format === "brainco-zenlite")).toBe(true);
   });
 
   it("rejects a non-EEG notification stream", () => {
