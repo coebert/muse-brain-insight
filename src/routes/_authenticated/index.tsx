@@ -1186,6 +1186,7 @@ function Monitor() {
         onSaveOpenChange={setSaveOpen}
         saving={saving}
         onSave={() => void handleSave()}
+        testing={startIntent === "test"}
         caseOpen={caseOpen}
         onCaseOpenChange={setCaseOpen}
         onStart={(kind, options) => startCase(kind, options)}
