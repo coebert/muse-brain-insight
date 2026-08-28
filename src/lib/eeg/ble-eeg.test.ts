@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   BLE_CANDIDATE_SERVICES,
   BLE_NAME_HINTS,
+  IOS_BLE_CANDIDATE_SERVICES,
   WEB_BLUETOOTH_BLOCKED_SERVICES,
   autoScaleUvPerCount,
   decodePacket,
   detectPacketFormat,
   eegLikeness,
   friendlyBleError,
+  isIosWebBleBrowser,
   stripBrainCoFrames,
 } from "@/lib/eeg/ble-eeg";
 
@@ -70,6 +72,21 @@ describe("BLE headset decoding", () => {
     expect(
       BLE_CANDIDATE_SERVICES.filter((uuid) => WEB_BLUETOOTH_BLOCKED_SERVICES.has(uuid)),
     ).toEqual([]);
+  });
+
+  it("keeps the iOS service request small enough for Web BLE bridges", () => {
+    expect(IOS_BLE_CANDIDATE_SERVICES.length).toBeLessThanOrEqual(10);
+    expect(IOS_BLE_CANDIDATE_SERVICES).toContain("6e400001-b5a3-f393-e0a9-e50e24dcca9e");
+  });
+
+  it("recognises iPhone and touch-capable iPad user agents", () => {
+    const originalAgent = navigator.userAgent;
+    const originalTouches = navigator.maxTouchPoints;
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Bluefy iPhone" });
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 5 });
+    expect(isIosWebBleBrowser()).toBe(true);
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: originalAgent });
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: originalTouches });
   });
 
   it("recognises the serial-like FC- names used by some FocusCalm units", () => {
@@ -140,5 +157,6 @@ describe("BLE headset decoding", () => {
     expect(
       friendlyBleError(new DOMException("Service is on the blocklist", "SecurityError")),
     ).toContain("browser rejected");
+    expect(friendlyBleError(new Error("Operation already in progress"))).toContain("Bluefy");
   });
 });

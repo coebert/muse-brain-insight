@@ -106,6 +106,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [uvPerCount, setUvPerCount] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<StreamTestResult | null>(null);
+  const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
@@ -124,6 +125,7 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     setProgress(null);
     setHealth(null);
     setTestResult(null);
+    setDiagnostic(null);
     if (sourceRef.current && !adoptedRef.current) await sourceRef.current.stop();
     sourceRef.current = null;
     let pendingSource: BleHeadsetSource | null = null;
@@ -152,6 +154,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       // can assign itself to sourceRef.
       await pendingSource?.stop();
       setError(friendlyBleError(e));
+      const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      setDiagnostic(`${progress?.stage ?? "starting"} · ${raw}`);
     } finally {
       setBusy(false);
     }
@@ -312,6 +316,12 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         <div className="mt-2 rounded-md border border-critical/40 bg-critical/10 p-3 text-xs">
           <p className="font-medium text-critical">Couldn’t connect the headband</p>
           <p className="mt-1 text-muted-foreground">{error}</p>
+          {diagnostic ? (
+            <details className="mt-2 text-muted-foreground">
+              <summary className="cursor-pointer font-medium text-foreground">Connection details</summary>
+              <code className="mt-1 block break-words text-[11px]">{diagnostic}</code>
+            </details>
+          ) : null}
         </div>
       ) : null}
 
