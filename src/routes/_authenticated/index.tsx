@@ -123,6 +123,8 @@ import { SeizureThresholdPanel } from "@/components/monitor/SeizureThresholdPane
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { StreamIntegrityPanel } from "@/components/monitor/StreamIntegrityPanel";
 import { BleDiagnosticsPanel } from "@/components/monitor/BleDiagnosticsPanel";
+import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -1019,7 +1021,9 @@ function Monitor() {
               analysisSource={monitor.analysisSource}
             />
             </div>
+            <LiveSpectrumPanel latest={latest} epochs={monitor.epochs} />
             <DeviceOptimisationPanel profile={deviceProfile} tuning={tuning} />
+
             <div id="mon-lineage" className="scroll-mt-24 rounded-lg transition-shadow">
               <AcquisitionLineagePanel profile={deviceProfile} />
             </div>
