@@ -42,10 +42,10 @@ describe("BLE diagnostic logger", () => {
   it("rate-limits raw packets per characteristic but keeps totals", () => {
     log.setEnabled(true);
     log.beginSession("band");
-    for (let i = 0; i < 40; i++) log.packet("svc/char", Uint8Array.from([i]));
+    for (let i = 0; i < 240; i++) log.packet("svc/char", Uint8Array.from([i]));
     const packets = log.all().filter((e) => e.kind === "packet");
-    expect(packets.length).toBeLessThanOrEqual(12);
-    expect(log.packetTotals()["svc/char"]).toBe(40);
+    expect(packets.length).toBeLessThanOrEqual(200);
+    expect(log.packetTotals()["svc/char"]).toBe(240);
   });
 
   it("truncates long frames in the hex dump", () => {

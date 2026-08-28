@@ -32,6 +32,8 @@ export interface BleLogEntry {
   data?: Record<string, unknown>;
   /** Hex dump of the raw bytes, when the entry carries a frame. */
   hex?: string;
+  /** Complete payload for deterministic offline replay (hex, no truncation). */
+  rawHex?: string;
   bytes?: number;
 }
 
@@ -39,7 +41,7 @@ const MAX_ENTRIES = 1_200;
 /** Bytes kept per frame — enough to see framing, header and CRC. */
 const MAX_HEX_BYTES = 64;
 /** Raw packets logged per characteristic, so a live stream cannot flood it. */
-const MAX_PACKETS_PER_SOURCE = 12;
+const MAX_PACKETS_PER_SOURCE = 200;
 
 export function toHex(bytes: Uint8Array, limit = MAX_HEX_BYTES): string {
   const slice = bytes.subarray(0, limit);
@@ -89,6 +91,7 @@ export class BleDiagnosticLog {
     if (data && Object.keys(data).length) entry.data = data;
     if (bytes) {
       entry.hex = toHex(bytes);
+      entry.rawHex = toHex(bytes, bytes.length);
       entry.bytes = bytes.length;
     }
     this.entries.push(entry);

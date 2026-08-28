@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bug, Download, Trash2 } from "lucide-react";
+import { Bug, Download, RotateCcw, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -21,6 +21,7 @@ import {
   packetsToCsv,
   suppressionToCsv,
 } from "@/lib/eeg/debug-export";
+import { replayBleDiagnostic, type BleReplayResult } from "@/lib/eeg/ble-replay";
 
 export interface BleDiagnosticsPanelProps {
   epochs: Epoch[];
@@ -47,6 +48,8 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
   const [inspecting, setInspecting] = useState(blePacketInspector.enabled);
   const [entries, setEntries] = useState<BleLogEntry[]>([]);
   const [packets, setPackets] = useState<BlePacketRecord[]>([]);
+  const [replay, setReplay] = useState<BleReplayResult | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
 
   useEffect(() => bleDiagnostics.subscribe(setEntries), []);
   useEffect(() => blePacketInspector.subscribe(setPackets), []);
@@ -203,7 +206,60 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
         >
           <Trash2 className="size-3.5" aria-hidden /> Clear
         </Button>
+        <Button asChild size="sm" variant="outline" className="min-h-11">
+          <Label className="cursor-pointer">
+            <Upload className="size-3.5" aria-hidden /> Replay exported log
+            <input
+              className="sr-only"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setReplayError(null);
+                void file
+                  .text()
+                  .then((text) => setReplay(replayBleDiagnostic(text)))
+                  .catch((error: unknown) => {
+                    setReplay(null);
+                    setReplayError(error instanceof Error ? error.message : "Could not replay this file.");
+                  });
+              }}
+            />
+          </Label>
+        </Button>
       </div>
+
+      {replay || replayError ? (
+        <div className="mt-3 rounded-md border border-border/70 p-3 text-xs" role="status">
+          <div className="flex items-center gap-2 font-medium">
+            <RotateCcw className="size-3.5 text-signal" aria-hidden /> Packet replay
+          </div>
+          {replayError ? <p className="mt-2 text-critical">{replayError}</p> : null}
+          {replay ? (
+            <div className="mt-2 space-y-2">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+                <div><dt className="text-muted-foreground">Packets</dt><dd className="metric-value">{replay.packetCount}</dd></div>
+                <div><dt className="text-muted-foreground">Sources</dt><dd className="metric-value">{replay.sourceCount}</dd></div>
+                <div><dt className="text-muted-foreground">Decoder</dt><dd className="metric-value">{replay.format ?? "None"}</dd></div>
+                <div><dt className="text-muted-foreground">Samples</dt><dd className="metric-value">{replay.decodedSamples.toLocaleString()}</dd></div>
+              </dl>
+              <p className={replay.decodedSamples ? "text-signal" : "text-caution"}>
+                {replay.decodedSamples
+                  ? `Replay recovered ${replay.decodedSamples.toLocaleString()} samples using the live production decoder.`
+                  : "Packets were reproduced, but no current decoder identified an EEG stream."}
+              </p>
+              {replay.candidates.length ? (
+                <p className="text-muted-foreground">
+                  Ranked candidates: {replay.candidates.map((candidate) => `${candidate.format} (${candidate.score.toFixed(2)})`).join(", ")}
+                </p>
+              ) : null}
+              {replay.warnings.map((warning) => <p key={warning} className="text-caution">{warning}</p>)}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {recent.length ? (
         <div className="mt-3">
