@@ -179,6 +179,15 @@ function useCaseSessionState() {
   /** Confirmation for the destructive "exit without saving" action. */
   const [discardOpen, setDiscardOpen] = useState(false);
   const [caseState, setCaseState] = useState<"idle" | "running" | "ended">("idle");
+  /**
+   * Testing mode: a headband can be connected and every live display driven
+   * without opening a case. Nothing is filed, no anonymised code is consumed,
+   * and the whole recording lives only in memory — closing or refreshing the
+   * app throws it away.
+   */
+  const [testing, setTesting] = useState(false);
+  /** Whether the connect dialog was opened to start a case or a test. */
+  const [startIntent, setStartIntent] = useState<"case" | "test">("case");
   const [tab, setTab] = useState<"monitor" | "signal" | "review">("monitor");
   const [fullscreen, setFullscreen] = useState(false);
   const [caseSheet, setCaseSheet] = useState<CaseSheet>(null);
@@ -263,7 +272,7 @@ function useCaseSessionState() {
    * reading and case link logged so far — no waiting for the case to be filed.
    */
   const autoRefit = useAutoCoebisRefit({
-    enabled: caseState !== "idle",
+    enabled: caseState !== "idle" && !testing,
     epochs: monitor.epochs,
     readings: bisReadings,
     context: meta.context,
@@ -400,17 +409,18 @@ function useCaseSessionState() {
       onConnectionError?: (error: unknown) => void;
     },
   ) {
-    if (!meta.caseCode.trim()) {
+    const asTest = startIntent === "test";
+    if (!asTest && !meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
       return false;
     }
-    if (isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
+    if (!asTest && isCaseCodeUsed(meta.caseCode, usedCaseCodes)) {
       toast.error("That case code is already used in your archive — press “New code”.");
       setCaseOpen(true);
       return false;
     }
     // Never silently overwrite an unfiled recording.
-    if (caseState === "ended" && hasUnfiledData) {
+    if (caseState === "ended" && hasUnfiledData && !testing) {
       toast.error("File the previous case first, or exit it without saving.");
       setCaseOpen(false);
       setDiscardOpen(true);
@@ -424,12 +434,15 @@ function useCaseSessionState() {
     });
     if (!connected) return false;
     setCaseOpen(false);
-    saveCaseStartup({
-      context: meta.context,
-      location: meta.location,
-      lastCaseCode: meta.caseCode.trim(),
-      mode,
-    });
+    setTesting(asTest);
+    if (!asTest) {
+      saveCaseStartup({
+        context: meta.context,
+        location: meta.location,
+        lastCaseCode: meta.caseCode.trim(),
+        mode,
+      });
+    }
     setMarkers([]);
     setInfusions([]);
     setBisReadings([]);
@@ -440,6 +453,10 @@ function useCaseSessionState() {
     seizureRisk.clear();
     ai.reset();
     setCaseState("running");
+    if (asTest) {
+      toast.info("Testing mode — data is shown live but never saved.");
+      return true;
+    }
     const ticked = CHECKLIST_ITEMS.filter((item) => checklist[item.key]).map((i) => i.label);
     audit(
       ticked.length === CHECKLIST_ITEMS.length
@@ -449,7 +466,47 @@ function useCaseSessionState() {
     return true;
   }
 
+  /** Opens the connect dialog for a no-case test session. */
+  function requestTestSession() {
+    if (caseRunning) {
+      toast.info("End the current session before starting a test.");
+      setEndOpen(true);
+      return;
+    }
+    if (caseState === "ended" && hasUnfiledData) {
+      toast.warning("File or discard the previous case before testing.");
+      setDiscardOpen(true);
+      return;
+    }
+    setStartIntent("test");
+    setCaseOpen(true);
+  }
+
+  /** Ends a test session and wipes everything it produced. */
+  function endTesting() {
+    setEndOpen(false);
+    void monitor.stop();
+    monitor.reset();
+    setMarkers([]);
+    setInfusions([]);
+    setBisReadings([]);
+    setMarkerText("");
+    setFullscreen(false);
+    setCaseSheet(null);
+    setTab("monitor");
+    alarms.clearAll();
+    seizureRisk.clear();
+    ai.reset();
+    setTesting(false);
+    setCaseState("idle");
+    toast.success("Test ended — nothing was stored.");
+  }
+
   function endCase(fileNow: boolean) {
+    if (testing) {
+      endTesting();
+      return;
+    }
     setEndOpen(false);
     void monitor.stop();
     setCaseState("ended");
@@ -619,6 +676,10 @@ function useCaseSessionState() {
   };
 
   async function handleSave() {
+    if (testing) {
+      toast.error("Testing mode does not save data. Start a case to record.");
+      return;
+    }
     if (!meta.caseCode.trim()) {
       toast.error("Add an anonymised case code first.");
       return;
@@ -729,6 +790,7 @@ function useCaseSessionState() {
 
   /** True when there is recorded material that has not been filed yet. */
   const hasUnfiledData =
+    !testing &&
     !saved && (monitor.epochs.length > 0 || allEvents.length > 0 || markers.length > 0);
 
   /** Opens the start-case dialog, guarding against unfiled or running cases. */
@@ -743,6 +805,7 @@ function useCaseSessionState() {
       setDiscardOpen(true);
       return;
     }
+    setStartIntent("case");
     setCaseOpen(true);
   }
 
@@ -763,6 +826,8 @@ function useCaseSessionState() {
     discardOpen,
     setDiscardOpen,
     caseState,
+    testing,
+    startIntent,
     tab,
     setTab,
     fullscreen,
@@ -814,6 +879,8 @@ function useCaseSessionState() {
     applySettings,
     startCase,
     endCase,
+    endTesting,
+    requestTestSession,
     discardCase,
     requestNewCase,
     addMarker,
