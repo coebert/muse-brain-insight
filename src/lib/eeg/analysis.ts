@@ -17,6 +17,8 @@ import { CompositeIndexEstimator, type CompositeReading } from "./composite";
 import { buildSeizureEvidence, type SeizureEvidence } from "./seizure-evidence";
 import { spansGap } from "./gaps";
 import { applySefAlignment } from "./sef-drift";
+import { applySefPersonalModel } from "./sef-personalisation";
+import { getActiveCaseCovariates } from "./depth";
 
 export type { SignalQuality } from "./dsp";
 export type { SeizureEvidence } from "./seizure-evidence";
@@ -397,7 +399,8 @@ export class EegAnalyzer {
     // Displayed SEF is mapped onto the commercial monitor's scale when a
     // paired-reading model has been fitted; entropy and every other derived
     // measure stay on the raw spectrum.
-    const sef95 = applySefAlignment(sef95Raw);
+    const sef95 =
+      applySefPersonalModel(sef95Raw, getActiveCaseCovariates()) ?? applySefAlignment(sef95Raw);
     // Guard the ratios: an alpha floor keeps them finite in deep suppression
     // where alpha power approaches zero.
     const alphaFloor = Math.max(bands.alpha, totalPower * 1e-3, 1e-6);

@@ -8,6 +8,13 @@
       "when": 1788030521236,
       "tag": "0000_add_structured_clinical_covariates",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788030874905,
+      "tag": "0001_sef_personalisation_columns",
+      "breakpoints": true
     }
   ]
 }

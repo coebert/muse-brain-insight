@@ -137,3 +137,28 @@ export const breakPatientLink = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true as const };
   });
+
+/**
+ * Resolve an identifier to an *existing* pseudonym without creating one.
+ *
+ * Used while a case is running so the personalised SEF model can apply that
+ * patient's own longitudinal offset when they have been recorded before. It
+ * deliberately never creates a linkage record, and returns only the opaque
+ * link id and pseudonym.
+ */
+export const lookupPatientLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { identifier: string }) => data)
+  .handler(async ({ data, context }): Promise<{ id: string; pseudonym: string } | null> => {
+    const normalised = normaliseIdentifier(data.identifier);
+    if (normalised.length < 3) return null;
+    const { fingerprintIdentifier } = await import("./patient-link.server");
+    const { data: row, error } = await context.supabase
+      .from("patient_links")
+      .select("id, pseudonym")
+      .eq("user_id", context.userId)
+      .eq("identifier_fingerprint", fingerprintIdentifier(normalised))
+      .maybeSingle();
+    if (error) throw error;
+    return row ? { id: row.id, pseudonym: row.pseudonym } : null;
+  });
