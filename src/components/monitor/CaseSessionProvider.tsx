@@ -62,6 +62,8 @@ import { useAutoCoebisRefit } from "@/hooks/useAutoCoebisRefit";
 import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
 import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
 import { useSefAlignment } from "@/hooks/useSefAlignment";
+import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
+import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
 
 /**
@@ -223,6 +225,34 @@ function useCaseSessionState() {
    * so the live index picks up an age/regimen adjustment the moment those
    * details are entered rather than only after the case is filed.
    */
+  /**
+   * When the identifier entered for this case matches a patient already linked
+   * on this account, the personalised SEF model may use that patient's own
+   * longitudinal offset. Nothing is created here, and an unknown identifier
+   * leaves the key null so no other patient's correction can ever be applied.
+   */
+  useEffect(() => {
+    const identifier = meta.patientIdentifier.trim();
+    if (identifier.length < 3) {
+      setActiveSefPatientKey(null);
+      return;
+    }
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      void lookupPatientLink({ data: { identifier } })
+        .then((link) => {
+          if (alive) setActiveSefPatientKey(link?.id ?? null);
+        })
+        .catch(() => {
+          if (alive) setActiveSefPatientKey(null);
+        });
+    }, 600);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [meta.patientIdentifier]);
+
   useEffect(() => {
     const age = meta.ageYears.trim() === "" ? null : Number(meta.ageYears);
     setActiveCaseCovariates({

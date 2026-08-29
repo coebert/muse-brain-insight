@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { CalibrationPanel } from "@/components/monitor/CalibrationPanel";
 import { BisDriftPanel } from "@/components/monitor/BisDriftPanel";
 import { SefDriftPanel } from "@/components/monitor/SefDriftPanel";
+import { SefPersonalisationPanel } from "@/components/monitor/SefPersonalisationPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
@@ -294,6 +295,7 @@ function ModelPerformancePage() {
             <BisDriftPanel />
 
             <SefDriftPanel />
+            <SefPersonalisationPanel />
 
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="panel p-4">

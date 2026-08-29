@@ -828,12 +828,17 @@ export type Database = {
           auto_applied: boolean
           bias_after: number | null
           bias_before: number | null
+          coefficients: Json
           created_at: string
+          cv_metrics: Json
           gain: number
           id: string
           is_active: boolean
+          lineage: string | null
           mae_after: number | null
           mae_before: number | null
+          model_family: string
+          n_patients: number
           n_points: number
           n_sessions: number
           note: string | null
@@ -844,12 +849,17 @@ export type Database = {
           auto_applied?: boolean
           bias_after?: number | null
           bias_before?: number | null
+          coefficients?: Json
           created_at?: string
+          cv_metrics?: Json
           gain: number
           id?: string
           is_active?: boolean
+          lineage?: string | null
           mae_after?: number | null
           mae_before?: number | null
+          model_family?: string
+          n_patients?: number
           n_points?: number
           n_sessions?: number
           note?: string | null
@@ -860,12 +870,17 @@ export type Database = {
           auto_applied?: boolean
           bias_after?: number | null
           bias_before?: number | null
+          coefficients?: Json
           created_at?: string
+          cv_metrics?: Json
           gain?: number
           id?: string
           is_active?: boolean
+          lineage?: string | null
           mae_after?: number | null
           mae_before?: number | null
+          model_family?: string
+          n_patients?: number
           n_points?: number
           n_sessions?: number
           note?: string | null

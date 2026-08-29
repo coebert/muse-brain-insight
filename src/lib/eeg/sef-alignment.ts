@@ -12,6 +12,10 @@ import {
   getActiveSefAlignment,
   type SefAlignment,
 } from "@/lib/eeg/sef-drift";
+import {
+  setActiveSefPersonalModel,
+  type SefPersonalModel,
+} from "@/lib/eeg/sef-personalisation";
 
 let syncedAt = 0;
 const listeners = new Set<(alignment: SefAlignment | null) => void>();
@@ -29,12 +33,15 @@ export function onSefAlignmentChange(fn: (alignment: SefAlignment | null) => voi
 export async function syncSefAlignment(): Promise<SefAlignment | null> {
   const { data, error } = await supabase
     .from("sef_alignments")
-    .select('id, gain, "offset", n_points, n_sessions, created_at, bias_after, mae_after')
+    .select(
+      'id, gain, "offset", n_points, n_sessions, created_at, bias_after, mae_after, model_family, coefficients, cv_metrics, n_patients',
+    )
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1);
   syncedAt = Date.now();
   if (error || !data || !data.length) {
+    setActiveSefPersonalModel(null);
     setActiveSefAlignment(null);
     listeners.forEach((fn) => fn(null));
     return null;
@@ -56,6 +63,28 @@ export async function syncSefAlignment(): Promise<SefAlignment | null> {
     biasAfter: row.bias_after === null ? null : Number(row.bias_after),
     maeAfter: row.mae_after === null ? null : Number(row.mae_after),
   };
+  // A personalised row carries the covariate terms and the per-patient
+  // longitudinal offsets alongside the same base line, so the live analyzer
+  // can apply them without a second round trip.
+  const coefficients = (row.coefficients ?? null) as
+    | { terms?: SefPersonalModel["terms"]; patientOffsets?: Record<string, number> }
+    | null;
+  if (row.model_family === "personal" && coefficients && Array.isArray(coefficients.terms)) {
+    setActiveSefPersonalModel({
+      gain,
+      offset,
+      terms: coefficients.terms,
+      patientOffsets: coefficients.patientOffsets ?? {},
+      n: points,
+      sessions,
+      patients: Number(row.n_patients) || 0,
+      cv: (row.cv_metrics ?? {}) as unknown as SefPersonalModel["cv"],
+      fittedAt: String(row.created_at),
+      id: String(row.id),
+    });
+  } else {
+    setActiveSefPersonalModel(null);
+  }
   setActiveSefAlignment(alignment);
   listeners.forEach((fn) => fn(alignment));
   return alignment;
