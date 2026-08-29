@@ -2,6 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
 import { scrubCaseText, type DeidFinding } from "@/lib/eeg/deid";
+import {
+  deriveClinicalCovariates,
+  validateClinicalCovariates,
+} from "@/lib/eeg/clinical-covariates";
 import { linkPatient } from "@/lib/eeg/patient-link.functions";
 import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
 import {
@@ -37,6 +41,10 @@ export interface SessionMeta {
   sex: string;
   admissionDiagnosis: string;
   clinicalFeatures: string[];
+  /** Structured chronic conditions, validated against a closed vocabulary. */
+  chronicConditions: string[];
+  /** Structured acute pathology, validated against a closed vocabulary. */
+  acutePathology: string[];
   /** Anaesthetic / sedation regimen (covariate for COEBIS). */
   regimen: string;
   /** Frailty grouping (covariate for COEBIS). */
@@ -111,6 +119,19 @@ export async function saveSession(
   });
   const deidFindings: DeidFinding[] = scrub.findings;
 
+  // Structured covariates are validated before they are stored, so the model
+  // never learns a level that came from a typo or a stale vocabulary.
+  const validated = validateClinicalCovariates({
+    chronicConditions: meta.chronicConditions ?? [],
+    acutePathology: meta.acutePathology ?? [],
+  });
+  if (!validated.ok) {
+    const messages = [...validated.errors.chronicConditions, ...validated.errors.acutePathology];
+    throw new Error(`Clinical details could not be filed: ${messages.join(" ")}`);
+  }
+  const validatedClinical = validated.value;
+  const derivedClinical = deriveClinicalCovariates(validatedClinical);
+
   // Secure linkage: the identifier becomes a pseudonym held in a sealed table.
   let patientLinkId: string | null = null;
   let patientPseudonym: string | null = null;
@@ -166,6 +187,11 @@ export async function saveSession(
         frailty: meta.frailty || null,
         admission_diagnosis: sealedDiagnosis ?? null,
         clinical_features: meta.clinicalFeatures,
+        chronic_conditions: validatedClinical.chronicConditions,
+        acute_pathology: validatedClinical.acutePathology,
+        chronic_burden: derivedClinical.chronicBurden,
+        chronic_cns: derivedClinical.chronicCns,
+        acute_class: derivedClinical.acuteClass,
         duration_seconds: Math.round(elapsed),
         mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
         max_suppression_ratio: Number(summary.maxSr.toFixed(2)),

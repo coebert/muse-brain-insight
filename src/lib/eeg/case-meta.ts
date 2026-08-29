@@ -15,6 +15,10 @@ export interface CaseMeta {
   sex: string;
   admissionDiagnosis: string;
   clinicalFeatures: string[];
+  /** Structured chronic conditions (keys from CHRONIC_CONDITIONS). */
+  chronicConditions: string[];
+  /** Structured acute pathology (keys from ACUTE_PATHOLOGY). */
+  acutePathology: string[];
   /** Anaesthetic/sedation regimen, used to personalise COEBIS. */
   regimen: string;
   /** Clinical frailty grouping, used to personalise COEBIS. */
@@ -32,6 +36,8 @@ export const EMPTY_CASE_META: CaseMeta = {
   sex: "",
   admissionDiagnosis: "",
   clinicalFeatures: [],
+  chronicConditions: [],
+  acutePathology: [],
   regimen: "",
   frailty: "",
 };

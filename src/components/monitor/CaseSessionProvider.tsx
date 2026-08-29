@@ -35,6 +35,7 @@ import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { describeMigration, migrateBrowserModelConfigs } from "@/lib/eeg/model-migration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
 import { setActiveCaseCovariates } from "@/lib/eeg/depth";
+import { deriveClinicalCovariates } from "@/lib/eeg/clinical-covariates";
 import { ageBand } from "@/lib/eeg/save";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
@@ -229,8 +230,19 @@ function useCaseSessionState() {
       sex: meta.sex || null,
       regimen: meta.regimen || null,
       frailty: meta.frailty || null,
+      ...deriveClinicalCovariates({
+        chronicConditions: meta.chronicConditions,
+        acutePathology: meta.acutePathology,
+      }),
     });
-  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty]);
+  }, [
+    meta.ageYears,
+    meta.sex,
+    meta.regimen,
+    meta.frailty,
+    meta.chronicConditions,
+    meta.acutePathology,
+  ]);
 
   const { summary, status } = monitor;
   const streaming = status === "streaming";
