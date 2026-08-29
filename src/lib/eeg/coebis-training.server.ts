@@ -19,6 +19,9 @@ interface SessionCovariateRow {
   sex: string | null;
   regimen: string | null;
   frailty: string | null;
+  chronic_burden: string | null;
+  chronic_cns: string | null;
+  acute_class: string | null;
 }
 
 export interface TrainingMatrix {
@@ -57,7 +60,7 @@ export async function loadTrainingMatrix(
   if (sessionIds.length) {
     const { data: sessions } = await supabase
       .from("eeg_sessions")
-      .select("id, age_band, sex, regimen, frailty")
+      .select("id, age_band, sex, regimen, frailty, chronic_burden, chronic_cns, acute_class")
       .in("id", sessionIds);
     for (const s of (sessions ?? []) as unknown as SessionCovariateRow[]) {
       covariates.set(s.id, s);
@@ -84,6 +87,9 @@ export async function loadTrainingMatrix(
             sex: (features?.["sex"] as string | null) ?? null,
             regimen: (features?.["regimen"] as string | null) ?? null,
             frailty: (features?.["frailty"] as string | null) ?? null,
+            chronic_burden: (features?.["chronicBurden"] as string | null) ?? null,
+            chronic_cns: (features?.["chronicCns"] as string | null) ?? null,
+            acute_class: (features?.["acuteClass"] as string | null) ?? null,
           }
         : undefined;
     if (!sessionId) unfiled++;
@@ -108,6 +114,9 @@ export async function loadTrainingMatrix(
         sex: cov?.sex ?? null,
         regimen: cov?.regimen ?? null,
         frailty: cov?.frailty ?? null,
+        chronicBurden: cov?.chronic_burden ?? null,
+        chronicCns: cov?.chronic_cns ?? null,
+        acuteClass: cov?.acute_class ?? null,
       },
     } satisfies CoebisTrainingPoint;
   });

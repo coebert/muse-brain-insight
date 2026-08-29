@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { generateCaseCode } from "@/lib/eeg/case-startup";
 import { generateUniqueCaseCode, isCaseCodeUsed } from "@/lib/eeg/case-code-registry";
 import { cn } from "@/lib/utils";
+import { ClinicalCovariateFields } from "@/components/monitor/ClinicalCovariateFields";
 
 /**
  * Shared anonymised case fields, used both when opening a case and when
@@ -244,6 +245,11 @@ export function CaseFields({
           })}
         </div>
       </div>
+      <ClinicalCovariateFields
+        chronicConditions={meta.chronicConditions}
+        acutePathology={meta.acutePathology}
+        onChange={(next) => onChange({ ...meta, ...next })}
+      />
       <div>
         <Label htmlFor={`${idPrefix}-notes`}>Notes</Label>
         <Textarea

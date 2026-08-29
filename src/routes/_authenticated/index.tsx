@@ -251,8 +251,18 @@ function Monitor() {
       regimen: meta.regimen || null,
       frailty: meta.frailty || null,
       context: meta.context,
+      chronicConditions: meta.chronicConditions,
+      acutePathology: meta.acutePathology,
     };
-  }, [meta.ageYears, meta.sex, meta.regimen, meta.frailty, meta.context]);
+  }, [
+    meta.ageYears,
+    meta.sex,
+    meta.regimen,
+    meta.frailty,
+    meta.context,
+    meta.chronicConditions,
+    meta.acutePathology,
+  ]);
   // Alarm on the last plausible charge so a mis-parsed reply cannot fire a
   // spurious flat-battery alert mid-case.
   const batteryAlert = useBatteryAlert(batteryHealth.display, streaming || reconnecting);

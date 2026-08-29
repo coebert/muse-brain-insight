@@ -145,6 +145,9 @@ const META = {
   sex: "female",
   admissionDiagnosis: "Sepsis, MRN: RXH1234567",
   clinicalFeatures: ["Sepsis", "Delirium"],
+  chronicConditions: ["ckd", "dementia"],
+  acutePathology: ["sepsis"],
+
   regimen: "propofol_remifentanil",
   frailty: "frail",
 };

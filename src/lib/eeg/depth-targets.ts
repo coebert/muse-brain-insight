@@ -15,6 +15,10 @@
  */
 
 import { regimenLabel } from "./covariates";
+import {
+  clinicalLevelLabel,
+  deriveClinicalCovariates,
+} from "./clinical-covariates";
 
 export interface DepthTargetInputs {
   /** Patient age in years, when known. */
@@ -25,6 +29,10 @@ export interface DepthTargetInputs {
   regimen?: string | null;
   /** Case context, e.g. "general_anaesthesia" | "icu_sedation". */
   context?: string | null;
+  /** Structured chronic conditions (keys from CHRONIC_CONDITIONS). */
+  chronicConditions?: string[] | null;
+  /** Structured acute pathology (keys from ACUTE_PATHOLOGY). */
+  acutePathology?: string[] | null;
 }
 
 export interface DepthTargetRecommendation {
@@ -143,6 +151,43 @@ export function recommendDepthWindow(input: DepthTargetInputs): DepthTargetRecom
     touched = true;
     caveats.push(
       "With an opioid infusion running, hypnotic requirement falls — pair the index with the nociception index before deepening.",
+    );
+  }
+
+  // Chronic and acute disease: both reduce cerebral reserve and slow the
+  // background, so the same processed number reflects deeper anaesthesia.
+  const clinical = deriveClinicalCovariates({
+    chronicConditions: input.chronicConditions ?? [],
+    acutePathology: input.acutePathology ?? [],
+  });
+  if (clinical.chronicBurden === "multiple" || clinical.chronicBurden === "high") {
+    low += clinical.chronicBurden === "high" ? 4 : 2;
+    touched = true;
+    reasons.push(
+      `${clinicalLevelLabel("chronic", clinical.chronicBurden)}: comorbid burden reduces reserve, so the floor is lifted to ${Math.round(low)}.`,
+    );
+  }
+  if (clinical.chronicCns === "present") {
+    low += 3;
+    touched = true;
+    reasons.push(
+      "Chronic neurological disease: baseline slowing lowers the index independently of drug effect, so the floor is lifted a further 3 points.",
+    );
+    caveats.push(
+      "With chronic neurological disease the index reads low at any given drug level — treat trends, not absolute values.",
+    );
+  }
+  if (clinical.acuteClass === "systemic" || clinical.acuteClass === "mixed") {
+    low += 4;
+    touched = true;
+    reasons.push(
+      "Acute systemic illness (sepsis, shock, organ failure): encephalopathic slowing means suppression occurs at much lower drug exposure.",
+    );
+  }
+  if (clinical.acuteClass === "neuro" || clinical.acuteClass === "mixed") {
+    touched = true;
+    caveats.push(
+      "Acute neurological pathology: suppression and asymmetry may reflect the injury rather than the anaesthetic — interpret alongside the raw EEG.",
     );
   }
 

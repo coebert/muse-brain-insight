@@ -13,6 +13,10 @@
  * can nudge the number but never redefine it.
  */
 
+import { clinicalLevelLabel } from "./clinical-covariates";
+
+
+
 /** One learned residual correction for a covariate level. */
 export interface CovariateTerm {
   /** Covariate family, e.g. "age" | "sex" | "regimen" | "frailty". */
@@ -31,10 +35,25 @@ export interface CaseCovariates {
   sex?: string | null;
   regimen?: string | null;
   frailty?: string | null;
+  /** Chronic disease burden band, derived from the structured selection. */
+  chronicBurden?: string | null;
+  /** Whether chronic neurological disease is present. */
+  chronicCns?: string | null;
+  /** Class of the acute pathology being treated. */
+  acuteClass?: string | null;
 }
 
-export const COVARIATE_GROUPS = ["age", "sex", "regimen", "frailty"] as const;
+export const COVARIATE_GROUPS = [
+  "age",
+  "sex",
+  "regimen",
+  "frailty",
+  "chronic",
+  "chronic_cns",
+  "acute",
+] as const;
 export type CovariateGroup = (typeof COVARIATE_GROUPS)[number];
+
 
 /** Age bands, matching the banding used when a case is filed. */
 export const AGE_BANDS = ["<18", "18-39", "40-59", "60-74", "75-89", "90+"] as const;
@@ -72,10 +91,15 @@ export function covariateLabel(group: string, level: string): string {
       return (regimenLabel(level) ?? level).toLowerCase();
     case "frailty":
       return `${level} frailty`;
+    case "chronic":
+    case "chronic_cns":
+    case "acute":
+      return clinicalLevelLabel(group, level);
     default:
       return `${group} ${level}`;
   }
 }
+
 
 /** The level of each covariate group for a case, skipping unknowns. */
 export function covariateLevels(cov: CaseCovariates | null | undefined): [string, string][] {
@@ -85,8 +109,12 @@ export function covariateLevels(cov: CaseCovariates | null | undefined): [string
   if (cov.sex) out.push(["sex", cov.sex]);
   if (cov.regimen) out.push(["regimen", cov.regimen]);
   if (cov.frailty) out.push(["frailty", cov.frailty]);
+  if (cov.chronicBurden) out.push(["chronic", cov.chronicBurden]);
+  if (cov.chronicCns) out.push(["chronic_cns", cov.chronicCns]);
+  if (cov.acuteClass) out.push(["acute", cov.acuteClass]);
   return out;
 }
+
 
 /** No single covariate may move the index more than this. */
 export const MAX_TERM_ADJUSTMENT = 6;

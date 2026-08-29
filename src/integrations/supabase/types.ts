@@ -682,11 +682,16 @@ export type Database = {
       }
       eeg_sessions: {
         Row: {
+          acute_class: string | null
+          acute_pathology: string[]
           admission_diagnosis: string | null
           age_band: string | null
           age_years: number | null
           case_code: string
           case_summary: string | null
+          chronic_burden: string | null
+          chronic_cns: string | null
+          chronic_conditions: string[]
           clinical_features: string[]
           context: string
           created_at: string
@@ -710,11 +715,16 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          acute_class?: string | null
+          acute_pathology?: string[]
           admission_diagnosis?: string | null
           age_band?: string | null
           age_years?: number | null
           case_code: string
           case_summary?: string | null
+          chronic_burden?: string | null
+          chronic_cns?: string | null
+          chronic_conditions?: string[]
           clinical_features?: string[]
           context?: string
           created_at?: string
@@ -738,11 +748,16 @@ export type Database = {
           user_id: string
         }
         Update: {
+          acute_class?: string | null
+          acute_pathology?: string[]
           admission_diagnosis?: string | null
           age_band?: string | null
           age_years?: number | null
           case_code?: string
           case_summary?: string | null
+          chronic_burden?: string | null
+          chronic_cns?: string | null
+          chronic_conditions?: string[]
           clinical_features?: string[]
           context?: string
           created_at?: string
