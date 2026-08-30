@@ -93,12 +93,15 @@ export function summariseActivationCheck(
   const inTime =
     timeToFirstPacketSeconds != null && timeToFirstPacketSeconds <= deadlineSeconds;
 
+  // Acknowledgement frames are notifications too, so an explicit firmware
+  // rejection outranks "packets arrived" — otherwise a refused pairing looks
+  // like an undecodable stream.
   const outcome: ActivationOutcome = eeg
     ? "streaming-eeg"
-    : packets > 0
-      ? "streaming-unreadable"
-      : errors.length
-        ? "rejected"
+    : errors.length
+      ? "rejected"
+      : packets > 0
+        ? "streaming-unreadable"
         : "silent";
 
   const via = report.activatedByVariant
