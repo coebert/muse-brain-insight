@@ -42,7 +42,7 @@ describe("ZenLite command encoding", () => {
   });
 
   it("encodes a system command", () => {
-    expect(hex(zenliteSysCommand(4, ZENLITE_CMD.getSystemInfo))).toBe(
+    expect(hex(zenliteSysCommand(4, ZENLITE_CMD.startDataStream))).toBe(
       "42524e430101060008041202080353b2",
     );
   });

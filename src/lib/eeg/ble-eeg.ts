@@ -51,7 +51,10 @@ import {
   zenliteEegSamples,
   zenlitePairCommand,
   zenlitePairUuid,
+  zenliteSysCommand,
   ZENLITE_AFE,
+  ZENLITE_CMD,
+  ZENLITE_UV_PER_COUNT,
   ZENLITE_NOTIFY,
   ZENLITE_SAMPLE_RATE,
   ZENLITE_SERVICE,
@@ -1012,6 +1015,14 @@ export class BleHeadsetSource implements EegSource {
       await new Promise((r) => setTimeout(r, 650));
       this.progress("discovering", "Starting the EEG stream");
       await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256), "ZenLite AFE start 256 Hz");
+      await new Promise((r) => setTimeout(r, 250));
+      // Configuring the front end only arms it. Opcode 3 is the vendor's
+      // startDataStream command and is what actually opens the notification
+      // stream; without it the band stays connected and silent.
+      await send(
+        zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+        "ZenLite start data stream",
+      );
       await new Promise((r) => setTimeout(r, 200));
       bleDiagnostics.add("info", "ZenLite activation sequence sent");
     } catch (error) {
@@ -1460,9 +1471,16 @@ export class BleHeadsetSource implements EegSource {
       if (!top || top.score < 0.6) continue;
       const packetsPerSecond = entry.packets.length / seconds;
       const rate = Math.max(32, Math.round(packetsPerSecond * top.samplesPerPacket));
-      const uvPerCount = autoScaleUvPerCount(top.p95);
+      // BrainCo counts have a known conversion measured against the vendor
+      // decoder, so they do not need the shape-preserving auto-gain fallback.
+      const uvPerCount =
+        top.format === "brainco-zenlite" ? ZENLITE_UV_PER_COUNT : autoScaleUvPerCount(top.p95);
       const notes: string[] = [];
-      if (uvPerCount !== 1)
+      if (top.format === "brainco-zenlite")
+        notes.push(
+          `BrainCo counts converted at ${ZENLITE_UV_PER_COUNT} µV per count (measured against the vendor decoder). Absolute microvolt thresholds remain approximate.`,
+        );
+      else if (uvPerCount !== 1)
         notes.push(
           `Amplitude auto-scaled (${uvPerCount} µV per count) — relative shape metrics are valid, but absolute microvolt thresholds such as the suppression cut-off are uncalibrated until you enter the device's ADC scale.`,
         );
