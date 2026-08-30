@@ -492,7 +492,11 @@ export class MuseClient implements EegSource {
   private static readonly STALL_RESET_MS = 15_000;
   /** How often the headband is asked for a status ("s") reply. */
   private static readonly BATTERY_POLL_MS = 60_000;
-  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private heartbeat: BackgroundTimer | null = null;
+  /** Screen wake lock held for the length of a case. */
+  private wakeLock: WakeLockHandle | null = null;
+  /** Unsubscribes the "page came back to the foreground" handler. */
+  private foregroundOff: (() => void) | null = null;
   private lastSampleAt = 0;
   private nudgedAt = 0;
   /**
