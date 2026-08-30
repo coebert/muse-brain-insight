@@ -170,9 +170,11 @@ describe("BrainCo ZenLite headband", () => {
     // Let the live stream run past discovery so mapped samples reach the sink.
     await new Promise((r) => setTimeout(r, 600));
 
-    // A new band receives the exact vendor sequence: first-time pair, then the
-    // acknowledged AFE command. Validation is only a separate silent fallback.
-    expect(write.frames.length).toBe(2);
+    // A new band receives the vendor sequence: first-time pair, the acknowledged
+    // AFE command, then the documented system START. Validation is only a
+    // separate silent fallback.
+    expect(write.frames.length).toBe(3);
+
     expect(write.paired).toBe(true);
     expect(notify.streaming).toBe(true);
     expect(source.discovery?.format).toBe("brainco-zenlite");
