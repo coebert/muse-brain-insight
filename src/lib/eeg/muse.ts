@@ -10,6 +10,13 @@ import {
   SIMULATED_PROFILE,
   type AnalysisChannel,
 } from "@/lib/eeg/device-profile";
+import {
+  acquireScreenWakeLock,
+  createBackgroundTimer,
+  onForeground,
+  type BackgroundTimer,
+  type WakeLockHandle,
+} from "@/lib/eeg/keep-awake";
 
 export const MUSE_SERVICE = "0000fe8d-0000-1000-8000-00805f9b34fb";
 const CONTROL_CHAR = "273e0001-4c4d-454d-96be-f03bac821358";
