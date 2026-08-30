@@ -51,7 +51,11 @@ import {
   zenliteEegSamples,
   zenlitePairCommand,
   zenlitePairUuid,
+  zenliteResponses,
+  zenliteSysCommand,
   ZENLITE_AFE,
+  ZENLITE_CMD,
+
   ZENLITE_UV_PER_COUNT,
   ZENLITE_NOTIFY,
   ZENLITE_SAMPLE_RATE,
@@ -1026,6 +1030,17 @@ export class BleHeadsetSource implements EegSource {
         "response",
       );
       await new Promise((r) => setTimeout(r, 200));
+      // `START` is a documented system command in the vendor SDK's ConfigCMD
+      // enum. Some firmware builds arm the front end with the AFE config alone,
+      // others only begin streaming once this is sent; it is harmless when the
+      // stream is already running.
+      await send(
+        zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+        "ZenLite system START",
+        "no-response",
+      );
+      await new Promise((r) => setTimeout(r, 200));
+
       bleDiagnostics.add("info", "ZenLite activation sequence sent");
     } catch (error) {
       bleDiagnostics.add("error", "ZenLite activation failed", {
@@ -1380,6 +1395,8 @@ export class BleHeadsetSource implements EegSource {
         subscriptionError: null,
         captureMode: "notification",
       });
+      const responseDeframer = new ZenLiteDeframer();
+      const isZenLite = isZenLiteNotify(entry.characteristic.uuid);
       const handler = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
@@ -1391,9 +1408,23 @@ export class BleHeadsetSource implements EegSource {
           value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
         );
         bleDiagnostics.packet(key, bytes, "discovery notification");
+        if (isZenLite) {
+          // Firmware answers a rejected handshake with an explicit code, which
+          // is far more useful than "connected but silent".
+          for (const response of zenliteResponses(bytes, responseDeframer)) {
+            bleDiagnostics.add(
+              response.ok ? "info" : "error",
+              `ZenLite firmware response: ${response.command ?? "unknown command"} → ${
+                response.sysResult ?? response.afeResult ?? "no result"
+              }`,
+              { ...response },
+            );
+          }
+        }
         if (!bucket || bucket.packets.length > 600) return;
         bucket.packets.push(bytes);
       };
+
       entry.characteristic.addEventListener("characteristicvaluechanged", handler);
       handlers.push([entry.characteristic, handler]);
       try {
