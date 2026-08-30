@@ -278,8 +278,21 @@ export function validateDiagnosticExport(input: unknown): DiagnosticExportCheck 
   else if (data.meta.schemaVersion > EXPORT_SCHEMA_VERSION)
     issues.push(`Capture uses schema v${data.meta.schemaVersion}; this app understands v${EXPORT_SCHEMA_VERSION}.`);
   if (truncated) issues.push(`${truncated} packet(s) have truncated bytes and cannot be replayed.`);
-  if (!replayable)
-    issues.push("No complete raw notification packets — enable diagnostic capture before pairing.");
+  if (!replayable) {
+    // Distinguish "capture was off" from "the band genuinely stayed silent":
+    // the second case is a device/activation problem, not an export problem.
+    const totals = data.packetTotals ?? {};
+    const observed = Object.values(totals).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    if (observed > 0)
+      issues.push(
+        `${observed} notification(s) were received but none were stored in full — re-run the attempt with diagnostic capture on from the start.`,
+      );
+    else
+      issues.push(
+        "The headband never sent a notification during this attempt. Diagnostic capture was active, so this is a device-side problem: the band connected but never started streaming. Run Identify headband in the Signal tab with activation probing enabled.",
+      );
+  } else if (replayable < MIN_REPLAYABLE_PACKETS)
+
   else if (replayable < MIN_REPLAYABLE_PACKETS)
     issues.push(`Only ${replayable} complete packet(s); at least ${MIN_REPLAYABLE_PACKETS} are needed to rank a decoder.`);
 
