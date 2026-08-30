@@ -44,6 +44,10 @@ import {
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
+  ZENLITE_TRANSPORTS,
+  isZenLiteNotify,
+  isZenLiteService,
+  zenliteTransportForService,
   ZENLITE_UV_PER_COUNT,
   zenliteSampleRateFromEnum,
   zenliteStreamInfo,
@@ -573,25 +577,29 @@ async function runActivationProbe(
   const byService = new Map(services.map((service) => [service.uuid.toLowerCase(), service]));
 
   for (const candidate of buildProbeSteps()) {
-    const service = byService.get(candidate.service.toLowerCase());
+    // BrainCo steps are written to whichever vendor transport this firmware
+    // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
+    const service = isZenLiteService(candidate.service)
+      ? (ZENLITE_TRANSPORTS.map((t) => byService.get(t.service)).find(Boolean) ?? undefined)
+      : byService.get(candidate.service.toLowerCase());
     // Prefer the documented write characteristic of that service; otherwise
     // fall back to whatever writable characteristic that service exposes.
     let target: BluetoothRemoteGATTCharacteristic | null = null;
     if (service) {
       try {
-        target = await service.getCharacteristic(
-          service.uuid.toLowerCase() === ZENLITE_SERVICE ? ZENLITE_WRITE : undefined!,
-        );
+        const transport = zenliteTransportForService(service.uuid);
+        target = transport ? await service.getCharacteristic(transport.write) : null;
       } catch {
         target = null;
       }
       if (!target) {
         target =
           writable.find(
-            (entry) => entry.service.uuid.toLowerCase() === candidate.service.toLowerCase(),
+            (entry) => entry.service.uuid.toLowerCase() === service.uuid.toLowerCase(),
           )?.characteristic ?? null;
       }
     }
+
     if (!target) continue;
 
     for (const watcher of watchers) watcher.mark = watcher.report.packets;
@@ -636,7 +644,7 @@ function summarise(report: BleIdentifyReport) {
   const active = report.characteristics.filter((entry) => entry.packets > 0);
   const eeg = active.filter((entry) => (entry.bestScore ?? 0) >= 0.6);
   const hasZenLite = report.characteristics.some(
-    (entry) => entry.characteristicUuid.toLowerCase() === ZENLITE_NOTIFY,
+    (entry) => isZenLiteNotify(entry.characteristicUuid),
   );
 
   if (eeg.length) {

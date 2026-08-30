@@ -58,7 +58,11 @@ import {
   ZENLITE_NOTIFY,
   ZENLITE_SAMPLE_RATE,
   ZENLITE_SERVICE,
+  ZENLITE_SERVICE_FC11,
   ZENLITE_WRITE,
+  isZenLiteNotify,
+  isZenLiteService,
+  zenliteTransportForService,
 } from "@/lib/eeg/brainco-zenlite";
 import { IngestPipeline, type ChannelMap, type IngestConfig } from "@/lib/eeg/ingest";
 import {
@@ -103,7 +107,8 @@ export function getLastDeviceInformation(): BleDeviceInformation | null {
 
 /** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
-  ZENLITE_SERVICE, // BrainCo ZenLite (FocusCalm / Regul8 / OxyZen) data stream
+  ZENLITE_SERVICE, // BrainCo ZenLite (OxyZen) data stream
+  ZENLITE_SERVICE_FC11, // BrainCo FocusCalm FC-11 / Regul8 data stream
   NORDIC_UART,
   "0000fe8d-0000-1000-8000-00805f9b34fb", // Muse, harmless to include
   "0000180f-0000-1000-8000-00805f9b34fb", // battery
@@ -863,7 +868,7 @@ export class BleHeadsetSource implements EegSource {
     // Sending pair and validate back-to-back (the old behaviour) could cancel a
     // successful pairing before Bluefy had delivered its response.
     const zenliteCandidate = notifying.find(
-      (candidate) => candidate.characteristic.uuid.toLowerCase() === ZENLITE_NOTIFY,
+      (candidate) => isZenLiteNotify(candidate.characteristic.uuid),
     );
     if (!chosen && zenliteCandidate) {
       bleDiagnostics.add("info", "Validated ZenLite start was silent — retrying in pairing mode");
@@ -966,19 +971,20 @@ export class BleHeadsetSource implements EegSource {
     services: BluetoothRemoteGATTService[],
     mode: "validate" | "pair",
   ) {
-    const service = services.find((s) => s.uuid.toLowerCase() === ZENLITE_SERVICE);
+    const service = services.find((s) => isZenLiteService(s.uuid));
     if (!service) {
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
-        expected: ZENLITE_SERVICE,
+        expected: `${ZENLITE_SERVICE} or ${ZENLITE_SERVICE_FC11}`,
       });
       return;
     }
+    const transport = zenliteTransportForService(service.uuid)!;
     let write: BluetoothRemoteGATTCharacteristic | null = null;
     try {
-      write = await service.getCharacteristic(ZENLITE_WRITE);
+      write = await service.getCharacteristic(transport.write);
     } catch (error) {
       bleDiagnostics.add("error", "BrainCo command characteristic not available", {
-        expected: ZENLITE_WRITE,
+        expected: transport.write,
         error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
       });
       return;
@@ -1362,7 +1368,7 @@ export class BleHeadsetSource implements EegSource {
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
     const priority = (entry: BleStreamCandidate) => {
-      if (entry.characteristic.uuid.toLowerCase() === ZENLITE_NOTIFY) return 2;
+      if (isZenLiteNotify(entry.characteristic.uuid)) return 2;
       if (entry.service.uuid.toLowerCase() === NORDIC_UART) return 1;
       return 0;
     };

@@ -16,12 +16,47 @@
  * cannot verify, so firmware revisions that move field numbers still decode.
  */
 
-/** Vendor data-stream service exposed by BrainCo headbands. */
+/** Vendor data-stream service exposed by BrainCo headbands (OxyZen family). */
 export const ZENLITE_SERVICE = "4de50001-a20c-ae01-bf63-0242ac130002";
 /** Host -> device command characteristic. */
 export const ZENLITE_WRITE = "4de50002-a20c-ae01-bf63-0242ac130002";
 /** Device -> host notification characteristic. */
 export const ZENLITE_NOTIFY = "4de50003-a20c-ae01-bf63-0242ac130002";
+
+/**
+ * The same transport appears on a second vendor UUID block on FocusCalm FC-11
+ * firmware (observed on a real Regul8/FC11 band, firmware 1.1.6): base
+ * 0D74xxxx with the identical 0001/0002/0003 service/write/notify layout.
+ */
+export const ZENLITE_SERVICE_FC11 = "0d740001-d26f-4dbb-95e8-a4f5c55c57a9";
+export const ZENLITE_WRITE_FC11 = "0d740002-d26f-4dbb-95e8-a4f5c55c57a9";
+export const ZENLITE_NOTIFY_FC11 = "0d740003-d26f-4dbb-95e8-a4f5c55c57a9";
+
+/** Every known BrainCo transport variant, in preference order. */
+export const ZENLITE_TRANSPORTS = [
+  { service: ZENLITE_SERVICE, write: ZENLITE_WRITE, notify: ZENLITE_NOTIFY },
+  { service: ZENLITE_SERVICE_FC11, write: ZENLITE_WRITE_FC11, notify: ZENLITE_NOTIFY_FC11 },
+] as const;
+
+export type ZenLiteTransport = (typeof ZENLITE_TRANSPORTS)[number];
+
+/** Returns the transport definition for a vendor service UUID, if known. */
+export function zenliteTransportForService(uuid: string): ZenLiteTransport | null {
+  const lower = uuid.toLowerCase();
+  return ZENLITE_TRANSPORTS.find((t) => t.service === lower) ?? null;
+}
+
+/** True when the UUID is any known BrainCo data-stream service. */
+export function isZenLiteService(uuid: string): boolean {
+  return zenliteTransportForService(uuid) != null;
+}
+
+/** True when the UUID is any known BrainCo notification characteristic. */
+export function isZenLiteNotify(uuid: string): boolean {
+  const lower = uuid.toLowerCase();
+  return ZENLITE_TRANSPORTS.some((t) => t.notify === lower);
+}
+
 
 /** EEG sample rate the headband reports on this transport. */
 export const ZENLITE_SAMPLE_RATE = 256;
