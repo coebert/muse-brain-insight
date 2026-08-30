@@ -27,6 +27,10 @@ describe("BLE packet replay", () => {
   });
 
   it("rejects logs without complete raw notifications", () => {
-    expect(() => replayBleDiagnostic(JSON.stringify({ entries: [] }))).toThrow(/no complete raw/i);
+    // An empty log is now reported as a silent band rather than as missing
+    // raw bytes, because the two failures need different fixes.
+    expect(() => replayBleDiagnostic(JSON.stringify({ entries: [] }))).toThrow(
+      /never sent|no complete raw/i,
+    );
   });
 });

@@ -12,6 +12,7 @@ import {
   type BleIdentifyReport,
 } from "@/lib/eeg/ble-identify";
 import {
+  activationCheckJson,
   runActivationCheck,
   type ActivationCheckResult,
 } from "@/lib/eeg/ble-activation-check";
@@ -229,6 +230,20 @@ export function BleIdentifyPanel() {
               {check.timeToFirstPacketSeconds}s of {check.deadlineSeconds}s
             </p>
           ) : null}
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2 min-h-11"
+            onClick={() =>
+              void downloadDebugFile(
+                debugFilename("activation-check", "json"),
+                activationCheckJson(check),
+                "application/json",
+              )
+            }
+          >
+            <Download className="mr-1 h-4 w-4" aria-hidden /> Export activation results (.json)
+          </Button>
         </div>
       ) : null}
 
