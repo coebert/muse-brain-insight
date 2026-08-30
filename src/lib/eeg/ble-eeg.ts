@@ -1026,6 +1026,17 @@ export class BleHeadsetSource implements EegSource {
         "response",
       );
       await new Promise((r) => setTimeout(r, 200));
+      // `START` is a documented system command in the vendor SDK's ConfigCMD
+      // enum. Some firmware builds arm the front end with the AFE config alone,
+      // others only begin streaming once this is sent; it is harmless when the
+      // stream is already running.
+      await send(
+        zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+        "ZenLite system START",
+        "no-response",
+      );
+      await new Promise((r) => setTimeout(r, 200));
+
       bleDiagnostics.add("info", "ZenLite activation sequence sent");
     } catch (error) {
       bleDiagnostics.add("error", "ZenLite activation failed", {
