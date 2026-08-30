@@ -59,6 +59,12 @@ describe("ZenLite command encoding", () => {
     );
   });
 
+  it("uses the stable Web Bluetooth device id for the pairing identity", async () => {
+    const { zenlitePairUuid } = await import("@/lib/eeg/brainco-zenlite");
+    expect(zenlitePairUuid(undefined, "device-identity-123456789")).toBe("device-identity-");
+    expect(zenlitePairUuid(undefined, "short-id")).toBe("short-id00000000");
+  });
+
   it("uses CRC-16/MODBUS over header and payload", () => {
     const frame = zenliteFrame([0x08, 0x01]);
     const crc = crc16Modbus(frame.subarray(0, frame.length - 2));

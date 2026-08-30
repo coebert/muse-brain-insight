@@ -37,14 +37,11 @@ import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
   zenliteAfePayload,
-  zenliteFrameWith,
   zenlitePairCommand,
   zenlitePairUuid,
   zenliteSysCommand,
-  zenliteSysPayload,
   ZENLITE_AFE,
   ZENLITE_CMD,
-  ZENLITE_FRAMING_VARIANTS,
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
@@ -308,26 +305,29 @@ interface ProbeCandidate {
  * write-without-response, both of which are dropped silently. The sweep tries
  * each combination once so the log shows which one the band actually answers.
  */
-function buildProbeSteps(): ProbeCandidate[] {
-  const uuid = zenlitePairUuid();
-  const steps: ProbeCandidate[] = [
+function buildProbeSteps(deviceId?: string): ProbeCandidate[] {
+  const uuid = zenlitePairUuid(undefined, deviceId);
+  return [
     {
       name: "BrainCo pair",
-      detail: "Performs a first-time pairing handshake.",
+      detail: "Performs the vendor first-time pairing handshake using its required unacknowledged write.",
       service: ZENLITE_SERVICE,
       bytes: zenlitePairCommand(nextZenLiteMsgId(), true, uuid),
+      writeMode: "no-response",
     },
     {
       name: "BrainCo validate pairing",
-      detail: "Confirms an existing pairing without re-pairing the band.",
+      detail: "Confirms an existing pairing using the vendor-required unacknowledged write.",
       service: ZENLITE_SERVICE,
       bytes: zenlitePairCommand(nextZenLiteMsgId(), false, uuid),
+      writeMode: "no-response",
     },
     {
       name: "BrainCo system monitor",
       detail: "Harmless status request; proves the command channel works.",
       service: ZENLITE_SERVICE,
       bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.getSystemMonitor),
+      writeMode: "no-response",
     },
     {
       name: "BrainCo AFE on, 256 Hz",
@@ -336,53 +336,12 @@ function buildProbeSteps(): ProbeCandidate[] {
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
     },
     {
-      name: "BrainCo start data stream",
-      detail: "Asks the band to begin transmitting once the front end is on.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
-    },
-    {
       name: "BrainCo AFE on, 128 Hz",
       detail: "Same, at the alternative published rate.",
       service: ZENLITE_SERVICE,
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr128),
     },
-    {
-      name: "BrainCo AFE 256 Hz, unacknowledged write",
-      detail: "Same command sent write-without-response, which some firmware requires.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
-      writeMode: "no-response",
-    },
   ];
-
-  // Framing sweep: the documented variant is already covered above, so only the
-  // alternatives are tried here, each with a harmless status request first.
-  for (const variant of ZENLITE_FRAMING_VARIANTS.slice(1)) {
-    steps.push({
-      name: `BrainCo system monitor — ${variant.label}`,
-      detail: "Same status request framed with an alternative length/checksum byte order.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteFrameWith(
-        zenliteSysPayload(nextZenLiteMsgId(), ZENLITE_CMD.getSystemMonitor),
-        variant,
-      ),
-    });
-    steps.push({
-      name: `BrainCo AFE 256 Hz — ${variant.label}`,
-      detail: "Front-end start framed with the same alternative byte order.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteFrameWith(zenliteAfePayload(nextZenLiteMsgId(), ZENLITE_AFE.sr256), variant),
-    });
-  }
-
-  steps.push({
-    name: "Nordic UART start token",
-    detail: "Conventional plain-text start command on a UART-transport band.",
-    service: NORDIC_UART,
-    bytes: new TextEncoder().encode("start\r\n"),
-  });
-  return steps;
 }
 
 
@@ -562,7 +521,7 @@ export async function identifyBleHeadset(
     }
 
     if (options.probeActivation) {
-      report.probe = await runActivationProbe(services, writable, watchers, progress);
+      report.probe = await runActivationProbe(services, writable, watchers, progress, device.id);
     }
 
     const observeMs = watchSeconds * 1000;
@@ -626,11 +585,12 @@ async function runActivationProbe(
   }>,
   watchers: Watcher[],
   progress: (message: string) => void,
+  deviceId?: string,
 ): Promise<BleActivationProbeStep[]> {
   const steps: BleActivationProbeStep[] = [];
   const byService = new Map(services.map((service) => [service.uuid.toLowerCase(), service]));
 
-  for (const candidate of buildProbeSteps()) {
+  for (const candidate of buildProbeSteps(deviceId)) {
     // BrainCo steps are written to whichever vendor transport this firmware
     // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
     const service = isZenLiteService(candidate.service)
@@ -680,10 +640,11 @@ async function runActivationProbe(
         candidate.writeMode === "no-response" ||
         (candidate.writeMode !== "response" && !target.properties.write);
       if (noResponse) await target.writeValueWithoutResponse(candidate.bytes as BufferSource);
-      else await target.writeValue(candidate.bytes as BufferSource);
+      else await target.writeValueWithResponse(candidate.bytes as BufferSource);
       step.written = true;
     } catch (error) {
-      step.writeError = error instanceof Error ? error.message : String(error);
+      step.writeError =
+        error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     }
     await sleep(2_000);
 
