@@ -36,6 +36,9 @@ import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test"
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
+  zenliteSysCommand,
+  ZENLITE_CMD,
+
   zenlitePairCommand,
   zenlitePairUuid,
   ZENLITE_AFE,
@@ -330,8 +333,17 @@ function buildProbeSteps(deviceId?: string): ProbeCandidate[] {
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
       writeMode: "response",
     },
+    {
+      name: "BrainCo system START",
+      detail:
+        "Sends the vendor SDK's documented START system command, which some firmware builds require in addition to the front-end configuration.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+      writeMode: "no-response",
+    },
   ];
 }
+
 
 
 /**
