@@ -707,17 +707,22 @@ export class MuseClient implements EegSource {
    * Keeps the headband awake and streaming for the length of a case: sends the
    * keep-alive the firmware expects, and recovers a silent link that Bluetooth
    * never reported as disconnected.
+   *
+   * The tick runs off a worker timer. A page-timer interval is throttled to
+   * roughly once a minute as soon as the tab is hidden or the screen dims,
+   * which is slower than the Muse idle timeout — that is exactly how a case
+   * quietly dies around the twenty-minute mark.
    */
   private startHeartbeat() {
     this.stopHeartbeat();
-    this.heartbeat = setInterval(() => {
+    this.heartbeat = createBackgroundTimer(MuseClient.KEEP_ALIVE_MS, () => {
       if (this.stopping) return;
       void this.tick();
-    }, MuseClient.KEEP_ALIVE_MS);
+    });
   }
 
   private stopHeartbeat() {
-    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat?.stop();
     this.heartbeat = null;
   }
 
