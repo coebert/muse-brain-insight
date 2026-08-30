@@ -36,12 +36,9 @@ import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test"
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
-  zenliteAfePayload,
   zenlitePairCommand,
   zenlitePairUuid,
-  zenliteSysCommand,
   ZENLITE_AFE,
-  ZENLITE_CMD,
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
@@ -296,14 +293,11 @@ interface ProbeCandidate {
 }
 
 /**
- * Documented sequences, tried one at a time, followed by a framing sweep.
- *
- * The BrainCo frames are the ones published in the OxyZen SDK documentation and
- * already used by the streaming path. When a band accepts those writes but
- * never answers — as the FC-11 survey showed — the likely cause is that its
- * firmware branch expects a different length/checksum byte order or a
- * write-without-response, both of which are dropped silently. The sweep tries
- * each combination once so the log shows which one the band actually answers.
+ * The two vendor-supported activation paths. Each pairing operation is followed
+ * immediately by the acknowledged AFE command, matching the SDK's pair callback
+ * flow. Pair and validate must not be sent back-to-back before AFE activation:
+ * doing that can replace a successful first-time pairing with a failed
+ * validation and leave the FC-11 silent.
  */
 function buildProbeSteps(deviceId?: string): ProbeCandidate[] {
   const uuid = zenlitePairUuid(undefined, deviceId);
@@ -316,30 +310,25 @@ function buildProbeSteps(deviceId?: string): ProbeCandidate[] {
       writeMode: "no-response",
     },
     {
-      name: "BrainCo validate pairing",
-      detail: "Confirms an existing pairing using the vendor-required unacknowledged write.",
+      name: "BrainCo AFE on after pairing",
+      detail: "Starts 256 Hz EEG after allowing the first-time pairing command to complete.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
+      writeMode: "response",
+    },
+    {
+      name: "BrainCo validate existing pairing",
+      detail: "Fallback for a band already paired with this browser identity.",
       service: ZENLITE_SERVICE,
       bytes: zenlitePairCommand(nextZenLiteMsgId(), false, uuid),
       writeMode: "no-response",
     },
     {
-      name: "BrainCo system monitor",
-      detail: "Harmless status request; proves the command channel works.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.getSystemMonitor),
-      writeMode: "no-response",
-    },
-    {
-      name: "BrainCo AFE on, 256 Hz",
-      detail: "Switches the EEG front end on at the documented rate.",
+      name: "BrainCo AFE on after validation",
+      detail: "Starts 256 Hz EEG after allowing existing-pair validation to complete.",
       service: ZENLITE_SERVICE,
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
-    },
-    {
-      name: "BrainCo AFE on, 128 Hz",
-      detail: "Same, at the alternative published rate.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr128),
+      writeMode: "response",
     },
   ];
 }

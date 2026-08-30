@@ -51,9 +51,7 @@ import {
   zenliteEegSamples,
   zenlitePairCommand,
   zenlitePairUuid,
-  zenliteSysCommand,
   ZENLITE_AFE,
-  ZENLITE_CMD,
   ZENLITE_UV_PER_COUNT,
   ZENLITE_NOTIFY,
   ZENLITE_SAMPLE_RATE,
@@ -858,22 +856,21 @@ export class BleHeadsetSource implements EegSource {
     // sequence; doing this in the opposite order can leave Bluefy with a live
     // GATT link but a permanently silent EEG stream.
     let captured = await this.listen(notifying, listenMs, () =>
-      this.zenliteHandshake(services, "validate"),
+      this.zenliteHandshake(services, "pair"),
     );
     let chosen = this.choose(captured, listenMs / 1000);
     // The advertisement bit used by the native SDK to distinguish a first
     // pairing from a returning device is not exposed by Web Bluetooth. Try the
-    // non-destructive validation path first; if the documented BrainCo channel
-    // remains undecodable, perform one real pairing attempt and start AFE again.
-    // Sending pair and validate back-to-back (the old behaviour) could cancel a
-    // successful pairing before Bluefy had delivered its response.
+    // pairing path first, matching the device state the connection UI asks for.
+    // If that stays silent, try existing-pair validation as a separate complete
+    // sequence. Pair and validate are never sent back-to-back before AFE start.
     const zenliteCandidate = notifying.find(
       (candidate) => isZenLiteNotify(candidate.characteristic.uuid),
     );
     if (!chosen && zenliteCandidate) {
-      bleDiagnostics.add("info", "Validated ZenLite start was silent — retrying in pairing mode");
+      bleDiagnostics.add("info", "ZenLite pairing start was silent — trying existing-pair validation");
       captured = await this.listen([zenliteCandidate], listenMs, () =>
-        this.zenliteHandshake(services, "pair"),
+        this.zenliteHandshake(services, "validate"),
       );
       chosen = this.choose(captured, listenMs / 1000);
     }
