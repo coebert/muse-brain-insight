@@ -21,12 +21,18 @@
 
 import { bleDiagnostics, toHex } from "@/lib/eeg/ble-diagnostics";
 import {
+  autoScaleUvPerCount,
+  decodePacket,
   detectPacketFormat,
   isIosWebBleBrowser,
   PACKET_FORMAT_LABEL,
   requestBleHeadset,
   type PacketFormat,
 } from "@/lib/eeg/ble-eeg";
+import { ANALYSIS_SAMPLE_RATE } from "@/lib/eeg/device-profile";
+import { resample } from "@/lib/eeg/ingest";
+import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test";
+
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
