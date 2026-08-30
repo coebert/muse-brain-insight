@@ -126,7 +126,7 @@ class MockBand {
     if (hex.includes("1a02")) {
       // AFE configuration
       this.afeOn = this.paired;
-      this.notify.emit(sysAck(ZENLITE_CMD.getSysInfo ?? 10, this.paired ? 0 : 1));
+      this.notify.emit(sysAck(ZENLITE_CMD.getSystemMonitor, this.paired ? 0 : 1));
       return;
     }
     if (hex.includes("12020803")) {
