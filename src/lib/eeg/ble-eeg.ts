@@ -991,43 +991,43 @@ export class BleHeadsetSource implements EegSource {
     }
     if (!write) return;
     const send = async (frame: Uint8Array, label: string) => {
-      // Prefer acknowledged writes. Some iOS Web Bluetooth bridges advertise
-      // write-without-response but silently drop it; the ZenLite command
-      // characteristic also supports ordinary writes on known firmware.
-      const mode = write?.properties.write
-        ? "write"
-        : write?.properties.writeWithoutResponse
-        ? "writeWithoutResponse"
-        : "none";
+    const send = async (
+      frame: Uint8Array,
+      label: string,
+      writeMode: "response" | "no-response",
+    ) => {
+      const canWrite =
+        writeMode === "response"
+          ? write?.properties.write
+          : write?.properties.writeWithoutResponse;
+      const mode = writeMode === "response" ? "writeWithResponse" : "writeWithoutResponse";
       bleDiagnostics.add("command", label, { characteristic: write?.uuid, mode }, frame);
-      if (write?.properties.write) {
-        await write.writeValue(frame as BufferSource);
-      } else if (write?.properties.writeWithoutResponse) {
-        await write.writeValueWithoutResponse(frame as BufferSource);
+      if (!canWrite) {
+        throw new Error(`The BrainCo command characteristic does not support ${mode}.`);
+      }
+      if (writeMode === "response") {
+        await write.writeValueWithResponse(frame as BufferSource);
       } else {
-        throw new Error("The BrainCo command characteristic is not writable.");
+        await write.writeValueWithoutResponse(frame as BufferSource);
       }
     };
     this.progress("discovering", "Pairing with the headband");
     try {
       const pairing = mode === "pair";
       await send(
-        zenlitePairCommand(nextZenLiteMsgId(), pairing, zenlitePairUuid()),
+        zenlitePairCommand(nextZenLiteMsgId(), pairing, zenlitePairUuid(undefined, this.device?.id)),
         pairing ? "ZenLite pair" : "ZenLite validate pairing",
+        "no-response",
       );
       // The vendor SDK starts data only from its asynchronous pairing callback.
       // Bluefy does not expose that callback, so leave enough time for the
       // response notification before sending the acknowledged AFE write.
       await new Promise((r) => setTimeout(r, 650));
       this.progress("discovering", "Starting the EEG stream");
-      await send(zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256), "ZenLite AFE start 256 Hz");
-      await new Promise((r) => setTimeout(r, 250));
-      // Configuring the front end only arms it. Opcode 3 is the vendor's
-      // startDataStream command and is what actually opens the notification
-      // stream; without it the band stays connected and silent.
       await send(
-        zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
-        "ZenLite start data stream",
+        zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
+        "ZenLite AFE start 256 Hz",
+        "response",
       );
       await new Promise((r) => setTimeout(r, 200));
       bleDiagnostics.add("info", "ZenLite activation sequence sent");

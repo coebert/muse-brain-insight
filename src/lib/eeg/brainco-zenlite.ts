@@ -501,9 +501,15 @@ export function decodeZenLitePacket(bytes: Uint8Array): number[] {
   return out;
 }
 
-/** Stable per-install identity so the band can re-validate an existing pairing. */
-export function zenlitePairUuid(storage?: Storage): string {
+/**
+ * Stable 16-byte host identity used by the BrainCo application-layer pairing.
+ * The vendor SDK uses the BLE peripheral id, not an unrelated random token.
+ * Web Bluetooth device ids are origin-stable, so prefer that value and retain
+ * the generated fallback only for callers which do not have a device yet.
+ */
+export function zenlitePairUuid(storage?: Storage, deviceId?: string): string {
   const key = "mindguard.zenlite.pair-uuid";
+  if (deviceId) return deviceId.slice(0, 16).padEnd(16, "0");
   const random = () =>
     Array.from({ length: 16 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
   try {
