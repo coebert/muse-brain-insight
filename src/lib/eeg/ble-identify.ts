@@ -90,6 +90,20 @@ export interface BleActivationProbeStep {
   respondingCharacteristics: string[];
 }
 
+export interface BleSampleRateCheck {
+  /** Rate the firmware declared inside its own AFE frames, when it does. */
+  declaredHz: number | null;
+  /** Raw sample-rate enum value seen in the frames. */
+  declaredEnum: number | null;
+  /** Samples per second actually delivered during the observation window. */
+  observedHz: number;
+  /** Rate used for the spectral preview. */
+  usedHz: number;
+  /** True when the declared rate and the delivered rate agree within 15%. */
+  agrees: boolean;
+  detail: string;
+}
+
 export interface BleIdentifyReport {
   deviceName: string;
   startedAt: number;
@@ -103,7 +117,14 @@ export interface BleIdentifyReport {
   status: BleIdentifyStatus;
   summary: string;
   advice: string;
+  /** Sample-rate verification from the captured session, when EEG decoded. */
+  sampleRate?: BleSampleRateCheck;
+  /** Spectral array produced from the captured session, when EEG decoded. */
+  preview?: StreamTestResult;
+  /** Characteristic the preview was computed from. */
+  previewCharacteristic?: string;
 }
+
 
 export interface BleIdentifyOptions {
   /** Seconds spent silently watching every notifying characteristic. */
