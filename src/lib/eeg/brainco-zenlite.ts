@@ -137,6 +137,66 @@ export function zenliteFrame(payload: number[]): Uint8Array {
   return Uint8Array.from([...head, crc & 0xff, (crc >> 8) & 0xff]);
 }
 
+/** CRC-16/CCITT-FALSE, used by some BrainCo firmware branches. */
+export function crc16CcittFalse(bytes: Uint8Array): number {
+  let crc = 0xffff;
+  for (const byte of bytes) {
+    crc ^= byte << 8;
+    for (let bit = 0; bit < 8; bit++) {
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  return crc & 0xffff;
+}
+
+export interface ZenLiteFramingVariant {
+  /** Short label shown in the activation probe report. */
+  label: string;
+  checksum: "modbus" | "ccitt" | "none";
+  /** Byte order of both the length field and the checksum. */
+  endian: "le" | "be";
+}
+
+/**
+ * The framing combinations worth trying when a band accepts writes but never
+ * answers: a mismatched length order or checksum flavour is dropped silently by
+ * the firmware, which looks exactly like a dead device.
+ */
+export const ZENLITE_FRAMING_VARIANTS: ZenLiteFramingVariant[] = [
+  { label: "MODBUS/LE (documented)", checksum: "modbus", endian: "le" },
+  { label: "MODBUS/BE", checksum: "modbus", endian: "be" },
+  { label: "CCITT/LE", checksum: "ccitt", endian: "le" },
+  { label: "CCITT/BE", checksum: "ccitt", endian: "be" },
+  { label: "no checksum", checksum: "none", endian: "le" },
+];
+
+/** Frames a payload using an explicit framing variant. */
+export function zenliteFrameWith(payload: number[], variant: ZenLiteFramingVariant): Uint8Array {
+  const len =
+    variant.endian === "le"
+      ? [payload.length & 0xff, (payload.length >> 8) & 0xff]
+      : [(payload.length >> 8) & 0xff, payload.length & 0xff];
+  const head = [...HEADER, ...len, ...payload];
+  if (variant.checksum === "none") return Uint8Array.from(head);
+  const crc =
+    variant.checksum === "modbus"
+      ? crc16Modbus(Uint8Array.from(head))
+      : crc16CcittFalse(Uint8Array.from(head));
+  const tail = variant.endian === "le" ? [crc & 0xff, (crc >> 8) & 0xff] : [(crc >> 8) & 0xff, crc & 0xff];
+  return Uint8Array.from([...head, ...tail]);
+}
+
+/** The protobuf payload of a system command, unframed. */
+export function zenliteSysPayload(msgId: number, cmd: number): number[] {
+  return [...varintField(1, msgId), ...bytesField(2, varintField(1, cmd))];
+}
+
+/** The protobuf payload of an AFE (front-end) command, unframed. */
+export function zenliteAfePayload(msgId: number, sampleRate: number): number[] {
+  return [...varintField(1, msgId), ...bytesField(3, varintField(1, sampleRate))];
+}
+
+
 /* ------------------------------------------------------------------ */
 /* Commands                                                            */
 /* ------------------------------------------------------------------ */
