@@ -171,8 +171,9 @@ describe("BrainCo ZenLite headband", () => {
     await new Promise((r) => setTimeout(r, 600));
 
     // Validation + AFE is attempted first. Because this mock represents a new
-    // band, it stays silent; pairing + AFE then opens the stream.
-    expect(write.frames.length).toBe(6);
+    // band, it stays silent; pairing + AFE then opens the stream. The vendor
+    // sequence has two writes per attempt and no extra system start command.
+    expect(write.frames.length).toBe(4);
     expect(write.paired).toBe(true);
     expect(notify.streaming).toBe(true);
     expect(source.discovery?.format).toBe("brainco-zenlite");
