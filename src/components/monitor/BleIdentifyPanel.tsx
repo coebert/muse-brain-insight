@@ -11,6 +11,7 @@ import {
 } from "@/lib/eeg/ble-identify";
 import { debugFilename, downloadDebugFile } from "@/lib/eeg/debug-export";
 import { friendlyBleError } from "@/lib/eeg/ble-eeg";
+import { StreamTestReport } from "@/components/monitor/StreamTestReport";
 
 const WATCH_CHOICES = [15, 30, 60];
 
@@ -191,6 +192,30 @@ export function BleIdentifyPanel() {
               </tbody>
             </table>
           </div>
+
+          {report.sampleRate ? (
+            <div className="rounded-lg bg-muted/40 p-2">
+              <p className="font-semibold">
+                Sample rate{" "}
+                <span className={report.sampleRate.agrees ? "text-signal" : "text-caution"}>
+                  {report.sampleRate.usedHz} Hz
+                </span>
+              </p>
+              <p className="text-muted-foreground">{report.sampleRate.detail}</p>
+            </div>
+          ) : null}
+
+          {report.preview ? (
+            <div>
+              <p className="font-semibold">
+                Spectral array preview
+                {report.previewCharacteristic
+                  ? ` — ${report.previewCharacteristic.slice(0, 8)}`
+                  : ""}
+              </p>
+              <StreamTestReport result={report.preview} />
+            </div>
+          ) : null}
 
           {report.probe.length ? (
             <div className="space-y-1">

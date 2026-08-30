@@ -21,12 +21,18 @@
 
 import { bleDiagnostics, toHex } from "@/lib/eeg/ble-diagnostics";
 import {
+  autoScaleUvPerCount,
+  decodePacket,
   detectPacketFormat,
   isIosWebBleBrowser,
   PACKET_FORMAT_LABEL,
   requestBleHeadset,
   type PacketFormat,
 } from "@/lib/eeg/ble-eeg";
+import { ANALYSIS_SAMPLE_RATE } from "@/lib/eeg/device-profile";
+import { resample } from "@/lib/eeg/ingest";
+import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test";
+
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
@@ -38,7 +44,102 @@ import {
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
+  ZENLITE_UV_PER_COUNT,
+  zenliteSampleRateFromEnum,
+  zenliteStreamInfo,
+
 } from "@/lib/eeg/brainco-zenlite";
+
+/**
+ * Turns the captured observation window into the same spectral array the
+ * monitor draws, and checks the rate the firmware declares against the rate it
+ * actually delivered. A first capture therefore verifies itself instead of
+ * relying on an assumed 256 Hz.
+ */
+function buildPreview(
+  report: BleIdentifyReport,
+  watchers: Watcher[],
+  elapsedSeconds: number,
+  progress: (message: string) => void,
+) {
+  const best = watchers
+    .filter((w) => w.packets.length && (w.report.bestScore ?? 0) >= 0.6 && w.report.bestFormat)
+    .sort((a, b) => (b.report.bestScore ?? 0) - (a.report.bestScore ?? 0))[0];
+  if (!best) return;
+
+  progress("Building the spectral preview");
+  const format = best.report.bestFormat as PacketFormat;
+  const counts: number[] = [];
+  for (const packet of best.packets) counts.push(...decodePacket(format, packet));
+  if (counts.length < 64) return;
+
+  // The firmware states its own rate inside each AFE frame; trust that when it
+  // is present and consistent with what arrived.
+  let declaredHz: number | null = null;
+  let declaredEnum: number | null = null;
+  if (format === "brainco-zenlite") {
+    const rates = new Map<number, number>();
+    for (const packet of best.packets) {
+      for (const info of zenliteStreamInfo(packet)) {
+        if (info.sampleRateEnum == null) continue;
+        rates.set(info.sampleRateEnum, (rates.get(info.sampleRateEnum) ?? 0) + 1);
+      }
+    }
+    const top = [...rates.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) {
+      declaredEnum = top[0];
+      declaredHz = zenliteSampleRateFromEnum(top[0]);
+    }
+  }
+
+  const seconds = Math.max(1, elapsedSeconds);
+  const observedHz = Number((counts.length / seconds).toFixed(1));
+  const agrees =
+    declaredHz != null && Math.abs(observedHz - declaredHz) <= 0.15 * declaredHz;
+  const usedHz = Math.max(32, Math.round(agrees && declaredHz ? declaredHz : observedHz));
+
+  report.sampleRate = {
+    declaredHz,
+    declaredEnum,
+    observedHz,
+    usedHz,
+    agrees,
+    detail:
+      declaredHz == null
+        ? `The band declares no rate, so the measured ${observedHz} Hz was used.`
+        : agrees
+          ? `Firmware declares ${declaredHz} Hz and delivered ${observedHz} Hz — verified.`
+          : `Firmware declares ${declaredHz} Hz but delivered ${observedHz} Hz; the measured rate was used and packets are probably being dropped.`,
+  };
+
+  const uvPerCount =
+    format === "brainco-zenlite"
+      ? ZENLITE_UV_PER_COUNT
+      : autoScaleUvPerCount(
+          [...counts].map(Math.abs).sort((a, b) => a - b)[
+            Math.floor(counts.length * 0.95)
+          ] ?? 1,
+        );
+  const microvolts = Float64Array.from(counts, (c) => c * uvPerCount);
+  const signal = resample(microvolts, usedHz, ANALYSIS_SAMPLE_RATE);
+  if (signal.length < ANALYSIS_SAMPLE_RATE) return;
+
+  report.previewCharacteristic = best.report.characteristicUuid;
+  report.preview = analyseStreamTest(signal, {
+    sampleRate: ANALYSIS_SAMPLE_RATE,
+    expectedRate: ANALYSIS_SAMPLE_RATE,
+    captureSeconds: signal.length / ANALYSIS_SAMPLE_RATE,
+    packets: best.report.packets,
+  });
+  bleDiagnostics.add("session", "Identify preview computed", {
+    characteristic: best.report.characteristicUuid,
+    usedHz,
+    declaredHz,
+    observedHz,
+    passed: report.preview.passed,
+  });
+}
+
 
 const DEVICE_INFORMATION_SERVICE = "0000180a-0000-1000-8000-00805f9b34fb";
 const BATTERY_SERVICE = "0000180f-0000-1000-8000-00805f9b34fb";
@@ -90,6 +191,20 @@ export interface BleActivationProbeStep {
   respondingCharacteristics: string[];
 }
 
+export interface BleSampleRateCheck {
+  /** Rate the firmware declared inside its own AFE frames, when it does. */
+  declaredHz: number | null;
+  /** Raw sample-rate enum value seen in the frames. */
+  declaredEnum: number | null;
+  /** Samples per second actually delivered during the observation window. */
+  observedHz: number;
+  /** Rate used for the spectral preview. */
+  usedHz: number;
+  /** True when the declared rate and the delivered rate agree within 15%. */
+  agrees: boolean;
+  detail: string;
+}
+
 export interface BleIdentifyReport {
   deviceName: string;
   startedAt: number;
@@ -103,7 +218,14 @@ export interface BleIdentifyReport {
   status: BleIdentifyStatus;
   summary: string;
   advice: string;
+  /** Sample-rate verification from the captured session, when EEG decoded. */
+  sampleRate?: BleSampleRateCheck;
+  /** Spectral array produced from the captured session, when EEG decoded. */
+  preview?: StreamTestResult;
+  /** Characteristic the preview was computed from. */
+  previewCharacteristic?: string;
 }
+
 
 export interface BleIdentifyOptions {
   /** Seconds spent silently watching every notifying characteristic. */
@@ -412,8 +534,10 @@ export async function identifyBleHeadset(
       }
     }
 
+    buildPreview(report, watchers, elapsedSeconds, progress);
     summarise(report);
     return report;
+
   } finally {
     for (const watcher of watchers) {
       watcher.characteristic.removeEventListener("characteristicvaluechanged", watcher.handler);
