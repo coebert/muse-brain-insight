@@ -412,8 +412,10 @@ export async function identifyBleHeadset(
       }
     }
 
+    buildPreview(report, watchers, elapsedSeconds, progress);
     summarise(report);
     return report;
+
   } finally {
     for (const watcher of watchers) {
       watcher.characteristic.removeEventListener("characteristicvaluechanged", watcher.handler);
