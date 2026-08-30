@@ -7,6 +7,9 @@ import {
   ZenLiteDeframer,
   zenliteEegSamples,
   zenliteFrame,
+  zenliteFrameWith,
+  zenliteSysPayload,
+  ZENLITE_FRAMING_VARIANTS,
   zenlitePairCommand,
   zenliteSysCommand,
   ZENLITE_AFE,
@@ -164,5 +167,31 @@ describe("verified vendor wire format", () => {
     const afeData = [...varintField(1, 7), ...varintField(2, ZENLITE_AFE.sr256), ...bytesField(4, samples)];
     const frame = zenliteFrame([...varintField(1, 7), ...bytesField(2, bytesField(2, afeData))]);
     expect(decodeZenLitePacket(frame)).toEqual([1, -1, 4096]);
+  });
+});
+
+describe("framing variants", () => {
+  const hexOf = (b: Uint8Array) => Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+  const payload = zenliteSysPayload(4, ZENLITE_CMD.startDataStream);
+
+  it("reproduces the documented frame with the default variant", () => {
+    expect(hexOf(zenliteFrameWith(payload, ZENLITE_FRAMING_VARIANTS[0]!))).toBe(
+      hexOf(zenliteSysCommand(4, ZENLITE_CMD.startDataStream)),
+    );
+  });
+
+  it("swaps length and checksum byte order for the big-endian variant", () => {
+    const le = zenliteFrameWith(payload, { label: "le", checksum: "modbus", endian: "le" });
+    const be = zenliteFrameWith(payload, { label: "be", checksum: "modbus", endian: "be" });
+    expect(be[6]).toBe(le[7]);
+    expect(be[7]).toBe(le[6]);
+    const crc = crc16Modbus(be.subarray(0, be.length - 2));
+    expect(be[be.length - 2]).toBe(crc >> 8);
+    expect(be[be.length - 1]).toBe(crc & 0xff);
+  });
+
+  it("omits the checksum entirely when asked", () => {
+    const bare = zenliteFrameWith(payload, { label: "none", checksum: "none", endian: "le" });
+    expect(bare.length).toBe(payload.length + 8);
   });
 });
