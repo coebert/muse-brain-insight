@@ -60,10 +60,24 @@ describe("ZenLite command encoding", () => {
   });
 
   it("uses the stable Web Bluetooth device id for the pairing identity", async () => {
-    const { zenlitePairUuid } = await import("@/lib/eeg/brainco-zenlite");
-    expect(zenlitePairUuid(undefined, "device-identity-123456789")).toBe("device-identity-");
-    expect(zenlitePairUuid(undefined, "short-id")).toBe("short-id00000000");
+    const { zenlitePairUuid, zenlitePairIdentityBytes } = await import(
+      "@/lib/eeg/brainco-zenlite"
+    );
+    // The id is passed through verbatim; only the byte encoder shortens it.
+    expect(zenlitePairUuid(undefined, "device-identity-123456789")).toBe(
+      "device-identity-123456789",
+    );
+    expect(zenlitePairIdentityBytes("device-identity-123456789")).toHaveLength(16);
+    expect(zenlitePairIdentityBytes("short-id")).toEqual([
+      ..."short-id00000000",
+    ].map((c) => c.charCodeAt(0)));
+    // An Apple peripheral UUID becomes the 16 binary bytes the firmware compares.
+    expect(zenlitePairIdentityBytes("F8FCBC0A-3D75-47E1-9F1B-0A2B3C4D5E6F")).toEqual([
+      0xf8, 0xfc, 0xbc, 0x0a, 0x3d, 0x75, 0x47, 0xe1, 0x9f, 0x1b, 0x0a, 0x2b, 0x3c, 0x4d, 0x5e,
+      0x6f,
+    ]);
   });
+
 
   it("uses CRC-16/MODBUS over header and payload", () => {
     const frame = zenliteFrame([0x08, 0x01]);
