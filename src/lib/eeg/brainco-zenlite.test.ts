@@ -185,7 +185,9 @@ describe("framing variants", () => {
     const be = zenliteFrameWith(payload, { label: "be", checksum: "modbus", endian: "be" });
     expect(be[6]).toBe(le[7]);
     expect(be[7]).toBe(le[6]);
-    expect(be[be.length - 1]).toBe(le[le.length - 2]);
+    const crc = crc16Modbus(be.subarray(0, be.length - 2));
+    expect(be[be.length - 2]).toBe(crc >> 8);
+    expect(be[be.length - 1]).toBe(crc & 0xff);
   });
 
   it("omits the checksum entirely when asked", () => {
