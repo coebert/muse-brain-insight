@@ -202,6 +202,8 @@ function int24be(bytes: Uint8Array, offset: number): number {
  * Confirmed by driving the vendor decoder with synthesised frames.
  */
 const EEG_PATH = "2.2.4";
+/** The AFE data message itself, which carries the sequence and rate enum. */
+const AFE_DATA_PATH = "2.2";
 
 /** Sample-rate enum -> Hz, as reported inside AFE data messages. */
 export function zenliteSampleRateFromEnum(value: number): number | null {
@@ -209,6 +211,100 @@ export function zenliteSampleRateFromEnum(value: number): number | null {
   if (value === ZENLITE_AFE.sr256) return 256;
   return null;
 }
+
+/** Scalar (varint) fields of one protobuf message, keyed by field number. */
+function scalarFields(buf: Uint8Array): Map<number, number> {
+  const out = new Map<number, number>();
+  let i = 0;
+  while (i < buf.length) {
+    let key = 0;
+    let shift = 0;
+    while (i < buf.length) {
+      const b = buf[i++] as number;
+      key |= (b & 0x7f) << shift;
+      shift += 7;
+      if (!(b & 0x80)) break;
+      if (shift > 28) return out;
+    }
+    const field = key >>> 3;
+    const wire = key & 7;
+    if (!field) return out;
+    if (wire === 0) {
+      let value = 0;
+      shift = 0;
+      while (i < buf.length) {
+        const b = buf[i++] as number;
+        value += (b & 0x7f) * 2 ** shift;
+        shift += 7;
+        if (!(b & 0x80)) break;
+        if (shift > 42) return out;
+      }
+      if (!out.has(field)) out.set(field, value);
+    } else if (wire === 5) {
+      i += 4;
+    } else if (wire === 1) {
+      i += 8;
+    } else if (wire === 2) {
+      let len = 0;
+      shift = 0;
+      while (i < buf.length) {
+        const b = buf[i++] as number;
+        len |= (b & 0x7f) << shift;
+        shift += 7;
+        if (!(b & 0x80)) break;
+        if (shift > 28) return out;
+      }
+      if (len < 0 || i + len > buf.length) return out;
+      i += len;
+    } else {
+      return out;
+    }
+  }
+  return out;
+}
+
+export interface ZenLiteAfeInfo {
+  /** Frame sequence counter, used to spot dropped frames. */
+  sequence: number | null;
+  /** Raw sample-rate enum the firmware reported. */
+  sampleRateEnum: number | null;
+  /** Resolved rate in Hz, when the enum is one of the documented values. */
+  sampleRateHz: number | null;
+  /** Samples carried by this frame. */
+  sampleCount: number;
+}
+
+/**
+ * Reads the AFE data header of one decoded ZenLite message: the frame sequence
+ * number and the sample-rate enum the firmware itself declares. This is what
+ * lets a first capture verify the rate rather than assume it.
+ */
+export function zenliteAfeInfo(payload: Uint8Array): ZenLiteAfeInfo | null {
+  const fields = collectBytesFields(payload);
+  const afe = fields.find((f) => f.path.join(".") === AFE_DATA_PATH);
+  if (!afe) return null;
+  const scalars = scalarFields(afe.bytes);
+  const block = fields.find((f) => f.path.join(".") === EEG_PATH);
+  const rateEnum = scalars.get(2) ?? null;
+  return {
+    sequence: scalars.get(1) ?? null,
+    sampleRateEnum: rateEnum,
+    sampleRateHz: rateEnum == null ? null : zenliteSampleRateFromEnum(rateEnum),
+    sampleCount: block ? Math.floor(block.bytes.length / 3) : 0,
+  };
+}
+
+/** Aggregates the AFE headers of every complete frame inside a buffer. */
+export function zenliteStreamInfo(bytes: Uint8Array): ZenLiteAfeInfo[] {
+  const frames = new ZenLiteDeframer().push(bytes);
+  const out: ZenLiteAfeInfo[] = [];
+  for (const payload of frames) {
+    const info = zenliteAfeInfo(payload);
+    if (info) out.push(info);
+  }
+  return out;
+}
+
 
 /**
  * Extracts EEG samples (raw counts) from one decoded ZenLite message.
