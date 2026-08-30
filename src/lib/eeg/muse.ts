@@ -10,6 +10,13 @@ import {
   SIMULATED_PROFILE,
   type AnalysisChannel,
 } from "@/lib/eeg/device-profile";
+import {
+  acquireScreenWakeLock,
+  createBackgroundTimer,
+  onForeground,
+  type BackgroundTimer,
+  type WakeLockHandle,
+} from "@/lib/eeg/keep-awake";
 
 export const MUSE_SERVICE = "0000fe8d-0000-1000-8000-00805f9b34fb";
 const CONTROL_CHAR = "273e0001-4c4d-454d-96be-f03bac821358";
@@ -492,7 +499,13 @@ export class MuseClient implements EegSource {
   private static readonly STALL_RESET_MS = 15_000;
   /** How often the headband is asked for a status ("s") reply. */
   private static readonly BATTERY_POLL_MS = 60_000;
-  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  /** A reconnect attempt that has not streamed by now is abandoned and retried. */
+  private static readonly ATTACH_TIMEOUT_MS = 20_000;
+  private heartbeat: BackgroundTimer | null = null;
+  /** Screen wake lock held for the length of a case. */
+  private wakeLock: WakeLockHandle | null = null;
+  /** Unsubscribes the "page came back to the foreground" handler. */
+  private foregroundOff: (() => void) | null = null;
   private lastSampleAt = 0;
   private nudgedAt = 0;
   /**
@@ -585,6 +598,19 @@ export class MuseClient implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
+    // A locked or dimmed screen freezes the keep-alive and lets the headband
+    // idle off the link, so hold the screen awake for the length of the case.
+    this.wakeLock ??= acquireScreenWakeLock();
+    // Coming back to the foreground: check the link immediately rather than
+    // waiting out a backoff or keep-alive interval that was throttled while
+    // the page was hidden.
+    this.foregroundOff ??= onForeground(() => {
+      if (this.stopping) return;
+      if (this.reconnecting) this.retryWake?.();
+      else if (!(this.device?.gatt?.connected ?? false)) void this.attemptReconnect();
+      else void this.tick();
+    });
+
     await this.attach();
   }
 
@@ -670,15 +696,20 @@ export class MuseClient implements EegSource {
     await new Promise((r) => setTimeout(r, MuseClient.LINK_SETTLE_MS));
   }
 
-  /** Backoff sleep that the clinician's Reconnect tap can cut short. */
+  /**
+   * Backoff sleep that the clinician's Reconnect tap can cut short. It runs on
+   * the worker clock: a hidden tab's `setTimeout` is throttled to about a
+   * minute, which would stretch the retry ladder out to nothing.
+   */
   private waitForRetry(ms: number) {
     return new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
+      const timer = createBackgroundTimer(ms, () => {
+        timer.stop();
         this.retryWake = null;
         resolve();
-      }, ms);
+      });
       this.retryWake = () => {
-        clearTimeout(timer);
+        timer.stop();
         this.retryWake = null;
         resolve();
       };
@@ -696,17 +727,22 @@ export class MuseClient implements EegSource {
    * Keeps the headband awake and streaming for the length of a case: sends the
    * keep-alive the firmware expects, and recovers a silent link that Bluetooth
    * never reported as disconnected.
+   *
+   * The tick runs off a worker timer. A page-timer interval is throttled to
+   * roughly once a minute as soon as the tab is hidden or the screen dims,
+   * which is slower than the Muse idle timeout — that is exactly how a case
+   * quietly dies around the twenty-minute mark.
    */
   private startHeartbeat() {
     this.stopHeartbeat();
-    this.heartbeat = setInterval(() => {
+    this.heartbeat = createBackgroundTimer(MuseClient.KEEP_ALIVE_MS, () => {
       if (this.stopping) return;
       void this.tick();
-    }, MuseClient.KEEP_ALIVE_MS);
+    });
   }
 
   private stopHeartbeat() {
-    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat?.stop();
     this.heartbeat = null;
   }
 
@@ -751,6 +787,21 @@ export class MuseClient implements EegSource {
   }
 
   /**
+   * A bounded attach. Resolves as soon as the link is streaming, rejects if the
+   * headband has not answered within the window so the caller can retry.
+   */
+  private withAttachTimeout(): Promise<void> {
+    let timer: BackgroundTimer | null = null;
+    const guard = new Promise<never>((_, reject) => {
+      timer = createBackgroundTimer(MuseClient.ATTACH_TIMEOUT_MS, () => {
+        timer?.stop();
+        reject(new Error("The headband did not answer in time."));
+      });
+    });
+    return Promise.race([this.attach(), guard]).finally(() => timer?.stop());
+  }
+
+  /**
    * Headbands slip and Bluetooth drops mid-case. Retry with backoff and keep
    * the case running; only give up — and tell the clinician — after five tries.
    */
@@ -771,7 +822,11 @@ export class MuseClient implements EegSource {
         // Always start from a cleanly closed link, never a half-open one.
         await this.resetLink();
         if (this.stopping) break;
-        await this.attach();
+        // `gatt.connect()` never rejects while the headband is simply out of
+        // range — it waits for an advertisement that may never come, which
+        // parks the retry ladder on a single attempt forever. Bound it so the
+        // loop always comes back around.
+        await this.withAttachTimeout();
         this.reconnecting = false;
         this.settleWaiters(true);
         this.stateCb?.({ kind: "connected" });
@@ -815,7 +870,7 @@ export class MuseClient implements EegSource {
     this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: 1 });
     try {
       await this.resetLink();
-      await this.attach();
+      await this.withAttachTimeout();
       this.reconnecting = false;
       this.stateCb?.({ kind: "connected" });
       return true;
@@ -842,6 +897,10 @@ export class MuseClient implements EegSource {
     this.reconnecting = false;
     this.settleWaiters(false);
     this.stopHeartbeat();
+    this.wakeLock?.release();
+    this.wakeLock = null;
+    this.foregroundOff?.();
+    this.foregroundOff = null;
     this.detachSubscriptions();
     try {
       await this.send("h");
