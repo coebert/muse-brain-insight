@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { Download, Radar } from "lucide-react";
+import { CheckCircle2, Download, Radar, XCircle, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  describeAck,
   formatIdentifyReport,
   identifyBleHeadset,
+  type BleFirmwareAck,
   type BleIdentifyReport,
 } from "@/lib/eeg/ble-identify";
+import {
+  runActivationCheck,
+  type ActivationCheckResult,
+} from "@/lib/eeg/ble-activation-check";
 import { debugFilename, downloadDebugFile } from "@/lib/eeg/debug-export";
 import { friendlyBleError } from "@/lib/eeg/ble-eeg";
 import { StreamTestReport } from "@/components/monitor/StreamTestReport";
@@ -43,18 +49,52 @@ export function BleIdentifyPanel() {
   const [watchSeconds, setWatchSeconds] = useState(30);
   const [probe, setProbe] = useState(false);
   const [report, setReport] = useState<BleIdentifyReport | null>(null);
+  const [check, setCheck] = useState<ActivationCheckResult | null>(null);
+  const [acks, setAcks] = useState<BleFirmwareAck[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  async function run() {
+  function beginRun() {
     setBusy(true);
     setError(null);
     setReport(null);
+    setCheck(null);
+    setAcks([]);
     setProgress("Starting");
+  }
+
+  /**
+   * Firmware replies are pushed to the UI as they are decoded, so a rejected
+   * pairing shows its code during the run rather than only in the final report.
+   */
+  function recordAck(ack: BleFirmwareAck) {
+    setAcks((current) => [...current.slice(-40), ack]);
+  }
+
+  async function runCheck() {
+    beginRun();
+    try {
+      const result = await runActivationCheck({
+        onProgress: setProgress,
+        onAck: recordAck,
+      });
+      setCheck(result);
+      setReport(result.report);
+    } catch (e) {
+      setError(friendlyBleError(e));
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  }
+
+  async function run() {
+    beginRun();
     try {
       const result = await identifyBleHeadset({
         watchSeconds,
         probeActivation: probe,
         onProgress: setProgress,
+        onAck: recordAck,
       });
       setReport(result);
     } catch (e) {
@@ -125,12 +165,71 @@ export function BleIdentifyPanel() {
         <Button type="button" onClick={run} disabled={busy} className="min-h-10">
           {busy ? (progress ?? "Surveying…") : "Run survey"}
         </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={runCheck}
+          disabled={busy}
+          className="min-h-10"
+        >
+          <Zap className="mr-1 h-4 w-4" aria-hidden /> Activation check (60s)
+        </Button>
       </div>
       {probe ? (
         <p className="mt-2 text-xs text-caution">
           The probe writes documented activation commands to the band. Run it with the headband off
           a patient.
         </p>
+      ) : null}
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        The activation check runs the survey, sends every documented pairing/AFE/START sequence
+        variant and confirms whether notifications start within 60 seconds.
+      </p>
+
+      {acks.length ? (
+        <div className="mt-3 rounded-lg border border-border bg-muted/30 p-2">
+          <p className="text-xs font-semibold">Firmware replies (live)</p>
+          <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+            {acks.map((ack, index) => (
+              <li
+                key={`${ack.atMs}-${index}`}
+                className={ack.ok ? "text-signal" : "text-destructive"}
+              >
+                +{(ack.atMs / 1000).toFixed(1)}s {ack.ok ? "OK" : "ERR"} {describeAck(ack)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {check ? (
+        <div className="mt-3 rounded-lg border border-border p-2 text-xs">
+          <p
+            className={`flex items-center gap-1 font-semibold ${check.passed ? "text-signal" : "text-caution"}`}
+          >
+            {check.passed ? (
+              <CheckCircle2 className="h-4 w-4" aria-hidden />
+            ) : (
+              <XCircle className="h-4 w-4" aria-hidden />
+            )}
+            {check.passed ? "Activation check passed" : "Activation check failed"}
+          </p>
+          <p className="mt-1 text-muted-foreground">{check.summary}</p>
+          <p className="mt-1">{check.advice}</p>
+          {check.activatedByVariant ? (
+            <p className="mt-1">
+              <span className="text-muted-foreground">Working sequence: </span>
+              {check.activatedByVariant}
+            </p>
+          ) : null}
+          {check.timeToFirstPacketSeconds != null ? (
+            <p>
+              <span className="text-muted-foreground">First notification: </span>
+              {check.timeToFirstPacketSeconds}s of {check.deadlineSeconds}s
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
@@ -220,13 +319,28 @@ export function BleIdentifyPanel() {
           {report.probe.length ? (
             <div className="space-y-1">
               <p className="font-semibold">Activation probe</p>
-              {report.probe.map((step) => (
-                <p key={step.name} className="text-muted-foreground">
-                  {step.name}:{" "}
-                  {step.written
-                    ? `${step.packetsAfter} packet(s) back`
-                    : `write failed — ${step.writeError}`}
+              {report.activatedByVariant ? (
+                <p className="text-signal">
+                  Streaming started with: {report.activatedByVariant}
                 </p>
+              ) : null}
+              {report.probe.map((step) => (
+                <div key={step.name}>
+                  <p className="text-muted-foreground">
+                    [{step.variant}] {step.name}:{" "}
+                    {step.written
+                      ? `${step.packetsAfter} packet(s) back`
+                      : `write failed — ${step.writeError}`}
+                  </p>
+                  {step.acks.map((ack, index) => (
+                    <p
+                      key={index}
+                      className={`pl-3 font-mono ${ack.ok ? "text-signal" : "text-destructive"}`}
+                    >
+                      {describeAck(ack)}
+                    </p>
+                  ))}
+                </div>
               ))}
             </div>
           ) : null}
