@@ -817,7 +817,11 @@ export class MuseClient implements EegSource {
         reject(new Error("The headband did not answer in time."));
       });
     });
-    return Promise.race([this.attach(), guard]).finally(() => timer?.stop());
+    // Keep a handler on the abandoned attach so a late failure never surfaces
+    // as an unhandled rejection.
+    const attaching = this.attach();
+    attaching.catch(() => undefined);
+    return Promise.race([attaching, guard]).finally(() => timer?.stop());
   }
 
   /**
