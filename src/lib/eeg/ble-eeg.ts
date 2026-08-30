@@ -51,7 +51,11 @@ import {
   zenliteEegSamples,
   zenlitePairCommand,
   zenlitePairUuid,
+  zenliteResponses,
+  zenliteSysCommand,
   ZENLITE_AFE,
+  ZENLITE_CMD,
+
   ZENLITE_UV_PER_COUNT,
   ZENLITE_NOTIFY,
   ZENLITE_SAMPLE_RATE,
