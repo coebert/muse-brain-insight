@@ -36,11 +36,15 @@ import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test"
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
+  zenliteAfePayload,
+  zenliteFrameWith,
   zenlitePairCommand,
   zenlitePairUuid,
   zenliteSysCommand,
+  zenliteSysPayload,
   ZENLITE_AFE,
   ZENLITE_CMD,
+  ZENLITE_FRAMING_VARIANTS,
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
@@ -53,6 +57,7 @@ import {
   zenliteStreamInfo,
 
 } from "@/lib/eeg/brainco-zenlite";
+
 
 /**
  * Turns the captured observation window into the same spectral array the
