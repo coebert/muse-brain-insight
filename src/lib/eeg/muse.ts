@@ -876,6 +876,10 @@ export class MuseClient implements EegSource {
     this.reconnecting = false;
     this.settleWaiters(false);
     this.stopHeartbeat();
+    this.wakeLock?.release();
+    this.wakeLock = null;
+    this.foregroundOff?.();
+    this.foregroundOff = null;
     this.detachSubscriptions();
     try {
       await this.send("h");
