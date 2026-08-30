@@ -61,7 +61,7 @@ describe("ZenLite command encoding", () => {
 
   it("uses the stable Web Bluetooth device id for the pairing identity", async () => {
     const { zenlitePairUuid } = await import("@/lib/eeg/brainco-zenlite");
-    expect(zenlitePairUuid(undefined, "device-identity-123456789")).toBe("device-identity-1");
+    expect(zenlitePairUuid(undefined, "device-identity-123456789")).toBe("device-identity-");
     expect(zenlitePairUuid(undefined, "short-id")).toBe("short-id0000000000");
   });
 

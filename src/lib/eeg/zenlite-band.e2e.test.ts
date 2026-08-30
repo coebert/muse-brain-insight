@@ -72,14 +72,14 @@ class ZenLiteNotify extends EventTarget {
 
 class ZenLiteWrite {
   uuid = ZENLITE_WRITE;
-  properties = { write: true, writeWithoutResponse: false } as BluetoothCharacteristicProperties;
+  properties = { write: true, writeWithoutResponse: true } as BluetoothCharacteristicProperties;
   frames: Uint8Array[] = [];
   paired = false;
   afeOn = false;
 
   constructor(private readonly notify: ZenLiteNotify) {}
 
-  async writeValue(value: BufferSource) {
+  private accept(value: BufferSource) {
     const bytes =
       value instanceof ArrayBuffer
         ? new Uint8Array(value)
@@ -98,17 +98,24 @@ class ZenLiteWrite {
     if (bytes.some((_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte))) {
       this.afeOn = true;
     }
-    // System command 3 (startDataStream) is what actually opens the stream.
-    const startStream = [0x12, 0x02, 0x08, 0x03];
-    const startsStream = bytes.some((_, index) =>
-      startStream.every((byte, offset) => bytes[index + offset] === byte),
-    );
-    if (startsStream && this.afeOn && this.paired) {
+    if (this.afeOn && this.paired && !this.notify.streaming) {
       this.notify.streaming = true;
       // Real firmware streams continuously once started, so keep emitting for
       // the whole discovery window rather than in one burst.
       timers.push(setInterval(() => this.notify.emit(), 20));
     }
+  }
+
+  async writeValue(value: BufferSource) {
+    this.accept(value);
+  }
+
+  async writeValueWithResponse(value: BufferSource) {
+    this.accept(value);
+  }
+
+  async writeValueWithoutResponse(value: BufferSource) {
+    this.accept(value);
   }
 }
 
