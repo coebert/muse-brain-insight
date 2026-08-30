@@ -94,10 +94,15 @@ class ZenLiteWrite {
     }
     // Field 3 (0x1a) carrying enum value 3 switches the AFE to 256 Hz.
     const afeStart = [0x1a, 0x02, 0x08, 0x03];
-    const startsAfe = bytes.some(
-      (_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte),
+    if (bytes.some((_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte))) {
+      this.afeOn = true;
+    }
+    // System command 3 (startDataStream) is what actually opens the stream.
+    const startStream = [0x12, 0x02, 0x08, 0x03];
+    const startsStream = bytes.some((_, index) =>
+      startStream.every((byte, offset) => bytes[index + offset] === byte),
     );
-    if (startsAfe && this.paired) {
+    if (startsStream && this.afeOn && this.paired) {
       this.notify.streaming = true;
       // Real firmware streams continuously once started, so keep emitting for
       // the whole discovery window rather than in one burst.
