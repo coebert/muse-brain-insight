@@ -44,6 +44,10 @@ import {
   ZENLITE_NOTIFY,
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
+  ZENLITE_TRANSPORTS,
+  isZenLiteNotify,
+  isZenLiteService,
+  zenliteTransportForService,
   ZENLITE_UV_PER_COUNT,
   zenliteSampleRateFromEnum,
   zenliteStreamInfo,
@@ -579,9 +583,8 @@ async function runActivationProbe(
     let target: BluetoothRemoteGATTCharacteristic | null = null;
     if (service) {
       try {
-        target = await service.getCharacteristic(
-          service.uuid.toLowerCase() === ZENLITE_SERVICE ? ZENLITE_WRITE : undefined!,
-        );
+        const transport = zenliteTransportForService(service.uuid);
+        target = transport ? await service.getCharacteristic(transport.write) : null;
       } catch {
         target = null;
       }
@@ -636,7 +639,7 @@ function summarise(report: BleIdentifyReport) {
   const active = report.characteristics.filter((entry) => entry.packets > 0);
   const eeg = active.filter((entry) => (entry.bestScore ?? 0) >= 0.6);
   const hasZenLite = report.characteristics.some(
-    (entry) => entry.characteristicUuid.toLowerCase() === ZENLITE_NOTIFY,
+    (entry) => isZenLiteNotify(entry.characteristicUuid),
   );
 
   if (eeg.length) {
