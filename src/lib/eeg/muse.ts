@@ -785,6 +785,21 @@ export class MuseClient implements EegSource {
   }
 
   /**
+   * A bounded attach. Resolves as soon as the link is streaming, rejects if the
+   * headband has not answered within the window so the caller can retry.
+   */
+  private withAttachTimeout(): Promise<void> {
+    let timer: BackgroundTimer | null = null;
+    const guard = new Promise<never>((_, reject) => {
+      timer = createBackgroundTimer(MuseClient.ATTACH_TIMEOUT_MS, () => {
+        timer?.stop();
+        reject(new Error("The headband did not answer in time."));
+      });
+    });
+    return Promise.race([this.attach(), guard]).finally(() => timer?.stop());
+  }
+
+  /**
    * Headbands slip and Bluetooth drops mid-case. Retry with backoff and keep
    * the case running; only give up — and tell the clinician — after five tries.
    */
