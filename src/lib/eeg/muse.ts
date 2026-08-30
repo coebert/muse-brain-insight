@@ -621,10 +621,20 @@ export class MuseClient implements EegSource {
    * the same samples would be written to the ring buffer twice.
    */
   private detachSubscriptions() {
-    for (const { characteristic, listener } of this.subscriptions) {
-      characteristic.removeEventListener("characteristicvaluechanged", listener);
+    this.detachOwn(this.subscriptions);
+  }
+
+  /**
+   * Removes only the listeners a specific attach registered. A timed-out
+   * attach can still be in flight while a newer one succeeds; it must never
+   * tear down the live listeners of the attach that won.
+   */
+  private detachOwn(mine: { characteristic: BluetoothRemoteGATTCharacteristic; listener: (e: Event) => void }[]) {
+    for (const entry of mine) {
+      entry.characteristic.removeEventListener("characteristicvaluechanged", entry.listener);
     }
-    this.subscriptions = [];
+    this.subscriptions = this.subscriptions.filter((s) => !mine.includes(s));
+    mine.length = 0;
   }
 
   /** (Re)opens GATT and re-subscribes to the four electrode characteristics. */
@@ -635,19 +645,22 @@ export class MuseClient implements EegSource {
     this.epoch++;
     const epoch = this.epoch;
     this.detachSubscriptions();
+    const mine: { characteristic: BluetoothRemoteGATTCharacteristic; listener: (e: Event) => void }[] = [];
     const server = await device.gatt!.connect();
     // stop() can land mid-handshake; abandon rather than resurrect the link.
-    if (this.stopping) throw new Error("Connection cancelled.");
+    if (this.stopping || epoch !== this.epoch) throw new Error("Connection cancelled.");
     const service = await server.getPrimaryService(MUSE_SERVICE);
-    this.control = await service.getCharacteristic(CONTROL_CHAR);
-    await this.control.startNotifications();
-    this.control.removeEventListener("characteristicvaluechanged", this.handleControlValue);
-    this.control.addEventListener("characteristicvaluechanged", this.handleControlValue);
+    const control = await service.getCharacteristic(CONTROL_CHAR);
+    if (this.stopping || epoch !== this.epoch) throw new Error("Connection cancelled.");
+    this.control = control;
+    await control.startNotifications();
+    control.removeEventListener("characteristicvaluechanged", this.handleControlValue);
+    control.addEventListener("characteristicvaluechanged", this.handleControlValue);
     this.controlBuffer = "";
 
     for (const channel of MUSE_CHANNELS) {
       if (this.stopping || epoch !== this.epoch) {
-        this.detachSubscriptions();
+        this.detachOwn(mine);
         throw new Error("Connection cancelled.");
       }
       const characteristic = await service.getCharacteristic(EEG_CHARS[channel]);
@@ -659,18 +672,24 @@ export class MuseClient implements EegSource {
         }
       };
       characteristic.addEventListener("characteristicvaluechanged", listener);
-      this.subscriptions.push({ characteristic, listener });
+      const entry = { characteristic, listener };
+      mine.push(entry);
+      this.subscriptions.push(entry);
       await characteristic.startNotifications();
     }
 
-    if (this.stopping) {
-      this.detachSubscriptions();
+    if (this.stopping || epoch !== this.epoch) {
+      this.detachOwn(mine);
       throw new Error("Connection cancelled.");
     }
     await this.send("h"); // halt any existing stream
     await this.send(this.preset); // confirmed streaming preset
     await this.send("s"); // status
     await this.send("d"); // start data
+    if (epoch !== this.epoch) {
+      this.detachOwn(mine);
+      throw new Error("Connection cancelled.");
+    }
     this.lastSampleAt = Date.now();
     this.lastStatusAt = Date.now();
     this.nudgedAt = 0;
@@ -798,7 +817,11 @@ export class MuseClient implements EegSource {
         reject(new Error("The headband did not answer in time."));
       });
     });
-    return Promise.race([this.attach(), guard]).finally(() => timer?.stop());
+    // Keep a handler on the abandoned attach so a late failure never surfaces
+    // as an unhandled rejection.
+    const attaching = this.attach();
+    attaching.catch(() => undefined);
+    return Promise.race([attaching, guard]).finally(() => timer?.stop());
   }
 
   /**
