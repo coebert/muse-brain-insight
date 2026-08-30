@@ -36,6 +36,9 @@ import { analyseStreamTest, type StreamTestResult } from "@/lib/eeg/stream-test"
 import {
   nextZenLiteMsgId,
   zenliteAfeCommand,
+  zenliteSysCommand,
+  ZENLITE_CMD,
+
   zenlitePairCommand,
   zenlitePairUuid,
   ZENLITE_AFE,
