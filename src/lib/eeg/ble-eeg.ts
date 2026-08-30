@@ -1395,6 +1395,8 @@ export class BleHeadsetSource implements EegSource {
         subscriptionError: null,
         captureMode: "notification",
       });
+      const responseDeframer = new ZenLiteDeframer();
+      const isZenLite = isZenLiteNotify(entry.characteristic.uuid);
       const handler = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
         if (!value) return;
@@ -1406,9 +1408,23 @@ export class BleHeadsetSource implements EegSource {
           value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
         );
         bleDiagnostics.packet(key, bytes, "discovery notification");
+        if (isZenLite) {
+          // Firmware answers a rejected handshake with an explicit code, which
+          // is far more useful than "connected but silent".
+          for (const response of zenliteResponses(bytes, responseDeframer)) {
+            bleDiagnostics.add(
+              response.ok ? "info" : "error",
+              `ZenLite firmware response: ${response.command ?? "unknown command"} → ${
+                response.sysResult ?? response.afeResult ?? "no result"
+              }`,
+              { ...response },
+            );
+          }
+        }
         if (!bucket || bucket.packets.length > 600) return;
         bucket.packets.push(bytes);
       };
+
       entry.characteristic.addEventListener("characteristicvaluechanged", handler);
       handlers.push([entry.characteristic, handler]);
       try {
