@@ -360,6 +360,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
                     diagnosticEntries,
                     bleDiagnostics.packetTotals(),
                     debugExportMeta("ble-log"),
+                    bleDiagnostics.allAcks(),
+                    bleDiagnostics.captureContext(),
                   );
                   setExportCheck(checkJsonExport(contents));
                   void downloadDebugFile(

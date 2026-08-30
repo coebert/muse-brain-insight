@@ -144,10 +144,45 @@ export const blePacketRecordSchema = z.object({
   deltaMs: z.number(),
 });
 
+/** Firmware acknowledgement/error code with its timing and sequence context. */
+export const bleAckRecordSchema = z.object({
+  t: z.number(),
+  at: z.number(),
+  iso: z.string(),
+  characteristicUuid: z.string(),
+  command: z.string().nullable(),
+  sysResult: z.string().nullable(),
+  afeResult: z.string().nullable(),
+  ok: z.boolean(),
+  variant: z.string().nullable(),
+  step: z.string().nullable(),
+  firmwareVersion: z.string().nullable(),
+  rawHex: hexSchema.optional(),
+});
+
+/** Device, firmware and activation-sequence context for a capture. */
+export const bleCaptureContextSchema = z.object({
+  deviceName: z.string().optional(),
+  deviceId: z.string().optional(),
+  manufacturer: z.string().optional(),
+  model: z.string().optional(),
+  firmwareVersion: z.string().optional(),
+  hardwareVersion: z.string().optional(),
+  serialNumber: z.string().optional(),
+  serviceUuid: z.string().optional(),
+  writeCharacteristicUuid: z.string().optional(),
+  notifyCharacteristicUuid: z.string().optional(),
+  sampleRateHz: z.number().optional(),
+  variant: z.string().optional(),
+  step: z.string().optional(),
+});
+
 export const bleLogExportSchema = z.object({
   meta: exportMetaSchema.optional(),
   exportedAt: z.string().optional(),
   userAgent: z.string().optional(),
+  captureContext: bleCaptureContextSchema.optional(),
+  acks: z.array(bleAckRecordSchema).optional(),
   packetTotals: z.record(z.number()).optional(),
   entries: z.array(bleLogEntrySchema),
 });
@@ -164,6 +199,8 @@ export const debugSessionExportSchema = z.object({
   frames: z.array(z.record(z.unknown())).optional(),
   packets: z.array(blePacketRecordSchema).optional(),
   connectionLog: z.array(bleLogEntrySchema).optional(),
+  captureContext: bleCaptureContextSchema.optional(),
+  acks: z.array(bleAckRecordSchema).optional(),
 });
 
 /* ------------------------------------------------------------------ */

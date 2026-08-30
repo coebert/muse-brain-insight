@@ -433,6 +433,9 @@ export async function identifyBleHeadset(
   const device = options.device ?? (await requestBleHeadset());
   const deviceName = device.name ?? "Unnamed headband";
   bleDiagnostics.add("session", `Identify run started for ${deviceName}`, { watchSeconds, ios });
+  // Firmware/device facts are pinned to the capture so an exported log can be
+  // interpreted later without knowing which band produced it.
+  bleDiagnostics.setContext({ deviceName, ...(device.id ? { deviceId: device.id } : {}) });
 
   const report: BleIdentifyReport = {
     deviceName,
@@ -485,6 +488,13 @@ export async function identifyBleHeadset(
         }
       }
     }
+    bleDiagnostics.setContext({
+      ...(report.information["Manufacturer"] ? { manufacturer: report.information["Manufacturer"] } : {}),
+      ...(report.information["Model"] ? { model: report.information["Model"] } : {}),
+      ...(report.information["Firmware"] ? { firmwareVersion: report.information["Firmware"] } : {}),
+      ...(report.information["Hardware"] ? { hardwareVersion: report.information["Hardware"] } : {}),
+      ...(report.information["Serial"] ? { serialNumber: report.information["Serial"] } : {}),
+    });
     try {
       const battery = await server
         .getPrimaryService(BATTERY_SERVICE)
@@ -605,7 +615,18 @@ export async function identifyBleHeadset(
           };
           report.acks.push(ack);
           probeState.step?.acks.push(ack);
-          bleDiagnostics.add("command", `Firmware ack: ${describeAck(ack)}`, { ...ack });
+          // Persist the code, its timestamp and the sequence it belongs to in
+          // the capture log, so failures stay debuggable after export.
+          bleDiagnostics.ack({
+            characteristicUuid: ack.characteristicUuid,
+            command: ack.command,
+            sysResult: ack.sysResult,
+            afeResult: ack.afeResult,
+            ok: ack.ok,
+            variant: ack.variant,
+            step: ack.step,
+            bytes,
+          });
           options.onAck?.(ack);
         }
       };
@@ -714,6 +735,9 @@ async function runActivationProbe(
   for (const variant of buildProbeVariants(deviceId)) {
     let variantStreamed = false;
     for (const candidate of variant) {
+      // Pin the sequence in the capture context so replies logged from the
+      // notification handler carry the command that provoked them.
+      bleDiagnostics.setContext({ variant: candidate.variant, step: candidate.name });
       // BrainCo steps are written to whichever vendor transport this firmware
       // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
       const service = isZenLiteService(candidate.service)

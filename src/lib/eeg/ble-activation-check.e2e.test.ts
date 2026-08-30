@@ -10,7 +10,7 @@
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { runActivationCheck } from "@/lib/eeg/ble-activation-check";
+import { activationCheckJson, runActivationCheck } from "@/lib/eeg/ble-activation-check";
 import {
   ZENLITE_CMD,
   ZENLITE_NOTIFY_FC11,
@@ -272,5 +272,28 @@ describe("one-tap activation check", () => {
     expect(result.outcome).toBe("silent");
     expect(result.timeToFirstPacketSeconds).toBeNull();
     expect(result.summary).toMatch(/No notifications/i);
+  }, 30_000);
+});
+
+describe("activation check export", () => {
+  it("serialises the sequences, every code with timestamps and the timing", async () => {
+    vi.useFakeTimers();
+    const band = new MockBand();
+    const result = await drive(runActivationCheck({ device: band.device(), deadlineSeconds: 60 }));
+    band.stop();
+
+    const parsed = JSON.parse(activationCheckJson(result));
+
+    expect(parsed.kind).toBe("activation-check");
+    expect(parsed.verdict.passed).toBe(true);
+    expect(parsed.verdict.timeToFirstPacketSeconds).toBeGreaterThanOrEqual(0);
+    expect(parsed.verdict.activatedByVariant).toBe("Pair → AFE → START");
+    expect(parsed.sequences.length).toBeGreaterThan(0);
+    expect(parsed.sequences[0].sentHex).toMatch(/^[0-9a-f ]+$/);
+    expect(parsed.acks.length).toBeGreaterThan(0);
+    expect(parsed.loggedAcks.length).toBeGreaterThan(0);
+    expect(parsed.loggedAcks[0].iso).toMatch(/T/);
+    expect(parsed.loggedAcks[0]).toHaveProperty("variant");
+    expect(parsed.captureContext.deviceName).toBe("Regul8");
   }, 30_000);
 });

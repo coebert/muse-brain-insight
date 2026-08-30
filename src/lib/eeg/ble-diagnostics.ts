@@ -24,6 +24,52 @@ export type BleLogKind =
   | "error"
   | "info";
 
+/**
+ * Stable context for a capture: which band, which firmware, and which
+ * activation sequence was in flight. Stored once per session and again on
+ * every acknowledgement, so an exported log can be interpreted months later
+ * without the person reading it having to remember the hardware.
+ */
+export interface BleCaptureContext {
+  deviceName?: string;
+  deviceId?: string;
+  manufacturer?: string;
+  model?: string;
+  firmwareVersion?: string;
+  hardwareVersion?: string;
+  serialNumber?: string;
+  serviceUuid?: string;
+  writeCharacteristicUuid?: string;
+  notifyCharacteristicUuid?: string;
+  sampleRateHz?: number;
+  /** Activation sequence variant currently being tried. */
+  variant?: string;
+  /** Command inside that variant. */
+  step?: string;
+}
+
+/** One firmware acknowledgement or error code, with its timing and context. */
+export interface BleAckRecord {
+  /** ms since the capture session started. */
+  t: number;
+  /** Wall-clock epoch milliseconds. */
+  at: number;
+  /** ISO timestamp, so the record is readable without conversion. */
+  iso: string;
+  characteristicUuid: string;
+  command: string | null;
+  sysResult: string | null;
+  afeResult: string | null;
+  ok: boolean;
+  /** Activation variant in flight when the code arrived. */
+  variant: string | null;
+  /** Command in flight when the code arrived. */
+  step: string | null;
+  firmwareVersion: string | null;
+  /** Raw frame bytes, when raw capture is enabled. */
+  rawHex?: string;
+}
+
 export interface BleLogEntry {
   /** ms since the log session started. */
   t: number;
@@ -40,6 +86,8 @@ export interface BleLogEntry {
 }
 
 const MAX_ENTRIES = 1_200;
+/** Acknowledgement codes retained per capture. */
+const MAX_ACKS = 400;
 /** Bytes kept per frame — enough to see framing, header and CRC. */
 const MAX_HEX_BYTES = 64;
 /** Raw packets logged per characteristic, so a live stream cannot flood it. */
@@ -61,6 +109,8 @@ export class BleDiagnosticLog {
   private started = Date.now();
   private packetCounts = new Map<string, number>();
   private listeners = new Set<(entries: BleLogEntry[]) => void>();
+  private acks: BleAckRecord[] = [];
+  private context: BleCaptureContext = {};
   /** Off by default: raw bytes are only captured when the clinician asks. */
   enabled = false;
 
@@ -71,13 +121,89 @@ export class BleDiagnosticLog {
   }
 
   /** Starts a fresh capture for a new pairing attempt. */
-  beginSession(label: string) {
+  beginSession(label: string, context: BleCaptureContext = {}) {
     this.entries = [];
     this.packetCounts.clear();
+    this.acks = [];
+    this.context = { ...context };
     this.started = Date.now();
     this.add("session", `Connection attempt: ${label}`, {
       userAgent: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
+      ...this.context,
     });
+  }
+
+  /**
+   * Merges newly discovered device/firmware or activation-sequence facts into
+   * the capture context. Called as Device Information is read and as each
+   * activation variant starts, so later acknowledgements are self-describing.
+   */
+  setContext(patch: BleCaptureContext) {
+    const before = JSON.stringify(this.context);
+    this.context = { ...this.context, ...patch };
+    if (JSON.stringify(this.context) === before) return;
+    this.add("info", "Capture context updated", { ...patch });
+  }
+
+  captureContext(): BleCaptureContext {
+    return { ...this.context };
+  }
+
+  /**
+   * Records a decoded firmware acknowledgement or error code alongside its
+   * timestamp and the sequence that provoked it. These are kept in their own
+   * list as well as the entry log so exports carry a clean, machine-readable
+   * command/response history.
+   */
+  ack(input: {
+    characteristicUuid: string;
+    command: string | null;
+    sysResult: string | null;
+    afeResult: string | null;
+    ok: boolean;
+    variant?: string | null;
+    step?: string | null;
+    bytes?: Uint8Array;
+  }): BleAckRecord {
+    const at = Date.now();
+    const record: BleAckRecord = {
+      t: at - this.started,
+      at,
+      iso: new Date(at).toISOString(),
+      characteristicUuid: input.characteristicUuid,
+      command: input.command,
+      sysResult: input.sysResult,
+      afeResult: input.afeResult,
+      ok: input.ok,
+      variant: input.variant ?? this.context.variant ?? null,
+      step: input.step ?? this.context.step ?? null,
+      firmwareVersion: this.context.firmwareVersion ?? null,
+    };
+    if (this.enabled && input.bytes) record.rawHex = toHex(input.bytes, input.bytes.length);
+    this.acks.push(record);
+    if (this.acks.length > MAX_ACKS) this.acks.splice(0, this.acks.length - MAX_ACKS);
+    this.add(
+      "response",
+      `Firmware ${record.ok ? "ack" : "error"}: ${record.command ?? "unknown command"} → ${
+        [record.sysResult, record.afeResult].filter(Boolean).join(" / ") || "no code"
+      }`,
+      {
+        command: record.command,
+        sysResult: record.sysResult,
+        afeResult: record.afeResult,
+        ok: record.ok,
+        variant: record.variant,
+        step: record.step,
+        firmwareVersion: record.firmwareVersion,
+        characteristicUuid: record.characteristicUuid,
+      },
+    );
+    return record;
+  }
+
+  /** Every acknowledgement/error code decoded during this capture. */
+  allAcks(): BleAckRecord[] {
+    return [...this.acks];
   }
 
   add(kind: BleLogKind, message: string, data?: Record<string, unknown>, bytes?: Uint8Array) {
@@ -129,6 +255,7 @@ export class BleDiagnosticLog {
   clear() {
     this.entries = [];
     this.packetCounts.clear();
+    this.acks = [];
     this.started = Date.now();
     this.emit();
   }
@@ -153,19 +280,38 @@ export const bleDiagnostics = new BleDiagnosticLog();
 export function formatBleDiagnosticText(
   entries: BleLogEntry[],
   totals: Record<string, number> = {},
+  acks: BleAckRecord[] = [],
+  context: BleCaptureContext = {},
 ): string {
   const lines = [
     "CortexTrace BLE diagnostic log",
     `Exported: ${new Date().toISOString()}`,
     `Entries: ${entries.length}`,
-    "",
   ];
+  const contextKeys = Object.keys(context) as Array<keyof BleCaptureContext>;
+  if (contextKeys.length) {
+    lines.push("", "Capture context:");
+    for (const key of contextKeys) lines.push(`  ${key}: ${context[key]}`);
+  }
+  lines.push("");
   for (const entry of entries) {
     const seconds = (entry.t / 1000).toFixed(3).padStart(8, " ");
     let line = `[${seconds}s] ${entry.kind.toUpperCase().padEnd(14)} ${entry.message}`;
     if (entry.data) line += ` ${JSON.stringify(entry.data)}`;
     if (entry.hex) line += `\n                          bytes(${entry.bytes}): ${entry.hex}`;
     lines.push(line);
+  }
+  if (acks.length) {
+    lines.push("", "Firmware acknowledgements and error codes:");
+    for (const ack of acks) {
+      const codes = [ack.sysResult, ack.afeResult].filter(Boolean).join(" / ") || "no code";
+      lines.push(
+        `  [${(ack.t / 1000).toFixed(3)}s] ${ack.iso} ${ack.ok ? "OK   " : "ERROR"} ` +
+          `${ack.command ?? "unknown"} → ${codes}` +
+          `${ack.variant ? ` (variant "${ack.variant}", step "${ack.step ?? "?"}")` : ""}` +
+          `${ack.firmwareVersion ? ` fw ${ack.firmwareVersion}` : ""}`,
+      );
+    }
   }
   const totalKeys = Object.keys(totals);
   if (totalKeys.length) {
@@ -179,6 +325,8 @@ export function bleDiagnosticJson(
   entries: BleLogEntry[],
   totals: Record<string, number> = {},
   meta?: ExportMeta,
+  acks: BleAckRecord[] = [],
+  context: BleCaptureContext = {},
 ): string {
   const header = meta ?? buildExportMeta({ kind: "ble-log" });
   return JSON.stringify(
@@ -186,7 +334,9 @@ export function bleDiagnosticJson(
       meta: header,
       exportedAt: header.exportedAt,
       userAgent: header.userAgent ?? "unknown",
+      captureContext: context,
       packetTotals: totals,
+      acks,
       entries,
     },
     null,

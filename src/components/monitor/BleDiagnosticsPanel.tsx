@@ -124,7 +124,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           onClick={() =>
             downloadDebugFile(
               debugFilename("ble-log", "txt"),
-              formatBleDiagnosticText(entries, totals),
+              formatBleDiagnosticText(entries, totals, bleDiagnostics.allAcks(), bleDiagnostics.captureContext()),
               "text/plain",
             )
           }
@@ -137,7 +137,13 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           className="min-h-11"
           disabled={!entries.length}
           onClick={() =>
-            exportJson("ble-log", bleDiagnosticJson(entries, totals, debugExportMeta("ble-log", meta)))
+            exportJson("ble-log", bleDiagnosticJson(
+                entries,
+                totals,
+                debugExportMeta("ble-log", meta),
+                bleDiagnostics.allAcks(),
+                bleDiagnostics.captureContext(),
+              ))
           }
         >
           <Download className="size-3.5" aria-hidden /> Log (.json)

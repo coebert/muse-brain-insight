@@ -12,6 +12,8 @@
  * the survey into a pass/fail verdict with the firmware's own reply codes.
  */
 
+import { bleDiagnostics } from "@/lib/eeg/ble-diagnostics";
+import { buildExportMeta } from "@/lib/eeg/export-schema";
 import {
   describeAck,
   identifyBleHeadset,
@@ -147,4 +149,73 @@ export function summariseActivationCheck(
     advice,
     report,
   };
+}
+
+/**
+ * Serialises an activation check for offline debugging: every sequence tried,
+ * the bytes sent, every acknowledgement/error code with its timestamp, and how
+ * long the band took to send its first notification. Shares the standard export
+ * metadata header so it sits alongside the other diagnostic captures.
+ */
+export function activationCheckJson(result: ActivationCheckResult): string {
+  const report = result.report;
+  const meta = buildExportMeta({
+    kind: "ble-log",
+    deviceLabel: report.deviceName,
+    deviceInfo: {
+      model: report.information["Model"] ?? null,
+      manufacturer: report.information["Manufacturer"] ?? null,
+      firmwareVersion: report.information["Firmware"] ?? null,
+      hardwareVersion: report.information["Hardware"] ?? null,
+    },
+    startedAt: report.startedAt,
+  });
+  return JSON.stringify(
+    {
+      meta,
+      exportedAt: meta.exportedAt,
+      kind: "activation-check",
+      captureContext: bleDiagnostics.captureContext(),
+      verdict: {
+        outcome: result.outcome,
+        passed: result.passed,
+        deadlineSeconds: result.deadlineSeconds,
+        timeToFirstPacketSeconds: result.timeToFirstPacketSeconds,
+        activatedByVariant: result.activatedByVariant,
+        activatedByStep: result.activatedByStep,
+        summary: result.summary,
+        advice: result.advice,
+      },
+      device: {
+        name: report.deviceName,
+        startedAt: report.startedAt,
+        batteryPercent: report.batteryPercent,
+        information: report.information,
+        services: report.services,
+        characteristics: report.characteristics,
+      },
+      /** Each activation sequence variant, in the order it was tried. */
+      sequences: report.probe.map((step) => ({
+        variant: step.variant,
+        step: step.name,
+        detail: step.detail,
+        serviceUuid: step.serviceUuid,
+        characteristicUuid: step.characteristicUuid,
+        sentHex: step.sentHex,
+        written: step.written,
+        writeError: step.writeError ?? null,
+        packetsAfter: step.packetsAfter,
+        bytesAfter: step.bytesAfter,
+        respondingCharacteristics: step.respondingCharacteristics,
+        acks: step.acks,
+      })),
+      /** Every decoded acknowledgement/error code, in arrival order. */
+      acks: report.acks,
+      /** Same codes as stored in the capture log, with wall-clock timestamps. */
+      loggedAcks: bleDiagnostics.allAcks(),
+      packetTotals: bleDiagnostics.packetTotals(),
+    },
+    null,
+    2,
+  );
 }
