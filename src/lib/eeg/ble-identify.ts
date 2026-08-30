@@ -289,26 +289,39 @@ async function connectWithRetries(device: BluetoothDevice, ios: boolean) {
     : new Error("Could not open a GATT connection to the headset.");
 }
 
+interface ProbeCandidate {
+  name: string;
+  detail: string;
+  service: string;
+  bytes: Uint8Array;
+  /** Forces a write mode; otherwise the characteristic's preferred mode is used. */
+  writeMode?: "response" | "no-response";
+}
+
 /**
- * Documented sequences, tried one at a time. Nothing here is invented: the
- * BrainCo frames are the ones published in the OxyZen SDK documentation and
- * already used by the streaming path, and the Nordic UART strings are the
- * conventional start tokens for a UART-transport band.
+ * Documented sequences, tried one at a time, followed by a framing sweep.
+ *
+ * The BrainCo frames are the ones published in the OxyZen SDK documentation and
+ * already used by the streaming path. When a band accepts those writes but
+ * never answers — as the FC-11 survey showed — the likely cause is that its
+ * firmware branch expects a different length/checksum byte order or a
+ * write-without-response, both of which are dropped silently. The sweep tries
+ * each combination once so the log shows which one the band actually answers.
  */
-function buildProbeSteps(): Array<{ name: string; detail: string; service: string; bytes: Uint8Array }> {
+function buildProbeSteps(): ProbeCandidate[] {
   const uuid = zenlitePairUuid();
-  return [
-    {
-      name: "BrainCo validate pairing",
-      detail: "Confirms an existing pairing without re-pairing the band.",
-      service: ZENLITE_SERVICE,
-      bytes: zenlitePairCommand(nextZenLiteMsgId(), false, uuid),
-    },
+  const steps: ProbeCandidate[] = [
     {
       name: "BrainCo pair",
       detail: "Performs a first-time pairing handshake.",
       service: ZENLITE_SERVICE,
       bytes: zenlitePairCommand(nextZenLiteMsgId(), true, uuid),
+    },
+    {
+      name: "BrainCo validate pairing",
+      detail: "Confirms an existing pairing without re-pairing the band.",
+      service: ZENLITE_SERVICE,
+      bytes: zenlitePairCommand(nextZenLiteMsgId(), false, uuid),
     },
     {
       name: "BrainCo system monitor",
@@ -323,19 +336,55 @@ function buildProbeSteps(): Array<{ name: string; detail: string; service: strin
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
     },
     {
+      name: "BrainCo start data stream",
+      detail: "Asks the band to begin transmitting once the front end is on.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+    },
+    {
       name: "BrainCo AFE on, 128 Hz",
       detail: "Same, at the alternative published rate.",
       service: ZENLITE_SERVICE,
       bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr128),
     },
     {
-      name: "Nordic UART start token",
-      detail: "Conventional plain-text start command on a UART-transport band.",
-      service: NORDIC_UART,
-      bytes: new TextEncoder().encode("start\r\n"),
+      name: "BrainCo AFE 256 Hz, unacknowledged write",
+      detail: "Same command sent write-without-response, which some firmware requires.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
+      writeMode: "no-response",
     },
   ];
+
+  // Framing sweep: the documented variant is already covered above, so only the
+  // alternatives are tried here, each with a harmless status request first.
+  for (const variant of ZENLITE_FRAMING_VARIANTS.slice(1)) {
+    steps.push({
+      name: `BrainCo system monitor — ${variant.label}`,
+      detail: "Same status request framed with an alternative length/checksum byte order.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteFrameWith(
+        zenliteSysPayload(nextZenLiteMsgId(), ZENLITE_CMD.getSystemMonitor),
+        variant,
+      ),
+    });
+    steps.push({
+      name: `BrainCo AFE 256 Hz — ${variant.label}`,
+      detail: "Front-end start framed with the same alternative byte order.",
+      service: ZENLITE_SERVICE,
+      bytes: zenliteFrameWith(zenliteAfePayload(nextZenLiteMsgId(), ZENLITE_AFE.sr256), variant),
+    });
+  }
+
+  steps.push({
+    name: "Nordic UART start token",
+    detail: "Conventional plain-text start command on a UART-transport band.",
+    service: NORDIC_UART,
+    bytes: new TextEncoder().encode("start\r\n"),
+  });
+  return steps;
 }
+
 
 /**
  * Connects, surveys and reports. This never throws because the band failed to
