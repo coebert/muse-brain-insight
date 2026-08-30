@@ -990,7 +990,6 @@ export class BleHeadsetSource implements EegSource {
       return;
     }
     if (!write) return;
-    const send = async (frame: Uint8Array, label: string) => {
     const send = async (
       frame: Uint8Array,
       label: string,
