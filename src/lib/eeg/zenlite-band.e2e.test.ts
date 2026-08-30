@@ -75,6 +75,7 @@ class ZenLiteWrite {
   properties = { write: true, writeWithoutResponse: false } as BluetoothCharacteristicProperties;
   frames: Uint8Array[] = [];
   paired = false;
+  afeOn = false;
 
   constructor(private readonly notify: ZenLiteNotify) {}
 
@@ -94,10 +95,15 @@ class ZenLiteWrite {
     }
     // Field 3 (0x1a) carrying enum value 3 switches the AFE to 256 Hz.
     const afeStart = [0x1a, 0x02, 0x08, 0x03];
-    const startsAfe = bytes.some(
-      (_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte),
+    if (bytes.some((_, index) => afeStart.every((byte, offset) => bytes[index + offset] === byte))) {
+      this.afeOn = true;
+    }
+    // System command 3 (startDataStream) is what actually opens the stream.
+    const startStream = [0x12, 0x02, 0x08, 0x03];
+    const startsStream = bytes.some((_, index) =>
+      startStream.every((byte, offset) => bytes[index + offset] === byte),
     );
-    if (startsAfe && this.paired) {
+    if (startsStream && this.afeOn && this.paired) {
       this.notify.streaming = true;
       // Real firmware streams continuously once started, so keep emitting for
       // the whole discovery window rather than in one burst.
@@ -159,7 +165,7 @@ describe("BrainCo ZenLite headband", () => {
 
     // Validation + AFE is attempted first. Because this mock represents a new
     // band, it stays silent; pairing + AFE then opens the stream.
-    expect(write.frames.length).toBe(4);
+    expect(write.frames.length).toBe(6);
     expect(write.paired).toBe(true);
     expect(notify.streaming).toBe(true);
     expect(source.discovery?.format).toBe("brainco-zenlite");

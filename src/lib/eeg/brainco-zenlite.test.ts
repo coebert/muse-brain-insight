@@ -42,7 +42,7 @@ describe("ZenLite command encoding", () => {
   });
 
   it("encodes a system command", () => {
-    expect(hex(zenliteSysCommand(4, ZENLITE_CMD.getSystemInfo))).toBe(
+    expect(hex(zenliteSysCommand(4, ZENLITE_CMD.startDataStream))).toBe(
       "42524e430101060008041202080353b2",
     );
   });
@@ -120,5 +120,49 @@ describe("ZenLite data decoding", () => {
   it("ignores short non-EEG blocks such as IMU payloads", () => {
     const imu = zenliteFrame([0x08, 0x05, 0x2a, 0x06, 1, 2, 3, 4, 5, 6]);
     expect(decodeZenLitePacket(imu)).toEqual([]);
+  });
+});
+
+describe("verified vendor wire format", () => {
+  const hexOf = (b: Uint8Array) => Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+
+  it("matches vendor packer bytes for pair, validate, AFE and start-stream", () => {
+    // Reference bytes produced by BrainCo's own command packers.
+    expect(hexOf(zenlitePairCommand(1, true, "0123456789abcdef"))).toBe(
+      "42524e4301011800080112140801321030313233343536373839616263646566dd3a",
+    );
+    expect(hexOf(zenlitePairCommand(2, false, "0123456789abcdef"))).toBe(
+      "42524e4301011800080212140802321030313233343536373839616263646566cd9b",
+    );
+    expect(hexOf(zenliteSysCommand(3, ZENLITE_CMD.startDataStream))).toBe(
+      "42524e4301010600080312020803e672",
+    );
+    expect(hexOf(zenliteAfeCommand(6, ZENLITE_AFE.sr256))).toBe(
+      "42524e430101060008061a0208032812",
+    );
+  });
+
+  it("decodes EEG samples from the verified AFE data path", () => {
+    const varint = (n: number) => {
+      const out: number[] = [];
+      let v = n;
+      do {
+        let b = v & 0x7f;
+        v >>>= 7;
+        if (v) b |= 0x80;
+        out.push(b);
+      } while (v);
+      return out;
+    };
+    const bytesField = (f: number, body: number[]) => [
+      ...varint((f << 3) | 2),
+      ...varint(body.length),
+      ...body,
+    ];
+    const varintField = (f: number, v: number) => [...varint((f << 3) | 0), ...varint(v)];
+    const samples = [0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0x00, 0x10, 0x00];
+    const afeData = [...varintField(1, 7), ...varintField(2, ZENLITE_AFE.sr256), ...bytesField(4, samples)];
+    const frame = zenliteFrame([...varintField(1, 7), ...bytesField(2, bytesField(2, afeData))]);
+    expect(decodeZenLitePacket(frame)).toEqual([1, -1, 4096]);
   });
 });

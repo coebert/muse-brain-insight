@@ -32,8 +32,29 @@ const HEADER = [...MAGIC, 0x01, 0x01];
 /** AFE (EEG front end) sample-rate enum from the vendor SDK. */
 export const ZENLITE_AFE = { off: 1, sr128: 2, sr256: 3 } as const;
 
-/** System command enum from the vendor SDK. */
-export const ZENLITE_CMD = { pair: 1, validatePairInfo: 2, getSystemInfo: 3 } as const;
+/**
+ * System command enum from the vendor SDK, verified byte-for-byte against the
+ * BrainCo command packers. Opcode 3 starts the data stream — the app used to
+ * treat it as "get system info", which is why bands connected but stayed silent.
+ */
+export const ZENLITE_CMD = {
+  pair: 1,
+  validatePairInfo: 2,
+  startDataStream: 3,
+  stopDataStream: 4,
+  shutdown: 5,
+  enterOta: 6,
+  reset: 7,
+  setDeviceName: 8,
+  setSleepIdleTime: 9,
+  getSystemMonitor: 10,
+} as const;
+
+/**
+ * Microvolts per raw 24-bit count, measured from the vendor decoder's passband
+ * output (gain ≈ 1 between 5 and 30 Hz). Amplitudes remain approximate.
+ */
+export const ZENLITE_UV_PER_COUNT = 0.006007;
 
 /* ------------------------------------------------------------------ */
 /* Framing                                                             */
@@ -175,14 +196,34 @@ function int24be(bytes: Uint8Array, offset: number): number {
 }
 
 /**
- * Extracts EEG samples from one decoded ZenLite message.
+ * Verified AFE data path: top-level field 2 is the AFE module, its field 2 is
+ * the AFE data message, and field 4 of that holds the packed 24-bit big-endian
+ * EEG block (field 1 is the sequence number, field 2 the sample-rate enum).
+ * Confirmed by driving the vendor decoder with synthesised frames.
+ */
+const EEG_PATH = "2.2.4";
+
+/** Sample-rate enum -> Hz, as reported inside AFE data messages. */
+export function zenliteSampleRateFromEnum(value: number): number | null {
+  if (value === ZENLITE_AFE.sr128) return 128;
+  if (value === ZENLITE_AFE.sr256) return 256;
+  return null;
+}
+
+/**
+ * Extracts EEG samples (raw counts) from one decoded ZenLite message.
  *
- * The EEG payload is the packed 24-bit big-endian sample block; it is the only
- * length-delimited field whose size is a non-trivial multiple of three, so it
- * can be identified without a schema. IMU/PPG blocks are shorter and rejected.
+ * The schema path above is used when present; otherwise the packed 24-bit block
+ * is located by shape so that firmware revisions which move fields still decode.
  */
 export function zenliteEegSamples(payload: Uint8Array): number[] {
   const all = collectBytesFields(payload);
+  const exact = all.find((f) => f.path.join(".") === EEG_PATH);
+  if (exact && exact.bytes.length >= 3 && exact.bytes.length % 3 === 0) {
+    const samples: number[] = [];
+    for (let i = 0; i + 2 < exact.bytes.length; i += 3) samples.push(int24be(exact.bytes, i));
+    return samples;
+  }
   const key = (f: ProtoBytes) => f.path.join(".");
   const parents = new Set(
     all.flatMap((f) => f.path.slice(0, -1).map((_, i) => f.path.slice(0, i + 1).join("."))),
