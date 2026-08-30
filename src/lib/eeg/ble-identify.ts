@@ -577,7 +577,11 @@ async function runActivationProbe(
   const byService = new Map(services.map((service) => [service.uuid.toLowerCase(), service]));
 
   for (const candidate of buildProbeSteps()) {
-    const service = byService.get(candidate.service.toLowerCase());
+    // BrainCo steps are written to whichever vendor transport this firmware
+    // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
+    const service = isZenLiteService(candidate.service)
+      ? (ZENLITE_TRANSPORTS.map((t) => byService.get(t.service)).find(Boolean) ?? undefined)
+      : byService.get(candidate.service.toLowerCase());
     // Prefer the documented write characteristic of that service; otherwise
     // fall back to whatever writable characteristic that service exposes.
     let target: BluetoothRemoteGATTCharacteristic | null = null;
@@ -591,10 +595,11 @@ async function runActivationProbe(
       if (!target) {
         target =
           writable.find(
-            (entry) => entry.service.uuid.toLowerCase() === candidate.service.toLowerCase(),
+            (entry) => entry.service.uuid.toLowerCase() === service.uuid.toLowerCase(),
           )?.characteristic ?? null;
       }
     }
+
     if (!target) continue;
 
     for (const watcher of watchers) watcher.mark = watcher.report.packets;
