@@ -52,7 +52,9 @@ import {
   ZENLITE_UV_PER_COUNT,
   zenliteSampleRateFromEnum,
   zenliteStreamInfo,
-
+  zenliteResponses,
+  ZenLiteDeframer,
+  ZENLITE_SAMPLE_RATE,
 } from "@/lib/eeg/brainco-zenlite";
 
 
@@ -179,13 +181,38 @@ export interface BleCharacteristicReport {
   bestFormatLabel?: string;
   bestScore?: number;
   decodedSamples?: number;
+  /** Milliseconds from the start of the run to this channel's first packet. */
+  firstPacketAtMs?: number;
 }
 
 export type BleIdentifyStatus = "eeg" | "traffic" | "silent" | "no-notify" | "no-services";
 
+/**
+ * One firmware acknowledgement decoded from a notification, attributed to the
+ * command that was in flight when it arrived.
+ */
+export interface BleFirmwareAck {
+  /** Milliseconds from the start of the run. */
+  atMs: number;
+  /** Probe step that was awaiting a reply, when one was. */
+  step: string | null;
+  /** Activation variant the step belonged to. */
+  variant: string | null;
+  characteristicUuid: string;
+  /** Command the firmware says it is answering, e.g. `PAIR`. */
+  command: string | null;
+  /** System module result code, e.g. `INVALID_PAIR_INFO_ERR`. */
+  sysResult: string | null;
+  /** EEG front-end result code. */
+  afeResult: string | null;
+  ok: boolean;
+}
+
 export interface BleActivationProbeStep {
   name: string;
   detail: string;
+  /** Activation sequence variant this step belongs to. */
+  variant: string;
   serviceUuid: string;
   characteristicUuid: string;
   sentHex: string;
@@ -195,6 +222,8 @@ export interface BleActivationProbeStep {
   packetsAfter: number;
   bytesAfter: number;
   respondingCharacteristics: string[];
+  /** Firmware acknowledgements that arrived while this step was in flight. */
+  acks: BleFirmwareAck[];
 }
 
 export interface BleSampleRateCheck {
@@ -230,6 +259,14 @@ export interface BleIdentifyReport {
   preview?: StreamTestResult;
   /** Characteristic the preview was computed from. */
   previewCharacteristic?: string;
+  /** Milliseconds from the start of the run to the first packet on any channel. */
+  timeToFirstPacketMs?: number;
+  /** Every firmware acknowledgement decoded during the run, in order. */
+  acks: BleFirmwareAck[];
+  /** Activation variant after which the band started sending packets. */
+  activatedByVariant?: string;
+  /** Probe step after which the band started sending packets. */
+  activatedByStep?: string;
 }
 
 
@@ -240,7 +277,15 @@ export interface BleIdentifyOptions {
   probeActivation?: boolean;
   /** Reuse an already-chosen device instead of opening the chooser. */
   device?: BluetoothDevice;
+  /** Ends the observation window early once the band is clearly streaming. */
+  stopWhenStreaming?: boolean;
+  /** Packets required before `stopWhenStreaming` ends the window. Default 20. */
+  minStreamPackets?: number;
+  /** Stops the probe as soon as a variant makes the band stream. Default true. */
+  stopProbeWhenStreaming?: boolean;
   onProgress?: (message: string) => void;
+  /** Called as each firmware acknowledgement is decoded, for live display. */
+  onAck?: (ack: BleFirmwareAck) => void;
 }
 
 interface Watcher {
@@ -250,6 +295,8 @@ interface Watcher {
   handler: (event: Event) => void;
   /** Packet count at the start of the current probe step. */
   mark: number;
+  /** Frame reassembly state for firmware acknowledgements. */
+  deframer: ZenLiteDeframer;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -289,58 +336,83 @@ async function connectWithRetries(device: BluetoothDevice, ios: boolean) {
 interface ProbeCandidate {
   name: string;
   detail: string;
+  /** Activation sequence this command belongs to. */
+  variant: string;
   service: string;
   bytes: Uint8Array;
   /** Forces a write mode; otherwise the characteristic's preferred mode is used. */
   writeMode?: "response" | "no-response";
 }
 
+/** Tracks which command is in flight so replies can be attributed to it. */
+interface ProbeState {
+  step: BleActivationProbeStep | null;
+}
+
+/** Human-readable one-liner for a firmware acknowledgement. */
+export function describeAck(ack: BleFirmwareAck): string {
+  const codes = [ack.sysResult, ack.afeResult].filter(Boolean).join(" / ") || "no result code";
+  const command = ack.command ?? "unknown command";
+  const attribution = ack.step ? ` (after "${ack.step}")` : "";
+  return `${command}: ${codes}${attribution}`;
+}
+
 /**
- * The two vendor-supported activation paths. Each pairing operation is followed
- * immediately by the acknowledged AFE command, matching the SDK's pair callback
- * flow. Pair and validate must not be sent back-to-back before AFE activation:
- * doing that can replace a successful first-time pairing with a failed
- * validation and leave the FC-11 silent.
+ * The documented activation sequences, tried one variant at a time.
+ *
+ * The vendor SDK pairs (or validates an existing pairing), configures the EEG
+ * front end with an acknowledged write, then starts the stream. Firmware builds
+ * differ in whether START is required and whether it must precede front-end
+ * configuration, so each ordering is offered as its own variant and the report
+ * names the one that actually produced packets. Pair and validate are never
+ * sent back-to-back: that can replace a successful first-time pairing with a
+ * failed validation and leave the band silent.
  */
-function buildProbeSteps(deviceId?: string): ProbeCandidate[] {
+function buildProbeVariants(deviceId?: string): ProbeCandidate[][] {
   const uuid = zenlitePairUuid(undefined, deviceId);
+  const pair = (first: boolean, variant: string): ProbeCandidate => ({
+    name: `${variant}: ${first ? "pair" : "validate pairing"}`,
+    detail: first
+      ? "Vendor first-time pairing handshake, sent with the unacknowledged write it requires."
+      : "Validates a pairing this browser identity already holds.",
+    variant,
+    service: ZENLITE_SERVICE,
+    bytes: zenlitePairCommand(nextZenLiteMsgId(), first, uuid),
+    writeMode: "no-response",
+  });
+  const afe = (rate: number, variant: string): ProbeCandidate => ({
+    name: `${variant}: AFE on at ${rate === ZENLITE_AFE.sr128 ? 128 : ZENLITE_SAMPLE_RATE} Hz`,
+    detail: "Acknowledged front-end configuration command that enables the EEG channel.",
+    variant,
+    service: ZENLITE_SERVICE,
+    bytes: zenliteAfeCommand(nextZenLiteMsgId(), rate),
+    writeMode: "response",
+  });
+  const start = (variant: string): ProbeCandidate => ({
+    name: `${variant}: system START`,
+    detail: "Vendor SDK START system command, required by some firmware builds.",
+    variant,
+    service: ZENLITE_SERVICE,
+    bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
+    writeMode: "no-response",
+  });
+  const startAck = (variant: string): ProbeCandidate => ({
+    ...start(variant),
+    name: `${variant}: system START (acknowledged write)`,
+    detail:
+      "Same START command sent as an acknowledged write, for firmware that ignores unacknowledged control writes.",
+    writeMode: "response",
+  });
+
+  const v1 = "Pair → AFE → START";
+  const v2 = "Validate → AFE → START";
+  const v3 = "Pair → START → AFE";
+  const v4 = "Validate → AFE 128 Hz → START";
   return [
-    {
-      name: "BrainCo pair",
-      detail: "Performs the vendor first-time pairing handshake using its required unacknowledged write.",
-      service: ZENLITE_SERVICE,
-      bytes: zenlitePairCommand(nextZenLiteMsgId(), true, uuid),
-      writeMode: "no-response",
-    },
-    {
-      name: "BrainCo AFE on after pairing",
-      detail: "Starts 256 Hz EEG after allowing the first-time pairing command to complete.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
-      writeMode: "response",
-    },
-    {
-      name: "BrainCo validate existing pairing",
-      detail: "Fallback for a band already paired with this browser identity.",
-      service: ZENLITE_SERVICE,
-      bytes: zenlitePairCommand(nextZenLiteMsgId(), false, uuid),
-      writeMode: "no-response",
-    },
-    {
-      name: "BrainCo AFE on after validation",
-      detail: "Starts 256 Hz EEG after allowing existing-pair validation to complete.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteAfeCommand(nextZenLiteMsgId(), ZENLITE_AFE.sr256),
-      writeMode: "response",
-    },
-    {
-      name: "BrainCo system START",
-      detail:
-        "Sends the vendor SDK's documented START system command, which some firmware builds require in addition to the front-end configuration.",
-      service: ZENLITE_SERVICE,
-      bytes: zenliteSysCommand(nextZenLiteMsgId(), ZENLITE_CMD.startDataStream),
-      writeMode: "no-response",
-    },
+    [pair(true, v1), afe(ZENLITE_AFE.sr256, v1), start(v1)],
+    [pair(false, v2), afe(ZENLITE_AFE.sr256, v2), start(v2)],
+    [pair(true, v3), start(v3), startAck(v3), afe(ZENLITE_AFE.sr256, v3)],
+    [pair(false, v4), afe(ZENLITE_AFE.sr128, v4), start(v4)],
   ];
 }
 
@@ -372,6 +444,7 @@ export async function identifyBleHeadset(
     services: [],
     characteristics: [],
     probe: [],
+    acks: [],
     status: "no-services",
     summary: "",
     advice: "",
@@ -380,6 +453,7 @@ export async function identifyBleHeadset(
   progress(`Connecting to ${deviceName}`);
   const server = await connectWithRetries(device, ios);
   const watchers: Watcher[] = [];
+  const probeState: ProbeState = { step: null };
 
   try {
     progress("Listing everything the band exposes");
@@ -473,6 +547,7 @@ export async function identifyBleHeadset(
             characteristic,
             packets: [],
             mark: 0,
+            deframer: new ZenLiteDeframer(),
             handler: () => {},
           });
         }
@@ -507,8 +582,32 @@ export async function identifyBleHeadset(
         watcher.report.packets++;
         watcher.report.bytes += bytes.length;
         if (!watcher.report.firstPacketHex) watcher.report.firstPacketHex = toHex(bytes);
+        if (watcher.report.firstPacketAtMs == null) {
+          watcher.report.firstPacketAtMs = Date.now() - report.startedAt;
+          if (report.timeToFirstPacketMs == null) {
+            report.timeToFirstPacketMs = watcher.report.firstPacketAtMs;
+          }
+        }
         if (watcher.packets.length < 600) watcher.packets.push(bytes);
         bleDiagnostics.packet(key, bytes, "identify observation");
+        // Firmware acknowledgements share the data channel, so decode them as
+        // they arrive and attribute each one to the command still in flight.
+        for (const response of zenliteResponses(bytes, watcher.deframer)) {
+          const ack: BleFirmwareAck = {
+            atMs: Date.now() - report.startedAt,
+            step: probeState.step?.name ?? null,
+            variant: probeState.step?.variant ?? null,
+            characteristicUuid: watcher.report.characteristicUuid,
+            command: response.command,
+            sysResult: response.sysResult,
+            afeResult: response.afeResult,
+            ok: response.ok,
+          };
+          report.acks.push(ack);
+          probeState.step?.acks.push(ack);
+          bleDiagnostics.add("command", `Firmware ack: ${describeAck(ack)}`, { ...ack });
+          options.onAck?.(ack);
+        }
       };
       watcher.characteristic.addEventListener("characteristicvaluechanged", watcher.handler);
       try {
@@ -522,17 +621,32 @@ export async function identifyBleHeadset(
     }
 
     if (options.probeActivation) {
-      report.probe = await runActivationProbe(services, writable, watchers, progress, device.id);
+      report.probe = await runActivationProbe(
+        services,
+        writable,
+        watchers,
+        progress,
+        probeState,
+        device.id,
+        options.stopProbeWhenStreaming !== false,
+      );
+      const activating = report.probe.find((step) => step.packetsAfter > 0);
+      if (activating) {
+        report.activatedByStep = activating.name;
+        report.activatedByVariant = activating.variant;
+      }
     }
 
     const observeMs = watchSeconds * 1000;
     const observeStart = Date.now();
     progress(`Watching for ${watchSeconds}s — sit still with the band on`);
+    const minStreamPackets = Math.max(1, options.minStreamPackets ?? 20);
     while (Date.now() - observeStart < observeMs) {
       await sleep(500);
       const elapsed = Math.round((Date.now() - observeStart) / 1000);
       const seen = watchers.reduce((sum, w) => sum + w.report.packets, 0);
       progress(`Watching (${elapsed}/${watchSeconds}s) — ${seen} packet(s) so far`);
+      if (options.stopWhenStreaming && seen >= minStreamPackets && elapsed >= 3) break;
     }
 
     const elapsedSeconds = (Date.now() - observeStart) / 1000;
@@ -577,7 +691,11 @@ export async function identifyBleHeadset(
   }
 }
 
-/** Writes each documented sequence once, watching for a reply after each. */
+/**
+ * Writes each documented sequence variant, watching for replies and packets
+ * after every command. Stops at the first variant that makes the band stream,
+ * so the report names the sequence that worked rather than the last one tried.
+ */
 async function runActivationProbe(
   services: BluetoothRemoteGATTService[],
   writable: Array<{
@@ -586,76 +704,91 @@ async function runActivationProbe(
   }>,
   watchers: Watcher[],
   progress: (message: string) => void,
+  state: ProbeState,
   deviceId?: string,
+  stopWhenStreaming = true,
 ): Promise<BleActivationProbeStep[]> {
   const steps: BleActivationProbeStep[] = [];
   const byService = new Map(services.map((service) => [service.uuid.toLowerCase(), service]));
 
-  for (const candidate of buildProbeSteps(deviceId)) {
-    // BrainCo steps are written to whichever vendor transport this firmware
-    // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
-    const service = isZenLiteService(candidate.service)
-      ? (ZENLITE_TRANSPORTS.map((t) => byService.get(t.service)).find(Boolean) ?? undefined)
-      : byService.get(candidate.service.toLowerCase());
-    // Prefer the documented write characteristic of that service; otherwise
-    // fall back to whatever writable characteristic that service exposes.
-    let target: BluetoothRemoteGATTCharacteristic | null = null;
-    if (service) {
+  for (const variant of buildProbeVariants(deviceId)) {
+    let variantStreamed = false;
+    for (const candidate of variant) {
+      // BrainCo steps are written to whichever vendor transport this firmware
+      // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
+      const service = isZenLiteService(candidate.service)
+        ? (ZENLITE_TRANSPORTS.map((t) => byService.get(t.service)).find(Boolean) ?? undefined)
+        : byService.get(candidate.service.toLowerCase());
+      // Prefer the documented write characteristic of that service; otherwise
+      // fall back to whatever writable characteristic that service exposes.
+      let target: BluetoothRemoteGATTCharacteristic | null = null;
+      if (service) {
+        try {
+          const transport = zenliteTransportForService(service.uuid);
+          target = transport ? await service.getCharacteristic(transport.write) : null;
+        } catch {
+          target = null;
+        }
+        if (!target) {
+          target =
+            writable.find(
+              (entry) => entry.service.uuid.toLowerCase() === service.uuid.toLowerCase(),
+            )?.characteristic ?? null;
+        }
+      }
+
+      if (!target) continue;
+
+      for (const watcher of watchers) watcher.mark = watcher.report.packets;
+      const step: BleActivationProbeStep = {
+        name: candidate.name,
+        detail: candidate.detail,
+        variant: candidate.variant,
+        serviceUuid: service?.uuid ?? candidate.service,
+        characteristicUuid: target.uuid,
+        sentHex: toHex(candidate.bytes),
+        written: false,
+        packetsAfter: 0,
+        bytesAfter: 0,
+        respondingCharacteristics: [],
+        acks: [],
+      };
+      state.step = step;
+      progress(`Probing: ${candidate.name}`);
+      bleDiagnostics.add(
+        "command",
+        `Probe: ${candidate.name}`,
+        { characteristic: target.uuid },
+        candidate.bytes,
+      );
       try {
-        const transport = zenliteTransportForService(service.uuid);
-        target = transport ? await service.getCharacteristic(transport.write) : null;
-      } catch {
-        target = null;
+        const noResponse =
+          candidate.writeMode === "no-response" ||
+          (candidate.writeMode !== "response" && !target.properties.write);
+        if (noResponse) await target.writeValueWithoutResponse(candidate.bytes as BufferSource);
+        else await target.writeValueWithResponse(candidate.bytes as BufferSource);
+        step.written = true;
+      } catch (error) {
+        step.writeError =
+          error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       }
-      if (!target) {
-        target =
-          writable.find(
-            (entry) => entry.service.uuid.toLowerCase() === service.uuid.toLowerCase(),
-          )?.characteristic ?? null;
+      await sleep(2_000);
+
+      for (const watcher of watchers) {
+        const gained = watcher.report.packets - watcher.mark;
+        if (gained <= 0) continue;
+        step.packetsAfter += gained;
+        step.respondingCharacteristics.push(watcher.report.characteristicUuid);
       }
+      // Acknowledgement traffic alone is not a stream; require sustained data.
+      if (step.packetsAfter > step.acks.length + 2) variantStreamed = true;
+      steps.push(step);
+      state.step = null;
     }
-
-    if (!target) continue;
-
-    for (const watcher of watchers) watcher.mark = watcher.report.packets;
-    const step: BleActivationProbeStep = {
-      name: candidate.name,
-      detail: candidate.detail,
-      serviceUuid: service?.uuid ?? candidate.service,
-      characteristicUuid: target.uuid,
-      sentHex: toHex(candidate.bytes),
-      written: false,
-      packetsAfter: 0,
-      bytesAfter: 0,
-      respondingCharacteristics: [],
-    };
-    progress(`Probing: ${candidate.name}`);
-    bleDiagnostics.add(
-      "command",
-      `Probe: ${candidate.name}`,
-      { characteristic: target.uuid },
-      candidate.bytes,
-    );
-    try {
-      const noResponse =
-        candidate.writeMode === "no-response" ||
-        (candidate.writeMode !== "response" && !target.properties.write);
-      if (noResponse) await target.writeValueWithoutResponse(candidate.bytes as BufferSource);
-      else await target.writeValueWithResponse(candidate.bytes as BufferSource);
-      step.written = true;
-    } catch (error) {
-      step.writeError =
-        error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    if (variantStreamed && stopWhenStreaming) {
+      progress("Band started streaming — stopping the probe");
+      break;
     }
-    await sleep(2_000);
-
-    for (const watcher of watchers) {
-      const gained = watcher.report.packets - watcher.mark;
-      if (gained <= 0) continue;
-      step.packetsAfter += gained;
-      step.respondingCharacteristics.push(watcher.report.characteristicUuid);
-    }
-    steps.push(step);
   }
   return steps;
 }
@@ -667,10 +800,11 @@ function summarise(report: BleIdentifyReport) {
     (entry) => isZenLiteNotify(entry.characteristicUuid),
   );
 
+  const via = report.activatedByVariant ? ` Activation sequence "${report.activatedByVariant}" started it.` : "";
   if (eeg.length) {
     const best = eeg.sort((a, b) => (b.bestScore ?? 0) - (a.bestScore ?? 0))[0]!;
     report.status = "eeg";
-    report.summary = `Readable EEG found on ${best.characteristicUuid} as ${best.bestFormatLabel} (confidence ${best.bestScore}).`;
+    report.summary = `Readable EEG found on ${best.characteristicUuid} as ${best.bestFormatLabel} (confidence ${best.bestScore}).${via}`;
     report.advice = "Close this and start a case or the stream test — the band should now stream.";
     return;
   }
@@ -678,13 +812,20 @@ function summarise(report: BleIdentifyReport) {
     report.status = "traffic";
     report.summary = `${active.length} channel(s) sent data (${active
       .map((entry) => `${entry.characteristicUuid.slice(4, 8)}: ${entry.packets}`)
-      .join(", ")}) but none of it decoded as EEG.`;
+      .join(", ")}) but none of it decoded as EEG.${via}`;
     report.advice =
       "The band is talking, so this is a decoding problem rather than a pairing one. Export this report — the packet bytes in it are what is needed to work out the layout.";
     return;
   }
   report.status = "silent";
   report.summary = `${report.characteristics.filter((entry) => entry.subscribed).length} channel(s) subscribed successfully, but the band sent nothing at all in ${report.watchedSeconds}s.`;
+  const failures = report.acks.filter((ack) => !ack.ok);
+  if (failures.length) {
+    report.summary += ` The firmware rejected ${failures.length} command(s): ${failures
+      .map((ack) => describeAck(ack))
+      .slice(0, 4)
+      .join("; ")}.`;
+  }
   report.advice = hasZenLite
     ? "The BrainCo data channel is present but idle, which means the band needs an activation command it has not received. Run the survey again with the activation probe switched on."
     : "No BrainCo data channel was exposed. Put the band in pairing mode (LED flashing blue) with the FocusCalm app fully closed, then run this again.";
@@ -730,14 +871,28 @@ export function formatIdentifyReport(report: BleIdentifyReport): string {
   if (report.probe.length) {
     lines.push("");
     lines.push("Activation probe");
+    if (report.activatedByVariant) {
+      lines.push(`  Streaming started with variant: ${report.activatedByVariant}`);
+      lines.push(`  Triggering command: ${report.activatedByStep}`);
+    } else {
+      lines.push("  No variant produced a stream.");
+    }
     for (const step of report.probe) {
-      lines.push(`  ${step.name} → ${step.characteristicUuid}`);
+      lines.push(`  [${step.variant}] ${step.name} → ${step.characteristicUuid}`);
       lines.push(`    sent: ${step.sentHex}`);
       lines.push(
         step.written
           ? `    reply: ${step.packetsAfter} packet(s)${step.respondingCharacteristics.length ? ` on ${step.respondingCharacteristics.join(", ")}` : ""}`
           : `    write failed: ${step.writeError}`,
       );
+      for (const ack of step.acks) lines.push(`    ack: ${describeAck(ack)}`);
+    }
+  }
+  if (report.acks.length) {
+    lines.push("");
+    lines.push("Firmware acknowledgements");
+    for (const ack of report.acks) {
+      lines.push(`  +${(ack.atMs / 1000).toFixed(1)}s ${ack.ok ? "OK" : "ERROR"} ${describeAck(ack)}`);
     }
   }
   return lines.join("\n");
