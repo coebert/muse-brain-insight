@@ -870,7 +870,7 @@ export class MuseClient implements EegSource {
     this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: 1 });
     try {
       await this.resetLink();
-      await this.attach();
+      await this.withAttachTimeout();
       this.reconnecting = false;
       this.stateCb?.({ kind: "connected" });
       return true;
