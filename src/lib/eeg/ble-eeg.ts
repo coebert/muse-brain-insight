@@ -1494,7 +1494,7 @@ export class BleHeadsetSource implements EegSource {
         packetsPerSecond: Number(packetsPerSecond.toFixed(1)),
         sampleRate: rate,
         uvPerCount,
-        autoScaled: uvPerCount !== 1,
+        autoScaled: top.format !== "brainco-zenlite" && uvPerCount !== 1,
         notes,
         candidates,
       };
