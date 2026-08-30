@@ -123,6 +123,7 @@ import { SeizureThresholdPanel } from "@/components/monitor/SeizureThresholdPane
 import { ChannelStateTimeline } from "@/components/monitor/ChannelStateTimeline";
 import { StreamIntegrityPanel } from "@/components/monitor/StreamIntegrityPanel";
 import { BleDiagnosticsPanel } from "@/components/monitor/BleDiagnosticsPanel";
+import { BleIdentifyPanel } from "@/components/monitor/BleIdentifyPanel";
 import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
 
 import { cn } from "@/lib/utils";
@@ -1051,6 +1052,7 @@ function Monitor() {
               integrity={monitor.integrity}
               clock={monitor.suppressionClock}
             />
+            <BleIdentifyPanel />
             <BleDiagnosticsPanel
               epochs={monitor.epochs}
               deviceLabel={deviceProfile.label}
