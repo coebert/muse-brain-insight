@@ -45,7 +45,9 @@ import {
   ZENLITE_SERVICE,
   ZENLITE_WRITE,
   ZENLITE_UV_PER_COUNT,
+  zenliteSampleRateFromEnum,
   zenliteStreamInfo,
+
 } from "@/lib/eeg/brainco-zenlite";
 
 /**
