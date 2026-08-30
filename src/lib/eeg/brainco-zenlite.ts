@@ -501,6 +501,94 @@ export function decodeZenLitePacket(bytes: Uint8Array): number[] {
   return out;
 }
 
+/* ------------------------------------------------------------------ */
+/* Firmware acknowledgements                                           */
+/* ------------------------------------------------------------------ */
+
+/** `SysConfigCmd` echoed back by the firmware, keyed by enum value. */
+const SYS_CMD_NAMES: Record<number, string> = {
+  1: "PAIR",
+  2: "VALIDATE_PAIR_INFO",
+  3: "START",
+  4: "STOP",
+  5: "SHUT_DOWN",
+  6: "ENTER_OTA",
+  7: "RESTORE_FACTORY_SETTINGS",
+  8: "SET_DEVICE_NAME",
+  9: "SET_SLEEP",
+  10: "GET_SYSINFO",
+};
+
+/** `SysModule.Resp` result codes. */
+const SYS_RESP_NAMES: Record<number, string> = {
+  0: "SUCCESS",
+  1: "UNKNOWN_ERR",
+  2: "OTA_FAILED_LOW_POWER_ERR",
+  3: "PAIR_ERR",
+  4: "INVALID_PAIR_INFO_ERR",
+  5: "ALLOW_UPDATE",
+  6: "RECV_OK",
+  7: "UPDATE_COMPLT",
+};
+
+/** `AfeModule.Resp` result codes. */
+const AFE_RESP_NAMES: Record<number, string> = { 0: "SUCCESS", 1: "UNKNOWN_ERR" };
+
+export interface ZenLiteResponse {
+  /** Message id the firmware is answering, when present. */
+  msgId: number | null;
+  /** Command the system module is acknowledging, e.g. `PAIR`. */
+  command: string | null;
+  /** System module result, e.g. `INVALID_PAIR_INFO_ERR`. */
+  sysResult: string | null;
+  /** AFE module result, sent when the EEG front end is configured. */
+  afeResult: string | null;
+  /** True when every result present in the message reports success. */
+  ok: boolean;
+}
+
+/**
+ * Reads the firmware acknowledgement carried by one decoded ZenLite message.
+ *
+ * A band that rejects the handshake answers with an explicit code
+ * (`PAIR_ERR`, `INVALID_PAIR_INFO_ERR`, …) rather than staying silent, so
+ * surfacing this turns "connected but no EEG" into an actionable reason.
+ */
+export function zenliteResponse(payload: Uint8Array): ZenLiteResponse | null {
+  const fields = collectBytesFields(payload);
+  const sys = fields.find((f) => f.path.join(".") === "5");
+  const afe = fields.find((f) => f.path.join(".") === "2");
+  if (!sys && !afe) return null;
+  const sysScalars = sys ? scalarFields(sys.bytes) : new Map<number, number>();
+  const afeScalars = afe ? scalarFields(afe.bytes) : new Map<number, number>();
+  const sysRespValue = sysScalars.get(2);
+  const afeRespValue = afe && !fields.some((f) => f.path.join(".") === "2.2")
+    ? afeScalars.get(1)
+    : undefined;
+  if (sysRespValue == null && afeRespValue == null && !sysScalars.has(1)) return null;
+  const cmd = sysScalars.get(1);
+  const results = [sysRespValue, afeRespValue].filter((v): v is number => v != null);
+  return {
+    msgId: scalarFields(payload).get(1) ?? null,
+    command: cmd == null ? null : SYS_CMD_NAMES[cmd] ?? `CMD_${cmd}`,
+    sysResult: sysRespValue == null ? null : SYS_RESP_NAMES[sysRespValue] ?? `RESP_${sysRespValue}`,
+    afeResult: afeRespValue == null ? null : AFE_RESP_NAMES[afeRespValue] ?? `RESP_${afeRespValue}`,
+    ok: results.length > 0 && results.every((v) => v === 0),
+  };
+}
+
+/** Firmware acknowledgements contained in one BLE notification buffer. */
+export function zenliteResponses(bytes: Uint8Array, deframer?: ZenLiteDeframer): ZenLiteResponse[] {
+  const frames = (deframer ?? new ZenLiteDeframer()).push(bytes);
+  const out: ZenLiteResponse[] = [];
+  for (const payload of frames) {
+    const response = zenliteResponse(payload);
+    if (response) out.push(response);
+  }
+  return out;
+}
+
+
 /**
  * Stable 16-byte host identity used by the BrainCo application-layer pairing.
  * The vendor SDK uses the BLE peripheral id, not an unrelated random token.
