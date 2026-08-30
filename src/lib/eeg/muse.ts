@@ -694,15 +694,20 @@ export class MuseClient implements EegSource {
     await new Promise((r) => setTimeout(r, MuseClient.LINK_SETTLE_MS));
   }
 
-  /** Backoff sleep that the clinician's Reconnect tap can cut short. */
+  /**
+   * Backoff sleep that the clinician's Reconnect tap can cut short. It runs on
+   * the worker clock: a hidden tab's `setTimeout` is throttled to about a
+   * minute, which would stretch the retry ladder out to nothing.
+   */
   private waitForRetry(ms: number) {
     return new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
+      const timer = createBackgroundTimer(ms, () => {
+        timer.stop();
         this.retryWake = null;
         resolve();
-      }, ms);
+      });
       this.retryWake = () => {
-        clearTimeout(timer);
+        timer.stop();
         this.retryWake = null;
         resolve();
       };
