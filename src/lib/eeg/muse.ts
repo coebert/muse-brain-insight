@@ -499,6 +499,8 @@ export class MuseClient implements EegSource {
   private static readonly STALL_RESET_MS = 15_000;
   /** How often the headband is asked for a status ("s") reply. */
   private static readonly BATTERY_POLL_MS = 60_000;
+  /** A reconnect attempt that has not streamed by now is abandoned and retried. */
+  private static readonly ATTACH_TIMEOUT_MS = 20_000;
   private heartbeat: BackgroundTimer | null = null;
   /** Screen wake lock held for the length of a case. */
   private wakeLock: WakeLockHandle | null = null;
