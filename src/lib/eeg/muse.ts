@@ -805,7 +805,11 @@ export class MuseClient implements EegSource {
         // Always start from a cleanly closed link, never a half-open one.
         await this.resetLink();
         if (this.stopping) break;
-        await this.attach();
+        // `gatt.connect()` never rejects while the headband is simply out of
+        // range — it waits for an advertisement that may never come, which
+        // parks the retry ladder on a single attempt forever. Bound it so the
+        // loop always comes back around.
+        await this.withAttachTimeout();
         this.reconnecting = false;
         this.settleWaiters(true);
         this.stateCb?.({ kind: "connected" });
