@@ -292,9 +292,8 @@ export function validateDiagnosticExport(input: unknown): DiagnosticExportCheck 
         "The headband never sent a notification during this attempt. Diagnostic capture was active, so this is a device-side problem: the band connected but never started streaming. Run Identify headband in the Signal tab with activation probing enabled.",
       );
   } else if (replayable < MIN_REPLAYABLE_PACKETS)
-
-  else if (replayable < MIN_REPLAYABLE_PACKETS)
     issues.push(`Only ${replayable} complete packet(s); at least ${MIN_REPLAYABLE_PACKETS} are needed to rank a decoder.`);
+
 
   const level: DecoderReadyLevel =
     replayable >= MIN_REPLAYABLE_PACKETS ? (data.meta ? "ready" : "partial") : replayable ? "partial" : "invalid";
