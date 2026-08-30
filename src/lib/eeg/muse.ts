@@ -596,6 +596,19 @@ export class MuseClient implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
+    // A locked or dimmed screen freezes the keep-alive and lets the headband
+    // idle off the link, so hold the screen awake for the length of the case.
+    this.wakeLock ??= acquireScreenWakeLock();
+    // Coming back to the foreground: check the link immediately rather than
+    // waiting out a backoff or keep-alive interval that was throttled while
+    // the page was hidden.
+    this.foregroundOff ??= onForeground(() => {
+      if (this.stopping) return;
+      if (this.reconnecting) this.retryWake?.();
+      else if (!(this.device?.gatt?.connected ?? false)) void this.attemptReconnect();
+      else void this.tick();
+    });
+
     await this.attach();
   }
 
