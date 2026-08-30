@@ -676,13 +676,17 @@ async function runActivationProbe(
       candidate.bytes,
     );
     try {
-      if (target.properties.write) await target.writeValue(candidate.bytes as BufferSource);
-      else await target.writeValueWithoutResponse(candidate.bytes as BufferSource);
+      const noResponse =
+        candidate.writeMode === "no-response" ||
+        (candidate.writeMode !== "response" && !target.properties.write);
+      if (noResponse) await target.writeValueWithoutResponse(candidate.bytes as BufferSource);
+      else await target.writeValue(candidate.bytes as BufferSource);
       step.written = true;
     } catch (error) {
       step.writeError = error instanceof Error ? error.message : String(error);
     }
-    await sleep(1_500);
+    await sleep(2_000);
+
     for (const watcher of watchers) {
       const gained = watcher.report.packets - watcher.mark;
       if (gained <= 0) continue;
