@@ -160,8 +160,12 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
         channelMap: map,
         label: "Regul8 headband",
         onProgress: setProgress,
+        // Some bands only begin streaming after their own startup or contact
+        // check; a 3 s window declared those dead before they ever spoke.
+        listenSeconds: 15,
         ...(Number.isFinite(scale) && scale > 0 ? { uvPerCount: scale } : {}),
       });
+
       pendingSource = source;
       source.onDiscovery((d) => setDiscovery(d));
       source.onHealth(setHealth);
