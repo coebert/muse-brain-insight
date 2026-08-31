@@ -70,6 +70,9 @@ import {
   cmsnAck,
   cmsnEegSamples,
   cmsnIdentity,
+  cmsnIdentityBytes,
+  CMSN_KNOWN_IDENTITY,
+
   cmsnOpCommand,
   cmsnOpName,
   cmsnPairCommand,
