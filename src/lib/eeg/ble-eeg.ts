@@ -1180,6 +1180,46 @@ export class BleHeadsetSource implements EegSource {
   }
 
   /**
+   * Mirrors what the vendor app touches before it activates the band.
+   *
+   * The reference capture shows the phone reading the device-information and
+   * battery characteristics and subscribing to battery notifications on an
+   * encrypted link before the first vendor command. Those reads are what make
+   * the Bluetooth stack establish link security, and FC-11 firmware closes the
+   * connection when a vendor command arrives on an unsecured link — so the
+   * preflight is a functional part of activation, not just telemetry.
+   */
+  private async cmsnPreflight(services: BluetoothRemoteGATTService[]) {
+    const touched: string[] = [];
+    for (const service of services) {
+      const uuid = service.uuid.toLowerCase();
+      if (!uuid.startsWith("0000180a") && !uuid.startsWith("0000180f")) continue;
+      let chars: BluetoothRemoteGATTCharacteristic[] = [];
+      try {
+        chars = await service.getCharacteristics();
+      } catch {
+        continue;
+      }
+      for (const char of chars) {
+        if (!char.properties.read) continue;
+        try {
+          await char.readValue();
+          touched.push(char.uuid);
+        } catch (error) {
+          bleDiagnostics.add("info", "Pre-activation read refused", {
+            characteristic: char.uuid,
+            error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+          });
+        }
+        if (service.device.gatt?.connected !== true) return;
+      }
+    }
+    bleDiagnostics.add("info", "Pre-activation reads completed", { characteristics: touched });
+    await new Promise((r) => setTimeout(r, 250));
+  }
+
+
+  /**
    * Activation sequence for FocusCalm FC-11, replayed from the vendor app.
    *
    * The official app writes three commands, without response, to the CMSN
