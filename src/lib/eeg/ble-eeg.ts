@@ -646,6 +646,9 @@ export class BleHeadsetSource implements EegSource {
   private cmsnSkipPair = false;
   /** Which write strategy the next activation attempt should use. */
   private cmsnVariant = 0;
+  /** Pair using the host identity the band is known to have accepted. */
+  private cmsnUseKnownIdentity = true;
+
 
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
