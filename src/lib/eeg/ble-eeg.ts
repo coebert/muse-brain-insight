@@ -66,6 +66,25 @@ import {
   isZenLiteService,
   zenliteTransportForService,
 } from "@/lib/eeg/brainco-zenlite";
+import {
+  cmsnAck,
+  cmsnEegSamples,
+  cmsnIdentity,
+  cmsnOpCommand,
+  cmsnOpName,
+  cmsnPairCommand,
+  cmsnSyncCommand,
+  CmsnDeframer,
+  containsCmsn,
+  decodeCmsnPacket,
+  CMSN_NOTIFY,
+  CMSN_OP,
+  CMSN_SAMPLE_RATE,
+  CMSN_SERVICE,
+  CMSN_UV_PER_COUNT,
+  CMSN_WRITE,
+  nextCmsnMsgId,
+} from "@/lib/eeg/focuscalm-cmsn";
 import { IngestPipeline, type ChannelMap, type IngestConfig } from "@/lib/eeg/ingest";
 import {
   isWebBluetoothAvailable,
@@ -165,6 +184,7 @@ const BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb";
 /* ------------------------------------------------------------------ */
 
 export type PacketFormat =
+  | "focuscalm-cmsn"
   | "brainco-zenlite"
   | "brainco-int24be"
   | "brainco-int16le"
@@ -175,6 +195,7 @@ export type PacketFormat =
   | "float32le";
 
 export const PACKET_FORMAT_LABEL: Record<PacketFormat, string> = {
+  "focuscalm-cmsn": "FocusCalm FC-11 CMSN frames, 250 Hz 24-bit",
   "brainco-zenlite": "BrainCo ZenLite frames, 24-bit samples",
   "brainco-int24be": "BrainCo frame, 24-bit samples",
   "brainco-int16le": "BrainCo frame, 16-bit samples",
@@ -225,6 +246,7 @@ function readInt24(bytes: Uint8Array, offset: number, bigEndian: boolean): numbe
 /** Decodes one notification payload into signed sample values. */
 export function decodePacket(format: PacketFormat, bytes: Uint8Array): number[] {
   let body: Uint8Array = bytes;
+  if (format === "focuscalm-cmsn") return decodeCmsnPacket(bytes);
   if (format === "brainco-zenlite") return decodeZenLitePacket(bytes);
   if (format.startsWith("brainco-")) {
     const stripped = stripBrainCoFrames(bytes);
@@ -294,6 +316,7 @@ export interface FormatDetection {
 }
 
 const FORMATS: PacketFormat[] = [
+  "focuscalm-cmsn",
   "brainco-zenlite",
   "brainco-int24be",
   "brainco-int16le",
@@ -329,14 +352,21 @@ export function detectPacketFormat(packets: Uint8Array[]): FormatDetection[] {
   );
   // Once the vendor envelope is present, treating its headers and protobuf as
   // plain integers can create a convincing but entirely false EEG trace.
-  const formats = containsBrnc ? (["brainco-zenlite"] as PacketFormat[]) : FORMATS;
+  // FC-11 firmware uses the verified CMSN envelope; when it is present nothing
+  // else can be the right reading of these bytes.
+  const formats = containsCmsn(joined)
+    ? (["focuscalm-cmsn"] as PacketFormat[])
+    : containsBrnc
+    ? (["brainco-zenlite"] as PacketFormat[])
+    : FORMATS;
   for (const format of formats) {
     const series: number[] = [];
     let decodedPackets = 0;
-    if (format === "brainco-zenlite") {
+    if (format === "focuscalm-cmsn" || format === "brainco-zenlite") {
       // Vendor frames span several notifications, so they can only be scored
       // after the burst is reassembled in arrival order.
-      const values = decodeZenLitePacket(joined);
+      const values =
+        format === "focuscalm-cmsn" ? decodeCmsnPacket(joined) : decodeZenLitePacket(joined);
       if (values.length >= 32) {
         results.push({
           format,
@@ -588,6 +618,7 @@ export class BleHeadsetSource implements EegSource {
   private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private readPollTimer: ReturnType<typeof setTimeout> | null = null;
   private zenlite = new ZenLiteDeframer();
+  private cmsn = new CmsnDeframer();
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
@@ -800,6 +831,7 @@ export class BleHeadsetSource implements EegSource {
     await this.attachBattery(server);
     await this.readDeviceInformation(server);
     this.zenlite.reset();
+    this.cmsn.reset();
 
     // Fast path on a resume: the characteristic and packet layout are already
     // known, so re-subscribe directly instead of re-running the listen-and-
@@ -929,9 +961,19 @@ export class BleHeadsetSource implements EegSource {
     // The vendor protocol publishes its own rate, which is more trustworthy
     // than one measured over a couple of seconds of BLE-jittered packets.
     const protocolRate =
-      chosen.discovery.format === "brainco-zenlite" ? ZENLITE_SAMPLE_RATE : undefined;
+      chosen.discovery.format === "focuscalm-cmsn"
+        ? CMSN_SAMPLE_RATE
+        : chosen.discovery.format === "brainco-zenlite"
+        ? ZENLITE_SAMPLE_RATE
+        : undefined;
     const measuredRate = this.options.sampleRate ?? protocolRate ?? chosen.discovery.sampleRate;
-    const uvPerCount = this.options.uvPerCount ?? chosen.discovery.uvPerCount;
+    // The FC-11 front end has a known conversion (4.5 V reference, gain 24),
+    // so its microvolt scale comes from the datasheet rather than auto-gain.
+    const uvPerCount =
+      this.options.uvPerCount ??
+      (chosen.discovery.format === "focuscalm-cmsn"
+        ? CMSN_UV_PER_COUNT
+        : chosen.discovery.uvPerCount);
     this.scale = uvPerCount;
     const channelMap: ChannelMap =
       this.options.channelMap ?? { TP9: null, AF7: COLUMN, AF8: null, TP10: null };
@@ -972,6 +1014,13 @@ export class BleHeadsetSource implements EegSource {
     services: BluetoothRemoteGATTService[],
     mode: "validate" | "pair",
   ) {
+    // FC-11 (Regul8 / FocusCalm) firmware speaks the verified CMSN protocol
+    // recovered from a real capture of the vendor app, not the ZenLite one.
+    const cmsn = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
+    if (cmsn) {
+      await this.cmsnHandshake(cmsn);
+      return;
+    }
     const service = services.find((s) => isZenLiteService(s.uuid));
     if (!service) {
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
@@ -1052,6 +1101,57 @@ export class BleHeadsetSource implements EegSource {
     }
   }
 
+  /**
+   * Activation sequence for FocusCalm FC-11, replayed from the vendor app.
+   *
+   * The official app writes three commands, without response, to the CMSN
+   * command characteristic: pair with a 16-byte host identity, a session
+   * prepare step, then start EEG. Notifications begin within ~100 ms of the
+   * start command; a clock sync follows once data is flowing.
+   */
+  private async cmsnHandshake(service: BluetoothRemoteGATTService) {
+    let write: BluetoothRemoteGATTCharacteristic;
+    try {
+      write = await service.getCharacteristic(CMSN_WRITE);
+    } catch (error) {
+      bleDiagnostics.add("error", "FC-11 command characteristic not available", {
+        expected: CMSN_WRITE,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
+      throw new Error("The headband exposed its data service but no command channel.");
+    }
+    const send = async (frame: Uint8Array, label: string) => {
+      bleDiagnostics.add("command", label, { characteristic: write.uuid, mode: "writeWithoutResponse" }, frame);
+      if (write.properties.writeWithoutResponse) {
+        await write.writeValueWithoutResponse(frame as BufferSource);
+      } else {
+        await write.writeValueWithResponse(frame as BufferSource);
+      }
+    };
+    try {
+      this.progress("discovering", "Pairing with the headband");
+      await send(
+        cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
+        "FC-11 pair",
+      );
+      await new Promise((r) => setTimeout(r, 600));
+      await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare), "FC-11 prepare session");
+      await new Promise((r) => setTimeout(r, 60));
+      this.progress("discovering", "Starting the EEG stream");
+      await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
+      await new Promise((r) => setTimeout(r, 150));
+      await send(cmsnSyncCommand(nextCmsnMsgId(), Date.now()), "FC-11 clock sync");
+      bleDiagnostics.add("info", "FC-11 activation sequence sent");
+    } catch (error) {
+      bleDiagnostics.add("error", "FC-11 activation failed", {
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      });
+      throw new Error(
+        `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   /** Re-locates the characteristic discovery already chose, after a resume. */
   private async findKnownCharacteristic(services: BluetoothRemoteGATTService[]) {
     const target = this.discovery;
@@ -1124,7 +1224,9 @@ export class BleHeadsetSource implements EegSource {
     // ZenLite frames are MTU-fragmented, so they are reassembled statefully
     // rather than decoded notification by notification.
     const decoded =
-      this.format === "brainco-zenlite"
+      this.format === "focuscalm-cmsn"
+        ? this.cmsn.push(bytes).flatMap((payload) => cmsnEegSamples(payload))
+        : this.format === "brainco-zenlite"
         ? this.zenlite.push(bytes).flatMap((payload) => zenliteEegSamples(payload))
         : decodePacket(this.format, bytes);
     const now = Date.now();
@@ -1379,6 +1481,7 @@ export class BleHeadsetSource implements EegSource {
     >();
     const handlers: [BluetoothRemoteGATTCharacteristic, (e: Event) => void][] = [];
     const priority = (entry: BleStreamCandidate) => {
+      if (entry.characteristic.uuid.toLowerCase() === CMSN_NOTIFY) return 3;
       if (isZenLiteNotify(entry.characteristic.uuid)) return 2;
       if (entry.service.uuid.toLowerCase() === NORDIC_UART) return 1;
       return 0;
@@ -1396,6 +1499,8 @@ export class BleHeadsetSource implements EegSource {
         captureMode: "notification",
       });
       const responseDeframer = new ZenLiteDeframer();
+      const cmsnResponses = new CmsnDeframer();
+      const isCmsn = entry.characteristic.uuid.toLowerCase() === CMSN_NOTIFY;
       const isZenLite = isZenLiteNotify(entry.characteristic.uuid);
       const handler = (event: Event) => {
         const value = (event.target as BluetoothRemoteGATTCharacteristic).value;
@@ -1408,6 +1513,19 @@ export class BleHeadsetSource implements EegSource {
           value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
         );
         bleDiagnostics.packet(key, bytes, "discovery notification");
+        if (isCmsn) {
+          // The firmware answers each command with an explicit result code, so
+          // a refused pairing is reported as such instead of "silent stream".
+          for (const payload of cmsnResponses.push(bytes)) {
+            const ack = cmsnAck(payload);
+            if (!ack) continue;
+            bleDiagnostics.add(
+              ack.ok ? "info" : "error",
+              `FC-11 firmware response: ${cmsnOpName(ack.op)} → ${ack.ok ? "accepted" : `error ${ack.result}`}`,
+              { ...ack },
+            );
+          }
+        }
         if (isZenLite) {
           // Firmware answers a rejected handshake with an explicit code, which
           // is far more useful than "connected but silent".

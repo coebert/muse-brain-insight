@@ -56,6 +56,17 @@ import {
   ZenLiteDeframer,
   ZENLITE_SAMPLE_RATE,
 } from "@/lib/eeg/brainco-zenlite";
+import {
+  cmsnIdentity,
+  cmsnOpCommand,
+  cmsnPairCommand,
+  CMSN_OP,
+  CMSN_SAMPLE_RATE,
+  CMSN_SERVICE,
+  CMSN_UV_PER_COUNT,
+  CMSN_WRITE,
+  nextCmsnMsgId,
+} from "@/lib/eeg/focuscalm-cmsn";
 
 
 /**
@@ -85,6 +96,9 @@ function buildPreview(
   // is present and consistent with what arrived.
   let declaredHz: number | null = null;
   let declaredEnum: number | null = null;
+  if (format === "focuscalm-cmsn") {
+    declaredHz = CMSN_SAMPLE_RATE;
+  }
   if (format === "brainco-zenlite") {
     const rates = new Map<number, number>();
     for (const packet of best.packets) {
@@ -121,7 +135,9 @@ function buildPreview(
   };
 
   const uvPerCount =
-    format === "brainco-zenlite"
+    format === "focuscalm-cmsn"
+      ? CMSN_UV_PER_COUNT
+      : format === "brainco-zenlite"
       ? ZENLITE_UV_PER_COUNT
       : autoScaleUvPerCount(
           [...counts].map(Math.abs).sort((a, b) => a - b)[
@@ -339,6 +355,8 @@ interface ProbeCandidate {
   /** Activation sequence this command belongs to. */
   variant: string;
   service: string;
+  /** Explicit command characteristic, when the protocol names one. */
+  characteristic?: string;
   bytes: Uint8Array;
   /** Forces a write mode; otherwise the characteristic's preferred mode is used. */
   writeMode?: "response" | "no-response";
@@ -404,11 +422,46 @@ function buildProbeVariants(deviceId?: string): ProbeCandidate[][] {
     writeMode: "response",
   });
 
+  // Verified against a PacketLogger capture of the official FocusCalm app
+  // streaming from this headband, so it is tried before every inferred variant.
+  const verified = "FC-11 verified: pair → prepare → start EEG";
+  const cmsnIdent = cmsnIdentity(undefined, deviceId);
+  const cmsnSequence: ProbeCandidate[] = [
+    {
+      name: `${verified}: pair`,
+      detail: "Presents this installation's 16-byte host identity, exactly as the vendor app does.",
+      variant: verified,
+      service: CMSN_SERVICE,
+      characteristic: CMSN_WRITE,
+      bytes: cmsnPairCommand(nextCmsnMsgId(), cmsnIdent),
+      writeMode: "no-response",
+    },
+    {
+      name: `${verified}: prepare session`,
+      detail: "Session setup command the vendor app sends immediately before starting EEG.",
+      variant: verified,
+      service: CMSN_SERVICE,
+      characteristic: CMSN_WRITE,
+      bytes: cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare),
+      writeMode: "no-response",
+    },
+    {
+      name: `${verified}: start EEG stream`,
+      detail: "Starts the 250 Hz raw EEG stream.",
+      variant: verified,
+      service: CMSN_SERVICE,
+      characteristic: CMSN_WRITE,
+      bytes: cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg),
+      writeMode: "no-response",
+    },
+  ];
+
   const v1 = "Pair → AFE → START";
   const v2 = "Validate → AFE → START";
   const v3 = "Pair → START → AFE";
   const v4 = "Validate → AFE 128 Hz → START";
   return [
+    cmsnSequence,
     [pair(true, v1), afe(ZENLITE_AFE.sr256, v1), start(v1)],
     [pair(false, v2), afe(ZENLITE_AFE.sr256, v2), start(v2)],
     [pair(true, v3), start(v3), startAck(v3), afe(ZENLITE_AFE.sr256, v3)],
@@ -651,7 +704,9 @@ export async function identifyBleHeadset(
         device.id,
         options.stopProbeWhenStreaming !== false,
       );
-      const activating = report.probe.find((step) => step.packetsAfter > 0);
+      // A couple of packets is just the firmware acknowledging the command;
+      // only a sustained burst means the EEG stream actually started.
+      const activating = report.probe.find((step) => step.packetsAfter >= 5);
       if (activating) {
         report.activatedByStep = activating.name;
         report.activatedByVariant = activating.variant;
@@ -740,7 +795,9 @@ async function runActivationProbe(
       bleDiagnostics.setContext({ variant: candidate.variant, step: candidate.name });
       // BrainCo steps are written to whichever vendor transport this firmware
       // actually exposes (OxyZen 4DE5xxxx or FocusCalm FC-11 0D74xxxx).
-      const service = isZenLiteService(candidate.service)
+      const service = candidate.characteristic
+        ? byService.get(candidate.service.toLowerCase())
+        : isZenLiteService(candidate.service)
         ? (ZENLITE_TRANSPORTS.map((t) => byService.get(t.service)).find(Boolean) ?? undefined)
         : byService.get(candidate.service.toLowerCase());
       // Prefer the documented write characteristic of that service; otherwise
@@ -749,7 +806,8 @@ async function runActivationProbe(
       if (service) {
         try {
           const transport = zenliteTransportForService(service.uuid);
-          target = transport ? await service.getCharacteristic(transport.write) : null;
+          const wanted = candidate.characteristic ?? transport?.write;
+          target = wanted ? await service.getCharacteristic(wanted) : null;
         } catch {
           target = null;
         }
