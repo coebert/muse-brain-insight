@@ -865,7 +865,22 @@ export class BleHeadsetSource implements EegSource {
 
     const notifying: BleStreamCandidate[] = [];
     const readable: BleStreamCandidate[] = [];
-    for (const service of services) {
+    // When the verified FC-11 vendor service is present, sweep only that
+    // service. Touching the other services (notably Nordic DFU) during the
+    // activation handshake is what made the band drop the link.
+    const vendorService = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
+    const sweepServices = (vendorService ? [vendorService] : services).filter(
+      (service) => !NEVER_SUBSCRIBE_SERVICES.has(service.uuid.toLowerCase()),
+    );
+    if (sweepServices.length !== services.length) {
+      bleDiagnostics.add("info", "Skipped non-EEG services during discovery", {
+        swept: sweepServices.map((s) => s.uuid),
+        skipped: services
+          .filter((s) => !sweepServices.includes(s))
+          .map((s) => s.uuid),
+      });
+    }
+    for (const service of sweepServices) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
