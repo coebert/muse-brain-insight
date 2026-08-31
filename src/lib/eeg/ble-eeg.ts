@@ -641,6 +641,9 @@ export class BleHeadsetSource implements EegSource {
   private cmsnLinkLostDuringHandshake = false;
   /** Skips the pairing write on a retry, for a band that already knows us. */
   private cmsnSkipPair = false;
+  /** Which write strategy the next activation attempt should use. */
+  private cmsnVariant = 0;
+
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
