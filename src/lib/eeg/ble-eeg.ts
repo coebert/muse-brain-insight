@@ -1328,13 +1328,26 @@ export class BleHeadsetSource implements EegSource {
       const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       const linkLost = /disconnect|link lost|GATT Server is disconnected/i.test(message);
       if (linkLost) this.cmsnLinkLostDuringHandshake = true;
-      bleDiagnostics.add("error", "FC-11 activation failed", { error: message, linkLost });
+      // No acknowledgement at all before the link went is the signature of a
+      // band that refused the command channel outright — on FC-11 that means
+      // the link was not paired at operating-system level, or another host
+      // (usually the phone running the vendor app) still owns the band.
+      const silentRefusal = linkLost && this.cmsnAcks.length === 0;
+      bleDiagnostics.add("error", "FC-11 activation failed", {
+        error: message,
+        linkLost,
+        acks: this.cmsnAcks.length,
+        likelyCause: silentRefusal ? "unpaired link or band owned by another host" : "protocol",
+      });
       throw new Error(
-        linkLost
-          ? "The headband closed the connection during activation. Retrying without re-pairing."
-          : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
+        silentRefusal
+          ? "The headband accepted the connection but closed it as soon as the app sent its first command. That happens when the headband is not paired with this computer at system level, or another device still holds it. Pair “Regul8 Headband” in your computer's Bluetooth settings, make sure the FocusCalm app and phone are disconnected, then try again."
+          : linkLost
+            ? "The headband closed the connection during activation. Retrying without re-pairing."
+            : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+
   }
 
   /** Re-locates the characteristic discovery already chose, after a resume. */
