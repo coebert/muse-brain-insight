@@ -722,17 +722,30 @@ export class BleHeadsetSource implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
-    try {
-      await this.attach();
-      this.started = true;
-      this.startHealthLoop();
-    } catch (error) {
-      // A failed discovery still leaves Chrome's GATT link open. Without a
-      // full cleanup, the next click creates another source while this one
-      // continues to hold the Regul8 session, making every retry fail even
-      // after the original radio problem has cleared.
-      await this.releaseFailedStart();
-      throw error;
+    // FC-11 firmware drops the link when it receives a pairing request it has
+    // already accepted in an earlier session. That looks like a hard failure on
+    // the first click, so the second pass re-runs the whole attach with the
+    // pairing step omitted rather than asking the clinician to try again.
+    for (let pass = 0; pass < 2; pass++) {
+      try {
+        await this.attach();
+        this.started = true;
+        this.startHealthLoop();
+        return;
+      } catch (error) {
+        await this.releaseFailedStart();
+        if (pass === 0 && this.cmsnLinkLostDuringHandshake && !this.stopping) {
+          this.cmsnLinkLostDuringHandshake = false;
+          this.cmsnSkipPair = true;
+          bleDiagnostics.add("info", "Retrying activation without the pairing step");
+          this.progress("connecting", "Reconnecting to the headband");
+          this.device = device;
+          device.addEventListener("gattserverdisconnected", this.disconnectListener);
+          await new Promise((r) => setTimeout(r, 1_200));
+          continue;
+        }
+        throw error;
+      }
     }
   }
 
