@@ -1191,9 +1191,19 @@ export class BleHeadsetSource implements EegSource {
    */
   private async cmsnPreflight(services: BluetoothRemoteGATTService[]) {
     const touched: string[] = [];
-    for (const service of services) {
-      const uuid = service.uuid.toLowerCase();
-      if (!uuid.startsWith("0000180a") && !uuid.startsWith("0000180f")) continue;
+    let securityChallenged = false;
+    // Standard services first (cheap, always readable), then the vendor
+    // service: FC-11 protects some vendor characteristics, and a read that
+    // fails on security is exactly what makes the OS negotiate an encrypted,
+    // bonded link — which the band requires before it accepts commands.
+    const ordered = [
+      ...services.filter((s) => {
+        const u = s.uuid.toLowerCase();
+        return u.startsWith("0000180a") || u.startsWith("0000180f");
+      }),
+      ...services.filter((s) => isZenLiteService(s.uuid)),
+    ];
+    for (const service of ordered) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
@@ -1206,6 +1216,8 @@ export class BleHeadsetSource implements EegSource {
           await char.readValue();
           touched.push(char.uuid);
         } catch (error) {
+          const name = error instanceof Error ? error.name : "";
+          if (name === "SecurityError" || name === "NotAllowedError") securityChallenged = true;
           bleDiagnostics.add("info", "Pre-activation read refused", {
             characteristic: char.uuid,
             error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
@@ -1214,9 +1226,14 @@ export class BleHeadsetSource implements EegSource {
         if (service.device.gatt?.connected !== true) return;
       }
     }
-    bleDiagnostics.add("info", "Pre-activation reads completed", { characteristics: touched });
-    await new Promise((r) => setTimeout(r, 250));
+    bleDiagnostics.add("info", "Pre-activation reads completed", {
+      characteristics: touched,
+      securityChallenged,
+    });
+    // Give the OS stack a moment to finish any encryption/bonding it started.
+    await new Promise((r) => setTimeout(r, securityChallenged ? 1_000 : 250));
   }
+
 
 
   /**
@@ -1341,7 +1358,7 @@ export class BleHeadsetSource implements EegSource {
       });
       throw new Error(
         silentRefusal
-          ? "The headband accepted the connection but closed it as soon as the app sent its first command. That happens when the headband is not paired with this computer at system level, or another device still holds it. Pair “Regul8 Headband” in your computer's Bluetooth settings, make sure the FocusCalm app and phone are disconnected, then try again."
+          ? "The headband accepted the connection but closed it as soon as the app sent its first command — the usual cause is that another device still owns it. Fully close the FocusCalm app, turn Bluetooth off on the phone (or forget the headband there), power the headband off and on, then try again. The headband will not appear in your computer's Bluetooth list; it only pairs through the browser."
           : linkLost
             ? "The headband closed the connection during activation. Retrying without re-pairing."
             : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
