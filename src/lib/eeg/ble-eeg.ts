@@ -729,13 +729,17 @@ export class BleHeadsetSource implements EegSource {
       id: device.id ? `${String(device.id).slice(0, 6)}…` : null,
       ios: isIosWebBleBrowser(),
     });
-    this.disconnectListener = () => {
-      if (this.stopping) return;
-      this.characteristic = null;
-      this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_QUIET_ATTEMPTS });
-      void this.attemptReconnect();
+    const watchLink = () => {
+      this.disconnectListener = () => {
+        if (this.stopping) return;
+        this.characteristic = null;
+        this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_QUIET_ATTEMPTS });
+        void this.attemptReconnect();
+      };
+      device.addEventListener("gattserverdisconnected", this.disconnectListener);
     };
-    device.addEventListener("gattserverdisconnected", this.disconnectListener);
+    watchLink();
+
 
     // FC-11 firmware is fussy about how the activation commands are written:
     // some builds insist on acknowledged writes, some drop the link when a
