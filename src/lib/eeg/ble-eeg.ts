@@ -1358,7 +1358,7 @@ export class BleHeadsetSource implements EegSource {
       });
       throw new Error(
         silentRefusal
-          ? "The headband accepted the connection but closed it as soon as the app sent its first command. That happens when the headband is not paired with this computer at system level, or another device still holds it. Pair “Regul8 Headband” in your computer's Bluetooth settings, make sure the FocusCalm app and phone are disconnected, then try again."
+          ? "The headband accepted the connection but closed it as soon as the app sent its first command — the usual cause is that another device still owns it. Fully close the FocusCalm app, turn Bluetooth off on the phone (or forget the headband there), power the headband off and on, then try again. The headband will not appear in your computer's Bluetooth list; it only pairs through the browser."
           : linkLost
             ? "The headband closed the connection during activation. Retrying without re-pairing."
             : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
