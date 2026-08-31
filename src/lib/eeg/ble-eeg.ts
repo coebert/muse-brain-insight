@@ -744,15 +744,18 @@ export class BleHeadsetSource implements EegSource {
     // of that to the clinician, start() walks a ladder of activation strategies
     // and only reports failure once every one of them has been tried.
     const ladder = [
-      { variant: 0, skipPair: false },
-      { variant: 1, skipPair: false },
-      { variant: 0, skipPair: true },
-      { variant: 2, skipPair: false },
+      { variant: 0, skipPair: false, knownIdentity: true },
+      { variant: 1, skipPair: false, knownIdentity: true },
+      { variant: 0, skipPair: true, knownIdentity: true },
+      { variant: 0, skipPair: false, knownIdentity: false },
+      { variant: 2, skipPair: false, knownIdentity: true },
     ];
     for (let pass = 0; pass < ladder.length; pass++) {
       const step = ladder[pass]!;
       this.cmsnVariant = step.variant;
       this.cmsnSkipPair = step.skipPair;
+      this.cmsnUseKnownIdentity = step.knownIdentity;
+
       try {
         await this.attach();
         this.started = true;
