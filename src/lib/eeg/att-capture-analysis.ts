@@ -289,7 +289,7 @@ export function analyseAttCapture(text: string): AttCaptureAnalysis {
   try {
     const parsed = JSON.parse(text) as unknown;
     const rows = Array.isArray(parsed) ? parsed : Array.isArray((parsed as { events?: unknown[] })?.events) ? (parsed as { events: unknown[] }).events : [];
-    format = rows.some((row) => Boolean((row as Record<string, unknown>)?._source)) ? "wireshark-json" : "event-json";
+    format = rows.some((row) => Boolean((row as Record<string, unknown>)?.["_source"])) ? "wireshark-json" : "event-json";
     events = rows.flatMap((row, index) => {
       const source = (row as { _source?: unknown })?._source ?? row;
       const event = eventFromRecord(source as Record<string, unknown>, index);
