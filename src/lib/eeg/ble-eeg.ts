@@ -731,11 +731,22 @@ export class BleHeadsetSource implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
-    // FC-11 firmware drops the link when it receives a pairing request it has
-    // already accepted in an earlier session. That looks like a hard failure on
-    // the first click, so the second pass re-runs the whole attach with the
-    // pairing step omitted rather than asking the clinician to try again.
-    for (let pass = 0; pass < 2; pass++) {
+    // FC-11 firmware is fussy about how the activation commands are written:
+    // some builds insist on acknowledged writes, some drop the link when a
+    // command exceeds the negotiated MTU, and one that already knows this host
+    // closes the link when it is asked to pair again. Rather than surfacing any
+    // of that to the clinician, start() walks a ladder of activation strategies
+    // and only reports failure once every one of them has been tried.
+    const ladder = [
+      { variant: 0, skipPair: false },
+      { variant: 1, skipPair: false },
+      { variant: 0, skipPair: true },
+      { variant: 2, skipPair: false },
+    ];
+    for (let pass = 0; pass < ladder.length; pass++) {
+      const step = ladder[pass]!;
+      this.cmsnVariant = step.variant;
+      this.cmsnSkipPair = step.skipPair;
       try {
         await this.attach();
         this.started = true;
@@ -743,20 +754,23 @@ export class BleHeadsetSource implements EegSource {
         return;
       } catch (error) {
         await this.releaseFailedStart();
-        if (pass === 0 && this.cmsnLinkLostDuringHandshake && !this.stopping) {
+        if (pass < ladder.length - 1 && this.cmsnLinkLostDuringHandshake && !this.stopping) {
           this.cmsnLinkLostDuringHandshake = false;
-          this.cmsnSkipPair = true;
-          bleDiagnostics.add("info", "Retrying activation without the pairing step");
+          bleDiagnostics.add("info", "Retrying activation with a different command strategy", {
+            nextPass: pass + 2,
+          });
           this.progress("connecting", "Reconnecting to the headband");
+          this.stopping = false;
           this.device = device;
           device.addEventListener("gattserverdisconnected", this.disconnectListener);
-          await new Promise((r) => setTimeout(r, 1_200));
+          await new Promise((r) => setTimeout(r, 1_500));
           continue;
         }
         throw error;
       }
     }
   }
+
 
   /** Releases every resource acquired before start() completed successfully. */
   private async releaseFailedStart() {
