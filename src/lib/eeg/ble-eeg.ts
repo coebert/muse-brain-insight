@@ -1164,7 +1164,9 @@ export class BleHeadsetSource implements EegSource {
       });
       throw new Error("The headband exposed its data service but no command channel.");
     }
+    const connected = () => service.device.gatt?.connected === true;
     const send = async (frame: Uint8Array, label: string) => {
+      if (!connected()) throw new Error(`link lost before ${label}`);
       bleDiagnostics.add("command", label, { characteristic: write.uuid, mode: "writeWithoutResponse" }, frame);
       if (write.properties.writeWithoutResponse) {
         await write.writeValueWithoutResponse(frame as BufferSource);
@@ -1172,26 +1174,45 @@ export class BleHeadsetSource implements EegSource {
         await write.writeValueWithResponse(frame as BufferSource);
       }
     };
+    // The firmware answers each command; waiting for the acknowledgement (or a
+    // short grace period) keeps the sequence in step with slow radio links
+    // instead of firing the next write into a half-processed command.
+    const settle = async (op: number, ms: number) => {
+      const until = Date.now() + ms;
+      while (Date.now() < until) {
+        if (!connected()) return;
+        if (this.cmsnAcks.some((ack) => ack.op === op)) return;
+        await new Promise((r) => setTimeout(r, 40));
+      }
+    };
+    this.cmsnAcks = [];
     try {
-      this.progress("discovering", "Pairing with the headband");
-      await send(
-        cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
-        "FC-11 pair",
-      );
-      await new Promise((r) => setTimeout(r, 600));
+      if (!this.cmsnSkipPair) {
+        this.progress("discovering", "Pairing with the headband");
+        await send(
+          cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
+          "FC-11 pair",
+        );
+        await settle(CMSN_OP.pair, 800);
+      } else {
+        bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
+      }
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare), "FC-11 prepare session");
-      await new Promise((r) => setTimeout(r, 60));
+      await settle(CMSN_OP.prepare, 400);
       this.progress("discovering", "Starting the EEG stream");
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
-      await new Promise((r) => setTimeout(r, 150));
+      await settle(CMSN_OP.startEeg, 400);
       await send(cmsnSyncCommand(nextCmsnMsgId(), Date.now()), "FC-11 clock sync");
       bleDiagnostics.add("info", "FC-11 activation sequence sent");
     } catch (error) {
-      bleDiagnostics.add("error", "FC-11 activation failed", {
-        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-      });
+      const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      const linkLost = /disconnect|link lost|GATT Server is disconnected/i.test(message);
+      if (linkLost) this.cmsnLinkLostDuringHandshake = true;
+      bleDiagnostics.add("error", "FC-11 activation failed", { error: message, linkLost });
       throw new Error(
-        `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
+        linkLost
+          ? "The headband closed the connection during activation. Retrying without re-pairing."
+          : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
