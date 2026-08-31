@@ -1199,7 +1199,7 @@ export class BleHeadsetSource implements EegSource {
       throw new Error("The headband exposed its data service but no command channel.");
     }
     const connected = () => service.device.gatt?.connected === true;
-    this.cmsnPreflightOk = this.cmsnPreflightOk;
+
 
     // Some FC-11 firmware builds only accept acknowledged writes, and a band
     // that has not negotiated a larger MTU drops the link when a 34-byte
