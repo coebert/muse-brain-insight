@@ -1174,14 +1174,44 @@ export class BleHeadsetSource implements EegSource {
       throw new Error("The headband exposed its data service but no command channel.");
     }
     const connected = () => service.device.gatt?.connected === true;
+    // Some FC-11 firmware builds only accept acknowledged writes, and a band
+    // that has not negotiated a larger MTU drops the link when a 34-byte
+    // command arrives as a single unacknowledged write. Each activation pass
+    // therefore uses a different, progressively more conservative strategy.
+    const variants = [
+      { label: "write with response", withResponse: true, chunk: 0 },
+      { label: "write without response", withResponse: false, chunk: 0 },
+      { label: "chunked write with response", withResponse: true, chunk: 20 },
+      { label: "chunked write without response", withResponse: false, chunk: 20 },
+    ] as const;
+    const variant = variants[Math.min(this.cmsnVariant, variants.length - 1)]!;
+    const canWithResponse = write.properties.write !== false;
+    const useResponse = variant.withResponse ? canWithResponse : !write.properties.writeWithoutResponse;
+    const putBytes = async (part: Uint8Array) => {
+      if (useResponse) await write.writeValueWithResponse(part as BufferSource);
+      else await write.writeValueWithoutResponse(part as BufferSource);
+    };
     const send = async (frame: Uint8Array, label: string) => {
       if (!connected()) throw new Error(`link lost before ${label}`);
-      bleDiagnostics.add("command", label, { characteristic: write.uuid, mode: "writeWithoutResponse" }, frame);
-      if (write.properties.writeWithoutResponse) {
-        await write.writeValueWithoutResponse(frame as BufferSource);
-      } else {
-        await write.writeValueWithResponse(frame as BufferSource);
+      bleDiagnostics.add(
+        "command",
+        label,
+        {
+          characteristic: write.uuid,
+          mode: useResponse ? "writeWithResponse" : "writeWithoutResponse",
+          strategy: variant.label,
+        },
+        frame,
+      );
+      if (variant.chunk > 0 && frame.length > variant.chunk) {
+        for (let at = 0; at < frame.length; at += variant.chunk) {
+          if (!connected()) throw new Error(`link lost during ${label}`);
+          await putBytes(frame.subarray(at, at + variant.chunk));
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        return;
       }
+      await putBytes(frame);
     };
     // The firmware answers each command; waiting for the acknowledgement (or a
     // short grace period) keeps the sequence in step with slow radio links
@@ -1196,21 +1226,28 @@ export class BleHeadsetSource implements EegSource {
     };
     this.cmsnAcks = [];
     try {
+      // Give the band time to finish processing the notification subscription
+      // before the first command lands; writing in the same millisecond as the
+      // CCCD write is what preceded the observed link drops.
+      await new Promise((r) => setTimeout(r, 500));
+      if (!connected()) throw new Error("link lost before FC-11 activation");
       if (!this.cmsnSkipPair) {
         this.progress("discovering", "Pairing with the headband");
         await send(
           cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
           "FC-11 pair",
         );
-        await settle(CMSN_OP.pair, 800);
+        await settle(CMSN_OP.pair, 1_200);
       } else {
         bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
       }
+      if (!connected()) throw new Error("link lost after FC-11 pair");
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare), "FC-11 prepare session");
-      await settle(CMSN_OP.prepare, 400);
+      await settle(CMSN_OP.prepare, 600);
       this.progress("discovering", "Starting the EEG stream");
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
-      await settle(CMSN_OP.startEeg, 400);
+      await settle(CMSN_OP.startEeg, 600);
+
       await send(cmsnSyncCommand(nextCmsnMsgId(), Date.now()), "FC-11 clock sync");
       bleDiagnostics.add("info", "FC-11 activation sequence sent");
     } catch (error) {
