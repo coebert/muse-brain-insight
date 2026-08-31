@@ -1191,9 +1191,19 @@ export class BleHeadsetSource implements EegSource {
    */
   private async cmsnPreflight(services: BluetoothRemoteGATTService[]) {
     const touched: string[] = [];
-    for (const service of services) {
-      const uuid = service.uuid.toLowerCase();
-      if (!uuid.startsWith("0000180a") && !uuid.startsWith("0000180f")) continue;
+    let securityChallenged = false;
+    // Standard services first (cheap, always readable), then the vendor
+    // service: FC-11 protects some vendor characteristics, and a read that
+    // fails on security is exactly what makes the OS negotiate an encrypted,
+    // bonded link — which the band requires before it accepts commands.
+    const ordered = [
+      ...services.filter((s) => {
+        const u = s.uuid.toLowerCase();
+        return u.startsWith("0000180a") || u.startsWith("0000180f");
+      }),
+      ...services.filter((s) => isZenLiteService(s.uuid)),
+    ];
+    for (const service of ordered) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
@@ -1206,6 +1216,8 @@ export class BleHeadsetSource implements EegSource {
           await char.readValue();
           touched.push(char.uuid);
         } catch (error) {
+          const name = error instanceof Error ? error.name : "";
+          if (name === "SecurityError" || name === "NotAllowedError") securityChallenged = true;
           bleDiagnostics.add("info", "Pre-activation read refused", {
             characteristic: char.uuid,
             error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
@@ -1214,9 +1226,14 @@ export class BleHeadsetSource implements EegSource {
         if (service.device.gatt?.connected !== true) return;
       }
     }
-    bleDiagnostics.add("info", "Pre-activation reads completed", { characteristics: touched });
-    await new Promise((r) => setTimeout(r, 250));
+    bleDiagnostics.add("info", "Pre-activation reads completed", {
+      characteristics: touched,
+      securityChallenged,
+    });
+    // Give the OS stack a moment to finish any encryption/bonding it started.
+    await new Promise((r) => setTimeout(r, securityChallenged ? 1_000 : 250));
   }
+
 
 
   /**
