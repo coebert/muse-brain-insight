@@ -782,7 +782,7 @@ export class BleHeadsetSource implements EegSource {
           });
           this.progress("connecting", "Reconnecting to the headband");
           this.device = device;
-          device.addEventListener("gattserverdisconnected", this.disconnectListener!);
+          watchLink();
           await new Promise((r) => setTimeout(r, 1_500));
           continue;
         }
