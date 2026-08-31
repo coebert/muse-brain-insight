@@ -156,6 +156,22 @@ export const WEB_BLUETOOTH_BLOCKED_SERVICES = new Set([
   "0000fde2-0000-1000-8000-00805f9b34fb", // FIDO
 ]);
 
+/**
+ * Services that must never be subscribed to during discovery.
+ *
+ * Nordic's Secure DFU service (0xFE59) exposes a buttonless control point with
+ * indications. Enabling those indications on FC-11 firmware asks the peripheral
+ * for an encrypted/bonded link mid-handshake, and the band answers by dropping
+ * the connection a few hundred milliseconds later — exactly the failure seen in
+ * the field captures (link lost between "pair" and "prepare"). It carries no
+ * EEG, so it is skipped outright.
+ */
+export const NEVER_SUBSCRIBE_SERVICES = new Set([
+  "0000fe59-0000-1000-8000-00805f9b34fb", // Nordic Secure DFU (buttonless)
+  "00001530-1212-efde-1523-785feabcd123", // Nordic legacy DFU
+  "0000fe95-0000-1000-8000-00805f9b34fb", // vendor OTA
+]);
+
 function uuid16(value: number): string {
   return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
 }
