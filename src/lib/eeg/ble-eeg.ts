@@ -1247,12 +1247,19 @@ export class BleHeadsetSource implements EegSource {
       if (!connected()) throw new Error("link lost before FC-11 activation");
       if (!this.cmsnSkipPair) {
         this.progress("discovering", "Pairing with the headband");
-        await send(
-          cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
-          "FC-11 pair",
-        );
+        // The band rejects an unknown host identity by closing the link, so the
+        // identity the reference capture shows it accepting is tried first and a
+        // locally derived one only as a fallback pass.
+        const identity = this.cmsnUseKnownIdentity
+          ? cmsnIdentityBytes(CMSN_KNOWN_IDENTITY)
+          : cmsnIdentity(undefined, this.device?.id);
+        bleDiagnostics.add("info", "FC-11 host identity", {
+          source: this.cmsnUseKnownIdentity ? "reference capture" : "this installation",
+        });
+        await send(cmsnPairCommand(nextCmsnMsgId(), identity), "FC-11 pair");
         await settle(CMSN_OP.pair, 1_200);
       } else {
+
         bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
       }
       if (!connected()) throw new Error("link lost after FC-11 pair");
