@@ -156,6 +156,22 @@ export const WEB_BLUETOOTH_BLOCKED_SERVICES = new Set([
   "0000fde2-0000-1000-8000-00805f9b34fb", // FIDO
 ]);
 
+/**
+ * Services that must never be subscribed to during discovery.
+ *
+ * Nordic's Secure DFU service (0xFE59) exposes a buttonless control point with
+ * indications. Enabling those indications on FC-11 firmware asks the peripheral
+ * for an encrypted/bonded link mid-handshake, and the band answers by dropping
+ * the connection a few hundred milliseconds later — exactly the failure seen in
+ * the field captures (link lost between "pair" and "prepare"). It carries no
+ * EEG, so it is skipped outright.
+ */
+export const NEVER_SUBSCRIBE_SERVICES = new Set([
+  "0000fe59-0000-1000-8000-00805f9b34fb", // Nordic Secure DFU (buttonless)
+  "00001530-1212-efde-1523-785feabcd123", // Nordic legacy DFU
+  "0000fe95-0000-1000-8000-00805f9b34fb", // vendor OTA
+]);
+
 function uuid16(value: number): string {
   return `0000${value.toString(16).padStart(4, "0")}-0000-1000-8000-00805f9b34fb`;
 }
@@ -619,6 +635,12 @@ export class BleHeadsetSource implements EegSource {
   private readPollTimer: ReturnType<typeof setTimeout> | null = null;
   private zenlite = new ZenLiteDeframer();
   private cmsn = new CmsnDeframer();
+  /** Firmware acknowledgements seen since the last activation attempt. */
+  private cmsnAcks: { op: number; ok: boolean }[] = [];
+  /** Set when the band closed the link mid-handshake, so start() can retry. */
+  private cmsnLinkLostDuringHandshake = false;
+  /** Skips the pairing write on a retry, for a band that already knows us. */
+  private cmsnSkipPair = false;
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
@@ -706,17 +728,30 @@ export class BleHeadsetSource implements EegSource {
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
 
-    try {
-      await this.attach();
-      this.started = true;
-      this.startHealthLoop();
-    } catch (error) {
-      // A failed discovery still leaves Chrome's GATT link open. Without a
-      // full cleanup, the next click creates another source while this one
-      // continues to hold the Regul8 session, making every retry fail even
-      // after the original radio problem has cleared.
-      await this.releaseFailedStart();
-      throw error;
+    // FC-11 firmware drops the link when it receives a pairing request it has
+    // already accepted in an earlier session. That looks like a hard failure on
+    // the first click, so the second pass re-runs the whole attach with the
+    // pairing step omitted rather than asking the clinician to try again.
+    for (let pass = 0; pass < 2; pass++) {
+      try {
+        await this.attach();
+        this.started = true;
+        this.startHealthLoop();
+        return;
+      } catch (error) {
+        await this.releaseFailedStart();
+        if (pass === 0 && this.cmsnLinkLostDuringHandshake && !this.stopping) {
+          this.cmsnLinkLostDuringHandshake = false;
+          this.cmsnSkipPair = true;
+          bleDiagnostics.add("info", "Retrying activation without the pairing step");
+          this.progress("connecting", "Reconnecting to the headband");
+          this.device = device;
+          device.addEventListener("gattserverdisconnected", this.disconnectListener);
+          await new Promise((r) => setTimeout(r, 1_200));
+          continue;
+        }
+        throw error;
+      }
     }
   }
 
@@ -849,7 +884,22 @@ export class BleHeadsetSource implements EegSource {
 
     const notifying: BleStreamCandidate[] = [];
     const readable: BleStreamCandidate[] = [];
-    for (const service of services) {
+    // When the verified FC-11 vendor service is present, sweep only that
+    // service. Touching the other services (notably Nordic DFU) during the
+    // activation handshake is what made the band drop the link.
+    const vendorService = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
+    const sweepServices = (vendorService ? [vendorService] : services).filter(
+      (service) => !NEVER_SUBSCRIBE_SERVICES.has(service.uuid.toLowerCase()),
+    );
+    if (sweepServices.length !== services.length) {
+      bleDiagnostics.add("info", "Skipped non-EEG services during discovery", {
+        swept: sweepServices.map((s) => s.uuid),
+        skipped: services
+          .filter((s) => !sweepServices.includes(s))
+          .map((s) => s.uuid),
+      });
+    }
+    for (const service of sweepServices) {
       let chars: BluetoothRemoteGATTCharacteristic[] = [];
       try {
         chars = await service.getCharacteristics();
@@ -1120,7 +1170,9 @@ export class BleHeadsetSource implements EegSource {
       });
       throw new Error("The headband exposed its data service but no command channel.");
     }
+    const connected = () => service.device.gatt?.connected === true;
     const send = async (frame: Uint8Array, label: string) => {
+      if (!connected()) throw new Error(`link lost before ${label}`);
       bleDiagnostics.add("command", label, { characteristic: write.uuid, mode: "writeWithoutResponse" }, frame);
       if (write.properties.writeWithoutResponse) {
         await write.writeValueWithoutResponse(frame as BufferSource);
@@ -1128,26 +1180,45 @@ export class BleHeadsetSource implements EegSource {
         await write.writeValueWithResponse(frame as BufferSource);
       }
     };
+    // The firmware answers each command; waiting for the acknowledgement (or a
+    // short grace period) keeps the sequence in step with slow radio links
+    // instead of firing the next write into a half-processed command.
+    const settle = async (op: number, ms: number) => {
+      const until = Date.now() + ms;
+      while (Date.now() < until) {
+        if (!connected()) return;
+        if (this.cmsnAcks.some((ack) => ack.op === op)) return;
+        await new Promise((r) => setTimeout(r, 40));
+      }
+    };
+    this.cmsnAcks = [];
     try {
-      this.progress("discovering", "Pairing with the headband");
-      await send(
-        cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
-        "FC-11 pair",
-      );
-      await new Promise((r) => setTimeout(r, 600));
+      if (!this.cmsnSkipPair) {
+        this.progress("discovering", "Pairing with the headband");
+        await send(
+          cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
+          "FC-11 pair",
+        );
+        await settle(CMSN_OP.pair, 800);
+      } else {
+        bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
+      }
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare), "FC-11 prepare session");
-      await new Promise((r) => setTimeout(r, 60));
+      await settle(CMSN_OP.prepare, 400);
       this.progress("discovering", "Starting the EEG stream");
       await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
-      await new Promise((r) => setTimeout(r, 150));
+      await settle(CMSN_OP.startEeg, 400);
       await send(cmsnSyncCommand(nextCmsnMsgId(), Date.now()), "FC-11 clock sync");
       bleDiagnostics.add("info", "FC-11 activation sequence sent");
     } catch (error) {
-      bleDiagnostics.add("error", "FC-11 activation failed", {
-        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-      });
+      const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      const linkLost = /disconnect|link lost|GATT Server is disconnected/i.test(message);
+      if (linkLost) this.cmsnLinkLostDuringHandshake = true;
+      bleDiagnostics.add("error", "FC-11 activation failed", { error: message, linkLost });
       throw new Error(
-        `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
+        linkLost
+          ? "The headband closed the connection during activation. Retrying without re-pairing."
+          : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -1519,6 +1590,7 @@ export class BleHeadsetSource implements EegSource {
           for (const payload of cmsnResponses.push(bytes)) {
             const ack = cmsnAck(payload);
             if (!ack) continue;
+            this.cmsnAcks.push({ op: ack.op ?? -1, ok: ack.ok });
             bleDiagnostics.add(
               ack.ok ? "info" : "error",
               `FC-11 firmware response: ${cmsnOpName(ack.op)} → ${ack.ok ? "accepted" : `error ${ack.result}`}`,
