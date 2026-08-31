@@ -1094,9 +1094,11 @@ export class BleHeadsetSource implements EegSource {
     // recovered from a real capture of the vendor app, not the ZenLite one.
     const cmsn = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
     if (cmsn) {
+      await this.cmsnPreflight(services);
       await this.cmsnHandshake(cmsn);
       return;
     }
+
     const service = services.find((s) => isZenLiteService(s.uuid));
     if (!service) {
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
