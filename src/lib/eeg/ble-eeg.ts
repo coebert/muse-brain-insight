@@ -1590,6 +1590,7 @@ export class BleHeadsetSource implements EegSource {
           for (const payload of cmsnResponses.push(bytes)) {
             const ack = cmsnAck(payload);
             if (!ack) continue;
+            this.cmsnAcks.push({ op: ack.op, ok: ack.ok });
             bleDiagnostics.add(
               ack.ok ? "info" : "error",
               `FC-11 firmware response: ${cmsnOpName(ack.op)} → ${ack.ok ? "accepted" : `error ${ack.result}`}`,
