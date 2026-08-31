@@ -729,13 +729,17 @@ export class BleHeadsetSource implements EegSource {
       id: device.id ? `${String(device.id).slice(0, 6)}…` : null,
       ios: isIosWebBleBrowser(),
     });
-    this.disconnectListener = () => {
-      if (this.stopping) return;
-      this.characteristic = null;
-      this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_QUIET_ATTEMPTS });
-      void this.attemptReconnect();
+    const watchLink = () => {
+      this.disconnectListener = () => {
+        if (this.stopping) return;
+        this.characteristic = null;
+        this.stateCb?.({ kind: "reconnecting", attempt: 1, attempts: BLE_RETRY_QUIET_ATTEMPTS });
+        void this.attemptReconnect();
+      };
+      device.addEventListener("gattserverdisconnected", this.disconnectListener);
     };
-    device.addEventListener("gattserverdisconnected", this.disconnectListener);
+    watchLink();
+
 
     // FC-11 firmware is fussy about how the activation commands are written:
     // some builds insist on acknowledged writes, some drop the link when a
@@ -744,10 +748,13 @@ export class BleHeadsetSource implements EegSource {
     // of that to the clinician, start() walks a ladder of activation strategies
     // and only reports failure once every one of them has been tried.
     const ladder = [
-      { variant: 0, skipPair: false, knownIdentity: true },
+      // The reference capture of the vendor app writes without response, so
+      // that shape is tried first and acknowledged writes only as a fallback.
       { variant: 1, skipPair: false, knownIdentity: true },
-      { variant: 0, skipPair: true, knownIdentity: true },
-      { variant: 0, skipPair: false, knownIdentity: false },
+      { variant: 0, skipPair: false, knownIdentity: true },
+      { variant: 1, skipPair: true, knownIdentity: true },
+      { variant: 1, skipPair: false, knownIdentity: false },
+      { variant: 3, skipPair: false, knownIdentity: true },
       { variant: 2, skipPair: false, knownIdentity: true },
     ];
     for (let pass = 0; pass < ladder.length; pass++) {
@@ -762,22 +769,28 @@ export class BleHeadsetSource implements EegSource {
         this.startHealthLoop();
         return;
       } catch (error) {
+        const lostLink = this.cmsnLinkLostDuringHandshake;
         await this.releaseFailedStart();
-        if (pass < ladder.length - 1 && this.cmsnLinkLostDuringHandshake && !this.stopping) {
+        // releaseFailedStart() raises the stop flag as part of tearing the
+        // failed link down; clear it again so the next pass can run.
+        this.stopping = false;
+        if (pass < ladder.length - 1 && lostLink) {
           this.cmsnLinkLostDuringHandshake = false;
           bleDiagnostics.add("info", "Retrying activation with a different command strategy", {
             nextPass: pass + 2,
+            strategy: ladder[pass + 1],
           });
           this.progress("connecting", "Reconnecting to the headband");
-          this.stopping = false;
           this.device = device;
-          device.addEventListener("gattserverdisconnected", this.disconnectListener);
+          watchLink();
           await new Promise((r) => setTimeout(r, 1_500));
           continue;
         }
+        this.stopping = true;
         throw error;
       }
     }
+
   }
 
 
