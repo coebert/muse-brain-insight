@@ -1094,9 +1094,11 @@ export class BleHeadsetSource implements EegSource {
     // recovered from a real capture of the vendor app, not the ZenLite one.
     const cmsn = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
     if (cmsn) {
+      await this.cmsnPreflight(services);
       await this.cmsnHandshake(cmsn);
       return;
     }
+
     const service = services.find((s) => isZenLiteService(s.uuid));
     if (!service) {
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
@@ -1178,6 +1180,46 @@ export class BleHeadsetSource implements EegSource {
   }
 
   /**
+   * Mirrors what the vendor app touches before it activates the band.
+   *
+   * The reference capture shows the phone reading the device-information and
+   * battery characteristics and subscribing to battery notifications on an
+   * encrypted link before the first vendor command. Those reads are what make
+   * the Bluetooth stack establish link security, and FC-11 firmware closes the
+   * connection when a vendor command arrives on an unsecured link — so the
+   * preflight is a functional part of activation, not just telemetry.
+   */
+  private async cmsnPreflight(services: BluetoothRemoteGATTService[]) {
+    const touched: string[] = [];
+    for (const service of services) {
+      const uuid = service.uuid.toLowerCase();
+      if (!uuid.startsWith("0000180a") && !uuid.startsWith("0000180f")) continue;
+      let chars: BluetoothRemoteGATTCharacteristic[] = [];
+      try {
+        chars = await service.getCharacteristics();
+      } catch {
+        continue;
+      }
+      for (const char of chars) {
+        if (!char.properties.read) continue;
+        try {
+          await char.readValue();
+          touched.push(char.uuid);
+        } catch (error) {
+          bleDiagnostics.add("info", "Pre-activation read refused", {
+            characteristic: char.uuid,
+            error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+          });
+        }
+        if (service.device.gatt?.connected !== true) return;
+      }
+    }
+    bleDiagnostics.add("info", "Pre-activation reads completed", { characteristics: touched });
+    await new Promise((r) => setTimeout(r, 250));
+  }
+
+
+  /**
    * Activation sequence for FocusCalm FC-11, replayed from the vendor app.
    *
    * The official app writes three commands, without response, to the CMSN
@@ -1197,6 +1239,8 @@ export class BleHeadsetSource implements EegSource {
       throw new Error("The headband exposed its data service but no command channel.");
     }
     const connected = () => service.device.gatt?.connected === true;
+
+
     // Some FC-11 firmware builds only accept acknowledged writes, and a band
     // that has not negotiated a larger MTU drops the link when a 34-byte
     // command arrives as a single unacknowledged write. Each activation pass
@@ -1284,13 +1328,26 @@ export class BleHeadsetSource implements EegSource {
       const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       const linkLost = /disconnect|link lost|GATT Server is disconnected/i.test(message);
       if (linkLost) this.cmsnLinkLostDuringHandshake = true;
-      bleDiagnostics.add("error", "FC-11 activation failed", { error: message, linkLost });
+      // No acknowledgement at all before the link went is the signature of a
+      // band that refused the command channel outright — on FC-11 that means
+      // the link was not paired at operating-system level, or another host
+      // (usually the phone running the vendor app) still owns the band.
+      const silentRefusal = linkLost && this.cmsnAcks.length === 0;
+      bleDiagnostics.add("error", "FC-11 activation failed", {
+        error: message,
+        linkLost,
+        acks: this.cmsnAcks.length,
+        likelyCause: silentRefusal ? "unpaired link or band owned by another host" : "protocol",
+      });
       throw new Error(
-        linkLost
-          ? "The headband closed the connection during activation. Retrying without re-pairing."
-          : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
+        silentRefusal
+          ? "The headband accepted the connection but closed it as soon as the app sent its first command. That happens when the headband is not paired with this computer at system level, or another device still holds it. Pair “Regul8 Headband” in your computer's Bluetooth settings, make sure the FocusCalm app and phone are disconnected, then try again."
+          : linkLost
+            ? "The headband closed the connection during activation. Retrying without re-pairing."
+            : `The headband rejected the EEG start command: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+
   }
 
   /** Re-locates the characteristic discovery already chose, after a resume. */
