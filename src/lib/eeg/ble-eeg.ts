@@ -635,6 +635,12 @@ export class BleHeadsetSource implements EegSource {
   private readPollTimer: ReturnType<typeof setTimeout> | null = null;
   private zenlite = new ZenLiteDeframer();
   private cmsn = new CmsnDeframer();
+  /** Firmware acknowledgements seen since the last activation attempt. */
+  private cmsnAcks: { op: number; ok: boolean }[] = [];
+  /** Set when the band closed the link mid-handshake, so start() can retry. */
+  private cmsnLinkLostDuringHandshake = false;
+  /** Skips the pairing write on a retry, for a band that already knows us. */
+  private cmsnSkipPair = false;
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
   private format: PacketFormat = "int16le";
