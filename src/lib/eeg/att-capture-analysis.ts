@@ -98,8 +98,9 @@ function eventFromRecord(record: Record<string, unknown>, index: number): AttCap
   if (!valueHex) return null;
   const rawTime = firstValue(flat, ["atMs", "time_ms", "frame.time_epoch", "timestamp", "time", "frame.time_relative"]);
   const numericTime = Number(rawTime);
+  const timeIsMilliseconds = flat["atMs"] != null || flat["time_ms"] != null;
   const atMs = Number.isFinite(numericTime)
-    ? numericTime > 10_000_000 ? numericTime * 1000 : numericTime
+    ? timeIsMilliseconds ? numericTime : numericTime * 1000
     : index;
   const rawOpcode = firstValue(flat, ["direction", "type", "event", "btatt.opcode", "opcode", "operation"]);
   const rawUuid = firstValue(flat, ["characteristic", "characteristicUuid", "btatt.uuid128", "btatt.uuid", "uuid"]);
