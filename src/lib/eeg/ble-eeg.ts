@@ -70,6 +70,9 @@ import {
   cmsnAck,
   cmsnEegSamples,
   cmsnIdentity,
+  cmsnIdentityBytes,
+  CMSN_KNOWN_IDENTITY,
+
   cmsnOpCommand,
   cmsnOpName,
   cmsnPairCommand,
@@ -643,6 +646,9 @@ export class BleHeadsetSource implements EegSource {
   private cmsnSkipPair = false;
   /** Which write strategy the next activation attempt should use. */
   private cmsnVariant = 0;
+  /** Pair using the host identity the band is known to have accepted. */
+  private cmsnUseKnownIdentity = true;
+
 
   private batteryChar: BluetoothRemoteGATTCharacteristic | null = null;
   private pipeline: IngestPipeline | null = null;
@@ -738,15 +744,18 @@ export class BleHeadsetSource implements EegSource {
     // of that to the clinician, start() walks a ladder of activation strategies
     // and only reports failure once every one of them has been tried.
     const ladder = [
-      { variant: 0, skipPair: false },
-      { variant: 1, skipPair: false },
-      { variant: 0, skipPair: true },
-      { variant: 2, skipPair: false },
+      { variant: 0, skipPair: false, knownIdentity: true },
+      { variant: 1, skipPair: false, knownIdentity: true },
+      { variant: 0, skipPair: true, knownIdentity: true },
+      { variant: 0, skipPair: false, knownIdentity: false },
+      { variant: 2, skipPair: false, knownIdentity: true },
     ];
     for (let pass = 0; pass < ladder.length; pass++) {
       const step = ladder[pass]!;
       this.cmsnVariant = step.variant;
       this.cmsnSkipPair = step.skipPair;
+      this.cmsnUseKnownIdentity = step.knownIdentity;
+
       try {
         await this.attach();
         this.started = true;
@@ -1247,12 +1256,19 @@ export class BleHeadsetSource implements EegSource {
       if (!connected()) throw new Error("link lost before FC-11 activation");
       if (!this.cmsnSkipPair) {
         this.progress("discovering", "Pairing with the headband");
-        await send(
-          cmsnPairCommand(nextCmsnMsgId(), cmsnIdentity(undefined, this.device?.id)),
-          "FC-11 pair",
-        );
+        // The band rejects an unknown host identity by closing the link, so the
+        // identity the reference capture shows it accepting is tried first and a
+        // locally derived one only as a fallback pass.
+        const identity = this.cmsnUseKnownIdentity
+          ? cmsnIdentityBytes(CMSN_KNOWN_IDENTITY)
+          : cmsnIdentity(undefined, this.device?.id);
+        bleDiagnostics.add("info", "FC-11 host identity", {
+          source: this.cmsnUseKnownIdentity ? "reference capture" : "this installation",
+        });
+        await send(cmsnPairCommand(nextCmsnMsgId(), identity), "FC-11 pair");
         await settle(CMSN_OP.pair, 1_200);
       } else {
+
         bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
       }
       if (!connected()) throw new Error("link lost after FC-11 pair");

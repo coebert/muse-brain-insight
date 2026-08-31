@@ -197,8 +197,17 @@ export function cmsnIdentityBytes(seed: string): Uint8Array {
 
 const IDENTITY_KEY = "cortextrace.fc11.identity";
 
+/**
+ * The host identity the band has already accepted, read out of the reference
+ * PacketLogger capture of the official app. FC-11 firmware closes the link when
+ * a pairing request presents an identity it does not recognise, so replaying the
+ * known-good one is what lets a browser host attach to an already-bonded band.
+ */
+export const CMSN_KNOWN_IDENTITY = "bcd1770495bd4674a578479480358e28";
+
 /** Stable per-installation identity, persisted so re-pairing is recognised. */
 export function cmsnIdentity(storage?: Storage, deviceId?: string): Uint8Array {
+
   const store = storage ?? (typeof localStorage === "undefined" ? undefined : localStorage);
   const existing = store?.getItem(IDENTITY_KEY);
   if (existing && /^[0-9a-f]{32}$/i.test(existing)) return cmsnIdentityBytes(existing);
