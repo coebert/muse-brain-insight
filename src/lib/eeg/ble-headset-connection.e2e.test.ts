@@ -202,4 +202,36 @@ describe("Regul8 connection and ingest", () => {
 
     await expect(source.start(() => {})).rejects.toThrow("notification subscription failed");
   });
+
+  it("restarts the handshake when the link stays up but no EEG ever flows", async () => {
+    vi.useFakeTimers();
+    // Streams during the discovery listen window, then falls silent forever:
+    // the classic stall watchdog (which needs at least one post-attach
+    // packet) could never catch this "connected but dead air" shape.
+    const characteristic = new MockCharacteristic();
+    const service = {
+      uuid: "0000fff0-0000-1000-8000-00805f9b34fb",
+      async getCharacteristics() {
+        return [characteristic as unknown as BluetoothRemoteGATTCharacteristic];
+      },
+    } as BluetoothRemoteGATTService;
+    const { device } = mockDevice([service]);
+    const states: string[] = [];
+    const source = new BleHeadsetSource({ device, listenSeconds: 1 });
+    source.onState((state) => states.push(state.kind));
+
+    const starting = source.start(() => {});
+    await vi.advanceTimersByTimeAsync(3_000);
+    await starting;
+    expect(states).toContain("connected");
+    const startsAfterConnect = characteristic.starts;
+
+    // Past the first-packet grace period the watchdog must tear the link
+    // down and re-run attach(), re-subscribing the stream characteristic.
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(states).toContain("reconnecting");
+    expect(characteristic.starts).toBeGreaterThan(startsAfterConnect);
+    await source.stop();
+  });
 });
