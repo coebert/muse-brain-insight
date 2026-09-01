@@ -613,6 +613,13 @@ export function bleRetryDelayMs(attempt: number, random = Math.random): number {
 }
 /** No packets for this long with the link nominally up: treat it as dropped. */
 const BLE_STALL_MS = 6_000;
+/**
+ * Grace period after a successful attach/handshake for the first decodable
+ * EEG to arrive. Longer than BLE_STALL_MS because the FC-11 front end takes a
+ * moment to settle after the start command; after this, a silent or
+ * undecoding link is treated as stalled and the handshake is restarted.
+ */
+const BLE_FIRST_PACKET_MS = 12_000;
 
 /**
  * A discovered BLE EEG stream presented as an ordinary `EegSource`, so the
@@ -676,6 +683,10 @@ export class BleHeadsetSource implements EegSource {
   private totalPackets = 0;
   private totalSamples = 0;
   private lastPacketAt = 0;
+  /** When the current attach/handshake completed; 0 before the first attach. */
+  private attachedAt = 0;
+  /** Last time a notification decoded into at least one EEG sample. */
+  private lastDecodedAt = 0;
   discovery: BleDiscovery | null = null;
 
   constructor(private readonly options: BleHeadsetOptions = {}) {
@@ -916,6 +927,8 @@ export class BleHeadsetSource implements EegSource {
       if (known) {
         await this.bindStream(known);
         await this.zenliteHandshake(services, "validate");
+        this.attachedAt = Date.now();
+        this.lastDecodedAt = 0;
         this.progress("ready", "EEG stream resumed");
         this.stateCb?.({ kind: "connected" });
         return;
@@ -1088,6 +1101,8 @@ export class BleHeadsetSource implements EegSource {
       await this.bindStream(chosen.characteristic);
     }
     this.discoveryCb?.(this.discovery);
+    this.attachedAt = Date.now();
+    this.lastDecodedAt = 0;
     this.progress("ready", "EEG signal confirmed");
     this.stateCb?.({ kind: "connected" });
   }
@@ -1475,6 +1490,7 @@ export class BleHeadsetSource implements EegSource {
     });
     if (this.packetLog.length > 2_000) this.packetLog.splice(0, this.packetLog.length - 2_000);
     if (!decoded.length) return;
+    this.lastDecodedAt = now;
     this.pipeline?.push({ [COLUMN]: Float64Array.from(decoded) });
   }
 
@@ -1495,12 +1511,36 @@ export class BleHeadsetSource implements EegSource {
       this.healthCb?.(health);
       // Link nominally up but silent: the band has stopped streaming, which
       // GATT does not always report. Rebuild it rather than sit on dead air.
-      if (
-        this.started &&
-        !this.reconnecting &&
-        this.lastPacketAt &&
-        Date.now() - this.lastPacketAt > BLE_STALL_MS
-      ) {
+      if (!this.started || this.reconnecting) return;
+      const now = Date.now();
+      // Three distinct silent-connection shapes, all recovered by tearing the
+      // link down and re-running attach() — which for the FC-11 re-runs the
+      // CMSN preflight and the pair → prepare → start handshake:
+      //  1. the handshake resolved but no notification ever arrived
+      //     (lastPacketAt is still 0), so the classic stall check below
+      //     could never fire and the link sat "connected" on dead air;
+      //  2. notifications arrive but none decode (firmware acks only), which
+      //     kept lastPacketAt fresh and equally hid the stall;
+      //  3. a stream that was live and then went quiet.
+      const sinceAttach = this.attachedAt ? now - this.attachedAt : 0;
+      const neverStreamed = !this.lastDecodedAt && sinceAttach > BLE_FIRST_PACKET_MS;
+      const notDecoding =
+        this.lastDecodedAt > 0 &&
+        now - this.lastDecodedAt > BLE_STALL_MS;
+      const streamStalled =
+        this.lastPacketAt > 0 && now - this.lastPacketAt > BLE_STALL_MS;
+      if (neverStreamed || notDecoding || streamStalled) {
+        bleDiagnostics.add("error", "Stall watchdog: link is up but no EEG is flowing", {
+          reason: neverStreamed
+            ? "no decodable EEG since the handshake completed"
+            : notDecoding
+            ? "notifications arrive but none decode as EEG"
+            : "the EEG stream went quiet",
+          msSinceAttach: sinceAttach,
+          msSinceLastPacket: this.lastPacketAt ? now - this.lastPacketAt : null,
+          msSinceLastDecoded: this.lastDecodedAt ? now - this.lastDecodedAt : null,
+          note: "Restarting the link and re-running the activation handshake.",
+        });
         void this.attemptReconnect();
       }
     }, 500);
