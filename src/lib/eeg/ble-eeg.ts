@@ -809,7 +809,8 @@ export class BleHeadsetSource implements EegSource {
       /* the browser may already have closed the failed link */
     }
     this.device = null;
-    this.samplesCb = null;
+    // samplesCb stays: a retry pass in start() reuses the same sample sink;
+    // only stop() and a fresh start() re-point it.
   }
 
   /**
