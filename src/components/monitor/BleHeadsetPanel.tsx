@@ -455,7 +455,48 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
             ) : null}
           </div>
         ) : null}
-      </details>
+
+      {deviceInfo || handshake ? (
+        <div
+          className={`mt-3 rounded-md border p-3 text-xs ${
+            firmware.state === "match"
+              ? "border-signal/40 bg-signal/5"
+              : firmware.state === "mismatch"
+                ? "border-critical/40 bg-critical/10"
+                : "border-border bg-muted/30"
+          }`}
+        >
+          <div className="flex items-start gap-2">
+            {firmware.state === "match" ? (
+              <Check className="mt-0.5 size-3.5 shrink-0 text-signal" aria-hidden />
+            ) : (
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-caution" aria-hidden />
+            )}
+            <div className="min-w-0">
+              <p className="font-medium">{firmware.label}</p>
+              <p className="mt-1 text-muted-foreground">{firmware.detail}</p>
+            </div>
+          </div>
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-4">
+            {[
+              ["Firmware", deviceInfo?.firmwareVersion],
+              ["Hardware", deviceInfo?.hardwareVersion],
+              ["Model", deviceInfo?.model],
+              ["Maker", deviceInfo?.manufacturer],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd className="metric-value text-foreground">{value || "—"}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>Handshake</dt>
+              <dd className="metric-value text-foreground">{HANDSHAKE_LABEL[handshake ?? "none"]}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+
 
       {connected && health ? (
         <div
