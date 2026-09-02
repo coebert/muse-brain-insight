@@ -1202,6 +1202,7 @@ export class BleHeadsetSource implements EegSource {
     // recovered from a real capture of the vendor app, not the ZenLite one.
     const cmsn = services.find((s) => s.uuid.toLowerCase() === CMSN_SERVICE);
     if (cmsn) {
+      lastHandshakeProtocol = "cmsn";
       await this.cmsnPreflight(services);
       await this.cmsnHandshake(cmsn);
       return;
@@ -1209,11 +1210,14 @@ export class BleHeadsetSource implements EegSource {
 
     const service = services.find((s) => isZenLiteService(s.uuid));
     if (!service) {
+      lastHandshakeProtocol = "none";
       bleDiagnostics.add("info", "BrainCo vendor service absent — no activation sent", {
         expected: `${ZENLITE_SERVICE} or ${ZENLITE_SERVICE_FC11}`,
       });
       return;
     }
+    lastHandshakeProtocol = "zenlite";
+
     const transport = zenliteTransportForService(service.uuid)!;
     let write: BluetoothRemoteGATTCharacteristic | null = null;
     try {
