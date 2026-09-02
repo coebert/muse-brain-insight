@@ -455,6 +455,9 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
             ) : null}
           </div>
         ) : null}
+      </details>
+
+
 
       {deviceInfo || handshake ? (
         <div
