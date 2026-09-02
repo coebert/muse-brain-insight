@@ -159,6 +159,9 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     setHealth(null);
     setTestResult(null);
     setDiagnostic(null);
+    setDeviceInfo(null);
+    setHandshake(null);
+
     if (sourceRef.current && !adoptedRef.current) await sourceRef.current.stop();
     sourceRef.current = null;
     let pendingSource: BleHeadsetSource | null = null;
