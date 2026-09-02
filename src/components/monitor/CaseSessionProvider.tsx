@@ -455,9 +455,12 @@ function useCaseSessionState() {
       preset?: string;
       source?: EegSource;
       onConnectionError?: (error: unknown) => void;
+      /** Forces a throwaway test session without going through the dialog. */
+      asTest?: boolean;
     },
   ) {
-    const asTest = startIntent === "test";
+    const asTest = options?.asTest ?? startIntent === "test";
+
     if (!asTest && !meta.caseCode.trim()) {
       toast.error("Give the case an anonymised code first.");
       return false;

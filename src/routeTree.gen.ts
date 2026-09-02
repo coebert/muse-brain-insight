@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedBrainwavesRouteImport } from './routes/_authenticated/brainwaves'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated/coebis'
@@ -37,6 +38,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBrainwavesRoute = AuthenticatedBrainwavesRouteImport.update({
+  id: '/brainwaves',
+  path: '/brainwaves',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCalibrateRoute = AuthenticatedCalibrateRouteImport.update({
@@ -104,6 +110,7 @@ const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/coebis': typeof AuthenticatedCoebisRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/coebis': typeof AuthenticatedCoebisRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/coebis': typeof AuthenticatedCoebisRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/brainwaves'
     | '/calibrate'
     | '/cases'
     | '/coebis'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/brainwaves'
     | '/calibrate'
     | '/cases'
     | '/coebis'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/brainwaves'
     | '/_authenticated/calibrate'
     | '/_authenticated/cases'
     | '/_authenticated/coebis'
@@ -229,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/brainwaves': {
+      id: '/_authenticated/brainwaves'
+      path: '/brainwaves'
+      fullPath: '/brainwaves'
+      preLoaderRoute: typeof AuthenticatedBrainwavesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/calibrate': {
@@ -319,6 +338,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBrainwavesRoute: typeof AuthenticatedBrainwavesRoute
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedCoebisRoute: typeof AuthenticatedCoebisRoute
@@ -335,6 +355,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBrainwavesRoute: AuthenticatedBrainwavesRoute,
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedCoebisRoute: AuthenticatedCoebisRoute,

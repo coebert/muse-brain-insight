@@ -11,7 +11,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 const TOOLS = [
+  { to: "/brainwaves", label: "Live brainwaves" },
   { to: "/trends", label: "Session trends" },
+
   { to: "/compare", label: "Compare metrics" },
   { to: "/calibrate", label: "Depth calibration" },
   { to: "/validate", label: "Agreement report" },
