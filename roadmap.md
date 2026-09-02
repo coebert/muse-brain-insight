@@ -5,3 +5,4 @@
 - [x] Analyse the desktop Chrome firmware 1.1.6 diagnostic capture and identify the
       retry-session command-id bug
 - [x] Restart CMSN command IDs per GATT connection and prioritise the already-paired path
+- [x] macOS CoreBluetooth bridge (bridge/macos) streaming the headband to the app over WebSocket
