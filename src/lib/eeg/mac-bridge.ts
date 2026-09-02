@@ -138,6 +138,7 @@ export class MacBridgeSource implements EegSource {
   private stall: ReturnType<typeof setInterval> | null = null;
   private lastDataAt = 0;
   private hello: BridgeHello | null = null;
+  private profileCb: ((profile: DeviceProfile) => void) | null = null;
 
   constructor(private readonly options: MacBridgeOptions = {}) {
     this.name = "Headband via macOS bridge";
