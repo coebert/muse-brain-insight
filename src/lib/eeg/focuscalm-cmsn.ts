@@ -154,6 +154,20 @@ export function nextCmsnMsgId(): number {
   return messageId;
 }
 
+/**
+ * Starts a fresh command-id sequence for one GATT connection. FC-11 firmware
+ * 1.1.6 expects the first CMSN command after every reconnect to use id 1; a
+ * process-global counter makes retry passes start at 2, 3, … and the band
+ * closes the link before acknowledging them.
+ */
+export function cmsnMessageIdSequence(): () => number {
+  let connectionMessageId = 0;
+  return () => {
+    connectionMessageId = (connectionMessageId % 0x7fff) + 1;
+    return connectionMessageId;
+  };
+}
+
 /** Pairing command carrying the 16-byte host identity. */
 export function cmsnPairCommand(msgId: number, identity: Uint8Array): Uint8Array {
   const id = identity.length === 16 ? identity : cmsnIdentityBytes(String(identity));
