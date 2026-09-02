@@ -92,6 +92,11 @@ function BrainwavesPage() {
                 startCase("ingest", { source, onConnectionError, asTest: true })
               }
             />
+            <MacBridgePanel
+              onStart={(source, onConnectionError) =>
+                startCase("ingest", { source, onConnectionError, asTest: true })
+              }
+            />
           </section>
         ) : (
           <>
