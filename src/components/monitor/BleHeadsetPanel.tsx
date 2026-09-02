@@ -29,11 +29,17 @@ import {
 import {
   BleHeadsetSource,
   PACKET_FORMAT_LABEL,
+  describeFirmwareMatch,
   friendlyBleError,
+  getLastDeviceInformation,
+  getLastHandshakeProtocol,
+  type BleDeviceInformation,
   type BleDiscovery,
   type BleConnectionProgress,
+  type BleHandshakeProtocol,
   type BleStreamHealth,
 } from "@/lib/eeg/ble-eeg";
+
 import { StreamTestReport } from "@/components/monitor/StreamTestReport";
 import {
   ANALYSIS_CHANNELS,
