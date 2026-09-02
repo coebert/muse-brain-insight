@@ -63,17 +63,18 @@ export function MacBridgePanel({ onStart }: Props) {
     <div className="space-y-3 rounded-lg border border-border p-3 sm:p-4">
       <div className="flex items-center gap-2">
         <Laptop className="size-4 text-signal" aria-hidden />
-        <h3 className="text-sm font-medium">macOS headband bridge</h3>
+        <h3 className="text-sm font-medium">Headband bridge (Mac or iPhone)</h3>
       </div>
       <p className="text-xs text-muted-foreground">
         Browsers cannot make the encrypted Bluetooth link the Regul8 / FocusCalm firmware requires.
-        Run the bridge on this Mac and it will hand the decoded EEG to the app over a local
-        connection.
+        Run the bridge on this Mac (or the bridge app on this iPhone) and it will hand the decoded
+        EEG to the app over a local connection.
       </p>
 
       <div className="rounded-md border border-border/60 bg-muted/40 p-2">
         <div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Terminal className="size-3.5" aria-hidden /> Run this in Terminal first
+          <Terminal className="size-3.5" aria-hidden /> On a Mac, clone the project and run this in
+          Terminal first
         </div>
         <code className="block break-all text-xs">{RUN_COMMAND}</code>
       </div>
