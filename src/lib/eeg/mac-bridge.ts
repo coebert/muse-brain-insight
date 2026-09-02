@@ -59,16 +59,16 @@ function isAnalysisChannel(value: unknown): value is AnalysisChannel {
 export function parseBridgeHello(message: unknown): BridgeHello | null {
   if (!message || typeof message !== "object") return null;
   const record = message as Record<string, unknown>;
-  if (record.type !== "hello") return null;
-  const channels = Array.isArray(record.channels) ? record.channels.filter(isAnalysisChannel) : [];
-  const sampleRate = Number(record.sampleRate);
+  if (record['type'] !== "hello") return null;
+  const channels = Array.isArray(record['channels']) ? record['channels'].filter(isAnalysisChannel) : [];
+  const sampleRate = Number(record['sampleRate']);
   if (channels.length === 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) return null;
   return {
-    device: typeof record.device === "string" ? record.device : "Headband",
-    firmware: typeof record.firmware === "string" ? record.firmware : "unknown",
+    device: typeof record['device'] === "string" ? record['device'] : "Headband",
+    firmware: typeof record['firmware'] === "string" ? record['firmware'] : "unknown",
     channels,
     sampleRate,
-    unit: typeof record.unit === "string" ? record.unit : "uV",
+    unit: typeof record['unit'] === "string" ? record['unit'] : "uV",
   };
 }
 
@@ -76,11 +76,11 @@ export function parseBridgeHello(message: unknown): BridgeHello | null {
 export function parseBridgeSamples(message: unknown): Record<string, number[]> | null {
   if (!message || typeof message !== "object") return null;
   const record = message as Record<string, unknown>;
-  if (record.type !== "samples" || !record.channels || typeof record.channels !== "object") {
+  if (record['type'] !== "samples" || !record['channels'] || typeof record['channels'] !== "object") {
     return null;
   }
   const out: Record<string, number[]> = {};
-  for (const [channel, values] of Object.entries(record.channels as Record<string, unknown>)) {
+  for (const [channel, values] of Object.entries(record['channels'] as Record<string, unknown>)) {
     if (!Array.isArray(values)) continue;
     out[channel] = values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
   }
@@ -126,7 +126,7 @@ export interface MacBridgeOptions {
  */
 export class MacBridgeSource implements EegSource {
   readonly name: string;
-  profile: DeviceProfile | undefined;
+  profile?: DeviceProfile;
 
   private socket: WebSocket | null = null;
   private pipeline: IngestPipeline | null = null;
