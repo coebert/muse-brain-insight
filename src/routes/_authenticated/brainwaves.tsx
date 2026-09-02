@@ -5,6 +5,7 @@ import { AppNav } from "@/components/AppNav";
 import { BleHeadsetPanel } from "@/components/monitor/BleHeadsetPanel";
 import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
 import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
+import { MacBridgePanel } from "@/components/monitor/MacBridgePanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,11 @@ function BrainwavesPage() {
               filed to your records. Start a case from the Monitor page when you want to record.
             </p>
             <BleHeadsetPanel
+              onStart={(source, onConnectionError) =>
+                startCase("ingest", { source, onConnectionError, asTest: true })
+              }
+            />
+            <MacBridgePanel
               onStart={(source, onConnectionError) =>
                 startCase("ingest", { source, onConnectionError, asTest: true })
               }
