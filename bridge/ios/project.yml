@@ -1,0 +1,28 @@
+# XcodeGen manifest. From bridge/ios run:
+#   brew install xcodegen && xcodegen generate && open MindGuardBridge.xcodeproj
+# You can also skip XcodeGen entirely and create a new iOS App in Xcode, then
+# drag Sources/ in and paste the keys from Resources/Info.plist — see README.md.
+
+name: MindGuardBridge
+options:
+  bundleIdPrefix: app.mindguard
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+targets:
+  MindGuardBridge:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Resources/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.mindguard.bridge
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2"
