@@ -2059,8 +2059,17 @@ export class BleHeadsetSource implements EegSource {
       /* device information service is optional */
     }
     lastDeviceInformation = info;
+    // A fresh attach must not inherit the previous band's handshake verdict.
+    lastHandshakeProtocol = null;
     bleDiagnostics.add("info", "Device information", { ...info });
+    if (info.firmwareVersion || info.model) {
+      bleDiagnostics.setContext({
+        ...(info.firmwareVersion ? { firmwareVersion: info.firmwareVersion } : {}),
+        ...(info.model ? { model: info.model } : {}),
+      });
+    }
   }
+
 
   private async attachBattery(server: BluetoothRemoteGATTServer) {
     try {
