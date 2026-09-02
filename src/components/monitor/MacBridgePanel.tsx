@@ -79,6 +79,11 @@ export function MacBridgePanel({ onStart }: Props) {
           Terminal first
         </div>
         <code className="block break-all text-xs">{RUN_COMMAND}</code>
+        <p className="mt-2 text-xs text-muted-foreground">
+          To keep the headband streaming with the app closed, install it as a background service
+          instead — it starts at login and restarts itself:
+        </p>
+        <code className="mt-1 block break-all text-xs">{SERVICE_COMMAND}</code>
       </div>
 
       <div className="space-y-1.5">
