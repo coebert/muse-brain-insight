@@ -14,6 +14,8 @@ import {
 import type { EegSource } from "@/lib/eeg/muse";
 
 const RUN_COMMAND = "swift bridge/macos/MindGuardBridge.swift";
+/** Installs the bridge as a launchd agent so it survives closing the app. */
+const SERVICE_COMMAND = "./bridge/macos/install-service.sh";
 
 interface Props {
   onStart: (source: EegSource, onConnectionError: (error: unknown) => void) => unknown;
@@ -77,6 +79,11 @@ export function MacBridgePanel({ onStart }: Props) {
           Terminal first
         </div>
         <code className="block break-all text-xs">{RUN_COMMAND}</code>
+        <p className="mt-2 text-xs text-muted-foreground">
+          To keep the headband streaming with the app closed, install it as a background service
+          instead — it starts at login and restarts itself:
+        </p>
+        <code className="mt-1 block break-all text-xs">{SERVICE_COMMAND}</code>
       </div>
 
       <div className="space-y-1.5">

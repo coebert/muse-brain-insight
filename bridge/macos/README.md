@@ -67,6 +67,36 @@ the channel onto the analysis montage.
   accepted that command.
 - **Port in use** — pass `--port 8788` and enter the same URL in the app.
 
+## Run it as a background service (recommended)
+
+Instead of keeping a Terminal window open, install it as a per-user launchd
+agent. It starts at login, restarts itself if it ever exits, and keeps the
+headband link alive while the app and the browser are closed.
+
+```bash
+./bridge/macos/install-service.sh              # defaults
+./bridge/macos/install-service.sh --port 8788 --name focuscalm
+```
+
+Any flags you pass are baked into the service definition.
+
+| Task | Command |
+| --- | --- |
+| Status | `launchctl print gui/$(id -u)/app.mindguard.bridge \| head -20` |
+| Live logs | `tail -f ~/Library/Logs/MindGuardBridge/bridge.log` |
+| Stop | `launchctl bootout gui/$(id -u)/app.mindguard.bridge` |
+| Start | `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/app.mindguard.bridge.plist` |
+| Restart | `launchctl kickstart -k gui/$(id -u)/app.mindguard.bridge` |
+| Remove | `./bridge/macos/uninstall-service.sh` |
+
+The binary lives in `~/Library/Application Support/MindGuardBridge/`. Rerun the
+installer after pulling a newer `MindGuardBridge.swift` to rebuild and reload it.
+
+Note that the service holds the headband continuously, so the FocusCalm app
+will not be able to connect to the band while it is running. It also means the
+app can be closed and reopened at any time: opening **Tools → Live brainwaves**
+and connecting simply re-attaches to the already-streaming bridge.
+
 ## Build a standalone binary (optional)
 
 ```bash
