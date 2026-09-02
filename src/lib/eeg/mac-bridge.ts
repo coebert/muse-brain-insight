@@ -156,6 +156,12 @@ export class MacBridgeSource implements EegSource {
     this.disconnectCb = cb;
   }
 
+  /** The montage only becomes known when the bridge sends `hello`. */
+  onProfile(cb: (profile: DeviceProfile) => void) {
+    this.profileCb = cb;
+    if (this.profile) cb(this.profile);
+  }
+
   onState(cb: SourceStateHandler) {
     this.stateCb = cb;
   }
