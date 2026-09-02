@@ -29,11 +29,17 @@ import {
 import {
   BleHeadsetSource,
   PACKET_FORMAT_LABEL,
+  describeFirmwareMatch,
   friendlyBleError,
+  getLastDeviceInformation,
+  getLastHandshakeProtocol,
+  type BleDeviceInformation,
   type BleDiscovery,
   type BleConnectionProgress,
+  type BleHandshakeProtocol,
   type BleStreamHealth,
 } from "@/lib/eeg/ble-eeg";
+
 import { StreamTestReport } from "@/components/monitor/StreamTestReport";
 import {
   ANALYSIS_CHANNELS,
@@ -62,7 +68,15 @@ interface Props {
   disabled?: boolean;
 }
 
+/** How the activation protocol is named at the bedside. */
+const HANDSHAKE_LABEL: Record<BleHandshakeProtocol, string> = {
+  cmsn: "CMSN (FC-11)",
+  zenlite: "ZenLite",
+  none: "None sent",
+};
+
 const QUALITY_LABEL: Record<BleStreamHealth["quality"], string> = {
+
   none: "No signal",
   poor: "Poor",
   fair: "Usable",
@@ -125,6 +139,10 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [replay, setReplay] = useState<BleReplayResult | null>(null);
   const [replayError, setReplayError] = useState<string | null>(null);
   const [exportCheck, setExportCheck] = useState<DiagnosticExportCheck | null>(null);
+  /** Firmware/model reported by the band, and the handshake actually used. */
+  const [deviceInfo, setDeviceInfo] = useState<BleDeviceInformation | null>(null);
+  const [handshake, setHandshake] = useState<BleHandshakeProtocol | null>(null);
+
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
@@ -149,6 +167,9 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
     setHealth(null);
     setTestResult(null);
     setDiagnostic(null);
+    setDeviceInfo(null);
+    setHandshake(null);
+
     if (sourceRef.current && !adoptedRef.current) await sourceRef.current.stop();
     sourceRef.current = null;
     let pendingSource: BleHeadsetSource | null = null;
@@ -175,6 +196,10 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       sourceRef.current = source;
       pendingSource = null;
       setHealth(source.health());
+      // Descriptive identity: read during attach, useful whether or not the
+      // handshake succeeded.
+      setDeviceInfo(getLastDeviceInformation());
+      setHandshake(getLastHandshakeProtocol());
     } catch (e) {
       // start() also performs defensive cleanup. Keeping this here protects
       // the UI if a future source fails after opening the radio but before it
@@ -183,8 +208,11 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       setError(friendlyBleError(e));
       const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
       setDiagnostic(`${progress?.stage ?? "starting"} · ${raw}`);
+      setDeviceInfo(getLastDeviceInformation());
+      setHandshake(getLastHandshakeProtocol());
     } finally {
       setBusy(false);
+
     }
   }
 
@@ -255,6 +283,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   }
 
   const connected = Boolean(sourceRef.current) && !busy;
+  const firmware = describeFirmwareMatch(deviceInfo, handshake);
+
   const ready = Boolean(health?.ready);
 
   return (
@@ -436,6 +466,50 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
           </div>
         ) : null}
       </details>
+
+
+
+      {deviceInfo || handshake ? (
+        <div
+          className={`mt-3 rounded-md border p-3 text-xs ${
+            firmware.state === "match"
+              ? "border-signal/40 bg-signal/5"
+              : firmware.state === "mismatch"
+                ? "border-critical/40 bg-critical/10"
+                : "border-border bg-muted/30"
+          }`}
+        >
+          <div className="flex items-start gap-2">
+            {firmware.state === "match" ? (
+              <Check className="mt-0.5 size-3.5 shrink-0 text-signal" aria-hidden />
+            ) : (
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-caution" aria-hidden />
+            )}
+            <div className="min-w-0">
+              <p className="font-medium">{firmware.label}</p>
+              <p className="mt-1 text-muted-foreground">{firmware.detail}</p>
+            </div>
+          </div>
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-4">
+            {[
+              ["Firmware", deviceInfo?.firmwareVersion],
+              ["Hardware", deviceInfo?.hardwareVersion],
+              ["Model", deviceInfo?.model],
+              ["Maker", deviceInfo?.manufacturer],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd className="metric-value text-foreground">{value || "—"}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>Handshake</dt>
+              <dd className="metric-value text-foreground">{HANDSHAKE_LABEL[handshake ?? "none"]}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+
 
       {connected && health ? (
         <div
