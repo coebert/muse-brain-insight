@@ -228,6 +228,7 @@ export class MacBridgeSource implements EegSource {
         this.samplesCb?.(channel, samples),
       );
       this.lastDataAt = this.now();
+      this.profileCb?.(this.profile);
       this.options.onHello?.(hello);
       return;
     }
