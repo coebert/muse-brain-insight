@@ -68,7 +68,15 @@ interface Props {
   disabled?: boolean;
 }
 
+/** How the activation protocol is named at the bedside. */
+const HANDSHAKE_LABEL: Record<BleHandshakeProtocol, string> = {
+  cmsn: "CMSN (FC-11)",
+  zenlite: "ZenLite",
+  none: "None sent",
+};
+
 const QUALITY_LABEL: Record<BleStreamHealth["quality"], string> = {
+
   none: "No signal",
   poor: "Poor",
   fair: "Usable",
