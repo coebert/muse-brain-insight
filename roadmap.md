@@ -8,3 +8,4 @@
 - [x] macOS CoreBluetooth bridge (bridge/macos) streaming the headband to the app over WebSocket
 - [x] iOS bridge app (bridge/ios) streaming the headband to MindGuard on the same iPhone
 - [ ] Confirm the user can obtain the bridge source on their own machine (repo export/clone) — pasted terminal command fails without it
+- [ ] Walk user through cloning the repo on their Mac and running the bridge (Xcode CLT setup)
