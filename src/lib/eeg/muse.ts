@@ -134,6 +134,13 @@ export interface EegSource {
    * four-electrode 256 Hz montage.
    */
   readonly profile?: import("@/lib/eeg/device-profile").DeviceProfile;
+  /**
+   * Optional: sources that only learn their montage after the link is open
+   * (e.g. the macOS/iOS bridge, which receives it in the `hello` frame) report
+   * it here so the analysis adopts the real electrode set instead of the
+   * default four-electrode assumption.
+   */
+  onProfile?(cb: (profile: import("@/lib/eeg/device-profile").DeviceProfile) => void): void;
   start(onSamples: SampleHandler): Promise<void>;
   stop(): Promise<void>;
   onDisconnect(cb: () => void): void;
