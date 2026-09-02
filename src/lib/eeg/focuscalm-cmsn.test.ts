@@ -4,6 +4,7 @@ import {
   cmsnAck,
   cmsnEegMessage,
   cmsnIdentityBytes,
+  cmsnMessageIdSequence,
   cmsnOpCommand,
   cmsnOpName,
   cmsnPairCommand,
@@ -76,6 +77,14 @@ describe("FocusCalm FC-11 CMSN protocol", () => {
     expect([...frame].map((b) => b.toString(16).padStart(2, "0")).join("")).toBe(
       CAPTURED_PAIR_WRITE,
     );
+  });
+
+  it("restarts command ids at one for every GATT connection", () => {
+    const firstConnection = cmsnMessageIdSequence();
+    expect([firstConnection(), firstConnection(), firstConnection()]).toEqual([1, 2, 3]);
+
+    const retryConnection = cmsnMessageIdSequence();
+    expect([retryConnection(), retryConnection()]).toEqual([1, 2]);
   });
 
   it("encodes the start command the app uses", () => {

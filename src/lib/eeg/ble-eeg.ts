@@ -71,6 +71,7 @@ import {
   cmsnEegSamples,
   cmsnIdentity,
   cmsnIdentityBytes,
+  cmsnMessageIdSequence,
   CMSN_KNOWN_IDENTITY,
 
   cmsnOpCommand,
@@ -86,7 +87,6 @@ import {
   CMSN_SERVICE,
   CMSN_UV_PER_COUNT,
   CMSN_WRITE,
-  nextCmsnMsgId,
 } from "@/lib/eeg/focuscalm-cmsn";
 import { IngestPipeline, type ChannelMap, type IngestConfig } from "@/lib/eeg/ingest";
 import {
@@ -145,7 +145,7 @@ export function getLastHandshakeProtocol(): BleHandshakeProtocol | null {
 }
 
 /** Firmware revisions this build's CMSN handshake was verified against. */
-export const CMSN_VERIFIED_FIRMWARE = ["1.2", "1.3"];
+export const CMSN_VERIFIED_FIRMWARE = ["1.1.6"];
 
 export interface FirmwareMatch {
   /** Green when the firmware is a known match for the handshake in use. */
@@ -841,11 +841,14 @@ export class BleHeadsetSource implements EegSource {
       // The reference capture of the vendor app writes without response, so
       // that shape is tried first and acknowledged writes only as a fallback.
       { variant: 1, skipPair: false, knownIdentity: true },
-      { variant: 0, skipPair: false, knownIdentity: true },
+      // A previously paired band closes the link when pair is repeated. Retry
+      // the official write mode first, but begin a fresh CMSN id sequence and
+      // go straight to session preparation.
       { variant: 1, skipPair: true, knownIdentity: true },
+      { variant: 0, skipPair: true, knownIdentity: true },
+      { variant: 0, skipPair: false, knownIdentity: true },
       { variant: 1, skipPair: false, knownIdentity: false },
       { variant: 3, skipPair: false, knownIdentity: true },
-      { variant: 2, skipPair: false, knownIdentity: true },
     ];
     for (let pass = 0; pass < ladder.length; pass++) {
       const step = ladder[pass]!;
@@ -1357,6 +1360,10 @@ export class BleHeadsetSource implements EegSource {
    * start command; a clock sync follows once data is flowing.
    */
   private async cmsnHandshake(service: BluetoothRemoteGATTService) {
+    // Message ids are scoped to the live GATT session, not to the browser
+    // process. This also makes every retry reproduce the captured vendor
+    // exchange byte-for-byte from id 1.
+    const nextMessageId = cmsnMessageIdSequence();
     let write: BluetoothRemoteGATTCharacteristic;
     try {
       write = await service.getCharacteristic(CMSN_WRITE);
@@ -1438,20 +1445,20 @@ export class BleHeadsetSource implements EegSource {
         bleDiagnostics.add("info", "FC-11 host identity", {
           source: this.cmsnUseKnownIdentity ? "reference capture" : "this installation",
         });
-        await send(cmsnPairCommand(nextCmsnMsgId(), identity), "FC-11 pair");
+        await send(cmsnPairCommand(nextMessageId(), identity), "FC-11 pair");
         await settle(CMSN_OP.pair, 1_200);
       } else {
 
         bleDiagnostics.add("info", "FC-11 pairing step skipped — band already knows this host");
       }
       if (!connected()) throw new Error("link lost after FC-11 pair");
-      await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.prepare), "FC-11 prepare session");
+      await send(cmsnOpCommand(nextMessageId(), CMSN_OP.prepare), "FC-11 prepare session");
       await settle(CMSN_OP.prepare, 600);
       this.progress("discovering", "Starting the EEG stream");
-      await send(cmsnOpCommand(nextCmsnMsgId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
+      await send(cmsnOpCommand(nextMessageId(), CMSN_OP.startEeg), "FC-11 start EEG stream");
       await settle(CMSN_OP.startEeg, 600);
 
-      await send(cmsnSyncCommand(nextCmsnMsgId(), Date.now()), "FC-11 clock sync");
+      await send(cmsnSyncCommand(nextMessageId(), Date.now()), "FC-11 clock sync");
       bleDiagnostics.add("info", "FC-11 activation sequence sent");
     } catch (error) {
       const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
