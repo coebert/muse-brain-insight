@@ -129,6 +129,85 @@ export function getLastDeviceInformation(): BleDeviceInformation | null {
   return lastDeviceInformation;
 }
 
+/**
+ * Which activation protocol the last attach actually used. "cmsn" is the
+ * FC-11 (FocusCalm / Regul8) handshake verified against a capture of the
+ * vendor app; "zenlite" is the older BrainCo envelope; "none" means the band
+ * exposed no vendor service and streamed without an activation sequence.
+ */
+export type BleHandshakeProtocol = "cmsn" | "zenlite" | "none";
+
+let lastHandshakeProtocol: BleHandshakeProtocol | null = null;
+
+/** Activation protocol used by the most recent attach, if any. */
+export function getLastHandshakeProtocol(): BleHandshakeProtocol | null {
+  return lastHandshakeProtocol;
+}
+
+/** Firmware revisions this build's CMSN handshake was verified against. */
+export const CMSN_VERIFIED_FIRMWARE = ["1.2", "1.3"];
+
+export interface FirmwareMatch {
+  /** Green when the firmware is a known match for the handshake in use. */
+  state: "match" | "unknown" | "mismatch" | "absent";
+  label: string;
+  detail: string;
+}
+
+/**
+ * Plain-language verdict on whether the connected band's reported firmware
+ * lines up with the activation protocol the app spoke to it. Descriptive
+ * only: an unrecognised revision is reported, never blocked, because the
+ * band may simply be newer than the capture this build was verified against.
+ */
+export function describeFirmwareMatch(
+  info: BleDeviceInformation | null,
+  protocol: BleHandshakeProtocol | null,
+): FirmwareMatch {
+  const fw = info?.firmwareVersion?.trim();
+  const model = `${info?.model ?? ""} ${info?.manufacturer ?? ""}`.trim();
+  if (!info || (!fw && !info.model && !info.manufacturer)) {
+    return {
+      state: "absent",
+      label: "Firmware not reported",
+      detail:
+        "This headband does not publish the standard Device Information service, so its firmware revision cannot be confirmed. The handshake result below is the only evidence available.",
+    };
+  }
+  if (!protocol || protocol === "none") {
+    return {
+      state: "unknown",
+      label: fw ? `Firmware ${fw} · no vendor handshake` : "No vendor handshake",
+      detail:
+        "No vendor activation service was found, so no handshake was sent. The band is streaming on its plain notification characteristic.",
+    };
+  }
+  if (protocol === "cmsn") {
+    const known = fw ? CMSN_VERIFIED_FIRMWARE.some((v) => fw.startsWith(v)) : false;
+    if (known) {
+      return {
+        state: "match",
+        label: `Firmware ${fw} · CMSN handshake verified`,
+        detail: `${model || "FC-11 family"} firmware ${fw} matches the revisions this build's CMSN handshake was captured from (${CMSN_VERIFIED_FIRMWARE.join(", ")}).`,
+      };
+    }
+    return {
+      state: "unknown",
+      label: fw ? `Firmware ${fw} · CMSN handshake unverified` : "CMSN handshake, firmware unknown",
+      detail: `The band exposes the FC-11 CMSN service, so the CMSN handshake was used, but ${
+        fw ? `revision ${fw}` : "its revision"
+      } is not one this build was verified against (${CMSN_VERIFIED_FIRMWARE.join(", ")}). If the stream decodes and the health checks pass, the handshake is compatible; if it stalls, export the diagnostic capture.`,
+    };
+  }
+  return {
+    state: "unknown",
+    label: fw ? `Firmware ${fw} · ZenLite handshake` : "ZenLite handshake",
+    detail:
+      "The band exposed the older BrainCo ZenLite service, so the ZenLite activation sequence was used rather than the FC-11 CMSN one.",
+  };
+}
+
+
 /** Known transports used by consumer EEG headband firmware. */
 const VENDOR_SERVICES: string[] = [
   ZENLITE_SERVICE, // BrainCo ZenLite (OxyZen) data stream
