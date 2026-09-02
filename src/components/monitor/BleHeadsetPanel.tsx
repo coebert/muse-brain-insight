@@ -131,6 +131,10 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   const [replay, setReplay] = useState<BleReplayResult | null>(null);
   const [replayError, setReplayError] = useState<string | null>(null);
   const [exportCheck, setExportCheck] = useState<DiagnosticExportCheck | null>(null);
+  /** Firmware/model reported by the band, and the handshake actually used. */
+  const [deviceInfo, setDeviceInfo] = useState<BleDeviceInformation | null>(null);
+  const [handshake, setHandshake] = useState<BleHandshakeProtocol | null>(null);
+
   const sourceRef = useRef<BleHeadsetSource | null>(null);
   const adoptedRef = useRef(false);
 
