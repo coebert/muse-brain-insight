@@ -16,7 +16,7 @@ import type { EegSource } from "@/lib/eeg/muse";
 const RUN_COMMAND = "swift bridge/macos/MindGuardBridge.swift";
 
 interface Props {
-  onStart: (source: EegSource, onConnectionError: (message: string) => void) => Promise<void> | void;
+  onStart: (source: EegSource, onConnectionError: (error: unknown) => void) => unknown;
 }
 
 /**
@@ -48,7 +48,9 @@ export function MacBridgePanel({ onStart }: Props) {
     });
     sourceRef.current = source;
     try {
-      await onStart(source, (message) => setError(message));
+      await onStart(source, (cause) =>
+        setError(cause instanceof Error ? cause.message : String(cause)),
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not reach the bridge.");
       await source.stop();
