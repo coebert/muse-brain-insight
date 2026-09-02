@@ -566,14 +566,21 @@ export function useEegMonitor() {
         }
         // Adopt the source's montage before any sample arrives, so buffers,
         // tallies and the hemisphere grouping match the hardware.
-        const sourceProfile = source.profile ?? MUSE_2_PROFILE;
-        profileRef.current = sourceProfile;
-        setDeviceProfile(sourceProfile);
-        setActiveDeviceProfile(sourceProfile);
-        allocateBuffers(sourceProfile);
-        if (channelRef.current !== "average" && !sourceProfile.channels.includes(channelRef.current)) {
-          setChannel("average");
-        }
+        const adoptProfile = (p: DeviceProfile) => {
+          if (profileRef.current === p) return;
+          profileRef.current = p;
+          setDeviceProfile(p);
+          setActiveDeviceProfile(p);
+          allocateBuffers(p);
+          channelTalliesRef.current = emptyChannelTallies(p.channels);
+          if (channelRef.current !== "average" && !p.channels.includes(channelRef.current)) {
+            setChannel("average");
+          }
+        };
+        adoptProfile(source.profile ?? MUSE_2_PROFILE);
+        // Bridged headbands only announce their montage once the link is open;
+        // re-adopt it then rather than staying on the four-electrode default.
+        source.onProfile?.(adoptProfile);
         source.onDisconnect(() => {
           setBatteryPercent(null);
           // The case keeps running: hold the source so a manual retry can

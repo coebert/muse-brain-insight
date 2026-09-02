@@ -138,6 +138,7 @@ export class MacBridgeSource implements EegSource {
   private stall: ReturnType<typeof setInterval> | null = null;
   private lastDataAt = 0;
   private hello: BridgeHello | null = null;
+  private profileCb: ((profile: DeviceProfile) => void) | null = null;
 
   constructor(private readonly options: MacBridgeOptions = {}) {
     this.name = "Headband via macOS bridge";
@@ -153,6 +154,12 @@ export class MacBridgeSource implements EegSource {
 
   onDisconnect(cb: () => void) {
     this.disconnectCb = cb;
+  }
+
+  /** The montage only becomes known when the bridge sends `hello`. */
+  onProfile(cb: (profile: DeviceProfile) => void) {
+    this.profileCb = cb;
+    if (this.profile) cb(this.profile);
   }
 
   onState(cb: SourceStateHandler) {
@@ -221,6 +228,7 @@ export class MacBridgeSource implements EegSource {
         this.samplesCb?.(channel, samples),
       );
       this.lastDataAt = this.now();
+      this.profileCb?.(this.profile);
       this.options.onHello?.(hello);
       return;
     }
