@@ -275,6 +275,8 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
   }
 
   const connected = Boolean(sourceRef.current) && !busy;
+  const firmware = describeFirmwareMatch(deviceInfo, handshake);
+
   const ready = Boolean(health?.ready);
 
   return (
