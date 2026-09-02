@@ -188,6 +188,10 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       sourceRef.current = source;
       pendingSource = null;
       setHealth(source.health());
+      // Descriptive identity: read during attach, useful whether or not the
+      // handshake succeeded.
+      setDeviceInfo(getLastDeviceInformation());
+      setHandshake(getLastHandshakeProtocol());
     } catch (e) {
       // start() also performs defensive cleanup. Keeping this here protects
       // the UI if a future source fails after opening the radio but before it
@@ -196,8 +200,11 @@ export function BleHeadsetPanel({ onStart, disabled }: Props) {
       setError(friendlyBleError(e));
       const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
       setDiagnostic(`${progress?.stage ?? "starting"} · ${raw}`);
+      setDeviceInfo(getLastDeviceInformation());
+      setHandshake(getLastHandshakeProtocol());
     } finally {
       setBusy(false);
+
     }
   }
 
