@@ -121,6 +121,12 @@ export interface IntakeSource {
    * minutes of the record rather than nothing. Provenance digests the prefix.
    */
   rangeBytes?: number;
+  /**
+   * Decode the whole file in record-aligned range requests of about this many
+   * bytes each. Used for recordings that are far too large to hold in memory
+   * but whose later minutes carry the events that matter.
+   */
+  streamChunkBytes?: number;
   /** Safety rails so one scan cannot pull an entire archive. */
   maxFilesPerRun: number;
   maxBytesPerFile: number;
@@ -232,12 +238,14 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     listing: { type: "openneuro", datasetId: "ds004541", tag: "1.0.0" },
     filePattern: /_eeg\.edf$/i,
     binary: true,
-    // Each recording is a whole anaesthetic (~300 MB); take the opening span.
-    rangeBytes: 48_000_000,
+    // Each recording is a whole anaesthetic (~300 MB). It is decoded in
+    // record-aligned ranges so the whole anaesthetic — including LOC and ROC —
+    // is analysed without ever holding the file.
+    streamChunkBytes: 24_000_000,
     fallbackSampleRate: 1000,
     montage: OPENNEURO_DS004541_MONTAGE,
     maxFilesPerRun: 2,
-    maxBytesPerFile: 48_000_000,
+    maxBytesPerFile: 2_000_000_000,
   },
   {
     id: "physionet-i-care",
@@ -468,6 +476,8 @@ export interface IntakeFileResult {
   inserted: number;
   detail: string;
   provenance: ProvenanceRecord | null;
+  /** Event-referenced paired readings stored from this file, when any. */
+  pairedInserted?: number;
 }
 
 export interface IntakeSourceResult {
@@ -482,6 +492,8 @@ export interface IntakeSourceResult {
   attempted: number;
   ingested: number;
   epochsInserted: number;
+  /** Paired depth readings stored across this source's files. */
+  pairedInserted?: number;
   files: IntakeFileResult[];
 }
 

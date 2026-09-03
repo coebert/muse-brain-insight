@@ -151,3 +151,87 @@ export function readEdfChannel(
     durationSeconds: records * header.recordDurationSeconds,
   };
 }
+
+/* ------------------------------------------------------------ streaming --- */
+
+/** Bytes occupied by one EDF data record (all signals interleaved). */
+export function edfRecordBytes(header: EdfHeader): number {
+  return header.samplesPerRecord.reduce((a, b) => a + b, 0) * 2;
+}
+
+export interface EdfChunkPlan {
+  /** Index of the first data record in this chunk. */
+  firstRecord: number;
+  records: number;
+  /** Inclusive byte range to request for this chunk. */
+  startByte: number;
+  endByte: number;
+  startSeconds: number;
+}
+
+/**
+ * Split a whole recording into record-aligned byte ranges. Whole-anaesthetic
+ * EDFs run to hundreds of megabytes, which no serverless worker can hold; the
+ * chunks are decoded one at a time and only derived epochs are kept.
+ */
+export function planEdfChunks(header: EdfHeader, targetBytes: number): EdfChunkPlan[] {
+  const recordBytes = edfRecordBytes(header);
+  if (!recordBytes || !Number.isFinite(header.numRecords) || header.numRecords <= 0) return [];
+  const perChunk = Math.max(1, Math.floor(Math.max(recordBytes, targetBytes) / recordBytes));
+  const out: EdfChunkPlan[] = [];
+  for (let first = 0; first < header.numRecords; first += perChunk) {
+    const records = Math.min(perChunk, header.numRecords - first);
+    const startByte = header.headerBytes + first * recordBytes;
+    out.push({
+      firstRecord: first,
+      records,
+      startByte,
+      endByte: startByte + records * recordBytes - 1,
+      startSeconds: first * header.recordDurationSeconds,
+    });
+  }
+  return out;
+}
+
+/**
+ * Decode one channel from a slab of *data records only* (no header bytes),
+ * such as the body of an HTTP range response planned by `planEdfChunks`.
+ * Incomplete trailing records are ignored rather than producing torn samples.
+ */
+export function decodeEdfChunk(
+  dataBytes: Uint8Array,
+  header: EdfHeader,
+  channelIndex: number,
+): EdfChannel {
+  const spr = header.samplesPerRecord;
+  const perRecord = spr[channelIndex] ?? 0;
+  if (!perRecord) throw new Error(`channel ${header.channels[channelIndex]} carries no samples`);
+  const recordSamples = spr.reduce((a, b) => a + b, 0);
+  const offsetSamples = spr.slice(0, channelIndex).reduce((a, b) => a + b, 0);
+  const records = Math.floor(dataBytes.byteLength / (recordSamples * 2));
+  const view = new DataView(dataBytes.buffer, dataBytes.byteOffset, dataBytes.byteLength);
+
+  const dMin = header.digitalMin[channelIndex] ?? -32768;
+  const dMax = header.digitalMax[channelIndex] ?? 32767;
+  const pMin = header.physicalMin[channelIndex] ?? -1;
+  const pMax = header.physicalMax[channelIndex] ?? 1;
+  const span = dMax - dMin;
+  const gain = span === 0 ? 1 : (pMax - pMin) / span;
+  const unit = (header.units[channelIndex] ?? "uV").toLowerCase();
+  const toMicrovolts = unit.startsWith("mv") ? 1000 : unit.startsWith("v") ? 1_000_000 : 1;
+
+  const out = new Float64Array(records * perRecord);
+  let w = 0;
+  for (let r = 0; r < records; r++) {
+    let p = (r * recordSamples + offsetSamples) * 2;
+    for (let s = 0; s < perRecord; s++, p += 2) {
+      out[w++] = (pMin + (view.getInt16(p, true) - dMin) * gain) * toMicrovolts;
+    }
+  }
+  return {
+    channel: header.channels[channelIndex] ?? "eeg",
+    sampleRate: perRecord / header.recordDurationSeconds,
+    signal: out,
+    durationSeconds: records * header.recordDurationSeconds,
+  };
+}
