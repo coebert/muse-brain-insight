@@ -176,7 +176,7 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     fallbackSampleRate: 256,
     montage: PATHOLOGY_MONTAGE.chbmit,
     // Each record is an hour of 23-channel EEG (~40 MB); keep a run small.
-    maxFilesPerRun: 3,
+    maxFilesPerRun: 2,
     maxBytesPerFile: 60_000_000,
   },
   {
