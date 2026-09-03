@@ -15,6 +15,8 @@ import {
 import {
   buildProvenance,
   checkEligibility,
+  CREDENTIAL_REALMS,
+  type CredentialRealm,
   findSource,
   INTAKE_SOURCES,
   parseRecordsIndex,
@@ -176,7 +178,7 @@ export async function discoverFiles(
   const expanded: DiscoveredFile[] = [];
   for (const f of files) {
     if (!source.archivePattern.test(f.name)) continue;
-    expanded.push(...(await expandArchive(source, f, cache)));
+    expanded.push(...(await expandArchive(source, f, cache, auth)));
   }
   return expanded.length ? expanded : files.filter((f) => source.filePattern.test(f.name));
 }
