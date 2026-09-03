@@ -9,6 +9,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { buildAdoptionLedger, type DiscoveryBundle } from "./discovery-adoption";
+import { fitDiagnosisModels } from "./diagnosis-model";
 import {
   discoverCovariateFeatures,
   featuresFromBands,
@@ -143,10 +145,16 @@ async function loadAppRows(supabase: Client, limit: number): Promise<DiscoveryRo
 export async function runCovariateDiscovery(
   supabase: Client,
   options: { externalLimit?: number; appLimit?: number } = {},
-): Promise<DiscoveryResult> {
+): Promise<DiscoveryBundle> {
   const [external, app] = await Promise.all([
     loadExternalRows(supabase, options.externalLimit ?? 20000),
     loadAppRows(supabase, options.appLimit ?? 10000),
   ]);
-  return discoverCovariateFeatures([...external, ...app]);
+  const rows = [...external, ...app];
+  const result: DiscoveryResult = discoverCovariateFeatures(rows);
+  return {
+    ...result,
+    adoption: buildAdoptionLedger(result),
+    diagnosis: fitDiagnosisModels(rows),
+  };
 }
