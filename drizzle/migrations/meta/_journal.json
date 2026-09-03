@@ -15,6 +15,13 @@
       "when": 1788030874905,
       "tag": "0001_sef_personalisation_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788456689363,
+      "tag": "0002_create_external_reference_points",
+      "breakpoints": true
     }
   ]
 }
