@@ -171,8 +171,8 @@ describe("explainAgreementGaps", () => {
   it("explains missing MAE as no paired EEG-index↔BIS readings, with counts", () => {
     const blockers = explainAgreementGaps(analysis({}));
     expect(blockers).toHaveLength(1);
-    expect(blockers[0].reason).toContain("0 paired across 0 cases");
-    expect(blockers[0].reason).toMatch(/paired EEG-index/i);
+    expect(blockers[0]!.reason).toContain("0 paired across 0 cases");
+    expect(blockers[0]!.reason).toMatch(/paired EEG-index/i);
   });
 
   it("explains missing correlation when fewer than 3 pairs exist", () => {
@@ -180,8 +180,8 @@ describe("explainAgreementGaps", () => {
       analysis({ n: 2, sessions: 1, mae: 8.1, bias: 3, r: null }),
     );
     expect(blockers).toHaveLength(1);
-    expect(blockers[0].metric).toBe("Pearson r");
-    expect(blockers[0].reason).toContain("only 2 available across 1 case");
+    expect(blockers[0]!.metric).toBe("Pearson r");
+    expect(blockers[0]!.reason).toContain("only 2 available across 1 case");
   });
 
   it("returns nothing once MAE and r both exist", () => {
