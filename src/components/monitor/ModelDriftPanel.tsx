@@ -10,6 +10,7 @@ import { Activity, Loader2 } from "lucide-react";
 
 import { getRefitOverview } from "@/lib/eeg/coebis-refit.functions";
 import { driftOverview, type DriftStatus } from "@/lib/eeg/coebis-drift";
+import { explainDriftGaps } from "@/lib/eeg/metric-blockers";
 import { cn } from "@/lib/utils";
 
 const plain = (v: number | null | undefined, dp = 2) =>
