@@ -9,6 +9,7 @@ import { applyBisAlignment, type BisAlignment } from "@/lib/eeg/depth";
 import { covariateAdjustment, type CaseCovariates } from "@/lib/eeg/covariates";
 import type { MonitorEntropy } from "@/lib/eeg/entropy-monitor";
 import { ADJUNCT_COMPONENTS, type AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
+import { calibrationReport, predictionInterval } from "@/lib/eeg/coebis-uncertainty";
 import { cn } from "@/lib/utils";
 
 /** Which tier of the COEBIS hierarchy the live model represents. */
@@ -82,6 +83,23 @@ export function CoebisVsBisPanel({
     };
   }, [openIbis, model, covariates, adjunct?.total]);
 
+  /** Interval around the live COEBIS number, on the same evidence as the fit. */
+  const liveInterval = useMemo(
+    () =>
+      predictionInterval(
+        {
+          prediction: live.tiered,
+          reliable: openIbis != null,
+          suppressionRatio: epochs.length ? epochs[epochs.length - 1]!.suppressionRatio : 0,
+          covariatesKnown: Boolean(
+            covariates && (covariates.ageBand || covariates.sex || covariates.regimen),
+          ),
+        },
+        model,
+      ),
+    [live.tiered, openIbis, epochs, covariates, model],
+  );
+
   const adjustment = useMemo(
     () => covariateAdjustment(model?.terms, covariates ?? null),
     [model?.terms, covariates],
@@ -121,6 +139,21 @@ export function CoebisVsBisPanel({
       maePooled: mean(pairs.map((p) => Math.abs(p.pooled - p.bis))),
     };
   }, [pairs]);
+
+  /** Do those intervals hold up against the readings logged in this case? */
+  const calibration = useMemo(() => {
+    if (!pairs.length) return null;
+    const samples = pairs
+      .map((p) => {
+        const iv = predictionInterval(
+          { prediction: p.tiered, reliable: true, covariatesKnown: Boolean(covariates) },
+          model,
+        );
+        return iv ? { prediction: iv.prediction, sigma: iv.sigma, actual: p.bis } : null;
+      })
+      .filter((s): s is { prediction: number; sigma: number; actual: number } => s !== null);
+    return calibrationReport(samples);
+  }, [pairs, model, covariates]);
 
   const liveDelta =
     live.tiered != null && lastReading ? live.tiered - lastReading.bis : null;
@@ -162,6 +195,11 @@ export function CoebisVsBisPanel({
         <div>
           <p className="text-[11px] tracking-wide text-muted-foreground uppercase">COEBIS</p>
           <p className="metric-value text-3xl leading-none">{fmt(live.tiered)}</p>
+          <p className="metric-value text-[11px] text-muted-foreground">
+            {liveInterval
+              ? `90% interval ${Math.round(liveInterval.lower)}–${Math.round(liveInterval.upper)}`
+              : "interval unavailable"}
+          </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {covariates && adjustment.total !== 0
               ? `pooled ${fmt(live.pooled)} ${signed(adjustment.total)} patient`
@@ -202,6 +240,12 @@ export function CoebisVsBisPanel({
               bias {signed(agreement.biasPooled)} · MAE {fmt(agreement.maePooled, 1)}
             </p>
           </div>
+          {calibration ? (
+            <p className="col-span-2 text-[11px] text-muted-foreground">
+              {calibration.summary}
+              {liveInterval ? ` Interval drivers: ${liveInterval.drivers.join("; ")}.` : ""}
+            </p>
+          ) : null}
           <p className="col-span-2 text-[11px] text-muted-foreground">
             {agreement.maeTiered < agreement.maePooled - 0.1
               ? `Patient terms are closer to the monitor by ${(agreement.maePooled - agreement.maeTiered).toFixed(1)} points in this case.`
