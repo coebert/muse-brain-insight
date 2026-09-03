@@ -7,10 +7,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   checkEligibility,
+  CREDENTIAL_REALMS,
   INTAKE_SOURCES,
   type IntakeRunResult,
 } from "@/lib/eeg/dataset-intake";
-import { getIntakeHistory, runIntake } from "@/lib/eeg/dataset-intake.functions";
+import {
+  getIntakeCredentials,
+  getIntakeHistory,
+  runIntake,
+} from "@/lib/eeg/dataset-intake.functions";
 
 /**
  * Automated intake of public EEG collections. The scan reads each configured
@@ -23,12 +28,19 @@ export function DatasetIntakePanel() {
   const [result, setResult] = useState<IntakeRunResult | null>(null);
   const runScan = useServerFn(runIntake);
   const loadHistory = useServerFn(getIntakeHistory);
+  const loadCredentials = useServerFn(getIntakeCredentials);
   const queryClient = useQueryClient();
 
   const history = useQuery({
     queryKey: ["dataset-intake-history"],
     queryFn: () => loadHistory({}),
   });
+
+  const credentials = useQuery({
+    queryKey: ["dataset-intake-credentials"],
+    queryFn: () => loadCredentials({}),
+  });
+  const realms = credentials.data?.realms ?? [];
 
   const scan = useMutation({
     mutationFn: (dryRun: boolean) => runScan({ data: { dryRun } }),
@@ -76,6 +88,17 @@ export function DatasetIntakePanel() {
       </header>
 
       <p className="mb-3 text-xs text-muted-foreground">
+        Restricted sources are fetched only when a matching login is stored:{" "}
+        {(Object.keys(CREDENTIAL_REALMS) as (keyof typeof CREDENTIAL_REALMS)[]).map((realm) => (
+          <span key={realm} className="mr-2">
+            {CREDENTIAL_REALMS[realm].label}{" "}
+            <strong>{realms.includes(realm) ? "configured" : "not configured"}</strong>
+          </span>
+        ))}
+        — downloads then run as your own credentialed account under the agreement you signed.
+      </p>
+
+      <p className="mb-3 text-xs text-muted-foreground">
         Each source keeps its own lineage, so nothing fetched here is pooled into the
         device-specific COEBIS fit — it feeds tier-level priors and per-lineage
         benchmarking only. Licence, URL, byte size, content digest and harmonisation
@@ -84,7 +107,7 @@ export function DatasetIntakePanel() {
 
       <ul className="space-y-2">
         {INTAKE_SOURCES.map((s) => {
-          const gate = checkEligibility(s);
+          const gate = checkEligibility(s, realms);
           const seen = history.data?.provenance.find((p) => p.sourceId === s.id);
           const ran = result?.sources.find((r) => r.sourceId === s.id);
           return (
@@ -98,7 +121,11 @@ export function DatasetIntakePanel() {
                       : "rounded bg-muted px-2 py-0.5 text-muted-foreground"
                   }
                 >
-                  {gate.eligible ? "auto-eligible" : s.access}
+                  {gate.eligible
+                    ? s.credentialRealm && s.access === "credentialed"
+                      ? "credentialed"
+                      : "auto-eligible"
+                    : s.access}
                 </span>
               </div>
               <p className="mt-1 text-muted-foreground">{gate.reason}</p>
