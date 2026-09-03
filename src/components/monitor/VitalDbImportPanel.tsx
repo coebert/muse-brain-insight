@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Database, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -11,6 +11,8 @@ import {
   parseVitalDbTrackCsv,
   type VitalDbCaseInfo,
 } from "@/lib/eeg/vitaldb";
+import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
+import { runRefitNow } from "@/lib/eeg/coebis-refit.functions";
 import { getExternalPriors, importVitalDb } from "@/lib/eeg/vitaldb.functions";
 import type { VitalDbCasePayload } from "@/lib/eeg/vitaldb.server";
 import {
@@ -54,9 +56,11 @@ export function VitalDbImportPanel() {
 
   const runImport = useServerFn(importVitalDb);
   const runPriors = useServerFn(getExternalPriors);
+  const queryClient = useQueryClient();
 
   const runPairedImport = useServerFn(importVitalDbPaired);
   const runPairedCounts = useServerFn(getPairedLineageCounts);
+  const runRefit = useServerFn(runRefitNow);
 
   const priors = useQuery({
     queryKey: ["external-priors"],
@@ -156,7 +160,29 @@ export function VitalDbImportPanel() {
         );
       }
       const result = await runPairedImport({ data: { cases } });
-      return { ...result, unusable, unmatched };
+
+      // New pairs only matter once a lineage clears the sufficiency gate, so
+      // refit straight away when the import actually crossed it — otherwise the
+      // Model performance page would keep showing the pre-import fit until the
+      // next scheduled run.
+      let refit: { summary: string; modelsPromoted: number; error: string | null } | null = null;
+      let gateShort: string | null = null;
+      if (result.inserted > 0) {
+        const counts = await runPairedCounts({});
+        const touched = counts.filter((c) => result.lineages.includes(c.lineageKey));
+        const ready = touched.filter(
+          (c) => c.readings >= MIN_POINTS && c.cases >= MIN_SESSIONS,
+        );
+        if (ready.length) {
+          refit = await runRefit({});
+        } else {
+          const best = touched.sort((a, b) => b.readings - a.readings)[0];
+          gateShort = best
+            ? `${best.readings}/${MIN_POINTS} readings across ${best.cases}/${MIN_SESSIONS} cases so far.`
+            : null;
+        }
+      }
+      return { ...result, unusable, unmatched, refit, gateShort };
     },
     onSuccess: (result) => {
       toast.success(
@@ -167,12 +193,30 @@ export function VitalDbImportPanel() {
             result.skipped ? `${result.skipped} were already present.` : null,
             result.unusable ? `${result.unusable} files produced no pairs.` : null,
             result.unmatched ? `${result.unmatched} files had no matching case row.` : null,
+            result.refit
+              ? `Refit ran: ${result.refit.summary}`
+              : result.gateShort
+                ? `Not refitted yet — ${result.gateShort}`
+                : null,
           ]
             .filter(Boolean)
             .join(" "),
         },
       );
+      if (result.refit?.error) {
+        toast.error(`The refit failed: ${result.refit.error}`);
+      } else if (result.refit) {
+        toast.info(
+          result.refit.modelsPromoted
+            ? `${result.refit.modelsPromoted} model version promoted — Model performance updated.`
+            : "Refit ran but no version beat the current fit, so nothing was promoted.",
+        );
+      }
       void pairedLineages.refetch();
+      // Refresh the pages that read the fit, so Model performance shows the
+      // before/after without a manual reload.
+      void queryClient.invalidateQueries({ queryKey: ["model-performance"] });
+      void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Replay failed."),
   });
