@@ -44,6 +44,25 @@ export type IntakeKind =
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
 
+/**
+ * A named login the operator has supplied. Credentialed downloads are made as
+ * that user, so the dataset's data use agreement is honoured by the person who
+ * signed it rather than by an anonymous scan.
+ */
+export type CredentialRealm = "physionet";
+
+export const CREDENTIAL_REALMS: Record<
+  CredentialRealm,
+  { label: string; envUser: string; envPassword: string; help: string }
+> = {
+  physionet: {
+    label: "PhysioNet",
+    envUser: "PHYSIONET_USERNAME",
+    envPassword: "PHYSIONET_PASSWORD",
+    help: "Your credentialed PhysioNet account, with the data use agreement signed for each restricted project.",
+  },
+};
+
 export type IntakeListing =
   /** PhysioNet publishes a plain-text RECORDS index of every file. */
   | { type: "records-file"; url: string }
