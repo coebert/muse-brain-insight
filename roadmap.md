@@ -16,7 +16,7 @@
 - [ ] PhysioNet GABA / power intake: both are credentialed (HTTP 403 to unattended fetch) — only the manual import panels can ingest them once files are downloaded under a signed DUA.
 - [ ] Model comparison page: every COEBIS version with MAE, bias and lineage, selectable as the active fit.
 - [ ] Trigger a refit on demand and show the new version's before/after MAE and gain on Model performance.
-- [ ] Drift detection metric comparing each refit against the original COEBIS fit.
+- [x] Drift detection metric comparing each refit against the original COEBIS fit (Model performance → Model drift vs original fit).
 - [ ] Clinical case dashboard: EEG, COEBIS, BIS, propofol Ce and covariates in one view with suppression/power highlights.
 - [ ] Pathology dashboard: COEBIS vs published labels with suppression, SEF, power and per-lineage prior (TUSZ, CHB-MIT, Helsinki neonatal).
 - [ ] Prediction-interval coverage compared across lineages after further PhysioNet/VitalDB intake.
