@@ -14,13 +14,15 @@ function trainingPoints(): CoebisTrainingPoint[] {
       const appIndex = 25 + i * 4;
       pts.push({
         sessionId: `case-${c}`,
-        atSeconds: i * 60,
+        at: i * 60,
         appIndex,
         // Commercial monitor reads a little lower than the app index.
         bis: appIndex * 0.9 - 2,
         reliable: true,
+        sqi: 1,
+        recordedAt: new Date(Date.UTC(2026, 0, 1, 0, c, i)).toISOString(),
         cov: { ageBand: "40-59", sex: "female", regimen: "propofol-remifentanil" },
-      } as CoebisTrainingPoint);
+      });
     }
   }
   return pts;
