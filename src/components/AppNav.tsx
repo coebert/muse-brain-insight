@@ -17,6 +17,7 @@ const TOOLS = [
   { to: "/compare", label: "Compare metrics" },
   { to: "/calibrate", label: "Depth calibration" },
   { to: "/validate", label: "Agreement report" },
+  { to: "/replay", label: "COEBIS replay" },
   { to: "/feedback", label: "Alert feedback" },
   { to: "/performance", label: "Alert tuning" },
   { to: "/coebis", label: "COEBIS training data" },
