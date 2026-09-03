@@ -120,6 +120,18 @@ export function ModelDriftPanel() {
                 </tbody>
               </table>
             ) : null}
+            {(() => {
+              const lineage = data?.lineages.find((l) => l.lineageKey === d.lineageKey);
+              if (!lineage) return null;
+              return explainDriftGaps(lineage, d).map((b) => (
+                <p
+                  key={b.metric}
+                  className="mt-2 rounded-md border border-caution/40 bg-caution/10 px-2.5 py-1.5 text-[11px] text-caution"
+                >
+                  <span className="font-semibold">{b.metric} unavailable:</span> {b.reason}
+                </p>
+              ));
+            })()}
             <p className="mt-2 text-[11px] text-muted-foreground">{d.note}</p>
           </div>
         ))}
