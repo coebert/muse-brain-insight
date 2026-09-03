@@ -13,6 +13,16 @@ import {
 } from "@/lib/eeg/vitaldb";
 import { getExternalPriors, importVitalDb } from "@/lib/eeg/vitaldb.functions";
 import type { VitalDbCasePayload } from "@/lib/eeg/vitaldb.server";
+import {
+  pairVitalDbCase,
+  parseVitalDbWaveCsv,
+  VITALDB_PAIRED_TRACKS,
+} from "@/lib/eeg/vitaldb-waveform";
+import {
+  getPairedLineageCounts,
+  importVitalDbPaired,
+} from "@/lib/eeg/vitaldb-waveform.functions";
+import type { VitalDbPairedPayload } from "@/lib/eeg/vitaldb-waveform.server";
 
 const GROUP_LABEL: Record<string, string> = {
   age: "Age band",
@@ -40,13 +50,22 @@ export function VitalDbImportPanel() {
   const [clinicalName, setClinicalName] = useState<string | null>(null);
   const clinicalRef = useRef<HTMLInputElement>(null);
   const tracksRef = useRef<HTMLInputElement>(null);
+  const waveRef = useRef<HTMLInputElement>(null);
 
   const runImport = useServerFn(importVitalDb);
   const runPriors = useServerFn(getExternalPriors);
 
+  const runPairedImport = useServerFn(importVitalDbPaired);
+  const runPairedCounts = useServerFn(getPairedLineageCounts);
+
   const priors = useQuery({
     queryKey: ["external-priors"],
     queryFn: () => runPriors({}),
+  });
+
+  const pairedLineages = useQuery({
+    queryKey: ["paired-lineage-counts"],
+    queryFn: () => runPairedCounts({}),
   });
 
   const importMutation = useMutation({
@@ -93,6 +112,69 @@ export function VitalDbImportPanel() {
       void priors.refetch();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Import failed."),
+  });
+
+  // Waveform files carry the EEG itself, so they are replayed through the app
+  // estimator and stored as paired readings the refit can train on.
+  const pairedMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!clinical) throw new Error("Load the VitalDB clinical table first.");
+      const cases: VitalDbPairedPayload[] = [];
+      let unusable = 0;
+      let unmatched = 0;
+      for (const file of files) {
+        const caseId = caseIdFromName(file.name);
+        const info = clinical.get(caseId);
+        if (!info) {
+          unmatched++;
+          continue;
+        }
+        const text = await file.text();
+        const wave = parseVitalDbWaveCsv(text);
+        const numerics = parseVitalDbTrackCsv(text);
+        const paired = pairVitalDbCase(info, wave, numerics, {
+          strideSeconds: 10,
+          minSqi: 50,
+          toleranceSeconds: 2,
+        });
+        if (paired.points.length) {
+          cases.push({
+            caseRef: paired.caseRef,
+            lineageKey: paired.lineageKey,
+            covariates: paired.covariates,
+            points: paired.points,
+          });
+        } else {
+          unusable++;
+        }
+      }
+      if (!cases.length) {
+        throw new Error(
+          unmatched
+            ? "No waveform file matched a case id in the clinical table."
+            : "No monitor reading paired with a replayed second in those files.",
+        );
+      }
+      const result = await runPairedImport({ data: { cases } });
+      return { ...result, unusable, unmatched };
+    },
+    onSuccess: (result) => {
+      toast.success(
+        `Replayed ${result.cases} cases into ${result.inserted} paired readings`,
+        {
+          description: [
+            `Lineage ${result.lineages.join(", ")}.`,
+            result.skipped ? `${result.skipped} were already present.` : null,
+            result.unusable ? `${result.unusable} files produced no pairs.` : null,
+            result.unmatched ? `${result.unmatched} files had no matching case row.` : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        },
+      );
+      void pairedLineages.refetch();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Replay failed."),
   });
 
   return (
@@ -166,6 +248,67 @@ export function VitalDbImportPanel() {
           <span className="text-xs text-muted-foreground">{clinicalName}</span>
         ) : null}
       </div>
+
+      <input
+        ref={waveRef}
+        type="file"
+        accept=".csv,text/csv"
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length) pairedMutation.mutate(files);
+        }}
+      />
+
+      <div className="mt-3 border-t border-border pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            className="min-h-11 sm:min-h-9"
+            onClick={() => waveRef.current?.click()}
+            disabled={!clinical || pairedMutation.isPending}
+          >
+            {pairedMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            3. Raw waveform files → paired readings
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Export with{" "}
+          <code className="rounded bg-muted px-1">tracks={VITALDB_PAIRED_TRACKS}</code>. The EEG is
+          replayed through this app&apos;s own estimator, so each monitor BIS gets an app index for
+          the same second — the pairing COEBIS refits on. Filed under its own bedside lineage, never
+          mixed with Muse fits.
+        </p>
+        {pairedLineages.data?.length ? (
+          <table className="mt-2 w-full text-xs">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="py-1 text-left font-medium">Paired lineage</th>
+                <th className="py-1 text-right font-medium">Cases</th>
+                <th className="py-1 text-right font-medium">Readings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pairedLineages.data.map((row) => (
+                <tr key={row.lineageKey} className="border-t border-border/60">
+                  <td className="py-1 font-mono">{row.lineageKey}</td>
+                  <td className="py-1 text-right tabular-nums">{row.cases}</td>
+                  <td
+                    className={`py-1 text-right tabular-nums ${
+                      row.readings >= 30 && row.cases >= 3 ? "text-emerald-500" : ""
+                    }`}
+                  >
+                    {row.readings}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </div>
+
 
       <div className="mt-3 border-t border-border pt-3">
         <p className="text-xs text-muted-foreground">
