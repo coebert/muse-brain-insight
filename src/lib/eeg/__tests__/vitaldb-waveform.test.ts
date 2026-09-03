@@ -27,19 +27,22 @@ const INFO: VitalDbCaseInfo = {
   caseId: "42",
   age: 68,
   sex: "M",
-  asa: 3,
-  anesthesiaType: "General",
-} as VitalDbCaseInfo;
+  asa: "3",
+  aneType: "General",
+  propofol: true,
+  opioid: true,
+};
 
 function numerics(seconds: number, sqi = 95): VitalDbTrackSample[] {
-  return Array.from({ length: seconds }, (_, t) => ({
+  return Array.from({ length: seconds }, (_, t): VitalDbTrackSample => ({
     t,
     bis: 45,
     sef: 12,
     sr: 0,
     sqi,
+    emg: 30,
     ce: { propofol: 3 },
-  })) as VitalDbTrackSample[];
+  }));
 }
 
 describe("VitalDB waveform parsing", () => {
