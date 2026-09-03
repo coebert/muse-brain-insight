@@ -1,7 +1,7 @@
 /**
  * Automated public-dataset intake.
  *
- * The manual import panels each take a file a clinician已 downloaded by hand.
+ * The manual import panels each take a file a clinician downloaded by hand.
  * This module describes the *configured* public sources instead, so a scan can
  * discover eligible files, fetch them, push them through the existing parser →
  * harmonisation → storage path, and write down exactly where every epoch came
