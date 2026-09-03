@@ -64,6 +64,12 @@ export interface IntakeSource {
   access: IntakeAccess;
   /** Why an access mode other than `open` blocks automated retrieval. */
   accessNote?: string;
+  /**
+   * Credential realm whose stored login unlocks retrieval for this source.
+   * A `credentialed` source stays blocked until the realm's credentials are
+   * configured; the download then runs as that named user under their own DUA.
+   */
+  credentialRealm?: CredentialRealm;
   homepage: string;
   listing: IntakeListing;
   /** Files whose names fail this test are ignored (checksums, docs, WFDB headers). */
