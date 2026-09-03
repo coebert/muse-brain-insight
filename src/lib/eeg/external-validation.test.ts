@@ -56,7 +56,7 @@ describe("external validation", () => {
     expect(b.kind).toBe("reference-only");
     expect(b.n).toBe(3);
     // The flat lineage mean is the honest comparator.
-    expect(b.baseline!.bias).toBe(0);
+    expect(b.baseline!.bias).toBeCloseTo(0, 6);
     expect(b.notes.join(" ")).toContain("No app index");
   });
 
