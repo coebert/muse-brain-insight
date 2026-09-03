@@ -57,7 +57,8 @@ export interface LineageRefitRecord {
   folds: number;
 }
 
-function modelFromRow(row: Record<string, unknown> | null | undefined): CoebisModel | null {
+/** Rebuild a fitted COEBIS model from a stored version row. */
+export function modelFromRow(row: Record<string, unknown> | null | undefined): CoebisModel | null {
   if (!row) return null;
   const c = (row["coefficients"] as Record<string, unknown> | null) ?? {};
   return {
