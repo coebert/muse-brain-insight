@@ -23,6 +23,7 @@ import { SefDriftPanel } from "@/components/monitor/SefDriftPanel";
 import { SefPersonalisationPanel } from "@/components/monitor/SefPersonalisationPanel";
 import { PathologyStrataPanel } from "@/components/monitor/PathologyStrataPanel";
 import { RefitPipelinePanel } from "@/components/monitor/RefitPipelinePanel";
+import { ModelVersionHistoryPanel } from "@/components/monitor/ModelVersionHistoryPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
@@ -300,6 +301,7 @@ function ModelPerformancePage() {
             <SefPersonalisationPanel />
 
             <RefitPipelinePanel />
+            <ModelVersionHistoryPanel />
 
             <PathologyStrataPanel />
 
