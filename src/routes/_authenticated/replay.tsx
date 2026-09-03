@@ -2,9 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
+  Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -130,6 +132,11 @@ function Replay() {
         coebis: f.coebis,
         bis: f.bis,
         index: f.appIndex,
+        // Recharts stacks an area band as [floor, height].
+        band:
+          f.coebisLower == null || f.coebisUpper == null
+            ? null
+            : [f.coebisLower, f.coebisUpper],
       })),
     [result],
   );
@@ -263,10 +270,16 @@ function Replay() {
           </section>
 
           <section className="rounded-lg border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold">COEBIS prediction vs monitor BIS</h2>
+            <h2 className="mb-1 text-sm font-semibold">COEBIS prediction vs monitor BIS</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              The shaded band is the{" "}
+              {Math.round((result.intervalLevel ?? 0.9) * 100)}% prediction interval: how much room
+              the model needs for its own fitted error, this patient&apos;s covariates, signal
+              quality, suppression and how fast the index is moving.
+            </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={timeline} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
+                <ComposedChart data={timeline} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="t"
@@ -278,6 +291,17 @@ function Replay() {
                   />
                   <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <Tooltip labelFormatter={(t: number) => formatClock(t)} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="band"
+                    name={`COEBIS ${Math.round((result.intervalLevel ?? 0.9) * 100)}% interval`}
+                    stroke="none"
+                    fill="hsl(var(--signal))"
+                    fillOpacity={0.16}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
                   <Line
                     type="monotone"
                     dataKey="bis"
@@ -307,7 +331,7 @@ function Replay() {
                     strokeWidth={2}
                     isAnimationActive={false}
                   />
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
@@ -322,6 +346,39 @@ function Replay() {
                 }
               />
             </div>
+            {result.calibration ? (
+              <div className="mt-3 rounded-md border border-border/60 p-3">
+                <p className="text-xs font-medium text-foreground">
+                  Interval calibration against the monitor
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{result.calibration.summary}</p>
+                {result.calibration.levels.length ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {result.calibration.levels.map((l) => (
+                      <Stat
+                        key={l.nominal}
+                        label={`${Math.round(l.nominal * 100)}% band coverage`}
+                        value={`${Math.round(l.empirical * 100)} %`}
+                      />
+                    ))}
+                    <Stat
+                      label="Spread ratio"
+                      value={fmt(result.calibration.zSpread, 2)}
+                    />
+                    <Stat
+                      label="Mean width (90%)"
+                      value={fmt(
+                        result.calibration.levels.find((l) => l.nominal === 0.9)?.meanWidth,
+                      )}
+                    />
+                  </div>
+                ) : null}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Spread ratio is the SD of (monitor − COEBIS) ÷ quoted spread: 1.0 means the band
+                  is the right size, above 1.0 means it is too narrow.
+                </p>
+              </div>
+            ) : null}
             {result.baselineMetrics ? (
               <p className="mt-2 text-xs text-muted-foreground">
                 Unaligned index for comparison: bias {fmt(result.baselineMetrics.bias)}, MAE{" "}
@@ -383,8 +440,8 @@ function Replay() {
   );
 }
 
-function fmt(v: number | null | undefined) {
-  return v == null || !Number.isFinite(v) ? "—" : v.toFixed(1);
+function fmt(v: number | null | undefined, dp = 1) {
+  return v == null || !Number.isFinite(v) ? "—" : v.toFixed(dp);
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
