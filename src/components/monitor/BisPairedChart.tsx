@@ -4,8 +4,8 @@ import {
   AreaChart,
   CartesianGrid,
   Legend,
+  ComposedChart,
   Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -17,6 +17,12 @@ import { Button } from "@/components/ui/button";
 import type { BisDriftSeriesPoint } from "@/lib/eeg/bis-drift.functions";
 import { baselineDriftSeries } from "@/lib/eeg/bis-baseline-drift";
 import { RECALIBRATION_DRIFT } from "@/components/monitor/CoebisDriftStrip";
+import type { BisAlignment } from "@/lib/eeg/depth";
+import {
+  calibrationReport,
+  localVolatility,
+  predictionInterval,
+} from "@/lib/eeg/coebis-uncertainty";
 import { cn } from "@/lib/utils";
 
 const WINDOWS = [30, 60, 120, 200] as const;
@@ -30,20 +36,66 @@ const mean = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.lengt
  * published, the commercial BIS value transcribed at the bedside, and — when a
  * correction is active — the corrected index the app now displays.
  */
-export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
+export function BisPairedChart({
+  series,
+  model,
+}: {
+  series: BisDriftSeriesPoint[];
+  /** Active COEBIS model, used to size the prediction interval. */
+  model?: BisAlignment | null;
+}) {
   const [n, setN] = useState<number>(60);
   const hasCorrection = series.some((p) => p.corrected != null);
 
+  /**
+   * The interval sits around whichever value the app actually shows: COEBIS
+   * where a correction is active, the raw index otherwise.
+   */
+  const intervals = useMemo(() => {
+    const tail = series.slice(-n);
+    const track = tail.map((p) => (hasCorrection ? p.corrected : p.raw));
+    return tail.map((p, i) =>
+      predictionInterval(
+        {
+          prediction: hasCorrection ? p.corrected : p.raw,
+          reliable: p.reliable,
+          volatility: localVolatility(track, i, 3),
+          covariatesKnown: true,
+        },
+        model ?? null,
+      ),
+    );
+  }, [series, n, hasCorrection, model]);
+
   const rows = useMemo(() => {
     const tail = series.slice(-n);
-    return tail.map((p, i) => ({
-      i: i + 1,
-      "Commercial BIS": p.bis,
-      "OpenIBIS (raw)": p.raw,
-      ...(hasCorrection ? { "COEBIS": p.corrected } : {}),
-      recordedAt: p.recordedAt,
-    }));
-  }, [series, n, hasCorrection]);
+    return tail.map((p, i) => {
+      const iv = intervals[i];
+      return {
+        i: i + 1,
+        "Commercial BIS": p.bis,
+        "OpenIBIS (raw)": p.raw,
+        ...(hasCorrection ? { COEBIS: p.corrected } : {}),
+        band: iv ? [Number(iv.lower.toFixed(1)), Number(iv.upper.toFixed(1))] : null,
+        recordedAt: p.recordedAt,
+      };
+    });
+  }, [series, n, hasCorrection, intervals]);
+
+  /** Coverage of those intervals against the transcribed monitor readings. */
+  const calibration = useMemo(() => {
+    const tail = series.slice(-n);
+    return calibrationReport(
+      tail
+        .map((p, i) => ({ p, iv: intervals[i] }))
+        .filter((r) => r.iv != null)
+        .map((r) => ({
+          prediction: r.iv!.prediction,
+          sigma: r.iv!.sigma,
+          actual: r.p.bis,
+        })),
+    );
+  }, [series, n, intervals]);
 
   const stats = useMemo(() => {
     const tail = series.slice(-n);
@@ -98,7 +150,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
 
       <div className="h-56 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 6, right: 8, bottom: 4, left: -18 }}>
+          <ComposedChart data={rows} margin={{ top: 6, right: 8, bottom: 4, left: -18 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="i"
@@ -122,6 +174,16 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
               labelFormatter={(v) => `Reading ${v}`}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Area
+              type="monotone"
+              dataKey="band"
+              name="90% prediction interval"
+              stroke="none"
+              fill="var(--signal)"
+              fillOpacity={0.16}
+              connectNulls
+              isAnimationActive={false}
+            />
             <ReferenceLine y={60} stroke="var(--muted-foreground)" strokeDasharray="2 4" />
             <ReferenceLine y={40} stroke="var(--muted-foreground)" strokeDasharray="2 4" />
             <Line
@@ -150,7 +212,7 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
                 connectNulls
               />
             ) : null}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
@@ -158,8 +220,29 @@ export function BisPairedChart({ series }: { series: BisDriftSeriesPoint[] }) {
         Mean absolute difference from the monitor over this window:{" "}
         {stats.raw == null ? "—" : `${stats.raw.toFixed(1)} index points OpenIBIS`}
         {stats.corrected == null ? "" : ` · ${stats.corrected.toFixed(1)} COEBIS`}. Dashed
-        guides mark the 40–60 window.
+        guides mark the 40–60 window; the shaded band is the 90% prediction interval.
       </p>
+
+      <div className="rounded-lg border border-border p-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-[11px] tracking-wide text-muted-foreground uppercase">
+            Interval calibration vs commercial BIS
+          </span>
+          <span className="metric-value text-[11px] text-muted-foreground">
+            {calibration.levels.map(
+              (l) => `${Math.round(l.nominal * 100)}% → ${Math.round(l.empirical * 100)}%`,
+            ).join(" · ") || "—"}
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">{calibration.summary}</p>
+        {Number.isFinite(calibration.zSpread) ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Spread ratio {calibration.zSpread.toFixed(2)} (1.0 = the quoted band is the right
+            size), mean standardised offset {calibration.zBias > 0 ? "+" : ""}
+            {calibration.zBias.toFixed(2)}.
+          </p>
+        ) : null}
+      </div>
 
       <div className="rounded-lg border border-border p-2">
         <div className="flex flex-wrap items-center justify-between gap-2">

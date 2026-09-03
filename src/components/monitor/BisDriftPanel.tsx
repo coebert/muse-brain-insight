@@ -245,7 +245,21 @@ export function BisDriftPanel() {
               </p>
             ) : null}
 
-            <BisPairedChart series={data?.series ?? []} />
+            <BisPairedChart
+              series={data?.series ?? []}
+              model={
+                data?.active
+                  ? {
+                      gain: data.active.gain,
+                      offset: data.active.offset,
+                      n: data.active.nPoints,
+                      fittedAt: data.active.createdAt,
+                      maeAfter: data.active.maeAfter,
+                      biasAfter: data.active.biasAfter,
+                    }
+                  : null
+              }
+            />
 
             <BisBlandAltmanChart series={data?.series ?? []} active={data?.active ?? null} />
 
