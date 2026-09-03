@@ -69,10 +69,14 @@ async function sha256HexBytes(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function fetchBytes(url: string, limitBytes: number): Promise<Uint8Array> {
+async function fetchBytes(
+  url: string,
+  limitBytes: number,
+  timeoutMs = FETCH_TIMEOUT_MS * 4,
+): Promise<Uint8Array> {
   const res = await fetch(url, {
     headers: { accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS * 4),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
   const buf = new Uint8Array(await res.arrayBuffer());
@@ -358,7 +362,8 @@ export async function runDatasetIntake(
         let digest: string;
         let parsedFile: { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null };
         if (source.binary) {
-          const raw = await fetchBytes(file.url, source.maxBytesPerFile);
+          // Hour-long recordings are tens of megabytes, so allow a longer download.
+          const raw = await fetchBytes(file.url, source.maxBytesPerFile, 300_000);
           bytes = raw.byteLength;
           digest = await sha256HexBytes(raw);
           parsedFile = rowsForBinaryFile(source, file, raw, await summaryFor(file, summaries));

@@ -12,3 +12,12 @@
 - [x] Scheduled COEBIS refit pipeline: nightly cron (`/api/public/hooks/coebis-refit`), per-lineage versioning in `coebis_model_versions`, run history, and before/after performance in the Model performance page.
 - [x] COEBIS prediction intervals on the replay timeline and paired prediction charts, with coverage/spread calibration scored against real BIS readings.
 - [x] Pathology dataset ingest panels (TUSZ, CHB-MIT, TUAB, Helsinki neonatal) in Data exchange, with interval annotations and per-lineage licence provenance.
+- [x] CHB-MIT (PhysioNet, ODC-BY) wired into the automated intake as `external:physionet:chb-mit` with an EDF reader and published seizure intervals; external validation now shown on Model performance.
+- [ ] PhysioNet GABA / power intake: both are credentialed (HTTP 403 to unattended fetch) — only the manual import panels can ingest them once files are downloaded under a signed DUA.
+- [ ] Model comparison page: every COEBIS version with MAE, bias and lineage, selectable as the active fit.
+- [ ] Trigger a refit on demand and show the new version's before/after MAE and gain on Model performance.
+- [x] Drift detection metric comparing each refit against the original COEBIS fit (Model performance → Model drift vs original fit).
+- [ ] Clinical case dashboard: EEG, COEBIS, BIS, propofol Ce and covariates in one view with suppression/power highlights.
+- [ ] Pathology dashboard: COEBIS vs published labels with suppression, SEF, power and per-lineage prior (TUSZ, CHB-MIT, Helsinki neonatal).
+- [ ] Prediction-interval coverage compared across lineages after further PhysioNet/VitalDB intake.
+- [ ] Error hotspots overlay: contiguous regions where bias or MAE crosses a threshold, per lineage.
