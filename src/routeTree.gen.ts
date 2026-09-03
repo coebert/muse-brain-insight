@@ -20,6 +20,7 @@ import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
+import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedReplayRouteImport } from './routes/_authenticated/replay'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
@@ -83,6 +84,11 @@ const AuthenticatedOutcomesRoute = AuthenticatedOutcomesRouteImport.update({
   path: '/outcomes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPathologyRoute = AuthenticatedPathologyRouteImport.update({
+  id: '/pathology',
+  path: '/pathology',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPerformanceRoute =
   AuthenticatedPerformanceRouteImport.update({
     id: '/performance',
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
+  '/pathology': typeof AuthenticatedPathologyRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
+  '/pathology': typeof AuthenticatedPathologyRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
+  '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/replay': typeof AuthenticatedReplayRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/discovery'
     | '/feedback'
     | '/outcomes'
+    | '/pathology'
     | '/performance'
     | '/replay'
     | '/sessions'
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/discovery'
     | '/feedback'
     | '/outcomes'
+    | '/pathology'
     | '/performance'
     | '/replay'
     | '/sessions'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/_authenticated/discovery'
     | '/_authenticated/feedback'
     | '/_authenticated/outcomes'
+    | '/_authenticated/pathology'
     | '/_authenticated/performance'
     | '/_authenticated/replay'
     | '/_authenticated/sessions'
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOutcomesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pathology': {
+      id: '/_authenticated/pathology'
+      path: '/pathology'
+      fullPath: '/pathology'
+      preLoaderRoute: typeof AuthenticatedPathologyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/performance': {
       id: '/_authenticated/performance'
       path: '/performance'
@@ -405,6 +424,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
+  AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedReplayRoute: typeof AuthenticatedReplayRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
@@ -424,6 +444,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
+  AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedReplayRoute: AuthenticatedReplayRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
