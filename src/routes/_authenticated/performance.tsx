@@ -24,6 +24,7 @@ import { SefPersonalisationPanel } from "@/components/monitor/SefPersonalisation
 import { PathologyStrataPanel } from "@/components/monitor/PathologyStrataPanel";
 import { RefitPipelinePanel } from "@/components/monitor/RefitPipelinePanel";
 import { ModelVersionHistoryPanel } from "@/components/monitor/ModelVersionHistoryPanel";
+import { LineageComparisonPanel } from "@/components/monitor/LineageComparisonPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
