@@ -74,6 +74,18 @@ function modelFromRow(row: Record<string, unknown> | null | undefined): CoebisMo
   };
 }
 
+/** Earliest and latest reading in a training set, for version provenance. */
+function trainingSpan(points: { recordedAt: string }[]): {
+  first: string | null;
+  last: string | null;
+} {
+  const times = points
+    .map((p) => p.recordedAt)
+    .filter((t): t is string => typeof t === "string" && t.length > 0)
+    .sort();
+  return { first: times[0] ?? null, last: times[times.length - 1] ?? null };
+}
+
 function coefficientsOf(model: CoebisModel): Record<string, unknown> {
   return {
     gain: model.gain,
@@ -274,6 +286,14 @@ export async function runRefitForUser(
                 cases: result.cases,
                 folds: result.folds,
                 passRate: Number(validated.passRate.toFixed(3)),
+                // Lineage provenance for the audit trail: which acquisition
+                // setup trained this version, and over what window.
+                lineageKey: entry.lineageKey,
+                sessions: new Set(
+                  entry.points.map((p) => p.sessionId).filter(Boolean),
+                ).size,
+                firstReadingAt: trainingSpan(entry.points).first,
+                lastReadingAt: trainingSpan(entry.points).last,
               },
               metrics_before: { ...result.before, source: result.beforeSource },
               metrics_after: result.after,
