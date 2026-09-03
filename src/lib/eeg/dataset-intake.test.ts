@@ -12,7 +12,7 @@ import {
   planIntake,
 } from "./dataset-intake";
 
-const open = findSource("zenodo-dose-i")!;
+const open = { ...findSource("zenodo-dose-i")!, filePattern: /\.csv$/i };
 const restricted = findSource("physionet-i-care")!;
 
 describe("licence gating", () => {
@@ -20,7 +20,13 @@ describe("licence gating", () => {
     expect(checkEligibility(open).eligible).toBe(true);
     const gate = checkEligibility(restricted);
     expect(gate.eligible).toBe(false);
-    expect(gate.reason).toMatch(/credentialed/i);
+    expect(gate.reason).toMatch(/credentials are not configured/i);
+  });
+
+  it("unlocks a credentialed source once its realm login is stored", () => {
+    const gate = checkEligibility(restricted, ["physionet"]);
+    expect(gate.eligible).toBe(true);
+    expect(gate.reason).toMatch(/credentialed PhysioNet user/i);
   });
 
   it("gives every configured source its own lineage and licence", () => {
