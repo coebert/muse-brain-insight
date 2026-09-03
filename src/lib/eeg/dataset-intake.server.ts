@@ -48,6 +48,15 @@ import {
   parseOpenNeuroRecording,
   type BidsEvent,
 } from "./openneuro";
+import { parseEdfHeader } from "./edf";
+import { OpenNeuroStreamAssembler } from "./openneuro-stream";
+import {
+  buildEventDepthPoints,
+  openNeuroDepthLineageKey,
+  type EventDepthPoint,
+} from "./openneuro-depth";
+import { importEventDepthCases } from "./openneuro-depth.server";
+import { replayRawEeg } from "./replay";
 
 type Client = SupabaseClient<any, any, any>;
 
@@ -132,6 +141,25 @@ async function fetchBytes(
   const buf = new Uint8Array(await res.arrayBuffer());
   if (buf.byteLength > limitBytes) throw new Error("archive exceeded the per-archive cap");
   return buf;
+}
+
+/** Fetch one inclusive byte range. Used to walk a very large file in pieces. */
+async function fetchRange(
+  url: string,
+  startByte: number,
+  endByte: number,
+  timeoutMs = FETCH_TIMEOUT_MS * 4,
+  auth?: string,
+): Promise<Uint8Array> {
+  const res = await fetch(url, {
+    headers: withAuth(
+      { accept: "application/octet-stream;q=0.9,*/*;q=0.5", range: `bytes=${startByte}-${endByte}` },
+      auth,
+    ),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 /* ----------------------------------------------------------- openneuro --- */
@@ -423,6 +451,97 @@ async function eventsFor(file: PlannedFile, cache: Map<string, BidsEvent[]>): Pr
   }
 }
 
+
+/* --------------------------------------------------- streamed decoding --- */
+
+interface StreamedFileResult {
+  rows: PhysionetImportRow[];
+  harmonization: HarmonizationRecord | null;
+  bytes: number;
+  digest: string;
+  /** Event-referenced paired readings, ready to store under their own lineage. */
+  paired: { lineageKey: string; channel: string; points: EventDepthPoint[] } | null;
+  detail: string;
+}
+
+/**
+ * Decode a whole ds004541 recording in record-aligned ranges, then replay the
+ * decimated frontal channel once so the published events can act as a coarse
+ * depth reference for the parts of the anaesthetic they actually describe.
+ */
+async function streamOpenNeuroFile(
+  source: IntakeSource,
+  file: PlannedFile,
+  events: BidsEvent[],
+  auth?: string,
+): Promise<StreamedFileResult> {
+  const headerBytes = await fetchRange(file.url, 0, 1_048_575, FETCH_TIMEOUT_MS, auth);
+  const header = parseEdfHeader(headerBytes);
+  const assembler = new OpenNeuroStreamAssembler(header, {
+    caseRef: file.caseRef,
+    fileName: file.name,
+  });
+  const chunks = assembler.plan(source.streamChunkBytes ?? 24_000_000);
+  if (!chunks.length) throw new Error("EDF header declares no data records");
+
+  for (const chunk of chunks) {
+    const slab = await fetchRange(file.url, chunk.startByte, chunk.endByte, 300_000, auth);
+    if (!slab.byteLength) break;
+    assembler.push(slab, chunk);
+  }
+  const recording = assembler.finish(events);
+
+  const inferredRef = inferReference(recording.channel);
+  const harmonisedEpochs = harmonizeEpochs(recording.epochs, {
+    ...source.montage,
+    channel: recording.channel,
+    sampleRateHz: recording.sampleRate,
+    ...(inferredRef !== "unknown" ? { reference: inferredRef } : {}),
+  });
+  const rows = openNeuroRows(harmonisedEpochs, {
+    datasetVersion: source.datasetVersion,
+    fileName: file.name,
+    channel: recording.channel,
+    labelledIntervals: recording.labelledIntervals,
+  });
+
+  let paired: StreamedFileResult["paired"] = null;
+  let pairedNote = "no stable event intervals";
+  if (recording.intervals.length && recording.replaySignal.length > recording.replaySampleRate * 8) {
+    const replay = replayRawEeg({
+      samples: recording.replaySignal,
+      sampleRate: recording.replaySampleRate,
+    });
+    const built = buildEventDepthPoints(replay.frames, recording.intervals, {
+      caseRef: file.caseRef,
+      channel: recording.channel,
+    });
+    if (built.points.length) {
+      paired = {
+        lineageKey: openNeuroDepthLineageKey(recording.channel, recording.replaySampleRate),
+        channel: recording.channel,
+        points: built.points,
+      };
+      pairedNote = `${built.points.length} event-referenced readings (${Object.entries(built.states)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(", ")})`;
+    }
+  }
+
+  // The whole file is never held, so provenance digests the header block and
+  // records the decoded span rather than pretending to a whole-file checksum.
+  const digest = `stream-header:${await sha256HexBytes(headerBytes.subarray(0, header.headerBytes))}`;
+
+  return {
+    rows,
+    harmonization: harmonisedEpochs[0]?.harmonization ?? null,
+    bytes: recording.bytesDecoded,
+    digest,
+    paired,
+    detail: `${Math.round(recording.durationSeconds / 60)} min decoded in ${recording.chunksDecoded} ranges; ${pairedNote}`,
+  };
+}
+
 /* --------------------------------------------------------------- run --- */
 
 async function alreadyIngested(supabase: Client, sourceId: string): Promise<Set<string>> {
@@ -524,11 +643,25 @@ export async function runDatasetIntake(
         detail: "",
         provenance: null,
       };
+      let paired: StreamedFileResult["paired"] = null;
+      let streamNote = "";
       try {
         let bytes: number;
         let digest: string;
         let parsedFile: { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null };
-        if (source.binary) {
+        if (source.binary && source.streamChunkBytes) {
+          const streamed = await streamOpenNeuroFile(
+            source,
+            file,
+            await eventsFor(file, bidsEvents),
+            auth,
+          );
+          bytes = streamed.bytes;
+          digest = streamed.digest;
+          paired = streamed.paired;
+          streamNote = streamed.detail;
+          parsedFile = { rows: streamed.rows, harmonization: streamed.harmonization };
+        } else if (source.binary) {
           // Hour-long recordings are tens of megabytes, so allow a longer download.
           const raw = await fetchBytes(
             file.url,
@@ -567,6 +700,20 @@ export async function runDatasetIntake(
         outcome.detail = stored.skipped
           ? `${stored.inserted} new epochs, ${stored.skipped} already held`
           : `${stored.inserted} new epochs`;
+        if (paired?.points.length) {
+          const storedPairs = await importEventDepthCases(supabase, userId, [
+            {
+              caseRef: file.caseRef,
+              lineageKey: paired.lineageKey,
+              channel: paired.channel,
+              covariates: { ageBand: null, sex: null, regimen: "volatile" },
+              points: paired.points,
+            },
+          ]);
+          outcome.pairedInserted = storedPairs.inserted;
+          base.pairedInserted = (base.pairedInserted ?? 0) + storedPairs.inserted;
+        }
+        if (streamNote) outcome.detail += ` · ${streamNote}`;
         outcome.provenance = buildProvenance(
           source,
           { name: file.name, url: file.url, bytes, digest },
