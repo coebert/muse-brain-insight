@@ -105,6 +105,69 @@ export function VitalDbImportPanel() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Import failed."),
   });
 
+  // Waveform files carry the EEG itself, so they are replayed through the app
+  // estimator and stored as paired readings the refit can train on.
+  const pairedMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!clinical) throw new Error("Load the VitalDB clinical table first.");
+      const cases: VitalDbPairedPayload[] = [];
+      let unusable = 0;
+      let unmatched = 0;
+      for (const file of files) {
+        const caseId = caseIdFromName(file.name);
+        const info = clinical.get(caseId);
+        if (!info) {
+          unmatched++;
+          continue;
+        }
+        const text = await file.text();
+        const wave = parseVitalDbWaveCsv(text);
+        const numerics = parseVitalDbTrackCsv(text);
+        const paired = pairVitalDbCase(info, wave, numerics, {
+          strideSeconds: 10,
+          minSqi: 50,
+          toleranceSeconds: 2,
+        });
+        if (paired.points.length) {
+          cases.push({
+            caseRef: paired.caseRef,
+            lineageKey: paired.lineageKey,
+            covariates: paired.covariates,
+            points: paired.points,
+          });
+        } else {
+          unusable++;
+        }
+      }
+      if (!cases.length) {
+        throw new Error(
+          unmatched
+            ? "No waveform file matched a case id in the clinical table."
+            : "No monitor reading paired with a replayed second in those files.",
+        );
+      }
+      const result = await runPairedImport({ data: { cases } });
+      return { ...result, unusable, unmatched };
+    },
+    onSuccess: (result) => {
+      toast.success(
+        `Replayed ${result.cases} cases into ${result.inserted} paired readings`,
+        {
+          description: [
+            `Lineage ${result.lineages.join(", ")}.`,
+            result.skipped ? `${result.skipped} were already present.` : null,
+            result.unusable ? `${result.unusable} files produced no pairs.` : null,
+            result.unmatched ? `${result.unmatched} files had no matching case row.` : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        },
+      );
+      void pairedLineages.refetch();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Replay failed."),
+  });
+
   return (
     <section className="panel p-3">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
