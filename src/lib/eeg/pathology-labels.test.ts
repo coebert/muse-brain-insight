@@ -26,14 +26,15 @@ function epoch(i: number, ictal: boolean, caseIdx: number): LabelledEpoch {
 describe("evaluatePathologyLabels", () => {
   it("grades a separable seizure axis in the right direction", () => {
     const rows: LabelledEpoch[] = [];
-    for (let c = 0; c < 4; c += 1) {
-      for (let i = 0; i < 20; i += 1) rows.push(epoch(i, c < 2, c));
+    for (let c = 0; c < 6; c += 1) {
+      for (let i = 0; i < 20; i += 1) rows.push(epoch(i, c < 3, c));
     }
     const result = evaluatePathologyLabels(rows);
     const axis = result.axes.find((a) => a.key === "seizure");
     expect(axis).toBeTruthy();
-    expect(axis!.positives).toBe(40);
-    expect(axis!.cases).toBe(4);
+    expect(axis!.positives).toBe(60);
+    expect(axis!.cases).toBe(6);
+
     const seizureScore = axis!.scores.find((s) => s.score === "seizureScore")!;
     expect(seizureScore.auc).toBeGreaterThan(0.9);
     expect(seizureScore.sufficiency).toBe("sufficient");
