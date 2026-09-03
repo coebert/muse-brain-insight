@@ -19,6 +19,7 @@ import {
   type DiscoveryAssociation,
   type FeatureKey,
 } from "@/lib/eeg/covariate-discovery";
+import type { AdoptionState } from "@/lib/eeg/discovery-adoption";
 
 export const Route = createFileRoute("/_authenticated/discovery")({
   head: () => ({
@@ -41,6 +42,12 @@ export const Route = createFileRoute("/_authenticated/discovery")({
   }),
   component: DiscoveryPage,
 });
+
+const ADOPTION_TONE: Record<AdoptionState, string> = {
+  adopted: "bg-signal/15 text-signal",
+  held: "bg-caution/15 text-caution",
+  "evidence-only": "bg-muted text-muted-foreground",
+};
 
 const SUFFICIENCY_TONE: Record<DiscoveryAssociation["sufficiency"], string> = {
   sufficient: "bg-signal/15 text-signal",
@@ -91,6 +98,16 @@ function DiscoveryPage() {
     for (const a of selected.associations) m.set(`${a.group}|${a.feature}`, a);
     return m;
   }, [selected]);
+
+  const adoption = useMemo(
+    () => data?.adoption.lineages.find((l) => l.lineage === selected?.lineage) ?? null,
+    [data, selected],
+  );
+
+  const diagnosis = useMemo(
+    () => (data?.diagnosis ?? []).filter((m) => m.lineage === selected?.lineage),
+    [data, selected],
+  );
 
   const rows = useMemo(() => {
     if (!selected) return [] as DiscoveryAssociation[];
