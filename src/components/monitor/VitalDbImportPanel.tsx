@@ -248,6 +248,67 @@ export function VitalDbImportPanel() {
         ) : null}
       </div>
 
+      <input
+        ref={waveRef}
+        type="file"
+        accept=".csv,text/csv"
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length) pairedMutation.mutate(files);
+        }}
+      />
+
+      <div className="mt-3 border-t border-border pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            className="min-h-11 sm:min-h-9"
+            onClick={() => waveRef.current?.click()}
+            disabled={!clinical || pairedMutation.isPending}
+          >
+            {pairedMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            3. Raw waveform files → paired readings
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Export with{" "}
+          <code className="rounded bg-muted px-1">tracks={VITALDB_PAIRED_TRACKS}</code>. The EEG is
+          replayed through this app&apos;s own estimator, so each monitor BIS gets an app index for
+          the same second — the pairing COEBIS refits on. Filed under its own bedside lineage, never
+          mixed with Muse fits.
+        </p>
+        {pairedLineages.data?.length ? (
+          <table className="mt-2 w-full text-xs">
+            <thead className="text-muted-foreground">
+              <tr>
+                <th className="py-1 text-left font-medium">Paired lineage</th>
+                <th className="py-1 text-right font-medium">Cases</th>
+                <th className="py-1 text-right font-medium">Readings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pairedLineages.data.map((row) => (
+                <tr key={row.lineageKey} className="border-t border-border/60">
+                  <td className="py-1 font-mono">{row.lineageKey}</td>
+                  <td className="py-1 text-right tabular-nums">{row.cases}</td>
+                  <td
+                    className={`py-1 text-right tabular-nums ${
+                      row.readings >= 30 && row.cases >= 3 ? "text-emerald-500" : ""
+                    }`}
+                  >
+                    {row.readings}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </div>
+
+
       <div className="mt-3 border-t border-border pt-3">
         <p className="text-xs text-muted-foreground">
           {priors.data?.points
