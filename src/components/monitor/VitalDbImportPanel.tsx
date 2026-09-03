@@ -19,12 +19,19 @@ import {
   pairVitalDbCase,
   parseVitalDbWaveCsv,
   VITALDB_PAIRED_TRACKS,
+  type VitalDbPairedCase,
 } from "@/lib/eeg/vitaldb-waveform";
+import {
+  assessGateCoverage,
+  validatePairedCases,
+  type GateCoverage,
+} from "@/lib/eeg/vitaldb-validation";
 import {
   getPairedLineageCounts,
   importVitalDbPaired,
 } from "@/lib/eeg/vitaldb-waveform.functions";
 import type { VitalDbPairedPayload } from "@/lib/eeg/vitaldb-waveform.server";
+
 
 const GROUP_LABEL: Record<string, string> = {
   age: "Age band",
