@@ -358,7 +358,85 @@ export function VitalDbImportPanel() {
             </tbody>
           </table>
         ) : null}
+
+        {lastPaired ? (
+          <div className="mt-3 rounded-md border border-border/60 p-2">
+            <p className="text-xs font-medium">Import validation</p>
+            <p className="mt-1 text-xs text-muted-foreground">{lastPaired.validation.summary}</p>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full min-w-[520px] text-xs">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="py-1 text-left font-medium">Case</th>
+                    <th className="py-1 text-left font-medium">Verdict</th>
+                    <th className="py-1 text-right font-medium">Pairs</th>
+                    <th className="py-1 text-right font-medium">Reliable</th>
+                    <th className="py-1 text-right font-medium">Span</th>
+                    <th className="py-1 text-right font-medium">BIS range</th>
+                    <th className="py-1 text-right font-medium">Max lag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastPaired.validation.cases.map((c) => (
+                    <tr key={c.caseRef} className="border-t border-border/60 align-top">
+                      <td className="py-1 font-mono">{c.caseRef}</td>
+                      <td
+                        className={`py-1 ${
+                          c.verdict === "usable"
+                            ? "text-emerald-500"
+                            : c.verdict === "flagged"
+                              ? "text-amber-500"
+                              : "text-critical"
+                        }`}
+                      >
+                        {c.verdict}
+                        {c.reasons.length ? (
+                          <span className="block text-muted-foreground">
+                            {c.reasons.join(" ")}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {c.validPoints}/{c.points}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">{c.reliablePoints}</td>
+                      <td className="py-1 text-right tabular-nums">{c.spanSeconds}s</td>
+                      <td className="py-1 text-right tabular-nums">
+                        {c.bisRange ? `${c.bisRange.min.toFixed(0)}–${c.bisRange.max.toFixed(0)}` : "—"}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">{c.maxLagSeconds}s</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-3 text-xs font-medium">Refit gate coverage</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {lastPaired.coverage?.summary ?? "No readings were inserted, so the gate was not re-checked."}
+            </p>
+            {lastPaired.coverage?.lineages.map((l) => (
+              <p key={l.lineageKey} className="mt-1 text-xs">
+                <span className="font-mono">{l.lineageKey}</span>{" "}
+                <span
+                  className={l.meetsGate ? "text-emerald-500" : "text-muted-foreground"}
+                >
+                  {l.readings}/{l.needReadings} readings · {l.cases}/{l.needCases} cases
+                </span>
+                {l.shortfall ? (
+                  <span className="block text-muted-foreground">{l.shortfall}</span>
+                ) : null}
+              </p>
+            ))}
+            {lastPaired.refit ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Refit: {lastPaired.refit.error ?? lastPaired.refit.summary}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+
 
 
       <div className="mt-3 border-t border-border pt-3">
