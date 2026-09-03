@@ -163,11 +163,11 @@ export function parseVitalDbWaveCsv(
   }
   if (!Number.isFinite(sampleRate) || sampleRate <= 0) sampleRate = fallbackSampleRate;
 
-  const channels = waveCols
-    .map((w, c) =>
-      seen[c] ? { channel: w.channel, samples: Float64Array.from(buffers[c]!) } : null,
-    )
-    .filter((c): c is VitalDbWaveChannel => c != null);
+  const channels: VitalDbWaveChannel[] = [];
+  waveCols.forEach((w, c) => {
+    if (!seen[c]) return;
+    channels.push({ channel: w.channel, samples: Float64Array.from(buffers[c]!) });
+  });
   if (!channels.length) throw new Error("The waveform columns were present but empty.");
 
   return {
