@@ -123,8 +123,7 @@ export function VitalDbImportPanel() {
   const pairedMutation = useMutation({
     mutationFn: async (files: File[]) => {
       if (!clinical) throw new Error("Load the VitalDB clinical table first.");
-      const cases: VitalDbPairedPayload[] = [];
-      let unusable = 0;
+      const replayed: VitalDbPairedCase[] = [];
       let unmatched = 0;
       for (const file of files) {
         const caseId = caseIdFromName(file.name);
@@ -136,53 +135,53 @@ export function VitalDbImportPanel() {
         const text = await file.text();
         const wave = parseVitalDbWaveCsv(text);
         const numerics = parseVitalDbTrackCsv(text);
-        const paired = pairVitalDbCase(info, wave, numerics, {
-          strideSeconds: 10,
-          minSqi: 50,
-          toleranceSeconds: 2,
-        });
-        if (paired.points.length) {
-          cases.push({
-            caseRef: paired.caseRef,
-            lineageKey: paired.lineageKey,
-            covariates: paired.covariates,
-            points: paired.points,
-          });
-        } else {
-          unusable++;
-        }
+        replayed.push(
+          pairVitalDbCase(info, wave, numerics, {
+            strideSeconds: 10,
+            minSqi: 50,
+            toleranceSeconds: 2,
+          }),
+        );
       }
+
+      // Validate before writing: a replay always yields something, but only
+      // cases whose pairs are real, simultaneous and spread over the case are
+      // worth training COEBIS on.
+      const validation = validatePairedCases(replayed);
+      const accepted = new Set(validation.acceptedCaseRefs);
+      const cases: VitalDbPairedPayload[] = replayed
+        .filter((c) => accepted.has(c.caseRef))
+        .map((c) => ({
+          caseRef: c.caseRef,
+          lineageKey: c.lineageKey,
+          covariates: c.covariates,
+          points: c.points,
+        }));
+      const unusable = validation.rejectedCases;
+
       if (!cases.length) {
         throw new Error(
-          unmatched
+          unmatched && !replayed.length
             ? "No waveform file matched a case id in the clinical table."
-            : "No monitor reading paired with a replayed second in those files.",
+            : validation.summary,
         );
       }
       const result = await runPairedImport({ data: { cases } });
 
       // New pairs only matter once a lineage clears the sufficiency gate, so
-      // refit straight away when the import actually crossed it — otherwise the
-      // Model performance page would keep showing the pre-import fit until the
-      // next scheduled run.
+      // report coverage explicitly and refit straight away when the import
+      // actually crossed it — otherwise the Model performance page would keep
+      // showing the pre-import fit until the next scheduled run.
       let refit: { summary: string; modelsPromoted: number; error: string | null } | null = null;
-      let gateShort: string | null = null;
+      let coverage: GateCoverage | null = null;
       if (result.inserted > 0) {
         const counts = await runPairedCounts({});
-        const touched = counts.filter((c) => result.lineages.includes(c.lineageKey));
-        const ready = touched.filter(
-          (c) => c.readings >= MIN_POINTS && c.cases >= MIN_SESSIONS,
-        );
-        if (ready.length) {
+        coverage = assessGateCoverage(counts, result.lineages);
+        if (coverage.ready) {
           refit = await runRefit({});
-        } else {
-          const best = touched.sort((a, b) => b.readings - a.readings)[0];
-          gateShort = best
-            ? `${best.readings}/${MIN_POINTS} readings across ${best.cases}/${MIN_SESSIONS} cases so far.`
-            : null;
         }
       }
-      return { ...result, unusable, unmatched, refit, gateShort };
+      return { ...result, unusable, unmatched, refit, validation, coverage };
     },
     onSuccess: (result) => {
       toast.success(
@@ -190,14 +189,12 @@ export function VitalDbImportPanel() {
         {
           description: [
             `Lineage ${result.lineages.join(", ")}.`,
+            result.validation.summary,
             result.skipped ? `${result.skipped} were already present.` : null,
-            result.unusable ? `${result.unusable} files produced no pairs.` : null,
             result.unmatched ? `${result.unmatched} files had no matching case row.` : null,
             result.refit
               ? `Refit ran: ${result.refit.summary}`
-              : result.gateShort
-                ? `Not refitted yet — ${result.gateShort}`
-                : null,
+              : (result.coverage?.summary ?? null),
           ]
             .filter(Boolean)
             .join(" "),
@@ -220,6 +217,9 @@ export function VitalDbImportPanel() {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Replay failed."),
   });
+
+  const lastPaired = pairedMutation.data ?? null;
+
 
   return (
     <section className="panel p-3">
