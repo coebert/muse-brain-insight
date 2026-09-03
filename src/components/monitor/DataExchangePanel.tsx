@@ -10,6 +10,7 @@ import { exportPairedDataset, importPairedDataset } from "@/lib/eeg/exchange.fun
 import { VitalDbImportPanel } from "@/components/monitor/VitalDbImportPanel";
 import { DatasetIntakePanel } from "@/components/monitor/DatasetIntakePanel";
 import { PhysionetImportPanel } from "@/components/monitor/PhysionetImportPanel";
+import { PathologyDatasetPanel } from "@/components/monitor/PathologyDatasetPanel";
 import { SedationIcuImportPanel } from "@/components/monitor/SedationIcuImportPanel";
 import { ExternalValidationPanel } from "@/components/monitor/ExternalValidationPanel";
 
@@ -132,6 +133,8 @@ export function DataExchangePanel() {
       <DatasetIntakePanel />
       <VitalDbImportPanel />
       <PhysionetImportPanel />
+      <SedationIcuImportPanel />
+      <PathologyDatasetPanel />
       <ExternalValidationPanel />
     </div>
   );

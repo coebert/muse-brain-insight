@@ -11,3 +11,4 @@
 
 - [x] Scheduled COEBIS refit pipeline: nightly cron (`/api/public/hooks/coebis-refit`), per-lineage versioning in `coebis_model_versions`, run history, and before/after performance in the Model performance page.
 - [x] COEBIS prediction intervals on the replay timeline and paired prediction charts, with coverage/spread calibration scored against real BIS readings.
+- [x] Pathology dataset ingest panels (TUSZ, CHB-MIT, TUAB, Helsinki neonatal) in Data exchange, with interval annotations and per-lineage licence provenance.
