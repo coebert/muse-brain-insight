@@ -10,6 +10,7 @@ import { BisPairedChart } from "@/components/monitor/BisPairedChart";
 import { BisBlandAltmanChart } from "@/components/monitor/BisBlandAltmanChart";
 import { CoebisSufficiencyPanel } from "@/components/monitor/CoebisSufficiencyPanel";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import { explainAgreementGaps } from "@/lib/eeg/metric-blockers";
 import {
   clearBisAlignment,
   getBisDrift,
@@ -164,6 +165,15 @@ export function BisDriftPanel() {
                 />
               ))}
             </div>
+
+            {explainAgreementGaps(a).map((b) => (
+              <p
+                key={b.metric}
+                className="rounded-md border border-caution/40 bg-caution/10 px-3 py-2 text-[11px] text-caution"
+              >
+                <span className="font-semibold">{b.metric} unavailable:</span> {b.reason}
+              </p>
+            ))}
 
             {a.verdict === "watching" || a.verdict === "insufficient" ? (
               <p className="text-[11px] text-muted-foreground">
