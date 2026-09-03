@@ -238,13 +238,30 @@ export interface Eligibility {
 }
 
 /**
- * Licence gate. Only `open` sources may be retrieved automatically; everything
- * else is surfaced with the reason so a clinician can obtain it by hand and use
- * the manual import panels instead.
+ * Licence gate. `open` sources may always be retrieved. A `credentialed`
+ * source is retrievable only once its realm's login has been supplied, in
+ * which case the download is made as that named account under the DUA they
+ * signed. Everything else stays manual.
  */
-export function checkEligibility(source: IntakeSource): Eligibility {
+export function checkEligibility(
+  source: IntakeSource,
+  availableRealms: readonly CredentialRealm[] = [],
+): Eligibility {
   if (source.access === "open") {
     return { eligible: true, reason: `${source.licence} permits programmatic retrieval.` };
+  }
+  if (source.access === "credentialed" && source.credentialRealm) {
+    const realm = CREDENTIAL_REALMS[source.credentialRealm];
+    if (availableRealms.includes(source.credentialRealm)) {
+      return {
+        eligible: true,
+        reason: `${source.licence}: retrieved as your credentialed ${realm.label} user.`,
+      };
+    }
+    return {
+      eligible: false,
+      reason: `${realm.label} credentials are not configured, so this restricted source cannot be fetched.`,
+    };
   }
   return {
     eligible: false,
