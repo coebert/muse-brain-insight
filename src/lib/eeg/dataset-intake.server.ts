@@ -41,6 +41,13 @@ import { dose1Covariates, parseDose1PeegCsv } from "./dose1-peeg";
 import { epochsFromRecording, parseSedationIcuCsv, toSedationIcuRows } from "./sedation-icu";
 import { importPhysionetEpochs } from "./physionet.server";
 import { chbRows, chbSubject, chbSummaryUrl, parseChbRecording, parseChbSummary, type ChbSeizure } from "./chbmit";
+import {
+  eventsUrlFor,
+  openNeuroRows,
+  parseBidsEvents,
+  parseOpenNeuroRecording,
+  type BidsEvent,
+} from "./openneuro";
 
 type Client = SupabaseClient<any, any, any>;
 
@@ -110,15 +117,83 @@ async function fetchBytes(
   limitBytes: number,
   timeoutMs = FETCH_TIMEOUT_MS * 4,
   auth?: string,
+  /** When set, ask the server for only the first N bytes of the object. */
+  rangeBytes?: number,
 ): Promise<Uint8Array> {
+  const base: Record<string, string> = {
+    accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5",
+  };
+  if (rangeBytes) base["range"] = `bytes=0-${rangeBytes - 1}`;
   const res = await fetch(url, {
-    headers: withAuth({ accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5" }, auth),
+    headers: withAuth(base, auth),
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
   const buf = new Uint8Array(await res.arrayBuffer());
   if (buf.byteLength > limitBytes) throw new Error("archive exceeded the per-archive cap");
   return buf;
+}
+
+/* ----------------------------------------------------------- openneuro --- */
+
+interface OpenNeuroNode {
+  filename: string;
+  id: string;
+  directory: boolean;
+  size: number | null;
+  urls: string[] | null;
+}
+
+async function openNeuroTree(
+  datasetId: string,
+  tag: string,
+  tree?: string,
+): Promise<OpenNeuroNode[]> {
+  const query = `query($id:ID!,$tag:String!,$tree:String){snapshot(datasetId:$id,tag:$tag){files(tree:$tree){filename id directory size urls}}}`;
+  const res = await fetch("https://openneuro.org/crn/graphql", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, variables: { id: datasetId, tag, tree: tree ?? null } }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`OpenNeuro HTTP ${res.status}`);
+  const json = (await res.json()) as {
+    data?: { snapshot?: { files?: OpenNeuroNode[] | null } | null };
+    errors?: { message: string }[];
+  };
+  if (json.errors?.length) throw new Error(json.errors[0]!.message);
+  return json.data?.snapshot?.files ?? [];
+}
+
+/**
+ * Walk a BIDS snapshot to the files this source wants. The tree is shallow
+ * (subject → session → modality), so the walk is bounded and each match keeps
+ * its full BIDS path as the file name, which is what provenance and
+ * de-duplication key on.
+ */
+async function discoverOpenNeuro(
+  source: IntakeSource,
+  datasetId: string,
+  tag: string,
+): Promise<DiscoveredFile[]> {
+  const out: DiscoveredFile[] = [];
+  const walk = async (tree: string | undefined, prefix: string, depth: number) => {
+    if (depth > 4 || out.length >= source.maxFilesPerRun * 8) return;
+    const nodes = await openNeuroTree(datasetId, tag, tree);
+    for (const node of nodes) {
+      const path = prefix ? `${prefix}/${node.filename}` : node.filename;
+      if (node.directory) {
+        if (/^(sub-|ses-|eeg$)/.test(node.filename)) await walk(node.id, path, depth + 1);
+        continue;
+      }
+      if (!source.filePattern.test(node.filename)) continue;
+      const url = node.urls?.[0];
+      if (!url) continue;
+      out.push({ name: path, url, bytes: node.size ?? null });
+    }
+  };
+  await walk(undefined, "", 0);
+  return out;
 }
 
 /**
@@ -165,6 +240,8 @@ export async function discoverFiles(
   let files: DiscoveredFile[];
   if (listing.type === "manifest") {
     files = listing.files.map((f) => ({ ...f, bytes: null }));
+  } else if (listing.type === "openneuro") {
+    files = await discoverOpenNeuro(source, listing.datasetId, listing.tag);
   } else if (listing.type === "records-file") {
     const { text } = await fetchText(listing.url, 4_000_000, auth);
     files = parseRecordsIndex(text, listing.url);
@@ -259,7 +336,33 @@ function rowsForBinaryFile(
   file: PlannedFile,
   bytes: Uint8Array,
   summary: ChbSeizure[],
+  events: BidsEvent[] = [],
 ): { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null } {
+  if (source.kind === "openneuro-bids-edf") {
+    const parsed = parseOpenNeuroRecording(bytes, {
+      caseRef: file.caseRef,
+      fileName: file.name,
+      events,
+    });
+    const inferredRef = inferReference(parsed.channel);
+    const harmonisedEpochs = harmonizeEpochs(parsed.epochs, {
+      ...source.montage,
+      channel: parsed.channel,
+      sampleRateHz: parsed.sampleRate,
+      ...(inferredRef !== "unknown" ? { reference: inferredRef } : {}),
+    });
+    return {
+      rows: openNeuroRows(harmonisedEpochs, {
+        datasetVersion: source.datasetVersion,
+        fileName: file.name,
+        channel: parsed.channel,
+        labelledIntervals: parsed.labelledIntervals,
+        monitorChannel: parsed.monitorChannel,
+        monitorMean: parsed.monitorMean,
+      }),
+      harmonization: harmonisedEpochs[0]?.harmonization ?? null,
+    };
+  }
   if (source.kind !== "chbmit-edf") throw new Error(`no binary parser for ${source.kind}`);
   const parsed = parseChbRecording(bytes, {
     caseRef: file.caseRef,
@@ -299,6 +402,22 @@ async function summaryFor(
     return parsed;
   } catch {
     // A missing summary means unlabelled epochs, not a failed file.
+    cache.set(url, []);
+    return [];
+  }
+}
+
+/** Published BIDS events beside a recording; missing events are not a failure. */
+async function eventsFor(file: PlannedFile, cache: Map<string, BidsEvent[]>): Promise<BidsEvent[]> {
+  const url = eventsUrlFor(file.url);
+  const cached = cache.get(url);
+  if (cached) return cached;
+  try {
+    const { text } = await fetchText(url, 2_000_000);
+    const parsed = parseBidsEvents(text);
+    cache.set(url, parsed);
+    return parsed;
+  } catch {
     cache.set(url, []);
     return [];
   }
@@ -367,6 +486,8 @@ export async function runDatasetIntake(
     const archived = new Map<string, string>();
     // Subject seizure summaries, one fetch per subject per run.
     const summaries = new Map<string, ChbSeizure[]>();
+    // Published BIDS events per recording, one fetch per file per run.
+    const bidsEvents = new Map<string, BidsEvent[]>();
     try {
       discovered = await discoverFiles(source, gate.eligible ? archived : undefined, auth);
     } catch (e) {
@@ -409,10 +530,22 @@ export async function runDatasetIntake(
         let parsedFile: { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null };
         if (source.binary) {
           // Hour-long recordings are tens of megabytes, so allow a longer download.
-          const raw = await fetchBytes(file.url, source.maxBytesPerFile, 300_000, auth);
+          const raw = await fetchBytes(
+            file.url,
+            source.maxBytesPerFile,
+            300_000,
+            auth,
+            source.rangeBytes,
+          );
           bytes = raw.byteLength;
           digest = await sha256HexBytes(raw);
-          parsedFile = rowsForBinaryFile(source, file, raw, await summaryFor(file, summaries));
+          parsedFile = rowsForBinaryFile(
+            source,
+            file,
+            raw,
+            source.kind === "chbmit-edf" ? await summaryFor(file, summaries) : [],
+            source.kind === "openneuro-bids-edf" ? await eventsFor(file, bidsEvents) : [],
+          );
         } else {
           const member = archived.get(file.url);
           const fetched = member
