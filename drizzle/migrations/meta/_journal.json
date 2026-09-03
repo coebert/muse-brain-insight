@@ -22,6 +22,13 @@
       "when": 1788456689363,
       "tag": "0002_create_external_reference_points",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788456967364,
+      "tag": "0003_create_external_spectral_epochs",
+      "breakpoints": true
     }
   ]
 }
