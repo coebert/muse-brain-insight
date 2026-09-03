@@ -9,7 +9,7 @@
  */
 
 import type { CoebisFamily } from "./coebis-covariates";
-import { COVARIATE_LABELS } from "./covariates";
+import { covariateLabel } from "./covariates";
 
 /** Coefficients as persisted in `coebis_model_versions.coefficients`. */
 export interface StoredCoefficients {
@@ -47,11 +47,12 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 function groupLabel(group: string): string {
-  return (
-    GROUP_LABELS[group] ??
-    (COVARIATE_LABELS as Record<string, string> | undefined)?.[group] ??
-    group.replace(/([a-z])([A-Z])/g, "$1 $2")
-  );
+  return GROUP_LABELS[group] ?? group.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+/** Human-readable name for one covariate term, e.g. "Age band · age 75-89". */
+function termLabel(group: string, level: string): string {
+  return `${groupLabel(group)} · ${covariateLabel(group, level)}`;
 }
 
 const round = (v: number, dp = 3) => Number(v.toFixed(dp));
@@ -103,7 +104,7 @@ export function describeWeights(
     out.push({
       id: `cov:${t.group}:${t.level}`,
       kind: "covariate",
-      label: `${groupLabel(t.group)} · ${t.level}`,
+      label: termLabel(t.group, t.level),
       value: round(t.dy, 2),
       unit: "index",
       n: Number.isFinite(t.n) ? Number(t.n) : null,
