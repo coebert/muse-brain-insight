@@ -323,7 +323,124 @@ function DiscoveryPage() {
                 </div>
               )}
             </section>
+
+            <section className="rounded-lg border border-border/60 bg-card/40 p-4">
+              <h2 className="text-sm font-semibold">COEBIS term adoption</h2>
+              <p className="mb-3 text-xs text-muted-foreground">
+                {adoption?.summary ?? "No adoption decisions yet."} Only the app's own device
+                lineages can seed the depth fit; external datasets stay as supporting evidence
+                because their montage and amplifier differ.
+              </p>
+              {!adoption || adoption.terms.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nothing discovered in this lineage is eligible for adoption yet.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] border-collapse text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="p-2 font-medium">Covariate level</th>
+                        <th className="p-2 font-medium">Seed</th>
+                        <th className="p-2 font-medium">Cases</th>
+                        <th className="p-2 font-medium">State</th>
+                        <th className="p-2 font-medium">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adoption.terms.map((t) => (
+                        <tr key={`${t.group}-${t.level}`} className="border-t border-border/40">
+                          <td className="p-2 font-medium">
+                            {t.groupLabel}: {t.levelLabel}
+                          </td>
+                          <td
+                            className={cn(
+                              "metric-value p-2",
+                              t.dy > 0 ? "text-signal" : "text-alert",
+                            )}
+                          >
+                            {signed(t.dy, 1)} pts
+                          </td>
+                          <td className="p-2">{t.cases}</td>
+                          <td className="p-2">
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[11px]",
+                                ADOPTION_TONE[t.state],
+                              )}
+                            >
+                              {t.state}
+                            </span>
+                          </td>
+                          <td className="p-2 text-muted-foreground">{t.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-lg border border-border/60 bg-card/40 p-4">
+              <h2 className="text-sm font-semibold">Diagnostic suggestion model</h2>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Case-level naive-Bayes over the same EEG features, scored by leave-one-case-out
+                cross-validation within this lineage. Suggestions are leads for a clinician to
+                confirm, never a diagnosis on their own.
+              </p>
+              {diagnosis.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No labelled pathology, comorbidity or agent classes in this lineage yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {diagnosis.map((m) => (
+                    <div
+                      key={m.group}
+                      className="rounded-md border border-border/50 bg-background/40 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{m.groupLabel}</span>
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-[11px]",
+                            SUFFICIENCY_TONE[m.sufficiency],
+                          )}
+                        >
+                          {m.sufficiency}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {m.cases} labelled cases · accuracy {fmt(m.accuracy, 2)} · balanced{" "}
+                          {fmt(m.balancedAccuracy, 2)}
+                        </span>
+                      </div>
+                      {m.blocker ? (
+                        <p className="mt-1 text-[11px] text-caution">{m.blocker}</p>
+                      ) : null}
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {m.classes.map((c) => (
+                          <div key={c.level} className="rounded bg-muted/30 px-2 py-1.5">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                              {c.label} · {c.cases} cases
+                            </p>
+                            <p className="metric-value text-sm">AUC {fmt(c.auc, 2)}</p>
+                            <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                              {c.stats.slice(0, 3).map((s) => (
+                                <li key={s.feature}>
+                                  {s.featureLabel} {signed(s.z, 2)} SD vs other classes
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </>
+
         )}
       </main>
     </div>
