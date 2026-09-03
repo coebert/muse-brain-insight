@@ -156,7 +156,29 @@ export function VitalDbImportPanel() {
         );
       }
       const result = await runPairedImport({ data: { cases } });
-      return { ...result, unusable, unmatched };
+
+      // New pairs only matter once a lineage clears the sufficiency gate, so
+      // refit straight away when the import actually crossed it — otherwise the
+      // Model performance page would keep showing the pre-import fit until the
+      // next scheduled run.
+      let refit: { summary: string; modelsPromoted: number; error: string | null } | null = null;
+      let gateShort: string | null = null;
+      if (result.inserted > 0) {
+        const counts = await runPairedCounts({});
+        const touched = counts.filter((c) => result.lineages.includes(c.lineageKey));
+        const ready = touched.filter(
+          (c) => c.readings >= MIN_POINTS && c.cases >= MIN_SESSIONS,
+        );
+        if (ready.length) {
+          refit = await runRefit({});
+        } else {
+          const best = touched.sort((a, b) => b.readings - a.readings)[0];
+          gateShort = best
+            ? `${best.readings}/${MIN_POINTS} readings across ${best.cases}/${MIN_SESSIONS} cases so far.`
+            : null;
+        }
+      }
+      return { ...result, unusable, unmatched, refit, gateShort };
     },
     onSuccess: (result) => {
       toast.success(
