@@ -305,6 +305,8 @@ function ModelPerformancePage() {
             <RefitPipelinePanel />
             <LineageComparisonPanel />
             <ModelVersionHistoryPanel />
+            <ModelDriftPanel />
+
 
             <ExternalValidationPanel />
             <PathologyStrataPanel />
