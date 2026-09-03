@@ -43,6 +43,13 @@
       "when": 1788462402926,
       "tag": "0005_create_dataset_intake_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788462852126,
+      "tag": "0006_coebis_refit_pipeline",
+      "breakpoints": true
     }
   ]
 }

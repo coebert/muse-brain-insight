@@ -26,6 +26,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
+import { Route as ApiPublicHooksCoebisRefitRouteImport } from './routes/api/public/hooks/coebis-refit'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -112,6 +113,12 @@ const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
   path: '/report/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicHooksCoebisRefitRoute =
+  ApiPublicHooksCoebisRefitRouteImport.update({
+    id: '/api/public/hooks/coebis-refit',
+    path: '/api/public/hooks/coebis-refit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
+  '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -148,6 +156,7 @@ export interface FileRoutesByTo {
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
+  '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -168,6 +177,7 @@ export interface FileRoutesById {
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
+  '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/trends'
     | '/validate'
     | '/report/$id'
+    | '/api/public/hooks/coebis-refit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/validate'
     | '/'
     | '/report/$id'
+    | '/api/public/hooks/coebis-refit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -225,11 +237,13 @@ export interface FileRouteTypes {
     | '/_authenticated/validate'
     | '/_authenticated/'
     | '/_authenticated/report/$id'
+    | '/api/public/hooks/coebis-refit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksCoebisRefitRoute: typeof ApiPublicHooksCoebisRefitRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -353,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/hooks/coebis-refit': {
+      id: '/api/public/hooks/coebis-refit'
+      path: '/api/public/hooks/coebis-refit'
+      fullPath: '/api/public/hooks/coebis-refit'
+      preLoaderRoute: typeof ApiPublicHooksCoebisRefitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -398,6 +419,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksCoebisRefitRoute: ApiPublicHooksCoebisRefitRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

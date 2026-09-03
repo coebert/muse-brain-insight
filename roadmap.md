@@ -8,3 +8,5 @@
 - [x] COEBIS replay dashboard (/replay): predicted BIS vs real monitor readings with timeline, agreement metrics and per-covariate comparison against the VitalDB prior.
 - [x] Automated public-dataset intake: configured source catalogue with licence gating, index discovery (PhysioNet RECORDS / Zenodo), download, parse + harmonise + store, and per-file licence/provenance records.
 - [ ] Systematic public-dataset programme: ingest and benchmark every accessible public EEG collection (VitalDB, PhysioNet GABA/power, DOSE-I, I-CARE, TUH seizure/artifact, CHB-MIT) lineage by lineage, using them for priors, benchmarking and pathology-diagnosis models — never pooled into the device-specific COEBIS fit.
+
+- [x] Scheduled COEBIS refit pipeline: nightly cron (`/api/public/hooks/coebis-refit`), per-lineage versioning in `coebis_model_versions`, run history, and before/after performance in the Model performance page.
