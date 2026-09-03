@@ -17,6 +17,7 @@ import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated/coebis'
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
+import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
@@ -65,6 +66,11 @@ const AuthenticatedCoebisRoute = AuthenticatedCoebisRouteImport.update({
 const AuthenticatedCompareRoute = AuthenticatedCompareRouteImport.update({
   id: '/compare',
   path: '/compare',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDiscoveryRoute = AuthenticatedDiscoveryRouteImport.update({
+  id: '/discovery',
+  path: '/discovery',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/cases': typeof AuthenticatedCasesRoute
   '/coebis': typeof AuthenticatedCoebisRoute
   '/compare': typeof AuthenticatedCompareRoute
+  '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/cases': typeof AuthenticatedCasesRoute
   '/coebis': typeof AuthenticatedCoebisRoute
   '/compare': typeof AuthenticatedCompareRoute
+  '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/coebis': typeof AuthenticatedCoebisRoute
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
+  '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/cases'
     | '/coebis'
     | '/compare'
+    | '/discovery'
     | '/feedback'
     | '/outcomes'
     | '/performance'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/cases'
     | '/coebis'
     | '/compare'
+    | '/discovery'
     | '/feedback'
     | '/outcomes'
     | '/performance'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cases'
     | '/_authenticated/coebis'
     | '/_authenticated/compare'
+    | '/_authenticated/discovery'
     | '/_authenticated/feedback'
     | '/_authenticated/outcomes'
     | '/_authenticated/performance'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/compare'
       fullPath: '/compare'
       preLoaderRoute: typeof AuthenticatedCompareRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/discovery': {
+      id: '/_authenticated/discovery'
+      path: '/discovery'
+      fullPath: '/discovery'
+      preLoaderRoute: typeof AuthenticatedDiscoveryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feedback': {
@@ -383,6 +402,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedCoebisRoute: typeof AuthenticatedCoebisRoute
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
+  AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
@@ -401,6 +421,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedCoebisRoute: AuthenticatedCoebisRoute,
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
+  AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
