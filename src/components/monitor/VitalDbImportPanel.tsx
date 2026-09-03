@@ -13,6 +13,16 @@ import {
 } from "@/lib/eeg/vitaldb";
 import { getExternalPriors, importVitalDb } from "@/lib/eeg/vitaldb.functions";
 import type { VitalDbCasePayload } from "@/lib/eeg/vitaldb.server";
+import {
+  pairVitalDbCase,
+  parseVitalDbWaveCsv,
+  VITALDB_PAIRED_TRACKS,
+} from "@/lib/eeg/vitaldb-waveform";
+import {
+  getPairedLineageCounts,
+  importVitalDbPaired,
+} from "@/lib/eeg/vitaldb-waveform.functions";
+import type { VitalDbPairedPayload } from "@/lib/eeg/vitaldb-waveform.server";
 
 const GROUP_LABEL: Record<string, string> = {
   age: "Age band",
