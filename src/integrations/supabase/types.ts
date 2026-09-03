@@ -413,6 +413,153 @@ export type Database = {
           },
         ]
       }
+      coebis_model_versions: {
+        Row: {
+          coefficients: Json
+          created_at: string
+          data_digest: string
+          id: string
+          is_active: boolean
+          lineage_key: string
+          mae_gain: number | null
+          metrics_after: Json
+          metrics_before: Json
+          model_family: string
+          promoted: boolean
+          reason: string | null
+          run_id: string | null
+          training: Json
+          user_id: string
+          version: number
+        }
+        Insert: {
+          coefficients?: Json
+          created_at?: string
+          data_digest: string
+          id?: string
+          is_active?: boolean
+          lineage_key: string
+          mae_gain?: number | null
+          metrics_after?: Json
+          metrics_before?: Json
+          model_family?: string
+          promoted?: boolean
+          reason?: string | null
+          run_id?: string | null
+          training?: Json
+          user_id: string
+          version: number
+        }
+        Update: {
+          coefficients?: Json
+          created_at?: string
+          data_digest?: string
+          id?: string
+          is_active?: boolean
+          lineage_key?: string
+          mae_gain?: number | null
+          metrics_after?: Json
+          metrics_before?: Json
+          model_family?: string
+          promoted?: boolean
+          reason?: string | null
+          run_id?: string | null
+          training?: Json
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      coebis_refit_runs: {
+        Row: {
+          detail: Json
+          error: string | null
+          finished_at: string | null
+          id: string
+          lineages_considered: number
+          lineages_refitted: number
+          models_promoted: number
+          rejected: Json
+          started_at: string
+          status: string
+          summary: string | null
+          trigger: string
+          user_id: string
+          validated_points: number
+        }
+        Insert: {
+          detail?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          lineages_considered?: number
+          lineages_refitted?: number
+          models_promoted?: number
+          rejected?: Json
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+          user_id: string
+          validated_points?: number
+        }
+        Update: {
+          detail?: Json
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          lineages_considered?: number
+          lineages_refitted?: number
+          models_promoted?: number
+          rejected?: Json
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+          user_id?: string
+          validated_points?: number
+        }
+        Relationships: []
+      }
+      coebis_refit_state: {
+        Row: {
+          cursor_user_id: string | null
+          holder: string | null
+          job_key: string
+          last_error: string | null
+          last_run_at: string | null
+          lease_until: string | null
+          paused_reason: string | null
+          status: string
+          updated_at: string
+          users_processed: number
+        }
+        Insert: {
+          cursor_user_id?: string | null
+          holder?: string | null
+          job_key: string
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          paused_reason?: string | null
+          status?: string
+          updated_at?: string
+          users_processed?: number
+        }
+        Update: {
+          cursor_user_id?: string | null
+          holder?: string | null
+          job_key?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          paused_reason?: string | null
+          status?: string
+          updated_at?: string
+          users_processed?: number
+        }
+        Relationships: []
+      }
       dataset_intake_files: {
         Row: {
           bytes: number | null
