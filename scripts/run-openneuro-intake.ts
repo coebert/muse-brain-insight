@@ -35,6 +35,11 @@ for (const s of result.sources) {
 }
 
 if (process.argv.includes("--refit")) {
-  const refit = await runRefitForUser(supabase, userId, "openneuro-ds004541-intake");
+  // The refit pipeline writes its audit tables with the privileged client, as
+  // the scheduled job does; it is still scoped to this one user id.
+  const admin = createClient(url, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const refit = await runRefitForUser(admin as never, userId, "openneuro-ds004541-intake");
   console.log(JSON.stringify(refit, null, 2));
 }
