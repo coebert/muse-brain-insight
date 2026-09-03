@@ -54,9 +54,17 @@ export function VitalDbImportPanel() {
   const runImport = useServerFn(importVitalDb);
   const runPriors = useServerFn(getExternalPriors);
 
+  const runPairedImport = useServerFn(importVitalDbPaired);
+  const runPairedCounts = useServerFn(getPairedLineageCounts);
+
   const priors = useQuery({
     queryKey: ["external-priors"],
     queryFn: () => runPriors({}),
+  });
+
+  const pairedLineages = useQuery({
+    queryKey: ["paired-lineage-counts"],
+    queryFn: () => runPairedCounts({}),
   });
 
   const importMutation = useMutation({
