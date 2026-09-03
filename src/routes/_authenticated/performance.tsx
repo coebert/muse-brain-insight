@@ -178,8 +178,12 @@ function ModelPerformancePage() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild size="sm" variant="outline">
+            <Link to="/discovery">Covariate discovery</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
             <Link to="/feedback">Feedback analytics</Link>
           </Button>
+
           <div className="w-40">
             <Select value={windowDays} onValueChange={setWindowDays}>
               <SelectTrigger className="h-8 text-xs">
