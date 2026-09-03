@@ -66,7 +66,11 @@ describe("covariateBreakdown", () => {
     appIndex: 50,
     coebis: 48,
     bis: 44,
+    coebisLower: 40,
+    coebisUpper: 56,
+    coebisSigma: 5,
   }));
+
 
   it("pairs each case covariate with the external prior", () => {
     const rows = covariateBreakdown(frames, { ageBand: "60-74", sex: "male" }, [
