@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
 import { runDatasetIntake } from "@/lib/eeg/dataset-intake.server";
-import { runRefit } from "@/lib/eeg/coebis-refit.server";
+import { runRefitForUser } from "@/lib/eeg/coebis-refit.server";
 
 const session = JSON.parse(
   readFileSync(`${process.env["HOME"]}/.cache/lovable-auth/session.json`, "utf8"),
@@ -35,6 +35,6 @@ for (const s of result.sources) {
 }
 
 if (process.argv.includes("--refit")) {
-  const refit = await runRefit(supabase, userId);
+  const refit = await runRefitForUser(supabase, userId, "openneuro-ds004541-intake");
   console.log(JSON.stringify(refit, null, 2));
 }
