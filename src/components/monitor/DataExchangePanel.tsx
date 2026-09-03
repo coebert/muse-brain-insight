@@ -124,6 +124,8 @@ export function DataExchangePanel() {
           Choose bundle file
         </Button>
       </section>
+
+      <VitalDbImportPanel />
     </div>
   );
 }
