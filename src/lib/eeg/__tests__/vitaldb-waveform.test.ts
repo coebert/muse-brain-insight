@@ -16,7 +16,10 @@ function waveCsv(seconds: number): string {
   const n = seconds * FS;
   for (let i = 0; i < n; i++) {
     const t = i / FS;
-    const v = 20 * Math.sin(2 * Math.PI * 10 * t);
+    const v =
+      20 * Math.sin(2 * Math.PI * 10 * t) +
+      6 * Math.sin(2 * Math.PI * 3 * t) +
+      2 * Math.sin(i * 12.9898);
     const isSecond = i % FS === 0;
     rows.push(`${t.toFixed(4)},${v.toFixed(3)},${(v * 0.9).toFixed(3)},${isSecond ? 45 : ""},${isSecond ? 95 : ""}`);
   }
@@ -57,10 +60,21 @@ describe("VitalDB waveform parsing", () => {
     expect(() => parseVitalDbWaveCsv("Time,BIS/BIS\n0,45\n1,44\n")).toThrow(/SNUADC/);
   });
 
-  it("holds gaps at the previous sample so blanks do not read as suppression", () => {
-    const csv = ["Time,SNUADC/EEG1_WAV", "0,10", "0.0078,", "0.0156,12"].join("\n");
+  it("holds a blank channel at its previous sample rather than reading it as suppression", () => {
+    const csv = [
+      "Time,SNUADC/EEG1_WAV,SNUADC/EEG2_WAV",
+      "0,10,11",
+      "0.0078,,13",
+      "0.0156,12,14",
+    ].join("\n");
     const wave = parseVitalDbWaveCsv(csv);
     expect(Array.from(wave.channels[0]!.samples)).toEqual([10, 10, 12]);
+  });
+
+  it("ignores slow-numeric rows that carry no waveform sample", () => {
+    const csv = ["Time,SNUADC/EEG1_WAV,BIS/BIS", "0,10,45", "0.0078,,", "0.0156,12,"].join("\n");
+    const wave = parseVitalDbWaveCsv(csv);
+    expect(Array.from(wave.channels[0]!.samples)).toEqual([10, 12]);
   });
 
   it("averages both frontal channels into the analysis signal", () => {
