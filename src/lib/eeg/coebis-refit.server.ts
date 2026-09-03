@@ -271,6 +271,7 @@ export async function runRefitForUser(
 
       if (result.model) {
         version = (maxVersion.get(entry.lineageKey) ?? 0) + 1;
+        const span = trainingSpan(entry.points);
         const { error: insertError } = await client
           .from("coebis_model_versions")
           .upsert(
@@ -292,8 +293,8 @@ export async function runRefitForUser(
                 sessions: new Set(
                   entry.points.map((p) => p.sessionId).filter(Boolean),
                 ).size,
-                firstReadingAt: trainingSpan(entry.points).first,
-                lastReadingAt: trainingSpan(entry.points).last,
+                firstReadingAt: span.first,
+                lastReadingAt: span.last,
               },
               metrics_before: { ...result.before, source: result.beforeSource },
               metrics_after: result.after,

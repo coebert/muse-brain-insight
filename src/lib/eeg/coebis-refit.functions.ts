@@ -36,7 +36,16 @@ export interface ModelVersionRow {
   dataDigest: string;
   /** Fitted weights as stored, for the audit trail and version-to-version diff. */
   coefficients: StoredCoefficients;
-  training: { n?: number; cases?: number; folds?: number; passRate?: number };
+  training: {
+    n?: number;
+    cases?: number;
+    folds?: number;
+    passRate?: number;
+    lineageKey?: string;
+    sessions?: number;
+    firstReadingAt?: string | null;
+    lastReadingAt?: string | null;
+  };
   before: {
     mae?: number | null;
     bias?: number | null;
