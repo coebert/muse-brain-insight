@@ -23,6 +23,12 @@
 import type { SourceMontage } from "./harmonization";
 import { DATASET_MONTAGE } from "./physionet";
 import { SEDATION_ICU_MONTAGE } from "./sedation-icu";
+import { pathologyDataset } from "./pathology-datasets";
+
+/** Montages of the pathology collections the automated scan can reach. */
+const PATHOLOGY_MONTAGE = {
+  chbmit: pathologyDataset("chbmit").montage,
+} as const;
 
 export const INTAKE_VERSION = "intake-1.0.0";
 
@@ -32,7 +38,8 @@ export type IntakeKind =
   | "physionet-power"
   | "dose1"
   | "dose1-peeg"
-  | "icare";
+  | "icare"
+  | "chbmit-edf";
 
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
@@ -73,6 +80,11 @@ export interface IntakeSource {
   archivePattern?: RegExp;
   /** Cap on the archive download itself, separate from the per-member cap. */
   maxArchiveBytes?: number;
+  /**
+   * Files are binary (EDF) rather than text, so they are fetched as bytes and
+   * digested as bytes. Text-only parsers must not be used with this.
+   */
+  binary?: boolean;
   /** Safety rails so one scan cannot pull an entire archive. */
   maxFilesPerRun: number;
   maxBytesPerFile: number;
@@ -145,6 +157,27 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     montage: SEDATION_ICU_MONTAGE.dose1,
     maxFilesPerRun: 10,
     maxBytesPerFile: 40_000_000,
+  },
+  {
+    id: "physionet-chbmit",
+    label: "CHB-MIT — paediatric scalp seizures (PhysioNet)",
+    kind: "chbmit-edf",
+    lineage: "external:physionet:chb-mit",
+    datasetVersion: "1.0.0",
+    licence: "Open Data Commons Attribution Licence v1.0",
+    licenceUrl: "https://physionet.org/content/chbmit/view-license/1.0.0/",
+    access: "open",
+    accessNote:
+      "Open access under ODC-BY 1.0: retrieval and derived features are permitted with attribution.",
+    homepage: "https://physionet.org/content/chbmit/1.0.0/",
+    listing: { type: "records-file", url: "https://physionet.org/files/chbmit/1.0.0/RECORDS" },
+    filePattern: /\.edf$/i,
+    binary: true,
+    fallbackSampleRate: 256,
+    montage: PATHOLOGY_MONTAGE.chbmit,
+    // Each record is an hour of 23-channel EEG (~40 MB); keep a run small.
+    maxFilesPerRun: 3,
+    maxBytesPerFile: 60_000_000,
   },
   {
     id: "physionet-i-care",

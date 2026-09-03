@@ -38,6 +38,7 @@ import {
 import { dose1Covariates, parseDose1PeegCsv } from "./dose1-peeg";
 import { epochsFromRecording, parseSedationIcuCsv, toSedationIcuRows } from "./sedation-icu";
 import { importPhysionetEpochs } from "./physionet.server";
+import { chbRows, chbSubject, chbSummaryUrl, parseChbRecording, parseChbSummary, type ChbSeizure } from "./chbmit";
 
 type Client = SupabaseClient<any, any, any>;
 
@@ -60,6 +61,11 @@ async function fetchText(url: string, limitBytes: number): Promise<{ text: strin
 
 async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256HexBytes(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer as ArrayBuffer);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -196,6 +202,60 @@ function rowsForFile(
   return { rows, harmonization: record };
 }
 
+/**
+ * Binary (EDF) sources. Only the frontal channel is decoded, and interval
+ * labels come from the collection's published summary rather than the file.
+ */
+function rowsForBinaryFile(
+  source: IntakeSource,
+  file: PlannedFile,
+  bytes: Uint8Array,
+  summary: ChbSeizure[],
+): { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null } {
+  if (source.kind !== "chbmit-edf") throw new Error(`no binary parser for ${source.kind}`);
+  const parsed = parseChbRecording(bytes, {
+    caseRef: file.caseRef,
+    fileName: file.name,
+    summary,
+  });
+  if (!parsed.epochs.length) throw new Error("no usable epochs were derived");
+
+  const inferred = inferReference(parsed.channel);
+  const harmonised = harmonizeEpochs(parsed.epochs, {
+    ...source.montage,
+    channel: parsed.channel,
+    sampleRateHz: parsed.sampleRate,
+    ...(inferred !== "unknown" ? { reference: inferred } : {}),
+  });
+  const rows = chbRows(harmonised, {
+    datasetVersion: source.datasetVersion,
+    subject: chbSubject(file.name),
+    channel: parsed.channel,
+    seizures: parsed.seizures,
+  });
+  return { rows, harmonization: harmonised[0]?.harmonization ?? null };
+}
+
+/** Seizure intervals for a subject, fetched once per run and reused. */
+async function summaryFor(
+  file: PlannedFile,
+  cache: Map<string, ChbSeizure[]>,
+): Promise<ChbSeizure[]> {
+  const url = chbSummaryUrl(file.url);
+  const cached = cache.get(url);
+  if (cached) return cached;
+  try {
+    const { text } = await fetchText(url, 2_000_000);
+    const parsed = parseChbSummary(text);
+    cache.set(url, parsed);
+    return parsed;
+  } catch {
+    // A missing summary means unlabelled epochs, not a failed file.
+    cache.set(url, []);
+    return [];
+  }
+}
+
 /* --------------------------------------------------------------- run --- */
 
 async function alreadyIngested(supabase: Client, sourceId: string): Promise<Set<string>> {
@@ -255,6 +315,8 @@ export async function runDatasetIntake(
     let discovered: DiscoveredFile[] = [];
     // Members of an expanded archive, keyed by their member URL.
     const archived = new Map<string, string>();
+    // Subject seizure summaries, one fetch per subject per run.
+    const summaries = new Map<string, ChbSeizure[]>();
     try {
       discovered = await discoverFiles(source, gate.eligible ? archived : undefined);
     } catch (e) {
@@ -292,12 +354,24 @@ export async function runDatasetIntake(
         provenance: null,
       };
       try {
-        const member = archived.get(file.url);
-        const { text, bytes } = member
-          ? { text: member, bytes: new TextEncoder().encode(member).byteLength }
-          : await fetchText(file.url, source.maxBytesPerFile);
-        const digest = await sha256Hex(text);
-        const { rows, harmonization } = rowsForFile(source, file, text);
+        let bytes: number;
+        let digest: string;
+        let parsedFile: { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null };
+        if (source.binary) {
+          const raw = await fetchBytes(file.url, source.maxBytesPerFile);
+          bytes = raw.byteLength;
+          digest = await sha256HexBytes(raw);
+          parsedFile = rowsForBinaryFile(source, file, raw, await summaryFor(file, summaries));
+        } else {
+          const member = archived.get(file.url);
+          const fetched = member
+            ? { text: member, bytes: new TextEncoder().encode(member).byteLength }
+            : await fetchText(file.url, source.maxBytesPerFile);
+          bytes = fetched.bytes;
+          digest = await sha256Hex(fetched.text);
+          parsedFile = rowsForFile(source, file, fetched.text);
+        }
+        const { rows, harmonization } = parsedFile;
         const withHarmonisation = rows.map((r) => ({
           ...r,
           ...(harmonization ? { harmonization } : {}),
