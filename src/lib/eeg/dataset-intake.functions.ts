@@ -12,11 +12,12 @@ export const runIntake = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     (input: { sourceIds?: string[]; maxFilesPerSource?: number; dryRun?: boolean }) => ({
-      sourceIds: Array.isArray(input?.sourceIds) ? input.sourceIds.slice(0, 8) : undefined,
-      maxFilesPerSource:
-        typeof input?.maxFilesPerSource === "number"
-          ? Math.max(1, Math.min(20, Math.round(input.maxFilesPerSource)))
-          : undefined,
+      ...(Array.isArray(input?.sourceIds) ? { sourceIds: input.sourceIds.slice(0, 8) } : {}),
+      ...(typeof input?.maxFilesPerSource === "number"
+        ? {
+            maxFilesPerSource: Math.max(1, Math.min(20, Math.round(input.maxFilesPerSource))),
+          }
+        : {}),
       dryRun: input?.dryRun === true,
     }),
   )
