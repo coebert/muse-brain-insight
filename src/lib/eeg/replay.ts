@@ -16,6 +16,12 @@ import { alignSeries, agreementMetrics, type AgreementMetrics, type AlignedPair,
 import { covariateLabel, type CaseCovariates } from "./covariates";
 import { applyBisAlignment, DepthIndexEstimator, type BisAlignment } from "./depth";
 import { deriveEpochsFromRaw } from "./physionet";
+import {
+  calibrationReport,
+  localVolatility,
+  predictionInterval,
+  type CalibrationReport,
+} from "./coebis-uncertainty";
 import type { PriorGroup } from "./vitaldb";
 
 /** One second of replayed recording, on the shared DSA time axis. */
@@ -36,6 +42,12 @@ export interface ReplayFrame {
   coebis: number | null;
   /** Commercial monitor reading nearest this second, when the file has one. */
   bis: number | null;
+  /** Lower bound of the COEBIS prediction interval (90% by default). */
+  coebisLower: number | null;
+  /** Upper bound of the COEBIS prediction interval. */
+  coebisUpper: number | null;
+  /** Quoted spread behind the interval, index points. */
+  coebisSigma: number | null;
 }
 
 export interface ReplayCovariateRow {
@@ -62,6 +74,10 @@ export interface ReplayResult {
   /** The unaligned index vs monitor, so the table shows what COEBIS added. */
   baselineMetrics: AgreementMetrics | null;
   covariates: ReplayCovariateRow[];
+  /** How well the quoted intervals matched the monitor in this recording. */
+  calibration: CalibrationReport | null;
+  /** Nominal level the plotted band represents. */
+  intervalLevel: number;
   notes: string[];
 }
 
@@ -80,6 +96,8 @@ export interface ReplayOptions {
 }
 
 const EPOCH_SECONDS = 4;
+/** Nominal level of the interval drawn on the replay timeline. */
+const INTERVAL_LEVEL = 0.9;
 
 const mean = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 const round = (v: number | null, dp = 1) =>
@@ -102,6 +120,8 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
       metrics: null,
       baselineMetrics: null,
       covariates: [],
+      calibration: null,
+      intervalLevel: INTERVAL_LEVEL,
       notes: ["Recording is shorter than one analysis window."],
     };
   }
@@ -129,6 +149,10 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
   const alignment = options.alignment ?? null;
   const cov = options.covariates ?? null;
 
+  const covariatesKnown = Boolean(
+    cov && (cov.ageBand || cov.sex || cov.regimen || cov.frailty),
+  );
+
   const frames: ReplayFrame[] = epochs.map((e) => {
     // deriveEpochsFromRaw reports the window start; the index is stamped at
     // the window end, so shift onto a shared "data up to here" timeline.
@@ -150,7 +174,31 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
       appIndex,
       coebis,
       bis: nearest(bisPoints, t, tolerance),
+      coebisLower: null,
+      coebisUpper: null,
+      coebisSigma: null,
     };
+  });
+
+  // Interval width needs the neighbouring seconds, so it is filled in once the
+  // whole timeline exists rather than inside the per-epoch map.
+  const indexTrack = frames.map((f) => f.appIndex);
+  frames.forEach((f, i) => {
+    const interval = predictionInterval(
+      {
+        prediction: f.coebis,
+        reliable: f.appIndex != null,
+        suppressionRatio: f.suppressionRatio,
+        volatility: localVolatility(indexTrack, i),
+        covariatesKnown,
+      },
+      alignment,
+      INTERVAL_LEVEL,
+    );
+    if (!interval) return;
+    f.coebisLower = Number(interval.lower.toFixed(1));
+    f.coebisUpper = Number(interval.upper.toFixed(1));
+    f.coebisSigma = Number(interval.sigma.toFixed(2));
   });
 
   if (!alignment) notes.push("No fitted COEBIS model — the raw index is shown unaligned.");
@@ -174,6 +222,18 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
     metrics: pairs.length >= 3 ? agreementMetrics(pairs) : null,
     baselineMetrics: basePairs.length >= 3 ? agreementMetrics(basePairs) : null,
     covariates: covariateBreakdown(frames, cov, options.priors ?? []),
+    calibration: bisPoints.length
+      ? calibrationReport(
+          frames
+            .filter((f) => f.coebis != null && f.bis != null && f.coebisSigma != null)
+            .map((f) => ({
+              prediction: f.coebis as number,
+              sigma: f.coebisSigma as number,
+              actual: f.bis as number,
+            })),
+        )
+      : null,
+    intervalLevel: INTERVAL_LEVEL,
     notes,
   };
 }
