@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { exportPairedDataset, importPairedDataset } from "@/lib/eeg/exchange.functions";
 import { VitalDbImportPanel } from "@/components/monitor/VitalDbImportPanel";
+import { OpenNeuroBisImportPanel } from "@/components/monitor/OpenNeuroBisImportPanel";
 import { DatasetIntakePanel } from "@/components/monitor/DatasetIntakePanel";
 import { PhysionetImportPanel } from "@/components/monitor/PhysionetImportPanel";
 import { PathologyDatasetPanel } from "@/components/monitor/PathologyDatasetPanel";
@@ -132,6 +133,7 @@ export function DataExchangePanel() {
 
       <DatasetIntakePanel />
       <VitalDbImportPanel />
+      <OpenNeuroBisImportPanel />
       <PhysionetImportPanel />
       <SedationIcuImportPanel />
       <PathologyDatasetPanel />
