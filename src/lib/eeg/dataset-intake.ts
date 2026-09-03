@@ -126,7 +126,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/eeg-gaba-anesthesia/view-license/1.0.0/",
     access: "credentialed",
     accessNote:
-      "Credentialed access with a signed data use agreement; files cannot be fetched by an unattended scan.",
+      "Credentialed access with a signed data use agreement; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/eeg-gaba-anesthesia/1.0.0/",
     listing: {
       type: "records-file",
@@ -148,7 +149,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/eeg-power-anesthesia/view-license/1.0.0/",
     access: "credentialed",
     accessNote:
-      "Restricted access: credentialed user plus a signed DUA, so automated download is not permitted.",
+      "Restricted access: credentialed user plus a signed DUA; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/eeg-power-anesthesia/1.0.0/",
     listing: {
       type: "records-file",
@@ -214,7 +216,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/i-care/view-license/2.1/",
     access: "credentialed",
     accessNote:
-      "Credentialed access with a signed DUA; the scan lists the records but will not download them.",
+      "Credentialed access with a signed DUA; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/i-care/2.1/",
     listing: { type: "records-file", url: "https://physionet.org/files/i-care/2.1/RECORDS" },
     filePattern: /\.csv$/i,
