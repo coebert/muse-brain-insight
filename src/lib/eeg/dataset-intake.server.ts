@@ -44,9 +44,43 @@ type Client = SupabaseClient<any, any, any>;
 
 const FETCH_TIMEOUT_MS = 45_000;
 
-async function fetchText(url: string, limitBytes: number): Promise<{ text: string; bytes: number }> {
+/** Basic-auth header per credential realm, built from the operator's stored login. */
+export type AuthHeaders = Partial<Record<CredentialRealm, string>>;
+
+/**
+ * Read the configured logins. Credentials live only in backend environment
+ * secrets and are never returned to the browser — only the realm name is.
+ */
+export function resolveCredentials(): { realms: CredentialRealm[]; headers: AuthHeaders } {
+  const realms: CredentialRealm[] = [];
+  const headers: AuthHeaders = {};
+  for (const realm of Object.keys(CREDENTIAL_REALMS) as CredentialRealm[]) {
+    const spec = CREDENTIAL_REALMS[realm];
+    const user = process.env[spec.envUser];
+    const pass = process.env[spec.envPassword];
+    if (!user || !pass) continue;
+    realms.push(realm);
+    headers[realm] = `Basic ${btoa(`${user}:${pass}`)}`;
+  }
+  return { realms, headers };
+}
+
+/** Only send a credential to the source that owns it. */
+function authFor(source: IntakeSource, headers: AuthHeaders): string | undefined {
+  return source.credentialRealm ? headers[source.credentialRealm] : undefined;
+}
+
+function withAuth(base: Record<string, string>, auth?: string): Record<string, string> {
+  return auth ? { ...base, authorization: auth } : base;
+}
+
+async function fetchText(
+  url: string,
+  limitBytes: number,
+  auth?: string,
+): Promise<{ text: string; bytes: number }> {
   const res = await fetch(url, {
-    headers: { accept: "text/plain,text/csv,application/json;q=0.8,*/*;q=0.5" },
+    headers: withAuth({ accept: "text/plain,text/csv,application/json;q=0.8,*/*;q=0.5" }, auth),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -73,9 +107,10 @@ async function fetchBytes(
   url: string,
   limitBytes: number,
   timeoutMs = FETCH_TIMEOUT_MS * 4,
+  auth?: string,
 ): Promise<Uint8Array> {
   const res = await fetch(url, {
-    headers: { accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5" },
+    headers: withAuth({ accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5" }, auth),
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
@@ -93,9 +128,15 @@ async function expandArchive(
   source: IntakeSource,
   archive: DiscoveredFile,
   cache: Map<string, string>,
+  auth?: string,
 ): Promise<DiscoveredFile[]> {
   const { unzipSync } = await import("fflate");
-  const bytes = await fetchBytes(archive.url, source.maxArchiveBytes ?? 80_000_000);
+  const bytes = await fetchBytes(
+    archive.url,
+    source.maxArchiveBytes ?? 80_000_000,
+    undefined,
+    auth,
+  );
   const entries = unzipSync(bytes);
   const decoder = new TextDecoder();
   const out: DiscoveredFile[] = [];
@@ -116,16 +157,17 @@ async function expandArchive(
 export async function discoverFiles(
   source: IntakeSource,
   cache?: Map<string, string>,
+  auth?: string,
 ): Promise<DiscoveredFile[]> {
   const listing = source.listing;
   let files: DiscoveredFile[];
   if (listing.type === "manifest") {
     files = listing.files.map((f) => ({ ...f, bytes: null }));
   } else if (listing.type === "records-file") {
-    const { text } = await fetchText(listing.url, 4_000_000);
+    const { text } = await fetchText(listing.url, 4_000_000, auth);
     files = parseRecordsIndex(text, listing.url);
   } else {
-    const { text } = await fetchText(listing.recordUrl, 8_000_000);
+    const { text } = await fetchText(listing.recordUrl, 8_000_000, auth);
     files = parseZenodoIndex(JSON.parse(text));
   }
 
@@ -297,10 +339,12 @@ export async function runDatasetIntake(
     : INTAKE_SOURCES
   ).slice(0, 8);
 
+  const { realms, headers: authHeaders } = resolveCredentials();
   const results: IntakeSourceResult[] = [];
 
   for (const source of sources) {
-    const gate = checkEligibility(source);
+    const auth = authFor(source, authHeaders);
+    const gate = checkEligibility(source, realms);
     const base: IntakeSourceResult = {
       sourceId: source.id,
       label: source.label,
@@ -322,7 +366,7 @@ export async function runDatasetIntake(
     // Subject seizure summaries, one fetch per subject per run.
     const summaries = new Map<string, ChbSeizure[]>();
     try {
-      discovered = await discoverFiles(source, gate.eligible ? archived : undefined);
+      discovered = await discoverFiles(source, gate.eligible ? archived : undefined, auth);
     } catch (e) {
       base.reason = `Could not read the published index: ${e instanceof Error ? e.message : String(e)}`;
       results.push(base);
@@ -363,7 +407,7 @@ export async function runDatasetIntake(
         let parsedFile: { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null };
         if (source.binary) {
           // Hour-long recordings are tens of megabytes, so allow a longer download.
-          const raw = await fetchBytes(file.url, source.maxBytesPerFile, 300_000);
+          const raw = await fetchBytes(file.url, source.maxBytesPerFile, 300_000, auth);
           bytes = raw.byteLength;
           digest = await sha256HexBytes(raw);
           parsedFile = rowsForBinaryFile(source, file, raw, await summaryFor(file, summaries));
@@ -371,7 +415,7 @@ export async function runDatasetIntake(
           const member = archived.get(file.url);
           const fetched = member
             ? { text: member, bytes: new TextEncoder().encode(member).byteLength }
-            : await fetchText(file.url, source.maxBytesPerFile);
+            : await fetchText(file.url, source.maxBytesPerFile, auth);
           bytes = fetched.bytes;
           digest = await sha256Hex(fetched.text);
           parsedFile = rowsForFile(source, file, fetched.text);
