@@ -70,7 +70,10 @@ export interface PhysionetImportRow extends PhysionetEpoch {
   sourceLineage: string;
   datasetVersion: string | null;
   covariates: Record<string, string | number | null>;
+  /** Montage/reference transform applied before pooling, for auditing. */
+  harmonization?: HarmonizationRecord;
 }
+
 
 /* ------------------------------------------------------------------ CSV --- */
 
