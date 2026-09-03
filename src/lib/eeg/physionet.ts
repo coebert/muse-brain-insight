@@ -21,6 +21,7 @@
  */
 
 import { bandPower, computePsd, peakToPeak, spectralEdge, type Psd } from "./dsp";
+import type { HarmonizationRecord, SourceMontage } from "./harmonization";
 
 export const PHYSIONET_GABA_SOURCE = "physionet-eeg-gaba-anesthesia";
 export const PHYSIONET_GABA_LINEAGE = "external:physionet:eeg-gaba-anesthesia";
@@ -70,7 +71,10 @@ export interface PhysionetImportRow extends PhysionetEpoch {
   sourceLineage: string;
   datasetVersion: string | null;
   covariates: Record<string, string | number | null>;
+  /** Montage/reference transform applied before pooling, for auditing. */
+  harmonization?: HarmonizationRecord;
 }
+
 
 /* ------------------------------------------------------------------ CSV --- */
 
@@ -411,11 +415,40 @@ export function lineageFor(dataset: PhysionetDataset): { source: string; lineage
     : { source: PHYSIONET_POWER_SOURCE, lineage: PHYSIONET_POWER_LINEAGE };
 }
 
-/** Attach lineage and covariates so a batch is ready to store. */
+/**
+ * Montage each collection publishes, used when the export carries no channel
+ * label to infer from. Both PhysioNet anaesthesia collections are clinical
+ * recordings referenced away from the forehead, unlike this app's short
+ * bipolar frontal derivation.
+ */
+export const DATASET_MONTAGE: Record<PhysionetDataset, SourceMontage> = {
+  gaba: {
+    channel: "FP1-A1",
+    reference: "mastoid",
+    lowHz: 0.1,
+    highHz: 50,
+    sampleRateHz: 250,
+    note: "Frontal clinical montage referenced to mastoid.",
+  },
+  power: {
+    channel: null,
+    reference: "linked-ears",
+    lowHz: 0.5,
+    highHz: 40,
+    sampleRateHz: null,
+    note: "Pre-computed multitaper power from a linked-ears clinical montage.",
+  },
+};
+
+/** Attach lineage, harmonisation and covariates so a batch is ready to store. */
 export function toImportRows(
   dataset: PhysionetDataset,
-  epochs: PhysionetEpoch[],
-  meta: { datasetVersion?: string | null; covariates?: Record<string, string | number | null> } = {},
+  epochs: (PhysionetEpoch & { harmonization?: HarmonizationRecord })[],
+  meta: {
+    datasetVersion?: string | null;
+    covariates?: Record<string, string | number | null>;
+    harmonization?: HarmonizationRecord;
+  } = {},
 ): PhysionetImportRow[] {
   const { source, lineage } = lineageFor(dataset);
   return epochs.map((e) => ({
@@ -424,6 +457,9 @@ export function toImportRows(
     sourceLineage: lineage,
     datasetVersion: meta.datasetVersion ?? null,
     covariates: meta.covariates ?? {},
+    ...(e.harmonization ?? meta.harmonization
+      ? { harmonization: e.harmonization ?? meta.harmonization! }
+      : {}),
   }));
 }
 

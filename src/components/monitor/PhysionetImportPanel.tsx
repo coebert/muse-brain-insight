@@ -6,6 +6,12 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
+  describeHarmonization,
+  harmonizeEpochs,
+  inferReference,
+} from "@/lib/eeg/harmonization";
+import {
+  DATASET_MONTAGE,
   deriveEpochsFromRaw,
   parsePhysionetPowerCsv,
   parsePhysionetRawCsv,
@@ -50,33 +56,48 @@ export function PhysionetImportPanel() {
       files: File[];
     }) => {
       const epochs: PhysionetEpoch[] = [];
+      const transforms = new Set<string>();
       for (const file of files) {
         const caseRef = caseRefFromName(file.name);
         const text = await file.text();
         if (dataset === "gaba") {
           const rec = parsePhysionetRawCsv(text);
           rec.signals.forEach((signal, i) => {
-            epochs.push(
-              ...deriveEpochsFromRaw(signal, rec.sampleRate, {
-                caseRef,
-                channel: rec.channels[i] ?? null,
-              }),
-            );
+            const channel = rec.channels[i] ?? null;
+            const derived = deriveEpochsFromRaw(signal, rec.sampleRate, { caseRef, channel });
+            const inferred = inferReference(channel);
+            const harmonized = harmonizeEpochs(derived, {
+              ...DATASET_MONTAGE.gaba,
+              channel: channel ?? DATASET_MONTAGE.gaba.channel,
+              sampleRateHz: rec.sampleRate,
+              ...(inferred !== "unknown" ? { reference: inferred } : {}),
+            });
+            if (harmonized[0]) transforms.add(describeHarmonization(harmonized[0].harmonization));
+            epochs.push(...harmonized);
           });
         } else {
-          epochs.push(...parsePhysionetPowerCsv(text, { caseRef }));
+          const parsed = parsePhysionetPowerCsv(text, { caseRef });
+          const inferred = inferReference(parsed[0]?.channel ?? null);
+          const harmonized = harmonizeEpochs(parsed, {
+            ...DATASET_MONTAGE.power,
+            channel: parsed[0]?.channel ?? DATASET_MONTAGE.power.channel,
+            ...(inferred !== "unknown" ? { reference: inferred } : {}),
+          });
+          if (harmonized[0]) transforms.add(describeHarmonization(harmonized[0].harmonization));
+          epochs.push(...harmonized);
         }
       }
       if (!epochs.length) throw new Error("No usable epochs in the selected files.");
       const rows: PhysionetImportRow[] = toImportRows(dataset, epochs);
       const result = await runImport({ data: { epochs: rows } });
-      return { result, summary: summarisePhysionet(epochs) };
+      return { result, summary: summarisePhysionet(epochs), transforms: [...transforms] };
     },
-    onSuccess: ({ result, summary }) => {
+    onSuccess: ({ result, summary, transforms }) => {
       toast.success(
         `Imported ${result.inserted} epochs from ${result.cases} case(s)` +
           (result.skipped ? ` — ${result.skipped} already stored` : "") +
           ` · ${summary.suppressedEpochs} suppressed`,
+        transforms.length ? { description: `Harmonised: ${transforms.join(" | ")}` } : undefined,
       );
       void pool.refetch();
     },
@@ -101,7 +122,8 @@ export function PhysionetImportPanel() {
         (CSV of samples — features and burst-suppression labels are derived here) or{" "}
         <span className="font-medium">eeg-power-anesthesia</span> spectral exports (CSV
         with a frequency-axis header — published labels are kept). Each row is stored
-        with its own source lineage and is used for population priors only.
+        harmonised onto the app's frontal bipolar reference, stored with its own source
+        lineage and the full transform record, and used for population priors only.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -160,6 +182,11 @@ export function PhysionetImportPanel() {
                 {g.epochs.toLocaleString()} epochs · {g.cases} case(s) ·{" "}
                 {g.suppressedEpochs.toLocaleString()} suppressed
               </p>
+              {g.harmonizationVersions.length > 0 && (
+                <p className="text-muted-foreground">
+                  Harmonisation: {g.harmonizationVersions.join(", ")}
+                </p>
+              )}
               {g.labels.length > 0 && (
                 <p className="mt-1 text-muted-foreground">
                   {g.labels.map((l) => `${l.label}: ${l.count}`).join(" · ")}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { exportPairedDataset, importPairedDataset } from "@/lib/eeg/exchange.functions";
 import { VitalDbImportPanel } from "@/components/monitor/VitalDbImportPanel";
 import { PhysionetImportPanel } from "@/components/monitor/PhysionetImportPanel";
+import { ExternalValidationPanel } from "@/components/monitor/ExternalValidationPanel";
 
 /**
  * Pooling paired readings across devices and colleagues. Bundles carry no
@@ -128,6 +129,7 @@ export function DataExchangePanel() {
 
       <VitalDbImportPanel />
       <PhysionetImportPanel />
+      <ExternalValidationPanel />
     </div>
   );
 }
