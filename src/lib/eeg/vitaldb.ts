@@ -201,8 +201,6 @@ export function parseVitalDbClinicalCsv(text: string): Map<string, VitalDbCaseIn
   const iAne = col("ane_type");
   const iPpf = col("intraop_ppf");
   const iFtn = col("intraop_ftn");
-  const iRft = col("intraop_rocu") === -1 ? -1 : -1; // rocuronium is not an opioid
-  void iRft;
   for (const r of rows) {
     const caseId = r[iCase]?.trim();
     if (!caseId) continue;
