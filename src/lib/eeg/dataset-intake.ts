@@ -24,6 +24,7 @@ import type { SourceMontage } from "./harmonization";
 import { DATASET_MONTAGE } from "./physionet";
 import { SEDATION_ICU_MONTAGE } from "./sedation-icu";
 import { pathologyDataset } from "./pathology-datasets";
+import { OPENNEURO_DS004541_MONTAGE } from "./openneuro";
 
 /** Montages of the pathology collections the automated scan can reach. */
 const PATHOLOGY_MONTAGE = {
@@ -39,7 +40,8 @@ export type IntakeKind =
   | "dose1"
   | "dose1-peeg"
   | "icare"
-  | "chbmit-edf";
+  | "chbmit-edf"
+  | "openneuro-bids-edf";
 
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
@@ -68,6 +70,8 @@ export type IntakeListing =
   | { type: "records-file"; url: string }
   /** Zenodo exposes a JSON record whose `files[]` carry direct links. */
   | { type: "zenodo"; recordUrl: string }
+  /** OpenNeuro publishes a BIDS snapshot tree behind its GraphQL API. */
+  | { type: "openneuro"; datasetId: string; tag: string }
   /** A fixed list of file URLs, for sources with no machine-readable index. */
   | { type: "manifest"; files: { name: string; url: string }[] };
 
@@ -110,6 +114,13 @@ export interface IntakeSource {
    * digested as bytes. Text-only parsers must not be used with this.
    */
   binary?: boolean;
+  /**
+   * Fetch only the first N bytes of each file with an HTTP range request.
+   * Whole-anaesthetic EDFs run to hundreds of megabytes; the reader keeps
+   * whatever complete data records arrive, so a prefix yields the opening
+   * minutes of the record rather than nothing. Provenance digests the prefix.
+   */
+  rangeBytes?: number;
   /** Safety rails so one scan cannot pull an entire archive. */
   maxFilesPerRun: number;
   maxBytesPerFile: number;
@@ -205,6 +216,28 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     // Each record is an hour of 23-channel EEG (~40 MB); keep a run small.
     maxFilesPerRun: 2,
     maxBytesPerFile: 60_000_000,
+  },
+  {
+    id: "openneuro-ds004541",
+    label: "OpenNeuro ds004541 — general anaesthesia EEG-fNIRS",
+    kind: "openneuro-bids-edf",
+    lineage: "external:openneuro:ds004541",
+    datasetVersion: "1.0.0",
+    licence: "CC0 1.0 Public Domain Dedication",
+    licenceUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+    access: "open",
+    accessNote:
+      "CC0 public domain dedication: programmatic retrieval and derived features are permitted without a DUA.",
+    homepage: "https://openneuro.org/datasets/ds004541",
+    listing: { type: "openneuro", datasetId: "ds004541", tag: "1.0.0" },
+    filePattern: /_eeg\.edf$/i,
+    binary: true,
+    // Each recording is a whole anaesthetic (~300 MB); take the opening span.
+    rangeBytes: 48_000_000,
+    fallbackSampleRate: 1000,
+    montage: OPENNEURO_DS004541_MONTAGE,
+    maxFilesPerRun: 2,
+    maxBytesPerFile: 48_000_000,
   },
   {
     id: "physionet-i-care",
@@ -336,7 +369,7 @@ export function planIntake(
       plan.skippedAlreadyIngested++;
       continue;
     }
-    if (f.bytes != null && f.bytes > source.maxBytesPerFile) {
+    if (!source.rangeBytes && f.bytes != null && f.bytes > source.maxBytesPerFile) {
       plan.skippedTooLarge++;
       continue;
     }
