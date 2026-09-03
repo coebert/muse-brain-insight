@@ -11,7 +11,17 @@ import {
 
 const FS = VITALDB_WAVE_SAMPLE_RATE;
 
+/** Deterministic pseudo-noise: a pure tone reads as artefact, not real EEG. */
+function noise(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    return s / 2147483648 - 0.5;
+  };
+}
+
 function waveCsv(seconds: number): string {
+  const rand = noise(7);
   const rows: string[] = ["Time,SNUADC/EEG1_WAV,SNUADC/EEG2_WAV,BIS/BIS,BIS/SQI"];
   const n = seconds * FS;
   for (let i = 0; i < n; i++) {
@@ -19,7 +29,7 @@ function waveCsv(seconds: number): string {
     const v =
       20 * Math.sin(2 * Math.PI * 10 * t) +
       6 * Math.sin(2 * Math.PI * 3 * t) +
-      2 * Math.sin(i * 12.9898);
+      2 * rand();
     const isSecond = i % FS === 0;
     rows.push(`${t.toFixed(4)},${v.toFixed(3)},${(v * 0.9).toFixed(3)},${isSecond ? 45 : ""},${isSecond ? 95 : ""}`);
   }
