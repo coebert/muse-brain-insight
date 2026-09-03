@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { LineageRefitRecord } from "@/lib/eeg/coebis-refit.server";
+import type { StoredCoefficients } from "@/lib/eeg/coebis-version-history";
 
 export interface RefitRunRow {
   id: string;
@@ -29,6 +30,12 @@ export interface ModelVersionRow {
   reason: string | null;
   maeGain: number | null;
   createdAt: string;
+  /** Run that produced this version, so history ties back to the job log. */
+  runId: string | null;
+  /** Fingerprint of the exact training set, so an unchanged fit is provable. */
+  dataDigest: string;
+  /** Fitted weights as stored, for the audit trail and version-to-version diff. */
+  coefficients: StoredCoefficients;
   training: { n?: number; cases?: number; folds?: number; passRate?: number };
   before: {
     mae?: number | null;
@@ -65,6 +72,9 @@ function mapVersion(row: Record<string, unknown>): ModelVersionRow {
     reason: (row["reason"] as string | null) ?? null,
     maeGain: row["mae_gain"] == null ? null : Number(row["mae_gain"]),
     createdAt: String(row["created_at"]),
+    runId: (row["run_id"] as string | null) ?? null,
+    dataDigest: String(row["data_digest"] ?? ""),
+    coefficients: (row["coefficients"] as StoredCoefficients) ?? {},
     training: (row["training"] as ModelVersionRow["training"]) ?? {},
     before: (row["metrics_before"] as ModelVersionRow["before"]) ?? {},
     after: (row["metrics_after"] as ModelVersionRow["after"]) ?? {},
