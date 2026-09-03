@@ -25,6 +25,7 @@ import { PathologyStrataPanel } from "@/components/monitor/PathologyStrataPanel"
 import { RefitPipelinePanel } from "@/components/monitor/RefitPipelinePanel";
 import { ModelVersionHistoryPanel } from "@/components/monitor/ModelVersionHistoryPanel";
 import { LineageComparisonPanel } from "@/components/monitor/LineageComparisonPanel";
+import { ExternalValidationPanel } from "@/components/monitor/ExternalValidationPanel";
 import { ConfidenceMeter } from "@/components/monitor/ConfidenceMeter";
 import {
   Select,
@@ -305,6 +306,7 @@ function ModelPerformancePage() {
             <LineageComparisonPanel />
             <ModelVersionHistoryPanel />
 
+            <ExternalValidationPanel />
             <PathologyStrataPanel />
 
             <div className="grid gap-4 lg:grid-cols-2">
