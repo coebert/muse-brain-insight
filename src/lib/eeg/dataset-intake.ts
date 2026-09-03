@@ -27,7 +27,12 @@ import { SEDATION_ICU_MONTAGE } from "./sedation-icu";
 export const INTAKE_VERSION = "intake-1.0.0";
 
 /** How a source's files are parsed once downloaded. */
-export type IntakeKind = "physionet-raw" | "physionet-power" | "dose1" | "icare";
+export type IntakeKind =
+  | "physionet-raw"
+  | "physionet-power"
+  | "dose1"
+  | "dose1-peeg"
+  | "icare";
 
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
@@ -59,6 +64,15 @@ export interface IntakeSource {
   /** Native sampling rate used when a file carries no usable time column. */
   fallbackSampleRate: number;
   montage: SourceMontage;
+  /**
+   * Some records publish their per-recording files inside one zip. When set,
+   * an archive whose name matches is downloaded once and expanded in memory;
+   * each member matching `filePattern` is then planned as its own file, so
+   * provenance and de-duplication stay per recording.
+   */
+  archivePattern?: RegExp;
+  /** Cap on the archive download itself, separate from the per-member cap. */
+  maxArchiveBytes?: number;
   /** Safety rails so one scan cannot pull an entire archive. */
   maxFilesPerRun: number;
   maxBytesPerFile: number;
@@ -112,15 +126,21 @@ export const INTAKE_SOURCES: IntakeSource[] = [
   {
     id: "zenodo-dose-i",
     label: "DOSE-I — procedural sedation EEG (Zenodo)",
-    kind: "dose1",
+    // The record's `pEEG.zip` carries the published 1 Hz spectral features and
+    // MOAA/S depth scores; the 700 MB raw archive stays out of automated reach.
+    kind: "dose1-peeg",
     lineage: "external:zenodo:dose-i",
-    datasetVersion: "v1",
+    datasetVersion: "2025-11 (v1)",
     licence: "Creative Commons Attribution 4.0",
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
     access: "open",
-    homepage: "https://zenodo.org/records/10054018",
-    listing: { type: "zenodo", recordUrl: "https://zenodo.org/api/records/10054018" },
-    filePattern: /\.csv$/i,
+    accessNote:
+      "Open CC-BY record with a click-through data use agreement: no re-identification, research use only.",
+    homepage: "https://zenodo.org/records/18483292",
+    listing: { type: "zenodo", recordUrl: "https://zenodo.org/api/records/18483292" },
+    filePattern: /_pEEG\.csv$/i,
+    archivePattern: /^pEEG\.zip$/i,
+    maxArchiveBytes: 60_000_000,
     fallbackSampleRate: 125,
     montage: SEDATION_ICU_MONTAGE.dose1,
     maxFilesPerRun: 10,
