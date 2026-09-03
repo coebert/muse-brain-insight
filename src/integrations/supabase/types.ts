@@ -869,6 +869,9 @@ export type Database = {
           external_ref: string
           freq_start_hz: number
           freq_step_hz: number
+          harmonization: Json
+          harmonization_version: string | null
+          harmonized_montage: string | null
           id: string
           is_suppressed: boolean
           label: string | null
@@ -894,6 +897,9 @@ export type Database = {
           external_ref: string
           freq_start_hz?: number
           freq_step_hz?: number
+          harmonization?: Json
+          harmonization_version?: string | null
+          harmonized_montage?: string | null
           id?: string
           is_suppressed?: boolean
           label?: string | null
@@ -919,6 +925,9 @@ export type Database = {
           external_ref?: string
           freq_start_hz?: number
           freq_step_hz?: number
+          harmonization?: Json
+          harmonization_version?: string | null
+          harmonized_montage?: string | null
           id?: string
           is_suppressed?: boolean
           label?: string | null

@@ -29,6 +29,13 @@
       "when": 1788456967364,
       "tag": "0003_create_external_spectral_epochs",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788457199399,
+      "tag": "0004_add_harmonization_to_external_spectral_epochs",
+      "breakpoints": true
     }
   ]
 }
