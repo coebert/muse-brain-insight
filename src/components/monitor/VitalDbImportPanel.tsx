@@ -50,6 +50,7 @@ export function VitalDbImportPanel() {
   const [clinicalName, setClinicalName] = useState<string | null>(null);
   const clinicalRef = useRef<HTMLInputElement>(null);
   const tracksRef = useRef<HTMLInputElement>(null);
+  const waveRef = useRef<HTMLInputElement>(null);
 
   const runImport = useServerFn(importVitalDb);
   const runPriors = useServerFn(getExternalPriors);
