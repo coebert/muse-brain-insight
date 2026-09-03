@@ -69,12 +69,22 @@ export interface EventDepthResult {
   rejected: { transition: number; shortInterval: number; noIndex: number; guarded: number };
 }
 
+/**
+ * The clinical cap's frontal electrodes occupy the app's forehead analysis
+ * positions: odd labels (AF3, Fp1, F7) are left, even labels right. The device
+ * id keeps the lineage separate regardless, so this mapping only records which
+ * hemisphere the derivation came from.
+ */
+export function openNeuroAnalysisChannel(channel: string): "AF7" | "AF8" {
+  return /[13579]\s*$/.test(channel.trim()) ? "AF7" : "AF8";
+}
+
 export function openNeuroDepthLineage(channel: string, sampleRate: number): DataLineage {
   return {
     deviceId: OPENNEURO_DEPTH_DEVICE_ID,
     deviceLabel: "OpenNeuro ds004541 clinical cap (frontal derivation)",
     transport: "ingest",
-    channels: [channel.toUpperCase()],
+    channels: [openNeuroAnalysisChannel(channel)],
     sampleRate: Math.round(sampleRate),
   };
 }
