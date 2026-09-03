@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { LineageComparison } from "@/lib/eeg/lineage-comparison";
+import type { LineageComparison, LineageModel } from "@/lib/eeg/lineage-comparison";
 
 export interface LineageComparisonResult {
   lineages: LineageComparison[];
@@ -19,9 +19,7 @@ export const getLineageComparison = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<LineageComparisonResult> => {
     const { loadTrainingMatrix } = await import("@/lib/eeg/coebis-training.server");
     const { modelFromRow } = await import("@/lib/eeg/coebis-refit.server");
-    const { buildLineageComparisons, type LineageModel } = await import(
-      "@/lib/eeg/lineage-comparison"
-    );
+    const { buildLineageComparisons } = await import("@/lib/eeg/lineage-comparison");
 
     const matrix = await loadTrainingMatrix(context.supabase, 5000);
 
