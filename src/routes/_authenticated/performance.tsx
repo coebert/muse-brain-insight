@@ -302,6 +302,7 @@ function ModelPerformancePage() {
             <SefPersonalisationPanel />
 
             <RefitPipelinePanel />
+            <LineageComparisonPanel />
             <ModelVersionHistoryPanel />
 
             <PathologyStrataPanel />
