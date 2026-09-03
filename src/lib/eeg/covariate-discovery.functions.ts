@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { DiscoveryResult } from "@/lib/eeg/covariate-discovery";
+import type { DiscoveryBundle } from "@/lib/eeg/discovery-adoption";
 
 const inputSchema = z
   .object({
@@ -15,7 +15,7 @@ const inputSchema = z
 export const getCovariateDiscovery = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
-  .handler(async ({ context, data }): Promise<DiscoveryResult> => {
+  .handler(async ({ context, data }): Promise<DiscoveryBundle> => {
     const { runCovariateDiscovery } = await import("@/lib/eeg/covariate-discovery.server");
     return runCovariateDiscovery(context.supabase, {
       externalLimit: data?.externalLimit ?? 20000,
