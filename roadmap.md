@@ -6,4 +6,5 @@
 - [x] DOSE-I and I-CARE ingest panels feeding the external validation pipeline under their own lineages.
 - [x] DSA grid panel: power, suppression and SEF95 on the DSA time axis for a replayed real EEG file.
 - [x] COEBIS replay dashboard (/replay): predicted BIS vs real monitor readings with timeline, agreement metrics and per-covariate comparison against the VitalDB prior.
+- [x] Automated public-dataset intake: configured source catalogue with licence gating, index discovery (PhysioNet RECORDS / Zenodo), download, parse + harmonise + store, and per-file licence/provenance records.
 - [ ] Systematic public-dataset programme: ingest and benchmark every accessible public EEG collection (VitalDB, PhysioNet GABA/power, DOSE-I, I-CARE, TUH seizure/artifact, CHB-MIT) lineage by lineage, using them for priors, benchmarking and pathology-diagnosis models — never pooled into the device-specific COEBIS fit.

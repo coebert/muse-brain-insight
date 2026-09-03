@@ -413,6 +413,108 @@ export type Database = {
           },
         ]
       }
+      dataset_intake_files: {
+        Row: {
+          bytes: number | null
+          content_digest: string | null
+          created_at: string
+          dataset_version: string | null
+          detail: string | null
+          epochs: number
+          file_name: string
+          file_url: string
+          harmonization_version: string | null
+          id: string
+          inserted: number
+          licence: string | null
+          licence_url: string | null
+          lineage: string
+          provenance: Json
+          run_id: string
+          source_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          bytes?: number | null
+          content_digest?: string | null
+          created_at?: string
+          dataset_version?: string | null
+          detail?: string | null
+          epochs?: number
+          file_name: string
+          file_url: string
+          harmonization_version?: string | null
+          id?: string
+          inserted?: number
+          licence?: string | null
+          licence_url?: string | null
+          lineage: string
+          provenance?: Json
+          run_id: string
+          source_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          bytes?: number | null
+          content_digest?: string | null
+          created_at?: string
+          dataset_version?: string | null
+          detail?: string | null
+          epochs?: number
+          file_name?: string
+          file_url?: string
+          harmonization_version?: string | null
+          id?: string
+          inserted?: number
+          licence?: string | null
+          licence_url?: string | null
+          lineage?: string
+          provenance?: Json
+          run_id?: string
+          source_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dataset_intake_runs: {
+        Row: {
+          created_at: string
+          epochs_inserted: number
+          files_ingested: number
+          finished_at: string | null
+          id: string
+          sources_scanned: number
+          started_at: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          epochs_inserted?: number
+          files_ingested?: number
+          finished_at?: string | null
+          id?: string
+          sources_scanned?: number
+          started_at?: string
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          epochs_inserted?: number
+          files_ingested?: number
+          finished_at?: string | null
+          id?: string
+          sources_scanned?: number
+          started_at?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       depth_bis_alignments: {
         Row: {
           auto_applied: boolean
