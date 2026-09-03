@@ -44,6 +44,25 @@ export type IntakeKind =
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
 
+/**
+ * A named login the operator has supplied. Credentialed downloads are made as
+ * that user, so the dataset's data use agreement is honoured by the person who
+ * signed it rather than by an anonymous scan.
+ */
+export type CredentialRealm = "physionet";
+
+export const CREDENTIAL_REALMS: Record<
+  CredentialRealm,
+  { label: string; envUser: string; envPassword: string; help: string }
+> = {
+  physionet: {
+    label: "PhysioNet",
+    envUser: "PHYSIONET_USERNAME",
+    envPassword: "PHYSIONET_PASSWORD",
+    help: "Your credentialed PhysioNet account, with the data use agreement signed for each restricted project.",
+  },
+};
+
 export type IntakeListing =
   /** PhysioNet publishes a plain-text RECORDS index of every file. */
   | { type: "records-file"; url: string }
@@ -64,6 +83,12 @@ export interface IntakeSource {
   access: IntakeAccess;
   /** Why an access mode other than `open` blocks automated retrieval. */
   accessNote?: string;
+  /**
+   * Credential realm whose stored login unlocks retrieval for this source.
+   * A `credentialed` source stays blocked until the realm's credentials are
+   * configured; the download then runs as that named user under their own DUA.
+   */
+  credentialRealm?: CredentialRealm;
   homepage: string;
   listing: IntakeListing;
   /** Files whose names fail this test are ignored (checksums, docs, WFDB headers). */
@@ -101,7 +126,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/eeg-gaba-anesthesia/view-license/1.0.0/",
     access: "credentialed",
     accessNote:
-      "Credentialed access with a signed data use agreement; files cannot be fetched by an unattended scan.",
+      "Credentialed access with a signed data use agreement; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/eeg-gaba-anesthesia/1.0.0/",
     listing: {
       type: "records-file",
@@ -123,7 +149,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/eeg-power-anesthesia/view-license/1.0.0/",
     access: "credentialed",
     accessNote:
-      "Restricted access: credentialed user plus a signed DUA, so automated download is not permitted.",
+      "Restricted access: credentialed user plus a signed DUA; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/eeg-power-anesthesia/1.0.0/",
     listing: {
       type: "records-file",
@@ -189,7 +216,8 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     licenceUrl: "https://physionet.org/content/i-care/view-license/2.1/",
     access: "credentialed",
     accessNote:
-      "Credentialed access with a signed DUA; the scan lists the records but will not download them.",
+      "Credentialed access with a signed DUA; retrieval runs under your own PhysioNet login.",
+    credentialRealm: "physionet",
     homepage: "https://physionet.org/content/i-care/2.1/",
     listing: { type: "records-file", url: "https://physionet.org/files/i-care/2.1/RECORDS" },
     filePattern: /\.csv$/i,
@@ -210,13 +238,30 @@ export interface Eligibility {
 }
 
 /**
- * Licence gate. Only `open` sources may be retrieved automatically; everything
- * else is surfaced with the reason so a clinician can obtain it by hand and use
- * the manual import panels instead.
+ * Licence gate. `open` sources may always be retrieved. A `credentialed`
+ * source is retrievable only once its realm's login has been supplied, in
+ * which case the download is made as that named account under the DUA they
+ * signed. Everything else stays manual.
  */
-export function checkEligibility(source: IntakeSource): Eligibility {
+export function checkEligibility(
+  source: IntakeSource,
+  availableRealms: readonly CredentialRealm[] = [],
+): Eligibility {
   if (source.access === "open") {
     return { eligible: true, reason: `${source.licence} permits programmatic retrieval.` };
+  }
+  if (source.access === "credentialed" && source.credentialRealm) {
+    const realm = CREDENTIAL_REALMS[source.credentialRealm];
+    if (availableRealms.includes(source.credentialRealm)) {
+      return {
+        eligible: true,
+        reason: `${source.licence}: retrieved as your credentialed ${realm.label} user.`,
+      };
+    }
+    return {
+      eligible: false,
+      reason: `${realm.label} credentials are not configured, so this restricted source cannot be fetched.`,
+    };
   }
   return {
     eligible: false,

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { IntakeRunResult } from "@/lib/eeg/dataset-intake";
+import type { CredentialRealm, IntakeRunResult } from "@/lib/eeg/dataset-intake";
 import type {
   IntakeHistoryEntry,
   IntakeProvenanceEntry,
@@ -37,3 +37,14 @@ export const getIntakeHistory = createServerFn({ method: "GET" })
       return loadIntakeHistory(context.supabase);
     },
   );
+
+/**
+ * Which credential realms have a stored login. Only the realm names cross the
+ * boundary — usernames and passwords stay in backend secrets.
+ */
+export const getIntakeCredentials = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<{ realms: CredentialRealm[] }> => {
+    const { resolveCredentials } = await import("@/lib/eeg/dataset-intake.server");
+    return { realms: resolveCredentials().realms };
+  });
