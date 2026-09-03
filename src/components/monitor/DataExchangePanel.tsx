@@ -128,6 +128,7 @@ export function DataExchangePanel() {
         </Button>
       </section>
 
+      <DatasetIntakePanel />
       <VitalDbImportPanel />
       <PhysionetImportPanel />
       <ExternalValidationPanel />
