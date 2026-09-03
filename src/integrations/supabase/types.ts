@@ -856,6 +856,84 @@ export type Database = {
         }
         Relationships: []
       }
+      external_spectral_epochs: {
+        Row: {
+          at_seconds: number
+          bands: Json
+          case_ref: string
+          channel: string | null
+          covariates: Json
+          created_at: string
+          dataset_version: string | null
+          epoch_seconds: number
+          external_ref: string
+          freq_start_hz: number
+          freq_step_hz: number
+          id: string
+          is_suppressed: boolean
+          label: string | null
+          label_source: string
+          sample_rate: number | null
+          sef95: number | null
+          source: string
+          source_lineage: string
+          spectrum_db: Json
+          suppression_ratio: number | null
+          total_power: number | null
+          user_id: string
+        }
+        Insert: {
+          at_seconds: number
+          bands?: Json
+          case_ref: string
+          channel?: string | null
+          covariates?: Json
+          created_at?: string
+          dataset_version?: string | null
+          epoch_seconds?: number
+          external_ref: string
+          freq_start_hz?: number
+          freq_step_hz?: number
+          id?: string
+          is_suppressed?: boolean
+          label?: string | null
+          label_source?: string
+          sample_rate?: number | null
+          sef95?: number | null
+          source: string
+          source_lineage: string
+          spectrum_db?: Json
+          suppression_ratio?: number | null
+          total_power?: number | null
+          user_id: string
+        }
+        Update: {
+          at_seconds?: number
+          bands?: Json
+          case_ref?: string
+          channel?: string | null
+          covariates?: Json
+          created_at?: string
+          dataset_version?: string | null
+          epoch_seconds?: number
+          external_ref?: string
+          freq_start_hz?: number
+          freq_step_hz?: number
+          id?: string
+          is_suppressed?: boolean
+          label?: string | null
+          label_source?: string
+          sample_rate?: number | null
+          sef95?: number | null
+          source?: string
+          source_lineage?: string
+          spectrum_db?: Json
+          suppression_ratio?: number | null
+          total_power?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_links: {
         Row: {
           created_at: string
