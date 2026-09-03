@@ -11,6 +11,8 @@ import {
   parseVitalDbTrackCsv,
   type VitalDbCaseInfo,
 } from "@/lib/eeg/vitaldb";
+import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
+import { runRefitNow } from "@/lib/eeg/coebis-refit.functions";
 import { getExternalPriors, importVitalDb } from "@/lib/eeg/vitaldb.functions";
 import type { VitalDbCasePayload } from "@/lib/eeg/vitaldb.server";
 import {
@@ -57,6 +59,7 @@ export function VitalDbImportPanel() {
 
   const runPairedImport = useServerFn(importVitalDbPaired);
   const runPairedCounts = useServerFn(getPairedLineageCounts);
+  const runRefit = useServerFn(runRefitNow);
 
   const priors = useQuery({
     queryKey: ["external-priors"],
@@ -189,12 +192,30 @@ export function VitalDbImportPanel() {
             result.skipped ? `${result.skipped} were already present.` : null,
             result.unusable ? `${result.unusable} files produced no pairs.` : null,
             result.unmatched ? `${result.unmatched} files had no matching case row.` : null,
+            result.refit
+              ? `Refit ran: ${result.refit.summary}`
+              : result.gateShort
+                ? `Not refitted yet — ${result.gateShort}`
+                : null,
           ]
             .filter(Boolean)
             .join(" "),
         },
       );
+      if (result.refit?.error) {
+        toast.error(`The refit failed: ${result.refit.error}`);
+      } else if (result.refit) {
+        toast.info(
+          result.refit.modelsPromoted
+            ? `${result.refit.modelsPromoted} model version promoted — Model performance updated.`
+            : "Refit ran but no version beat the current fit, so nothing was promoted.",
+        );
+      }
       void pairedLineages.refetch();
+      // Refresh the pages that read the fit, so Model performance shows the
+      // before/after without a manual reload.
+      void queryClient.invalidateQueries({ queryKey: ["model-performance"] });
+      void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Replay failed."),
   });
