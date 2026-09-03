@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Database, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -56,6 +56,7 @@ export function VitalDbImportPanel() {
 
   const runImport = useServerFn(importVitalDb);
   const runPriors = useServerFn(getExternalPriors);
+  const queryClient = useQueryClient();
 
   const runPairedImport = useServerFn(importVitalDbPaired);
   const runPairedCounts = useServerFn(getPairedLineageCounts);
