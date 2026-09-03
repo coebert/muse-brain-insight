@@ -790,6 +790,72 @@ export type Database = {
           },
         ]
       }
+      external_reference_points: {
+        Row: {
+          age_band: string | null
+          asa: string | null
+          at_seconds: number
+          bis: number
+          bis_emg: number | null
+          bis_sef: number | null
+          bis_sr: number | null
+          case_ref: string
+          ce: Json
+          created_at: string
+          external_ref: string
+          frailty: string | null
+          id: string
+          regimen: string | null
+          sex: string | null
+          source: string
+          source_lineage: string
+          sqi: number | null
+          user_id: string
+        }
+        Insert: {
+          age_band?: string | null
+          asa?: string | null
+          at_seconds: number
+          bis: number
+          bis_emg?: number | null
+          bis_sef?: number | null
+          bis_sr?: number | null
+          case_ref: string
+          ce?: Json
+          created_at?: string
+          external_ref: string
+          frailty?: string | null
+          id?: string
+          regimen?: string | null
+          sex?: string | null
+          source?: string
+          source_lineage?: string
+          sqi?: number | null
+          user_id: string
+        }
+        Update: {
+          age_band?: string | null
+          asa?: string | null
+          at_seconds?: number
+          bis?: number
+          bis_emg?: number | null
+          bis_sef?: number | null
+          bis_sr?: number | null
+          case_ref?: string
+          ce?: Json
+          created_at?: string
+          external_ref?: string
+          frailty?: string | null
+          id?: string
+          regimen?: string | null
+          sex?: string | null
+          source?: string
+          source_lineage?: string
+          sqi?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_links: {
         Row: {
           created_at: string

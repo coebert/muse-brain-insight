@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { exportPairedDataset, importPairedDataset } from "@/lib/eeg/exchange.functions";
+import { VitalDbImportPanel } from "@/components/monitor/VitalDbImportPanel";
 
 /**
  * Pooling paired readings across devices and colleagues. Bundles carry no
@@ -123,6 +124,8 @@ export function DataExchangePanel() {
           Choose bundle file
         </Button>
       </section>
+
+      <VitalDbImportPanel />
     </div>
   );
 }
