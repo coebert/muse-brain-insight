@@ -116,10 +116,27 @@ export function DatasetIntakePanel() {
               {seen ? (
                 <p className="mt-1 text-muted-foreground">
                   Held: {seen.files} files, {seen.epochs} epochs
+                  {seen.datasetVersions.length ? ` · version ${seen.datasetVersions.join(", ")}` : ""}
                   {seen.harmonizationVersions.length
                     ? ` · harmonisation ${seen.harmonizationVersions.join(", ")}`
                     : ""}
+                  {seen.lastFetchedAt
+                    ? ` · fetched ${new Date(seen.lastFetchedAt).toLocaleString()}`
+                    : ""}
+                  {seen.latestDigest ? (
+                    <>
+                      {" · digest "}
+                      <code>{seen.latestDigest.slice(0, 12)}…</code>
+                    </>
+                  ) : null}
+                  {" · "}
+                  <a className="underline" href={s.homepage} target="_blank" rel="noreferrer noopener">
+                    published record
+                  </a>
                 </p>
+              ) : null}
+              {s.accessNote && gate.eligible ? (
+                <p className="mt-1 text-muted-foreground">Terms: {s.accessNote}</p>
               ) : null}
               {ran ? (
                 <p className="mt-1">

@@ -35,6 +35,7 @@ import {
   type PhysionetEpoch,
   type PhysionetImportRow,
 } from "./physionet";
+import { dose1Covariates, parseDose1PeegCsv } from "./dose1-peeg";
 import { epochsFromRecording, parseSedationIcuCsv, toSedationIcuRows } from "./sedation-icu";
 import { importPhysionetEpochs } from "./physionet.server";
 
@@ -62,16 +63,70 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** List the files a source currently publishes, without downloading any. */
-export async function discoverFiles(source: IntakeSource): Promise<DiscoveredFile[]> {
-  const listing = source.listing;
-  if (listing.type === "manifest") return listing.files.map((f) => ({ ...f, bytes: null }));
-  if (listing.type === "records-file") {
-    const { text } = await fetchText(listing.url, 4_000_000);
-    return parseRecordsIndex(text, listing.url);
+async function fetchBytes(url: string, limitBytes: number): Promise<Uint8Array> {
+  const res = await fetch(url, {
+    headers: { accept: "application/zip,application/octet-stream;q=0.8,*/*;q=0.5" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS * 4),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (buf.byteLength > limitBytes) throw new Error("archive exceeded the per-archive cap");
+  return buf;
+}
+
+/**
+ * Expand a published zip in memory into one discovered file per member. The
+ * member URL keeps the archive URL plus a fragment, so provenance still points
+ * at the exact published artefact and re-runs de-duplicate per recording.
+ */
+async function expandArchive(
+  source: IntakeSource,
+  archive: DiscoveredFile,
+  cache: Map<string, string>,
+): Promise<DiscoveredFile[]> {
+  const { unzipSync } = await import("fflate");
+  const bytes = await fetchBytes(archive.url, source.maxArchiveBytes ?? 80_000_000);
+  const entries = unzipSync(bytes);
+  const decoder = new TextDecoder();
+  const out: DiscoveredFile[] = [];
+  for (const [member, content] of Object.entries(entries)) {
+    if (!content.length || !source.filePattern.test(member)) continue;
+    const url = `${archive.url}#${member}`;
+    cache.set(url, decoder.decode(content));
+    out.push({ name: member, url, bytes: content.byteLength });
   }
-  const { text } = await fetchText(listing.recordUrl, 8_000_000);
-  return parseZenodoIndex(JSON.parse(text));
+  return out;
+}
+
+/**
+ * List the files a source currently publishes. Nothing is downloaded except a
+ * published index — or, for archive-packaged records, the single archive whose
+ * members are the per-recording files.
+ */
+export async function discoverFiles(
+  source: IntakeSource,
+  cache?: Map<string, string>,
+): Promise<DiscoveredFile[]> {
+  const listing = source.listing;
+  let files: DiscoveredFile[];
+  if (listing.type === "manifest") {
+    files = listing.files.map((f) => ({ ...f, bytes: null }));
+  } else if (listing.type === "records-file") {
+    const { text } = await fetchText(listing.url, 4_000_000);
+    files = parseRecordsIndex(text, listing.url);
+  } else {
+    const { text } = await fetchText(listing.recordUrl, 8_000_000);
+    files = parseZenodoIndex(JSON.parse(text));
+  }
+
+  if (!source.archivePattern || !cache) return files;
+
+  const expanded: DiscoveredFile[] = [];
+  for (const f of files) {
+    if (!source.archivePattern.test(f.name)) continue;
+    expanded.push(...(await expandArchive(source, f, cache)));
+  }
+  return expanded.length ? expanded : files.filter((f) => source.filePattern.test(f.name));
 }
 
 /* -------------------------------------------------------------- parsing --- */
@@ -96,7 +151,16 @@ function rowsForFile(
     epochs.push(...out);
   };
 
-  if (source.kind === "physionet-power") {
+  let covariates: Record<string, string | number | null> = {};
+
+  if (source.kind === "dose1-peeg") {
+    const parsed = parseDose1PeegCsv(text, {
+      caseRef: file.caseRef,
+      channel: source.montage.channel,
+    });
+    covariates = dose1Covariates(parsed);
+    harmonise(parsed.epochs, source.montage.channel, null);
+  } else if (source.kind === "physionet-power") {
     const parsed = parsePhysionetPowerCsv(text, { caseRef: file.caseRef });
     harmonise(parsed, parsed[0]?.channel ?? null, null);
   } else if (source.kind === "physionet-raw") {
@@ -123,11 +187,12 @@ function rowsForFile(
 
   if (!epochs.length) throw new Error("no usable epochs were derived");
 
-  const meta = { datasetVersion: source.datasetVersion };
-  const rows =
-    source.kind === "dose1" || source.kind === "icare"
-      ? toSedationIcuRows(source.kind === "dose1" ? "dose1" : "icare", epochs, meta)
-      : toImportRows(source.kind === "physionet-raw" ? "gaba" : "power", epochs, meta);
+  const meta = { datasetVersion: source.datasetVersion, covariates };
+  const isSedationIcu =
+    source.kind === "dose1" || source.kind === "dose1-peeg" || source.kind === "icare";
+  const rows = isSedationIcu
+    ? toSedationIcuRows(source.kind === "icare" ? "icare" : "dose1", epochs, meta)
+    : toImportRows(source.kind === "physionet-raw" ? "gaba" : "power", epochs, meta);
   return { rows, harmonization: record };
 }
 
@@ -188,8 +253,10 @@ export async function runDatasetIntake(
     };
 
     let discovered: DiscoveredFile[] = [];
+    // Members of an expanded archive, keyed by their member URL.
+    const archived = new Map<string, string>();
     try {
-      discovered = await discoverFiles(source);
+      discovered = await discoverFiles(source, gate.eligible ? archived : undefined);
     } catch (e) {
       base.reason = `Could not read the published index: ${e instanceof Error ? e.message : String(e)}`;
       results.push(base);
@@ -225,7 +292,10 @@ export async function runDatasetIntake(
         provenance: null,
       };
       try {
-        const { text, bytes } = await fetchText(file.url, source.maxBytesPerFile);
+        const member = archived.get(file.url);
+        const { text, bytes } = member
+          ? { text: member, bytes: new TextEncoder().encode(member).byteLength }
+          : await fetchText(file.url, source.maxBytesPerFile);
         const digest = await sha256Hex(text);
         const { rows, harmonization } = rowsForFile(source, file, text);
         const withHarmonisation = rows.map((r) => ({
@@ -313,6 +383,10 @@ export interface IntakeProvenanceEntry {
   epochs: number;
   lastFetchedAt: string | null;
   harmonizationVersions: string[];
+  /** Dataset version(s) the held files were published under. */
+  datasetVersions: string[];
+  /** SHA-256 of the most recently fetched file, for a re-fetch comparison. */
+  latestDigest: string | null;
 }
 
 export async function loadIntakeHistory(supabase: Client): Promise<{
@@ -328,13 +402,16 @@ export async function loadIntakeHistory(supabase: Client): Promise<{
     supabase
       .from("dataset_intake_files")
       .select(
-        "source_id, lineage, licence, licence_url, status, epochs, inserted, harmonization_version, created_at",
+        "source_id, lineage, licence, licence_url, status, epochs, inserted, harmonization_version, dataset_version, content_digest, created_at",
       )
       .eq("status", "ingested")
       .limit(5000),
   ]);
 
-  const groups = new Map<string, IntakeProvenanceEntry & { versions: Set<string> }>();
+  const groups = new Map<
+    string,
+    IntakeProvenanceEntry & { versions: Set<string>; datasets: Set<string> }
+  >();
   for (const r of (fileRows ?? []) as {
     source_id: string;
     lineage: string;
@@ -343,6 +420,8 @@ export async function loadIntakeHistory(supabase: Client): Promise<{
     epochs: number | null;
     inserted: number | null;
     harmonization_version: string | null;
+    dataset_version: string | null;
+    content_digest: string | null;
     created_at: string | null;
   }[]) {
     let g = groups.get(r.source_id);
@@ -356,15 +435,20 @@ export async function loadIntakeHistory(supabase: Client): Promise<{
         epochs: 0,
         lastFetchedAt: null,
         harmonizationVersions: [],
+        datasetVersions: [],
+        latestDigest: null,
         versions: new Set<string>(),
+        datasets: new Set<string>(),
       };
       groups.set(r.source_id, g);
     }
     g.files++;
     g.epochs += r.inserted ?? 0;
     if (r.harmonization_version) g.versions.add(r.harmonization_version);
+    if (r.dataset_version) g.datasets.add(r.dataset_version);
     if (r.created_at && (!g.lastFetchedAt || r.created_at > g.lastFetchedAt)) {
       g.lastFetchedAt = r.created_at;
+      g.latestDigest = r.content_digest;
     }
   }
 
@@ -385,7 +469,11 @@ export async function loadIntakeHistory(supabase: Client): Promise<{
       epochsInserted: r.epochs_inserted ?? 0,
     })),
     provenance: [...groups.values()]
-      .map(({ versions, ...g }) => ({ ...g, harmonizationVersions: [...versions].sort() }))
+      .map(({ versions, datasets, ...g }) => ({
+        ...g,
+        harmonizationVersions: [...versions].sort(),
+        datasetVersions: [...datasets].sort(),
+      }))
       .sort((a, b) => b.epochs - a.epochs),
   };
 }
