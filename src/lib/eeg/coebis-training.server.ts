@@ -41,12 +41,19 @@ export interface TrainingMatrix {
 export async function loadTrainingMatrix(
   supabase: Client,
   limit = 5000,
+  /**
+   * Restrict to one owner. Required when the caller holds a service-role
+   * client (the scheduled refit job), where RLS does not scope the read.
+   */
+  userId?: string,
 ): Promise<TrainingMatrix> {
-  const { data: pointRows, error } = await supabase
+  let query = supabase
     .from("bis_paired_points")
     .select(
       "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
-    )
+    );
+  if (userId) query = query.eq("user_id", userId);
+  const { data: pointRows, error } = await query
     .order("recorded_at", { ascending: true })
     .limit(limit);
   if (error) throw new Error(error.message);
