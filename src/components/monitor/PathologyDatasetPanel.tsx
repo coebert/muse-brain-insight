@@ -12,7 +12,6 @@ import {
 } from "@/lib/eeg/harmonization";
 import {
   PATHOLOGY_DATASETS,
-  applyAnnotations,
   epochsFromPathologyRecording,
   parsePathologyAnnotations,
   pathologyDataset,
@@ -159,10 +158,6 @@ function DatasetCard({ info }: { info: PathologyDatasetInfo }) {
   const stored = (pool.data?.byLineage ?? []).find(
     (g: PoolGroup) => g.lineage === info.lineage,
   );
-  const seizureEvents = annotations
-    ? applyAnnotations([], annotations.events).length
-    : 0;
-  void seizureEvents;
 
   return (
     <article className="rounded-md border border-border/60 p-3">
