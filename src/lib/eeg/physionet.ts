@@ -443,7 +443,7 @@ export const DATASET_MONTAGE: Record<PhysionetDataset, SourceMontage> = {
 /** Attach lineage, harmonisation and covariates so a batch is ready to store. */
 export function toImportRows(
   dataset: PhysionetDataset,
-  epochs: PhysionetEpoch[],
+  epochs: (PhysionetEpoch & { harmonization?: HarmonizationRecord })[],
   meta: {
     datasetVersion?: string | null;
     covariates?: Record<string, string | number | null>;
@@ -457,7 +457,9 @@ export function toImportRows(
     sourceLineage: lineage,
     datasetVersion: meta.datasetVersion ?? null,
     covariates: meta.covariates ?? {},
-    ...(meta.harmonization ? { harmonization: meta.harmonization } : {}),
+    ...(e.harmonization ?? meta.harmonization
+      ? { harmonization: e.harmonization ?? meta.harmonization! }
+      : {}),
   }));
 }
 

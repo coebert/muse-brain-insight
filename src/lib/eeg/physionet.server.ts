@@ -22,6 +22,8 @@ export interface PhysionetPoolSummary {
     epochs: number;
     cases: number;
     suppressedEpochs: number;
+    /** Harmonisation versions present in this lineage, for auditing. */
+    harmonizationVersions: string[];
     labels: { label: string; count: number }[];
   }[];
 }
@@ -52,6 +54,11 @@ export async function importPhysionetEpochs(
     label: e.label,
     label_source: e.labelSource,
     covariates: e.covariates as unknown as never,
+    harmonization: (e.harmonization ?? {}) as unknown as never,
+    harmonized_montage: e.harmonization
+      ? `${e.harmonization.target.derivation} (${e.harmonization.target.reference})`
+      : null,
+    harmonization_version: e.harmonization?.version ?? null,
     external_ref: e.externalRef,
   }));
   if (!rows.length) return { cases: 0, inserted: 0, skipped: 0 };
@@ -89,7 +96,7 @@ export async function loadPhysionetPool(
 ): Promise<PhysionetPoolSummary> {
   const { data, error } = await supabase
     .from("external_spectral_epochs")
-    .select("source_lineage, case_ref, label, is_suppressed")
+    .select("source_lineage, case_ref, label, is_suppressed, harmonization_version")
     .limit(limit);
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as unknown as {
@@ -97,22 +104,36 @@ export async function loadPhysionetPool(
     case_ref: string;
     label: string | null;
     is_suppressed: boolean;
+    harmonization_version: string | null;
   }[];
 
   const groups = new Map<
     string,
-    { epochs: number; cases: Set<string>; suppressed: number; labels: Map<string, number> }
+    {
+      epochs: number;
+      cases: Set<string>;
+      suppressed: number;
+      labels: Map<string, number>;
+      versions: Set<string>;
+    }
   >();
   for (const r of rows) {
     let g = groups.get(r.source_lineage);
     if (!g) {
-      g = { epochs: 0, cases: new Set(), suppressed: 0, labels: new Map() };
+      g = {
+        epochs: 0,
+        cases: new Set(),
+        suppressed: 0,
+        labels: new Map(),
+        versions: new Set(),
+      };
       groups.set(r.source_lineage, g);
     }
     g.epochs++;
     g.cases.add(r.case_ref);
     if (r.is_suppressed) g.suppressed++;
     if (r.label) g.labels.set(r.label, (g.labels.get(r.label) ?? 0) + 1);
+    if (r.harmonization_version) g.versions.add(r.harmonization_version);
   }
 
   return {
@@ -123,6 +144,7 @@ export async function loadPhysionetPool(
         epochs: g.epochs,
         cases: g.cases.size,
         suppressedEpochs: g.suppressed,
+        harmonizationVersions: [...g.versions].sort(),
         labels: [...g.labels.entries()]
           .map(([label, count]) => ({ label, count }))
           .sort((a, b) => b.count - a.count),
