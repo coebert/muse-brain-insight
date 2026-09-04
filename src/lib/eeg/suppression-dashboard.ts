@@ -134,12 +134,24 @@ export interface GateStatus {
   maeGain: number | null;
 }
 
+/** Where the suppression coefficients on this page came from. */
+export type ModelSource = "promoted" | "candidate fit" | "raw detector";
+
 export interface SuppressionDashboard {
   gate: GateStatus;
-  /** Flag agreement summed over every case shown. */
+  /** Which calibration produced the estimates drawn here. */
+  modelSource: ModelSource;
+  /** Flag agreement summed over every patient, not only those drawn. */
   totals: FlagAgreement;
+  /** COEBIS against the real monitor index across the whole cohort. */
+  bisTotals: BisAgreement;
+  /** Patients carrying a monitor index as well as a suppression ratio. */
+  casesWithBis: number;
+  /** Patients in the loaded readings. */
+  patients: number;
   cases: CaseTrace[];
 }
+
 
 const round = (v: number, dp = 1): number => {
   const f = 10 ** dp;
