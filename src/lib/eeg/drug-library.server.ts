@@ -86,30 +86,62 @@ async function knownLineages(supabase: Client): Promise<string[]> {
 }
 
 /**
- * Spectral epochs, read per lineage so no single large corpus crowds the
- * others out, and capped per case so one long recording cannot dominate.
+ * Every case in a lineage, one row each.
+ *
+ * The spectral table runs to tens of thousands of rows and its covariates
+ * alone are megabytes, so coverage is walked by case key rather than read in
+ * full: one tiny query per case, which keeps the count complete without
+ * pulling the corpus across the wire.
  */
-async function loadExternal(supabase: Client, perLineage: number): Promise<{
+async function lineageCases(supabase: Client, lineage: string, maxCases = 500): Promise<ExternalRow[]> {
+  const out: ExternalRow[] = [];
+  let after = "";
+  for (let i = 0; i < maxCases; i += 1) {
+    const { data, error } = await supabase
+      .from("external_spectral_epochs")
+      .select("source_lineage, case_ref, bands, covariates")
+      .eq("source_lineage", lineage)
+      .gt("case_ref", after)
+      .order("case_ref", { ascending: true })
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const row = ((data ?? []) as ExternalRow[])[0];
+    if (!row) break;
+    out.push(row);
+    after = row.case_ref;
+  }
+  return out;
+}
+
+/**
+ * Spectral epochs: complete case coverage per lineage, plus a bounded sample of
+ * epochs per lineage so the pattern statistics rest on real spectra without
+ * reading every stored epoch.
+ */
+async function loadExternal(supabase: Client, samplePerLineage: number): Promise<{
   epochs: DrugLibraryEpoch[];
   scanned: number;
 }> {
   const lineages = await knownLineages(supabase);
-  const perLineageRows = await Promise.all(
-    lineages.map((lineage) =>
-      pageAll<ExternalRow>(
-        (from, to) =>
-          supabase
-            .from("external_spectral_epochs")
-            .select("source_lineage, case_ref, bands, covariates")
-            .eq("source_lineage", lineage)
-            .order("case_ref", { ascending: true })
-            .order("at_seconds", { ascending: true })
-            .range(from, to),
-        perLineage,
-      ),
-    ),
+  const perLineage = await Promise.all(
+    lineages.map(async (lineage) => {
+      const [cases, sample] = await Promise.all([
+        lineageCases(supabase, lineage),
+        pageAll<ExternalRow>(
+          (from, to) =>
+            supabase
+              .from("external_spectral_epochs")
+              .select("source_lineage, case_ref, bands, covariates")
+              .eq("source_lineage", lineage)
+              .order("at_seconds", { ascending: true })
+              .range(from, to),
+          samplePerLineage,
+        ),
+      ]);
+      return [...cases, ...sample];
+    }),
   );
-  const rows = perLineageRows.flat();
+  const rows = perLineage.flat();
   const keep = keeper();
   const epochs: DrugLibraryEpoch[] = [];
   for (const r of rows) {
@@ -133,6 +165,7 @@ async function loadExternal(supabase: Client, perLineage: number): Promise<{
     });
   }
   return { epochs, scanned: rows.length };
+
 }
 
 
