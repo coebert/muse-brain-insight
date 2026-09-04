@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { BadgeCheck, CircleOff, History } from "lucide-react";
+import { Activity, BadgeCheck, CircleOff, History } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
   getCoebisModelCatalog,
   type CoebisModelVersionRow,
 } from "@/lib/eeg/coebis-models.functions";
+import { getLiveAccuracy } from "@/lib/eeg/lineage-live-accuracy.functions";
 
 export const Route = createFileRoute("/_authenticated/models")({
   head: () => ({
@@ -67,6 +68,131 @@ function StatusBadge({ v }: { v: CoebisModelVersionRow }) {
   );
 }
 
+function LiveAccuracyPanel() {
+  const fetchLive = useServerFn(getLiveAccuracy);
+  const live = useQuery({
+    queryKey: ["coebis-live-accuracy"],
+    queryFn: () => fetchLive({ data: {} }),
+    refetchInterval: 60_000,
+  });
+  const data = live.data;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Activity className="size-5" /> Live accuracy, as of now
+        </CardTitle>
+        <CardDescription>
+          Every validated paired reading held today, scored against whatever is in force for that
+          acquisition setup. The refit runs on its own every {data?.tickMinutes ?? 15} minutes and
+          only promotes a fit that beats what it replaces.
+          {data?.lastRefitAt
+            ? ` Last completed run ${new Date(data.lastRefitAt).toLocaleString()}.`
+            : " No completed run recorded yet."}
+          {data && data.schedulerStatus !== "running" && data.schedulerStatus !== "unknown"
+            ? ` Scheduler is ${data.schedulerStatus}${data.schedulerNote ? `: ${data.schedulerNote}` : ""}.`
+            : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        {live.isPending && <p className="text-sm text-muted-foreground">Scoring readings…</p>}
+        {live.isError && (
+          <p className="text-sm text-destructive">
+            Could not score live readings: {(live.error as Error).message}
+          </p>
+        )}
+        {data && data.lineages.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No paired monitor readings are on file, so there is nothing to score yet.
+          </p>
+        )}
+        {data && data.lineages.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Acquisition setup</TableHead>
+                <TableHead>In force</TableHead>
+                <TableHead>Readings</TableHead>
+                <TableHead>Current</TableHead>
+                <TableHead>Uncorrected index</TableHead>
+                <TableHead>Δ MAE</TableHead>
+                <TableHead>Since last run</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.lineages.map((l) => (
+                <TableRow key={l.lineageKey}>
+                  <TableCell>
+                    <code className="rounded bg-muted px-2 py-0.5 text-xs">{l.lineageKey}</code>
+                    {l.blockedReason && (
+                      <div className="mt-1 max-w-72 text-xs text-muted-foreground">
+                        {l.blockedReason}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {l.activeVersion != null ? (
+                      <Badge className="gap-1">
+                        <BadgeCheck className="size-3" /> v{l.activeVersion}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1">
+                        <CircleOff className="size-3" /> open index
+                      </Badge>
+                    )}
+                    {l.modelFamily && (
+                      <div className="text-xs text-muted-foreground">{l.modelFamily}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums text-sm">
+                    {l.n.toLocaleString()} · {l.cases} case{l.cases === 1 ? "" : "s"}
+                    <div className="text-xs text-muted-foreground">
+                      {l.gate.cleared ? "gate cleared" : `${l.gate.points.have}/${l.gate.points.need}`}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <MetricsCell mae={l.current.mae} ccc={l.current.ccc} />
+                  </TableCell>
+                  <TableCell>
+                    <MetricsCell mae={l.raw.mae} ccc={l.raw.ccc} />
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {l.maeGain == null ? (
+                      <span className="text-xs text-muted-foreground">no model yet</span>
+                    ) : (
+                      <span
+                        className={
+                          l.maeGain > 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : l.maeGain < 0
+                              ? "text-destructive"
+                              : undefined
+                        }
+                      >
+                        {l.maeGain > 0 ? "−" : "+"}
+                        {Math.abs(l.maeGain).toFixed(2)}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-sm">
+                    {l.readingsSinceRefit.toLocaleString()}
+                    <div className="text-xs text-muted-foreground">
+                      {l.newestReadingAt
+                        ? new Date(l.newestReadingAt).toLocaleDateString()
+                        : "no timestamp"}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ModelsPage() {
   const fetchCatalog = useServerFn(getCoebisModelCatalog);
   const catalog = useQuery({
@@ -75,6 +201,7 @@ function ModelsPage() {
   });
 
   const data = catalog.data;
+
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -91,6 +218,8 @@ function ModelsPage() {
           across lineages.
         </p>
       </div>
+
+      <LiveAccuracyPanel />
 
       {catalog.isPending && (
         <p className="text-sm text-muted-foreground">Loading version history…</p>
