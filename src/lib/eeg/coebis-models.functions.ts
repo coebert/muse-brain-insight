@@ -124,12 +124,16 @@ export const getCoebisModelCatalog = createServerFn({ method: "GET" })
           cases: { have: cases, need: MIN_SESSIONS },
         },
         verdict: versionVerdict({ promoted, isActive, maeGain, before, after }),
-        trainingText: trainingSummary({
-          n,
-          cases,
-          folds: num(t["folds"]) ?? 0,
-          passRate: num(t["passRate"]) ?? undefined,
-        }),
+        trainingText: (() => {
+          const summary: { n: number; cases: number; folds: number; passRate?: number } = {
+            n,
+            cases,
+            folds: num(t["folds"]) ?? 0,
+          };
+          const passRate = num(t["passRate"]);
+          if (passRate != null) summary.passRate = passRate;
+          return trainingSummary(summary);
+        })(),
       };
 
       const list = byLineage.get(row.lineageKey) ?? [];
