@@ -27,113 +27,21 @@ export interface ReferenceLibraryReport {
   generatedAt: string;
 }
 
-async function countRows(
-  supabase: Client,
-  build: () => any,
-): Promise<{ rows: number; cases: number }> {
-  const { count } = await build();
-  return { rows: count ?? 0, cases: 0 };
-}
-
 export async function loadReferenceLibrary(
   supabase: Client,
   userId: string,
 ): Promise<ReferenceLibraryReport> {
-  const coverage: FormatCoverage[] = [];
-
-  const vitaldb = await countRows(supabase, () =>
-    supabase
-      .from("external_reference_points")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("source", "vitaldb"),
-  );
-  const { data: vitalCases } = await supabase
-    .from("external_reference_points")
-    .select("case_ref")
-    .eq("user_id", userId)
-    .eq("source", "vitaldb")
-    .limit(10000);
-  coverage.push({
-    formatId: "vitaldb-bis",
-    rows: vitaldb.rows,
-    cases: new Set((vitalCases ?? []).map((r: any) => r.case_ref)).size,
-    own: false,
-  });
-
-  const perLineage = async (formatId: string, like: string) => {
-    const { data } = await supabase
-      .from("bis_paired_points")
-      .select("session_id, external_ref")
-      .eq("user_id", userId)
-      .like("source_lineage", like)
-      .limit(60000);
-    const rows = data ?? [];
-    coverage.push({
-      formatId,
-      rows: rows.length,
-      cases: new Set(rows.map((r: any) => r.session_id ?? r.external_ref)).size,
-      own: false,
-    });
-  };
-  await perLineage("figshare-ma-bis", "figshare%");
-
-  const labelled = async (formatId: string, lineageLike: string, labelSource?: string) => {
-    let q = supabase
-      .from("external_spectral_epochs")
-      .select("case_ref")
-      .eq("user_id", userId)
-      .like("source_lineage", lineageLike)
-      .not("label", "is", null)
-      .limit(60000);
-    if (labelSource) q = q.eq("label_source", labelSource);
-    const { data } = await q;
-    const rows = data ?? [];
-    coverage.push({
-      formatId,
-      rows: rows.length,
-      cases: new Set(rows.map((r: any) => r.case_ref)).size,
-      own: false,
-    });
-  };
-  await labelled("dose1-moaas", "%dose-i%", "moaas");
-  await labelled("bids-events", "%ds004541%");
-
-  // The user's own uploads: paired readings filed from a monitor export, and
-  // state labels written from a score sheet or event list.
-  const { data: ownPaired } = await supabase
-    .from("bis_paired_points")
-    .select("session_id")
-    .eq("user_id", userId)
-    .eq("context", "reference upload")
-    .limit(20000);
-  coverage.push({
-    formatId: "generic-bis",
-    rows: (ownPaired ?? []).length,
-    cases: new Set((ownPaired ?? []).map((r: any) => r.session_id)).size,
-    own: true,
-  });
-
-  const { data: ownLabels } = await supabase
-    .from("depth_state_labels")
-    .select("session_id, note")
-    .eq("user_id", userId)
-    .limit(20000);
-  const labelRows = ownLabels ?? [];
-  const moaasRows = labelRows.filter((r: any) => String(r.note ?? "").includes("MOAA/S"));
-  const eventRows = labelRows.filter((r: any) => !String(r.note ?? "").includes("MOAA/S"));
-  coverage.push({
-    formatId: "generic-moaas",
-    rows: moaasRows.length,
-    cases: new Set(moaasRows.map((r: any) => r.session_id)).size,
-    own: true,
-  });
-  coverage.push({
-    formatId: "generic-events",
-    rows: eventRows.length,
-    cases: new Set(eventRows.map((r: any) => r.session_id)).size,
-    own: true,
-  });
+  // Exact row and case counts per format, scoped to the signed-in user by
+  // the database itself rather than by a paged read.
+  const { data: counts, error } = await supabase.rpc("reference_coverage");
+  if (error) throw new Error(error.message);
+  const own = new Set(["generic-bis", "generic-moaas", "generic-events"]);
+  const coverage: FormatCoverage[] = ((counts ?? []) as any[]).map((r) => ({
+    formatId: String(r.format_id),
+    rows: Number(r.row_count ?? 0),
+    cases: Number(r.case_count ?? 0),
+    own: own.has(String(r.format_id)),
+  }));
 
   const { data: sessionRows } = await supabase
     .from("eeg_sessions")
