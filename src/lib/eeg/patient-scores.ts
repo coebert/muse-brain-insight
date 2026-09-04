@@ -400,6 +400,15 @@ export function buildPatientRows(
       maeGain,
       sufficient,
       verdict: "",
+      divergence: divergenceOf(
+        scored.map(({ point, coebis }) => ({
+          at: point.at,
+          reference: point.reference,
+          displayed: coebis ?? point.appIndex,
+          sr: point.appSr,
+        })),
+        lineageModel ? "coebis" : "open-index",
+      ),
       series: thinCaseSeries(
         scored.map(({ point, coebis }) => ({
           at: Math.round(point.at),
@@ -408,8 +417,12 @@ export function buildPatientRows(
           coebis: r1(coebis),
           sr: r2(point.appSr),
           sef: r2(point.appSef),
+          refSr: r2(point.refSr),
+          refSef: r2(point.refSef),
+          gap: r1((coebis ?? point.appIndex) - point.reference),
         })),
       ),
+
     };
     row.verdict = verdictFor(row);
     rows.push(row);
