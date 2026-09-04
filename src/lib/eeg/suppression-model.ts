@@ -155,13 +155,14 @@ export function fitSuppressionModel(points: SuppressionPoint[]): SuppressionMode
   const suppressed = usable.filter((p) => p.bisSr >= MONITOR_SUPPRESSED_PCT).length;
   const clear = usable.length - suppressed;
   // Suppressed readings are the minority class and the clinically
-  // consequential one — a missed suppression matters more than a percentage
-  // point of error on a clear stretch — so they enter at raised weight. The
-  // correction is the square root of the imbalance rather than the imbalance
-  // itself, and capped, because fully balancing a 90:10 pool drags ordinary
-  // readings upwards for no clinical return.
+  // consequential one — a missed suppression matters far more than a fraction
+  // of a percentage point of error on a clear stretch — so the two sides are
+  // balanced. On the VitalDB pool this is what separates a fit that finds real
+  // suppression the raw detector misses from one that simply answers "clear";
+  // the price is a small rise in average error, which the promotion gate caps.
   const positiveWeight =
-    suppressed > 0 ? Math.min(3, Math.max(1, Math.sqrt(clear / suppressed))) : 1;
+    suppressed > 0 ? Math.min(8, Math.max(1, clear / suppressed)) : 1;
+
 
 
 
