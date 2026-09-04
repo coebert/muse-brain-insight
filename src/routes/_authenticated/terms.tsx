@@ -182,7 +182,6 @@ function TermLibraryPage() {
                   <thead>
                     <tr className="text-left text-muted-foreground">
                       <th className="p-2 font-medium">Term</th>
-                      <th className="p-2 font-medium">Covariate</th>
                       <th className="p-2 font-medium">Cases</th>
                       <th className="p-2 font-medium">State</th>
                       <th className="p-2 font-medium">Lineages and seed offsets</th>
@@ -194,7 +193,6 @@ function TermLibraryPage() {
                         <td className="p-2 font-medium">
                           {e.groupLabel}: {e.levelLabel}
                         </td>
-                        <td className="p-2 text-muted-foreground">{e.groupLabel}</td>
                         <td className="p-2">{e.totalCases}</td>
                         <td className="p-2">
                           <span
