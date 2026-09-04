@@ -10,6 +10,7 @@
 import { covariateAdjustment, covariateLabel, type CaseCovariates } from "./covariates";
 import { knotCorrection, type BisAlignment } from "./depth";
 import type { AdjunctCorrection } from "./coebis-adjuncts";
+import type { KetamineSignature } from "./ketamine";
 
 export interface CoebisExplainStep {
   /** Short step name, e.g. "Patient adjustment: age 75-89". */
@@ -43,6 +44,7 @@ export function explainCoebis(
   alignment: BisAlignment | null | undefined,
   cov: CaseCovariates | null | undefined,
   adjunct?: AdjunctCorrection | null,
+  ketamine?: KetamineSignature | null,
 ): CoebisExplanation {
   const caveats: string[] = [];
   if (openIbis == null || !alignment) {
@@ -127,6 +129,27 @@ export function explainCoebis(
     if (adjunct.capped) {
       caveats.push("The adjunct stage hit its cap; it can nudge the index, never redefine it.");
     }
+  }
+
+  if (ketamine?.corrected && ketamine.delta < 0) {
+    value += ketamine.delta;
+    steps.push({
+      label: "Ketamine correction",
+      delta: Number(ketamine.delta.toFixed(1)),
+      value: Number(value.toFixed(1)),
+      detail: ketamine.reasons.join(" "),
+    });
+    caveats.push(
+      "Ketamine is recorded for this case: the beta/gamma activity it produces is treated as drug effect, not wakefulness. The correction is bounded, so still judge depth clinically.",
+    );
+  } else if (ketamine?.advisory) {
+    caveats.push(
+      "The spectrum shows the fast-frequency pattern ketamine produces, but no ketamine is recorded for this case. If it has been given, this index is reading high — record it so COEBIS can correct for it.",
+    );
+  } else if (ketamine?.exposure === "declared") {
+    caveats.push(
+      "Ketamine is recorded for this case; the index is being watched for spurious beta/gamma inflation, none of which is present in the current epoch.",
+    );
   }
 
   const final = clamp(value, 0, 100);
