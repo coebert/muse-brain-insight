@@ -29,6 +29,7 @@ const TOOLS = [
   { to: "/pathology", label: "Pathology validation" },
   { to: "/suppression", label: "Suppression model" },
   { to: "/flags", label: "Suppression flags vs COEBIS" },
+  { to: "/depth", label: "Depth dashboard" },
 
   { to: "/ketamine", label: "Ketamine signature" },
   { to: "/drugs", label: "Drug library" },
