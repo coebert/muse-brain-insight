@@ -41,6 +41,8 @@ import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
 import { CoebisV2LivePanel } from "@/components/monitor/CoebisV2LivePanel";
+import { HeadbandTracePanel } from "@/components/monitor/HeadbandTracePanel";
+
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { SeizureAlertCards } from "@/components/monitor/SeizureAlertCards";
@@ -920,6 +922,15 @@ function Monitor() {
                 onMark={addMarker}
               />
             </section>
+
+            {/* The headband's own shape, beside the number derived from it. */}
+            <HeadbandTracePanel
+              archive={monitor.rawArchive}
+              profile={deviceProfile}
+              streaming={streaming}
+              contactOk={monitor.contactOk}
+            />
+
 
             {/* Real-time seizure alert cards, newest first */}
             {caseState !== "idle" ? (
