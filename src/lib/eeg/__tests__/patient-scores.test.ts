@@ -11,6 +11,7 @@ import {
   type PatientLineageModel,
   type PatientReadingInput,
   type ReferenceKind,
+  divergenceOf,
 } from "@/lib/eeg/patient-scores";
 
 function reading(over: Partial<PatientReadingInput> & { at: number }): PatientReadingInput {
@@ -170,5 +171,41 @@ describe("per-patient COEBIS scoreboard", () => {
   it("reports spreads without inventing values for missing measurements", () => {
     expect(spreadOf([])).toEqual({ median: null, p10: null, p90: null, min: null, max: null });
     expect(spreadOf([null, 10, 20, null]).median).toBe(15);
+  });
+});
+
+describe("divergenceOf", () => {
+  it("reports the widest gap with its second and both values", () => {
+    const d = divergenceOf(
+      [
+        { at: 0, reference: 50, displayed: 52, sr: 0 },
+        { at: 60, reference: 40, displayed: 65, sr: 0 },
+        { at: 120, reference: 45, displayed: 46, sr: 0 },
+      ],
+      "coebis",
+    );
+    expect(d.maxAbs).toBe(25);
+    expect(d.worstAt).toBe(60);
+    expect(d.worstReference).toBe(40);
+    expect(d.worstDisplayed).toBe(65);
+    expect(d.beyond10Pct).toBeCloseTo(33.3, 0);
+    expect(d.beyond10SuppressedPct).toBeNull();
+  });
+
+  it("separates divergence inside suppression from the rest", () => {
+    const d = divergenceOf(
+      [
+        { at: 0, reference: 30, displayed: 31, sr: 0 },
+        { at: 10, reference: 20, displayed: 40, sr: 40 },
+        { at: 20, reference: 18, displayed: 44, sr: 60 },
+      ],
+      "open-index",
+    );
+    expect(d.source).toBe("open-index");
+    expect(d.beyond10SuppressedPct).toBe(100);
+  });
+
+  it("returns nulls when there is nothing comparable", () => {
+    expect(divergenceOf([], "coebis").maxAbs).toBeNull();
   });
 });
