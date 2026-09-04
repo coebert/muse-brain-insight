@@ -102,7 +102,11 @@ async function loadPaired(
     const caseRef = featureCase ?? pairedCaseRef(r.external_ref);
     if (!caseRef) continue;
     const at = Number(r.at_seconds ?? 0);
-    const score = { coebis: num(r.app_index), suppressionRatio: asPercent(num(r.app_sr)) };
+    const score = {
+      coebis: num(r.app_index),
+      suppressionRatio: asPercent(num(r.app_sr)),
+      bis: num(r.bis),
+    };
     for (const key of new Set([caseRef, canonicalCaseKey(caseRef)])) {
       index.set(key, [...(index.get(key) ?? []), { at, score }]);
       labels.set(key, [
