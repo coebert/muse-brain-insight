@@ -44,6 +44,12 @@ export interface DrugExposureEpoch {
   stateLabel: DepthStateLabel | null;
   /** Agents recorded for this case. */
   declared: DrugKey[];
+  /**
+   * True when the epoch was pulled *because* it carries an independent label.
+   * Those rows feed the grades but are left out of the descriptive means, which
+   * would otherwise be skewed towards the labelled parts of the recording.
+   */
+  labelSlice?: boolean;
 }
 
 export interface ExposureCase {
@@ -136,19 +142,23 @@ function asGradedEpochs(epochs: DrugExposureEpoch[]): KetamineCaseEpoch[] {
   }));
 }
 
+function profileRows(epochs: DrugExposureEpoch[]): DrugExposureEpoch[] {
+  const profile = epochs.filter((e) => !e.labelSlice);
+  return profile.length ? profile : epochs;
+}
+
 export function summariseExposureCase(caseEpochs: DrugExposureEpoch[]): ExposureCase {
   const first = caseEpochs[0]!;
+  const profile = profileRows(caseEpochs);
   const drugSet = new Set<DrugKey>();
   for (const e of caseEpochs) for (const d of e.declared) drugSet.add(d);
   const drugs = [...DRUG_BY_KEY.keys()].filter((k) => drugSet.has(k));
 
-  const indices = caseEpochs.map((e) => e.coebis).filter((v): v is number => v != null);
-  const suppression = caseEpochs
-    .map((e) => e.suppressionPct)
-    .filter((v): v is number => v != null);
+  const indices = profile.map((e) => e.coebis).filter((v): v is number => v != null);
+  const suppression = profile.map((e) => e.suppressionPct).filter((v): v is number => v != null);
 
   const deltas: number[] = [];
-  for (const e of caseEpochs) {
+  for (const e of profile) {
     if (!drugs.length || e.coebis == null) continue;
     const stage = drugStage({
       aligned: e.coebis,
@@ -190,8 +200,9 @@ function cohortOf(
   cases: ExposureCase[],
   epochs: DrugExposureEpoch[],
 ): DrugCohort {
-  const indices = epochs.map((e) => e.coebis).filter((v): v is number => v != null);
-  const suppression = epochs.map((e) => e.suppressionPct).filter((v): v is number => v != null);
+  const profile = profileRows(epochs);
+  const indices = profile.map((e) => e.coebis).filter((v): v is number => v != null);
+  const suppression = profile.map((e) => e.suppressionPct).filter((v): v is number => v != null);
   const arm = (state: DepthStateLabel) =>
     epochs.filter((e) => e.stateLabel === state && e.coebis != null).map((e) => e.coebis as number);
   const anaes = arm("anaesthetised");
