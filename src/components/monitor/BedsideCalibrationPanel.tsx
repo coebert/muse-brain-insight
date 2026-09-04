@@ -56,7 +56,10 @@ export function BedsideCalibrationPanel() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const run: RefitRunRow | null = data?.runs?.[0] ?? null;
+  // A scheduled run that is still in flight carries no detail yet, so fall
+  // back to the newest run that actually graded something.
+  const run: RefitRunRow | null =
+    (data?.runs ?? []).find((r: RefitRunRow) => (r.detail?.length ?? 0) > 0) ?? null;
   const detail = (run?.detail ?? []) as LineageRefitRecord[];
   const rows = [...detail].sort((a, b) => b.n - a.n);
   const activeByLineage = new Map(
