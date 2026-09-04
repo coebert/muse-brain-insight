@@ -341,16 +341,38 @@ export function gateStatus(fit: SuppressionFitReport): GateStatus {
   };
 }
 
+/** Options controlling which model the dashboard reads. */
+export interface DashboardOptions {
+  maxCases?: number;
+  /**
+   * The calibration in force. When omitted the dashboard falls back to the
+   * cross-validated fit, and when that is blocked to the raw detector, so the
+   * page never silently reports an unpromoted model as if it were live.
+   */
+  activeModel?: SuppressionModel | null;
+  /** Where the coefficients came from, for the page to state plainly. */
+  modelSource?: ModelSource;
+}
+
 /**
- * Build the whole dashboard: the gate, the summed flag agreement and the
- * per-case traces, ranked by how much suppression the monitor recorded so the
- * cases that matter clinically come first.
+ * Build the whole dashboard: the gate, the summed flag agreement, the cohort
+ * COEBIS-versus-BIS comparison and the per-case traces, ranked by how much
+ * suppression the monitor recorded so the cases that matter clinically come
+ * first.
  */
 export function buildSuppressionDashboard(
   points: SuppressionPoint[],
   fit: SuppressionFitReport,
-  maxCases = MAX_DASHBOARD_CASES,
+  options: DashboardOptions | number = {},
 ): SuppressionDashboard {
+  const opts: DashboardOptions =
+    typeof options === "number" ? { maxCases: options } : options;
+  const maxCases = opts.maxCases ?? MAX_DASHBOARD_CASES;
+  const model = opts.activeModel !== undefined ? opts.activeModel : fit.model;
+  const modelSource: ModelSource =
+    opts.modelSource ??
+    (opts.activeModel ? "promoted" : model ? "candidate fit" : "raw detector");
+
   const byCase = new Map<string, SuppressionPoint[]>();
   for (const p of points) {
     const list = byCase.get(p.caseRef);
@@ -358,8 +380,38 @@ export function buildSuppressionDashboard(
     else byCase.set(p.caseRef, [p]);
   }
 
-  const traces = [...byCase.entries()]
-    .map(([caseRef, rows]) => caseTrace(caseRef, rows, fit.model))
+  const all = [...byCase.entries()].map(([caseRef, rows]) =>
+    caseTrace(caseRef, rows, model),
+  );
+
+  // The cohort figures count every patient, not only the ones drawn below,
+  // so the headline never flatters itself by dropping the quiet cases.
+  const totals: FlagAgreement = { agreed: 0, missed: 0, falseAlarms: 0, clear: 0 };
+  const bisAcc = newBisAccumulator();
+  let casesWithBis = 0;
+  for (const t of all) {
+    totals.agreed += t.flags.agreed;
+    totals.missed += t.flags.missed;
+    totals.falseAlarms += t.flags.falseAlarms;
+    totals.clear += t.flags.clear;
+    if (t.bis.n) {
+      casesWithBis++;
+      mergeBis(bisAcc, {
+        n: t.bis.n,
+        sumBis: (t.bis.meanBis ?? 0) * t.bis.n,
+        sumIndex: (t.bis.meanIndex ?? 0) * t.bis.n,
+        sumCapped: (t.bis.meanCappedIndex ?? 0) * t.bis.n,
+        sumAbsRaw: (t.bis.maeRaw ?? 0) * t.bis.n,
+        sumAbsCapped: (t.bis.maeCapped ?? 0) * t.bis.n,
+        sumSignedRaw: (t.bis.biasRaw ?? 0) * t.bis.n,
+        sumSignedCapped: (t.bis.biasCapped ?? 0) * t.bis.n,
+        capImproved: t.bis.capImproved,
+        capWorsened: t.bis.capWorsened,
+      });
+    }
+  }
+
+  const traces = all
     .sort(
       (a, b) =>
         b.flags.agreed + b.flags.missed - (a.flags.agreed + a.flags.missed) ||
@@ -367,13 +419,14 @@ export function buildSuppressionDashboard(
     )
     .slice(0, maxCases);
 
-  const totals: FlagAgreement = { agreed: 0, missed: 0, falseAlarms: 0, clear: 0 };
-  for (const t of traces) {
-    totals.agreed += t.flags.agreed;
-    totals.missed += t.flags.missed;
-    totals.falseAlarms += t.flags.falseAlarms;
-    totals.clear += t.flags.clear;
-  }
-
-  return { gate: gateStatus(fit), totals, cases: traces };
+  return {
+    gate: gateStatus(fit),
+    modelSource,
+    totals,
+    bisTotals: summariseBis(bisAcc),
+    casesWithBis,
+    patients: all.length,
+    cases: traces,
+  };
 }
+
