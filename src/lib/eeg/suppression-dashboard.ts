@@ -433,6 +433,9 @@ export function buildSuppressionDashboard(
         sumSignedCapped: (t.bis.biasCapped ?? 0) * t.bis.n,
         capImproved: t.bis.capImproved,
         capWorsened: t.bis.capWorsened,
+        within5: t.bis.within5,
+        within10: t.bis.within10,
+
       });
     }
   }
