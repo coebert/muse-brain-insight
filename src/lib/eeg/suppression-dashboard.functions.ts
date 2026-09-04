@@ -59,9 +59,9 @@ export const getSuppressionDashboard = createServerFn({ method: "GET" })
 
       return buildSuppressionDashboard(points, fit, {
         maxCases: data?.cases ?? MAX_DASHBOARD_CASES,
-        activeModel: active ? active.model : undefined,
-        modelSource: active ? "promoted" : undefined,
+        ...(active ? { activeModel: active.model, modelSource: "promoted" as const } : {}),
       });
+
     } catch {
       return empty();
     }
