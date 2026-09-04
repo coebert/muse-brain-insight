@@ -485,6 +485,8 @@ function SuppressionPage() {
             </Card>
 
 
+            <BisOnBenchmarkCard />
+
             <GradeCard
               title="Graded against the monitor's suppression ratio"
               description="Held-out cases only — the raw detector on the left of each pair, the fitted model on the right."
