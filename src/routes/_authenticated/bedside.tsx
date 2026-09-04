@@ -294,28 +294,52 @@ function BedsidePage() {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              This screen streams and displays only — file the case from the full monitor. On a Muse
-              the amplitude is in real microvolts; a Regul8 streams arbitrary units, so its scale is
+              A case started here records the same trend, suppression and events as the full monitor
+              and is filed to the same timeline, so the depth dashboard can compare it. On a Muse the
+              amplitude is in real microvolts; a Regul8 streams arbitrary units, so its scale is
               relative, and on either band the depth index is an extrapolation of a model fitted on
               theatre recordings.
             </p>
           </CollapsibleContent>
         </Collapsible>
 
-        <section className="mt-4 flex flex-wrap gap-2">
+        <section className="mt-4 flex flex-wrap items-center gap-2">
           {caseState === "running" ? (
-            <Button variant="outline" className="min-h-11" onClick={() => endCase(false)}>
-              <Square className="size-4" /> Stop
+            <Button variant="outline" className="min-h-11" onClick={() => endCase(true)}>
+              <Square className="size-4" /> End case
             </Button>
           ) : (
-            <Button className="min-h-11" onClick={() => void startCase("muse", { asTest: true })}>
-              <Bluetooth className="size-4" /> Connect headband
+            <Button className="min-h-11" onClick={() => void startCase("muse")}>
+              <Bluetooth className="size-4" /> Start case · {meta.caseCode || "new code"}
             </Button>
           )}
+          {/* Nothing reaches the dashboard until the recording is filed. */}
+          {caseState === "ended" && hasUnfiledData && !testing && !saved ? (
+            <Button
+              variant="secondary"
+              className="min-h-11"
+              disabled={saving}
+              onClick={() => void handleSave()}
+            >
+              <Save className="size-4" /> {saving ? "Filing…" : "File case"}
+            </Button>
+          ) : null}
           <Button asChild variant="ghost" className="min-h-11">
             <Link to="/">Full monitor</Link>
           </Button>
+          {caseState !== "idle" ? (
+            <span className="metric-value text-xs text-muted-foreground">
+              {testing
+                ? "Test session — nothing is recorded"
+                : saved
+                  ? "Filed to the timeline"
+                  : caseState === "running"
+                    ? `Recording · ${monitor.epochs.length} readings`
+                    : "Ended, not yet filed"}
+            </span>
+          ) : null}
         </section>
+
       </main>
     </div>
   );
