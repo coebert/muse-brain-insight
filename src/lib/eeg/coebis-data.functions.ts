@@ -329,7 +329,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
     const { data: latestRow } = await context.supabase
       .from("coebis_model_versions")
       .select(
-        "lineage_key, model_version, created_at, promoted, is_active, mae_gain, metrics_before, metrics_after, training, reason",
+        "lineage_key, version, created_at, promoted, is_active, mae_gain, metrics_before, metrics_after, training, reason",
       )
       .order("created_at", { ascending: false })
       .limit(1)
@@ -340,7 +340,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
     const candidate = latestRow
       ? {
           lineageKey: String(latestRow.lineage_key),
-          modelVersion: String(latestRow.model_version ?? "coebis"),
+          modelVersion: `v${latestRow.version}`,
           createdAt: String(latestRow.created_at),
           promoted: Boolean(latestRow.promoted),
           isActive: Boolean(latestRow.is_active),
@@ -363,6 +363,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       lastRecordedAt: points[points.length - 1]?.recordedAt ?? null,
       thresholds: { points: MIN_POINTS, sessions: MIN_SESSIONS },
       active,
+      candidate,
       knots,
       bands: analysis.bands,
       cases,
