@@ -88,7 +88,7 @@ async function loadPaired(supabase: Client, limit: number): Promise<{
     (from, to) =>
       supabase
         .from("bis_paired_points")
-        .select("source_lineage, external_ref, at_seconds, bis_sr, app_index, app_sr, features")
+        .select("source_lineage, external_ref, at_seconds, bis, bis_sr, app_index, app_sr, features")
         .order("id", { ascending: true })
         .range(from, to),
     limit,
