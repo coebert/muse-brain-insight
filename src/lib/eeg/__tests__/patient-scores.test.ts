@@ -95,7 +95,7 @@ describe("per-patient COEBIS scoreboard", () => {
       lineageKey: r.lineageKey,
       cov: {},
     }));
-    const model = fitCoebisModel(training, "spline");
+    const model = fitCoebisModel(training, "affine");
     expect(model).not.toBeNull();
     const models = new Map<string, PatientLineageModel>([
       ["muse-2|AF7|256", { model: model!, version: 2 }],
