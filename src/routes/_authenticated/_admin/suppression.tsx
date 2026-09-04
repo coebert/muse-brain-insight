@@ -389,7 +389,7 @@ function SuppressionPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <AppNav />
       <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
         <header className="space-y-2">

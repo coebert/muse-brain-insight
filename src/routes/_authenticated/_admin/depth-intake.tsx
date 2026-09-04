@@ -173,7 +173,7 @@ function DepthIntakePage() {
     (paired?.readings ?? 0) >= GATE_READINGS && usable.length >= GATE_CASES;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
           <AppNav />
