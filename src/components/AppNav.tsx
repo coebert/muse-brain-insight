@@ -25,6 +25,7 @@ const TOOLS = [
   { to: "/blockers", label: "Blocked lineages" },
   { to: "/pathology", label: "Pathology validation" },
   { to: "/ketamine", label: "Ketamine signature" },
+  { to: "/drugs", label: "Drug library" },
   { to: "/patients", label: "Patient scoreboard" },
   { to: "/outcomes", label: "Case outcomes" },
 
