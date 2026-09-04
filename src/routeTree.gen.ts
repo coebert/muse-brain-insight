@@ -19,7 +19,6 @@ import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
-import { Route as AuthenticatedAdminAdminRouteImport } from './routes/_authenticated/_admin/admin'
 import { Route as AuthenticatedAdminBisBenchmarkRouteImport } from './routes/_authenticated/_admin/bis-benchmark'
 import { Route as AuthenticatedAdminBlockersRouteImport } from './routes/_authenticated/_admin/blockers'
 import { Route as AuthenticatedAdminBrainwavesRouteImport } from './routes/_authenticated/_admin/brainwaves'
@@ -47,6 +46,7 @@ import { Route as AuthenticatedAdminTrendsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminValidateRouteImport } from './routes/_authenticated/_admin/validate'
 import { Route as AuthenticatedCaseCaseRefRouteImport } from './routes/_authenticated/case.$caseRef'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
+import { Route as AuthenticatedAdminAdminIndexRouteImport } from './routes/_authenticated/_admin/admin.index'
 import { Route as AuthenticatedAdminAdminPeopleRouteImport } from './routes/_authenticated/_admin/admin.people'
 import { Route as ApiPublicHooksCoebisRefitRouteImport } from './routes/api/public/hooks/coebis-refit'
 
@@ -97,11 +97,6 @@ const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   id: '/terms',
   path: '/terms',
   getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminAdminRoute = AuthenticatedAdminAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminBisBenchmarkRoute =
   AuthenticatedAdminBisBenchmarkRouteImport.update({
@@ -261,11 +256,17 @@ const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
   path: '/report/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminAdminIndexRoute =
+  AuthenticatedAdminAdminIndexRouteImport.update({
+    id: '/admin/',
+    path: '/admin/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAdminPeopleRoute =
   AuthenticatedAdminAdminPeopleRouteImport.update({
-    id: '/people',
-    path: '/people',
-    getParentRoute: () => AuthenticatedAdminAdminRoute,
+    id: '/admin/people',
+    path: '/admin/people',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const ApiPublicHooksCoebisRefitRoute =
   ApiPublicHooksCoebisRefitRouteImport.update({
@@ -283,7 +284,6 @@ export interface FileRoutesByFullPath {
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/terms': typeof AuthenticatedTermsRoute
-  '/admin': typeof AuthenticatedAdminAdminRouteWithChildren
   '/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
   '/blockers': typeof AuthenticatedAdminBlockersRoute
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
@@ -313,6 +313,7 @@ export interface FileRoutesByFullPath {
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
+  '/admin/': typeof AuthenticatedAdminAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -323,7 +324,6 @@ export interface FileRoutesByTo {
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/terms': typeof AuthenticatedTermsRoute
-  '/admin': typeof AuthenticatedAdminAdminRouteWithChildren
   '/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
   '/blockers': typeof AuthenticatedAdminBlockersRoute
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
@@ -353,6 +353,7 @@ export interface FileRoutesByTo {
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
+  '/admin': typeof AuthenticatedAdminAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -366,7 +367,6 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/_admin/admin': typeof AuthenticatedAdminAdminRouteWithChildren
   '/_authenticated/_admin/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
   '/_authenticated/_admin/blockers': typeof AuthenticatedAdminBlockersRoute
   '/_authenticated/_admin/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
@@ -396,6 +396,7 @@ export interface FileRoutesById {
   '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
   '/_authenticated/_admin/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
+  '/_authenticated/_admin/admin/': typeof AuthenticatedAdminAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -408,7 +409,6 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/settings'
     | '/terms'
-    | '/admin'
     | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
@@ -438,6 +438,7 @@ export interface FileRouteTypes {
     | '/report/$id'
     | '/admin/people'
     | '/api/public/hooks/coebis-refit'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -448,7 +449,6 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/settings'
     | '/terms'
-    | '/admin'
     | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
@@ -478,6 +478,7 @@ export interface FileRouteTypes {
     | '/report/$id'
     | '/admin/people'
     | '/api/public/hooks/coebis-refit'
+    | '/admin'
   id:
     | '__root__'
     | '/_authenticated'
@@ -490,7 +491,6 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/terms'
     | '/_authenticated/'
-    | '/_authenticated/_admin/admin'
     | '/_authenticated/_admin/bis-benchmark'
     | '/_authenticated/_admin/blockers'
     | '/_authenticated/_admin/brainwaves'
@@ -520,6 +520,7 @@ export interface FileRouteTypes {
     | '/_authenticated/report/$id'
     | '/_authenticated/_admin/admin/people'
     | '/api/public/hooks/coebis-refit'
+    | '/_authenticated/_admin/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -599,13 +600,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/terms'
       preLoaderRoute: typeof AuthenticatedTermsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/_admin/admin': {
-      id: '/_authenticated/_admin/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminAdminRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/bis-benchmark': {
       id: '/_authenticated/_admin/bis-benchmark'
@@ -796,12 +790,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_admin/admin/': {
+      id: '/_authenticated/_admin/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/admin/people': {
       id: '/_authenticated/_admin/admin/people'
-      path: '/people'
+      path: '/admin/people'
       fullPath: '/admin/people'
       preLoaderRoute: typeof AuthenticatedAdminAdminPeopleRouteImport
-      parentRoute: typeof AuthenticatedAdminAdminRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/api/public/hooks/coebis-refit': {
       id: '/api/public/hooks/coebis-refit'
@@ -813,22 +814,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminAdminRouteChildren {
-  AuthenticatedAdminAdminPeopleRoute: typeof AuthenticatedAdminAdminPeopleRoute
-}
-
-const AuthenticatedAdminAdminRouteChildren: AuthenticatedAdminAdminRouteChildren =
-  {
-    AuthenticatedAdminAdminPeopleRoute: AuthenticatedAdminAdminPeopleRoute,
-  }
-
-const AuthenticatedAdminAdminRouteWithChildren =
-  AuthenticatedAdminAdminRoute._addFileChildren(
-    AuthenticatedAdminAdminRouteChildren,
-  )
-
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminAdminRoute: typeof AuthenticatedAdminAdminRouteWithChildren
   AuthenticatedAdminBisBenchmarkRoute: typeof AuthenticatedAdminBisBenchmarkRoute
   AuthenticatedAdminBlockersRoute: typeof AuthenticatedAdminBlockersRoute
   AuthenticatedAdminBrainwavesRoute: typeof AuthenticatedAdminBrainwavesRoute
@@ -854,10 +840,11 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminTrainingRoute: typeof AuthenticatedAdminTrainingRoute
   AuthenticatedAdminTrendsRoute: typeof AuthenticatedAdminTrendsRoute
   AuthenticatedAdminValidateRoute: typeof AuthenticatedAdminValidateRoute
+  AuthenticatedAdminAdminPeopleRoute: typeof AuthenticatedAdminAdminPeopleRoute
+  AuthenticatedAdminAdminIndexRoute: typeof AuthenticatedAdminAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminAdminRoute: AuthenticatedAdminAdminRouteWithChildren,
   AuthenticatedAdminBisBenchmarkRoute: AuthenticatedAdminBisBenchmarkRoute,
   AuthenticatedAdminBlockersRoute: AuthenticatedAdminBlockersRoute,
   AuthenticatedAdminBrainwavesRoute: AuthenticatedAdminBrainwavesRoute,
@@ -883,6 +870,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminTrainingRoute: AuthenticatedAdminTrainingRoute,
   AuthenticatedAdminTrendsRoute: AuthenticatedAdminTrendsRoute,
   AuthenticatedAdminValidateRoute: AuthenticatedAdminValidateRoute,
+  AuthenticatedAdminAdminPeopleRoute: AuthenticatedAdminAdminPeopleRoute,
+  AuthenticatedAdminAdminIndexRoute: AuthenticatedAdminAdminIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { ADMIN_SECTIONS } from "@/components/admin/AdminShell";
 
-export const Route = createFileRoute("/_authenticated/_admin/admin")({
+export const Route = createFileRoute("/_authenticated/_admin/admin/")({
   head: () => ({
     meta: [
       { title: "Admin — CortexTrace" },
