@@ -921,6 +921,15 @@ function Monitor() {
               />
             </section>
 
+            {/* The headband's own shape, beside the number derived from it. */}
+            <HeadbandTracePanel
+              archive={monitor.rawArchive}
+              profile={deviceProfile}
+              streaming={streaming}
+              contactOk={monitor.contactOk}
+            />
+
+
             {/* Real-time seizure alert cards, newest first */}
             {caseState !== "idle" ? (
               <SeizureAlertCards
