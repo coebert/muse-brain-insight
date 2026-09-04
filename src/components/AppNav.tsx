@@ -31,7 +31,9 @@ const TOOLS = [
   { to: "/exposure", label: "Drug exposure" },
 
   { to: "/patients", label: "Patient scoreboard" },
+  { to: "/notes", label: "Clinical notes" },
   { to: "/outcomes", label: "Case outcomes" },
+
 
 ] as const;
 

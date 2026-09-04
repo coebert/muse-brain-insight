@@ -64,6 +64,20 @@
       "when": 1788523658793,
       "tag": "0008_reference_coverage_case_split",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788523917471,
+      "tag": "0009_create_patient_context_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788524185613,
+      "tag": "0010_create_session_index_spread",
+      "breakpoints": true
     }
   ]
 }

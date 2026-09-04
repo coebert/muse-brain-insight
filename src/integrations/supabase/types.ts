@@ -1192,6 +1192,45 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_context_notes: {
+        Row: {
+          baseline_sealed: string | null
+          confounders_sealed: string | null
+          context_sealed: string | null
+          created_at: string
+          id: string
+          patient_key: string
+          patient_label: string | null
+          read_with_sealed: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_sealed?: string | null
+          confounders_sealed?: string | null
+          context_sealed?: string | null
+          created_at?: string
+          id?: string
+          patient_key: string
+          patient_label?: string | null
+          read_with_sealed?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_sealed?: string | null
+          confounders_sealed?: string | null
+          context_sealed?: string | null
+          created_at?: string
+          id?: string
+          patient_key?: string
+          patient_label?: string | null
+          read_with_sealed?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_links: {
         Row: {
           created_at: string
@@ -1457,6 +1496,15 @@ export type Database = {
           case_count: number
           format_id: string
           row_count: number
+        }[]
+      }
+      session_index_spread: {
+        Args: never
+        Returns: {
+          max_index: number
+          median_index: number
+          min_index: number
+          session_id: string
         }[]
       }
     }
