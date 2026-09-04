@@ -46,7 +46,14 @@ export async function loadTrainingMatrix(
    * client (the scheduled refit job), where RLS does not scope the read.
    */
   userId?: string,
+  /**
+   * Cap per acquisition lineage. Without it, one heavily ingested lineage
+   * (VitalDB) consumes the whole global budget and smaller lineages such as
+   * DOSE-I never reach the refit at all.
+   */
+  perLineageLimit = Number.POSITIVE_INFINITY,
 ): Promise<TrainingMatrix> {
+
   // The data API caps a single response at 1000 rows, so a plain `.limit()`
   // silently truncates the oldest slice of the pool and hides whole lineages
   // from the refit. Page through explicitly instead.
