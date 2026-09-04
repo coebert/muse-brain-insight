@@ -26,6 +26,13 @@ import {
 } from "./covariates";
 import { monitorEntropy, type MonitorEntropy } from "./entropy-monitor";
 import { coebisAdjunct, NO_ADJUNCT, type AdjunctCorrection } from "./coebis-adjuncts";
+import {
+  ketamineCorrection,
+  NO_KETAMINE,
+  type KetamineExposure,
+  type KetamineFeatures,
+  type KetamineSignature,
+} from "./ketamine";
 import { getActiveMontageFeatures } from "./psi-features";
 
 export interface DepthComponents {
@@ -63,6 +70,8 @@ export interface DepthReading {
   entropy?: MonitorEntropy | null;
   /** Adjunct (Entropy/PSI-informed) correction folded into COEBIS. */
   adjunct?: AdjunctCorrection;
+  /** Ketamine recognition: spectral pattern, advisory and any correction. */
+  ketamine?: KetamineSignature;
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
@@ -233,6 +242,20 @@ export function getActiveCaseCovariates(): CaseCovariates | null {
 
 export function setActiveCaseCovariates(cov: CaseCovariates | null) {
   activeCovariates = cov;
+}
+
+/**
+ * Whether ketamine is on board for the case on screen. Declared exposure is
+ * what licenses the ketamine correction; the EEG pattern alone never is.
+ */
+let activeKetamineExposure: KetamineExposure = "none";
+
+export function getActiveKetamineExposure(): KetamineExposure {
+  return activeKetamineExposure;
+}
+
+export function setActiveKetamineExposure(exposure: KetamineExposure) {
+  activeKetamineExposure = exposure;
 }
 
 /** The patient-specific part of the current COEBIS number, for explanation. */
@@ -420,6 +443,32 @@ function meanBandPowerDb(rows: (Float64Array | null)[], from: number, to: number
     }
   }
   return n ? sum / n : NaN;
+}
+
+/**
+ * Linear-power band shares of the 0.5–47 Hz spectrum, averaged over the
+ * rolling window. Used by the ketamine detector, which needs the shape of the
+ * spectrum rather than the openibis log ratios.
+ */
+function bandShares(rows: Float64Array[]): KetamineFeatures {
+  if (!rows.length) return { betaFraction: null, gammaFraction: null, alphaFraction: null, slowFraction: null };
+  const band = (from: number, to: number) => {
+    const a = binOf(from);
+    const b = binOf(to);
+    let s = 0;
+    for (const row of rows) for (let k = a; k <= b; k++) if (row[k]! > 0) s += row[k]!;
+    return s;
+  };
+  const total = band(0.5, 47);
+  if (!(total > 0)) {
+    return { betaFraction: null, gammaFraction: null, alphaFraction: null, slowFraction: null };
+  }
+  return {
+    betaFraction: band(13, 30) / total,
+    gammaFraction: band(30, 47) / total,
+    alphaFraction: band(8, 12) / total,
+    slowFraction: band(0.5, 4) / total,
+  };
 }
 
 function concentration(row: Float64Array, fromA: number, toA: number, fromB: number, toB: number) {
@@ -632,7 +681,23 @@ export class DepthIndexEstimator {
             bsr,
             quality: 1 - gatedFraction,
           });
-    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total);
+    // Ketamine stage: recognise the NMDA-antagonist beta/gamma pattern so it is
+    // not reported as a lighter patient. Applied after the adjuncts, on the
+    // displayed number only — the raw OpenIBIS index and any paired readings
+    // logged for fitting are untouched.
+    const afterAdjunct =
+      aligned == null ? null : clamp(aligned + adjunct.total, 0, 100);
+    const ketamine =
+      afterAdjunct == null
+        ? NO_KETAMINE
+        : ketamineCorrection({
+            aligned: afterAdjunct,
+            features: bandShares(rows),
+            exposure: activeKetamineExposure,
+            bsr,
+            quality: 1 - gatedFraction,
+          });
+    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total + ketamine.delta);
     const coebis = this.smoothCoebis(coebisRaw, epochSeconds);
     return {
       index,
@@ -648,6 +713,7 @@ export class DepthIndexEstimator {
       adjunct,
       coebis,
       coebisRaw,
+      ketamine,
       coebisBaseline: activeBisAlignment == null,
     };
   }

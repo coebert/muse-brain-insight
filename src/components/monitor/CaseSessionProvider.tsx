@@ -34,7 +34,8 @@ import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { describeMigration, migrateBrowserModelConfigs } from "@/lib/eeg/model-migration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
-import { setActiveCaseCovariates } from "@/lib/eeg/depth";
+import { setActiveCaseCovariates, setActiveKetamineExposure } from "@/lib/eeg/depth";
+import { ketamineDeclared } from "@/lib/eeg/ketamine";
 import { deriveClinicalCovariates } from "@/lib/eeg/clinical-covariates";
 import { ageBand } from "@/lib/eeg/save";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
@@ -273,6 +274,19 @@ function useCaseSessionState() {
     meta.chronicConditions,
     meta.acutePathology,
   ]);
+
+  // Declared ketamine exposure. Only a recorded drug licenses the ketamine
+  // correction to COEBIS; the EEG pattern on its own raises an advisory.
+  useEffect(() => {
+    setActiveKetamineExposure(
+      ketamineDeclared({
+        regimen: meta.regimen,
+        markers: [meta.notes, meta.caseSummary],
+      })
+        ? "declared"
+        : "none",
+    );
+  }, [meta.regimen, meta.notes, meta.caseSummary]);
 
   const { summary, status } = monitor;
   const streaming = status === "streaming";
