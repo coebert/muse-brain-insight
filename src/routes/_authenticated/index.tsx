@@ -42,6 +42,7 @@ import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
 import { CoebisV2LivePanel } from "@/components/monitor/CoebisV2LivePanel";
 import { HeadbandTracePanel } from "@/components/monitor/HeadbandTracePanel";
+import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
