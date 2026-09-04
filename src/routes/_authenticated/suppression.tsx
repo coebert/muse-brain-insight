@@ -223,8 +223,9 @@ function ActiveModelPanel({ fitPromotable }: { fitPromotable: boolean }) {
     queryFn: () => fetchActive({}),
     staleTime: 60_000,
   });
-  const mutation = useMutation({
-    mutationFn: () => promote({ data: {} }),
+  const mutation = useMutation<PromotionOutcome>({
+    mutationFn: () => promote({ data: {} }) as Promise<PromotionOutcome>,
+
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suppression-active-model"] }),
   });
 
