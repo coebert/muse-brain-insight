@@ -17,6 +17,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ACUTE_PATHOLOGY, CHRONIC_CONDITIONS, NONE_KEY } from "./clinical-covariates";
+import { drugCorrectedIndex } from "./drug-corrected-index";
+import { declaredDrugs, type DrugKey } from "./drug-signatures";
 import { alphaDeltaFromBands, publishedIndices } from "./published-indices";
 
 import {
@@ -160,6 +162,21 @@ interface EventRow {
   detail: string | null;
   t_offset_seconds: number | null;
   duration_seconds: number | null;
+}
+
+/**
+ * Agents an imported case records. Only the record speaks here: the regimen
+ * field, a free-text drug/anaesthetic note, or an effect-site entry. Nothing is
+ * inferred from the EEG, which is the pattern being corrected for.
+ */
+export function recordedDrugs(covariates: Record<string, unknown> | null): DrugKey[] {
+  const text = (key: string): string | null =>
+    typeof covariates?.[key] === "string" ? (covariates[key] as string) : null;
+  return declaredDrugs({
+    regimen: text("regimen"),
+    notes: [text("drugs"), text("anaesthetic"), text("agents"), text("notes")],
+    ce: (covariates?.["ce"] ?? null) as Record<string, unknown> | null,
+  });
 }
 
 function keep(counts: Map<string, number>, caseRef: string): boolean {
@@ -503,6 +520,14 @@ async function loadExternal(
       if (!keep(counts, caseRef)) continue;
       const at = Number(r.at_seconds ?? 0);
       const appScores = pairedScoreAt(paired, r.case_ref, at);
+      const suppressionPct =
+        appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio));
+      const corrected = drugCorrectedIndex({
+        coebis: appScores?.coebis ?? null,
+        bands: r.bands ?? null,
+        declared: recordedDrugs(covariates),
+        suppressionPct,
+      });
       rows.push({
         lineage: r.source_lineage,
         caseRef,
@@ -514,8 +539,9 @@ async function loadExternal(
         state,
         scores: {
           coebis: appScores?.coebis ?? null,
+          coebisDrugCorrected: corrected.index,
           seizureScore: null,
-          suppressionRatio: appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio)),
+          suppressionRatio: suppressionPct,
           sef95: num(r.sef95),
           // Published comparators, recomputed from this epoch's own spectrum
           // so COEBIS is graded against them on identical data.
@@ -523,7 +549,7 @@ async function loadExternal(
             Array.isArray(r.spectrum_db) ? (r.spectrum_db as number[]) : null,
             num(r.freq_start_hz) ?? 0.5,
             num(r.freq_step_hz) ?? 0.5,
-            appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio)),
+            suppressionPct,
             r.bands ?? null,
           ),
         },

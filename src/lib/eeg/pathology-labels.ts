@@ -42,6 +42,7 @@ export const MONITOR_CLEAR_PCT = 1;
 
 export type ScoreKey =
   | "coebis"
+  | "coebisDrugCorrected"
   | "seizureScore"
   | "suppressionRatio"
   | "sef95"
@@ -86,6 +87,14 @@ export const SCORE_META: ScoreMeta[] = [
     dp: 1,
     direction: "lower",
     note: "Depth index; lower means deeper, so pathological slowing reads low.",
+  },
+  {
+    key: "coebisDrugCorrected",
+    label: "COEBIS (drug-corrected)",
+    unit: "pts",
+    dp: 1,
+    direction: "lower",
+    note: "Depth index after the recorded agents' EEG signatures are subtracted.",
   },
   {
     key: "suppressionRatio",
@@ -139,6 +148,12 @@ export const SCORE_META: ScoreMeta[] = [
 
 export interface EpochScores {
   coebis: number | null;
+  /**
+   * COEBIS after the recorded agents' EEG signatures are subtracted. Present
+   * only where the case names its drugs and the epoch keeps band powers; the
+   * benchmark falls back to the raw index elsewhere rather than imputing.
+   */
+  coebisDrugCorrected?: number | null;
   seizureScore: number | null;
   suppressionRatio: number | null;
   sef95: number | null;
@@ -259,6 +274,20 @@ export interface ComparatorBenchmark {
   bestComparatorAuc: number | null;
   /** COEBIS AUC minus the best comparator's, on the paired subset. */
   delta: number | null;
+  /**
+   * The same grading run on the drug-corrected index. Epochs without a
+   * correction carry the raw index, so this is the same subset, never an
+   * easier one.
+   */
+  correctedAuc: number | null;
+  /** Epochs on the subset where a correction actually moved the index. */
+  correctedEpochs: number;
+  /** Mean absolute movement the corrections applied, in index points. */
+  meanCorrection: number | null;
+  /** Drug-corrected AUC minus the raw COEBIS AUC. */
+  correctionDelta: number | null;
+  /** Drug-corrected AUC minus the best published comparator's. */
+  correctedVsBest: number | null;
   /** Every comparator's AUC on the same paired subset, best first. */
   comparators: ComparatorScore[];
   sufficiency: Sufficiency;
@@ -548,6 +577,32 @@ export function comparatorBenchmark(
     ).auc;
   };
   const coebisAuc = round(aucOf("coebis"), 3);
+
+  // The drug-corrected index on exactly the same rows. An epoch whose case
+  // names no agent (or keeps no band powers) carries the raw index unchanged,
+  // so the corrected column is never graded on an easier subset than COEBIS.
+  const correctedValue = (e: LabelledEpoch): number =>
+    value(e, "coebisDrugCorrected") ?? (value(e, "coebis") as number);
+  const corrections = subset
+    .map((e) => {
+      const c = value(e, "coebisDrugCorrected");
+      const raw = value(e, "coebis");
+      return c == null || raw == null ? 0 : c - raw;
+    })
+    .filter((d) => d !== 0);
+  const correctedAuc = round(
+    directionalRoc(
+      subset.map((e) => ({ value: correctedValue(e), positive: isPositive(e) })),
+      "lower",
+    ).auc,
+    3,
+  );
+  const meanCorrection = corrections.length
+    ? round(corrections.reduce((a, d) => a + Math.abs(d), 0) / corrections.length, 2)
+    : null;
+  const correctionDelta =
+    correctedAuc != null && coebisAuc != null ? round(correctedAuc - coebisAuc, 3) : null;
+
   const comparators: ComparatorScore[] = usable
     .map((key) => {
       const auc = round(aucOf(key), 3);
@@ -570,6 +625,30 @@ export function comparatorBenchmark(
       ? round(coebisAuc - best.orientedAuc, 3)
       : null;
 
+  const correctedVsBest =
+    correctedAuc != null && best?.orientedAuc != null
+      ? round(correctedAuc - best.orientedAuc, 3)
+      : null;
+
+  // What the drug subtraction did, said plainly: it either earns its place on
+  // these epochs or it does not, and "no corrected epochs" is a real answer.
+  const correctionSentence = (() => {
+    if (!corrections.length) {
+      return " No recorded agent moved the index on these epochs, so the drug-corrected score is identical to COEBIS here.";
+    }
+    const moved = `${corrections.length} of ${subset.length} epochs corrected by ${meanCorrection?.toFixed(1) ?? "0.0"} points on average`;
+    if (correctedAuc == null || correctionDelta == null) {
+      return ` Drug-corrected on ${moved}.`;
+    }
+    const dir =
+      correctionDelta >= 0.02
+        ? `improves discrimination to ${correctedAuc.toFixed(2)} (Δ +${correctionDelta.toFixed(2)})`
+        : correctionDelta <= -0.02
+          ? `costs discrimination, ${correctedAuc.toFixed(2)} (Δ ${correctionDelta.toFixed(2)})`
+          : `leaves discrimination unchanged at ${correctedAuc.toFixed(2)}`;
+    return ` Subtracting the recorded agents' signatures (${moved}) ${dir}.`;
+  })();
+
   const verdict = (() => {
     if (coebisAuc == null || best?.orientedAuc == null) {
       return "Not enough overlapping epochs to compare COEBIS with the published indices.";
@@ -582,12 +661,12 @@ export function comparatorBenchmark(
       ? ` ${best.label} runs backwards on this sample and is credited at its reversed orientation.`
       : "";
     const head = `On the ${subset.length} epochs where all indices exist, COEBIS AUC ${coebisAuc.toFixed(2)} vs ${best.label} ${best.orientedAuc.toFixed(2)}`;
-    if (delta == null) return `${head}.${flipped}${qualifier}`;
-    if (delta >= 0.05)
-      return `${head} — COEBIS ahead by ${delta.toFixed(2)}.${flipped}${qualifier}`;
+    const tail = `${flipped}${correctionSentence}${qualifier}`;
+    if (delta == null) return `${head}.${tail}`;
+    if (delta >= 0.05) return `${head} — COEBIS ahead by ${delta.toFixed(2)}.${tail}`;
     if (delta <= -0.05)
-      return `${head} — the published index is ahead by ${Math.abs(delta).toFixed(2)}; COEBIS adds nothing here.${flipped}${qualifier}`;
-    return `${head} — indistinguishable (Δ ${delta.toFixed(2)}); COEBIS matches the published algorithms rather than beating them.${flipped}${qualifier}`;
+      return `${head} — the published index is ahead by ${Math.abs(delta).toFixed(2)}; COEBIS adds nothing here.${tail}`;
+    return `${head} — indistinguishable (Δ ${delta.toFixed(2)}); COEBIS matches the published algorithms rather than beating them.${tail}`;
   })();
 
 
@@ -599,6 +678,11 @@ export function comparatorBenchmark(
     bestComparatorLabel: best?.label ?? null,
     bestComparatorAuc: best?.orientedAuc ?? null,
     delta,
+    correctedAuc,
+    correctedEpochs: corrections.length,
+    meanCorrection,
+    correctionDelta,
+    correctedVsBest,
     comparators,
     sufficiency,
     verdict,
