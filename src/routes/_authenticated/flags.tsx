@@ -203,6 +203,16 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
               />
               <Line
                 type="monotone"
+                dataKey="monitorIndex"
+                name="BIS (monitor)"
+                stroke="var(--color-success, currentColor)"
+                dot={false}
+                strokeWidth={1.75}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
                 dataKey="index"
                 name="COEBIS"
                 stroke="var(--color-signal, currentColor)"
@@ -210,6 +220,7 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
                 strokeWidth={1.5}
                 isAnimationActive={false}
               />
+
               <Line
                 type="monotone"
                 dataKey="cappedIndex"
