@@ -14,5 +14,5 @@ export const getDrugLibrary = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ context, data }): Promise<DrugLibraryReport> => {
     const { loadDrugLibrary } = await import("@/lib/eeg/drug-library.server");
-    return loadDrugLibrary(context.supabase, data?.limit ?? 6000);
+    return loadDrugLibrary(context.supabase, data?.limit ?? 1000);
   });
