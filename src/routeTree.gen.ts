@@ -20,6 +20,7 @@ import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated/coebis'
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedDepthRouteImport } from './routes/_authenticated/depth'
+import { Route as AuthenticatedDepthIntakeRouteImport } from './routes/_authenticated/depth-intake'
 import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
 import { Route as AuthenticatedDrugsRouteImport } from './routes/_authenticated/drugs'
 import { Route as AuthenticatedExposureRouteImport } from './routes/_authenticated/exposure'
@@ -101,6 +102,12 @@ const AuthenticatedDepthRoute = AuthenticatedDepthRouteImport.update({
   path: '/depth',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDepthIntakeRoute =
+  AuthenticatedDepthIntakeRouteImport.update({
+    id: '/depth-intake',
+    path: '/depth-intake',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDiscoveryRoute = AuthenticatedDiscoveryRouteImport.update({
   id: '/discovery',
   path: '/discovery',
@@ -242,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/coebis': typeof AuthenticatedCoebisRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/depth': typeof AuthenticatedDepthRoute
+  '/depth-intake': typeof AuthenticatedDepthIntakeRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/drugs': typeof AuthenticatedDrugsRoute
   '/exposure': typeof AuthenticatedExposureRoute
@@ -278,6 +286,7 @@ export interface FileRoutesByTo {
   '/coebis': typeof AuthenticatedCoebisRoute
   '/compare': typeof AuthenticatedCompareRoute
   '/depth': typeof AuthenticatedDepthRoute
+  '/depth-intake': typeof AuthenticatedDepthIntakeRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/drugs': typeof AuthenticatedDrugsRoute
   '/exposure': typeof AuthenticatedExposureRoute
@@ -317,6 +326,7 @@ export interface FileRoutesById {
   '/_authenticated/coebis': typeof AuthenticatedCoebisRoute
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/depth': typeof AuthenticatedDepthRoute
+  '/_authenticated/depth-intake': typeof AuthenticatedDepthIntakeRoute
   '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
   '/_authenticated/drugs': typeof AuthenticatedDrugsRoute
   '/_authenticated/exposure': typeof AuthenticatedExposureRoute
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
     | '/coebis'
     | '/compare'
     | '/depth'
+    | '/depth-intake'
     | '/discovery'
     | '/drugs'
     | '/exposure'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/coebis'
     | '/compare'
     | '/depth'
+    | '/depth-intake'
     | '/discovery'
     | '/drugs'
     | '/exposure'
@@ -431,6 +443,7 @@ export interface FileRouteTypes {
     | '/_authenticated/coebis'
     | '/_authenticated/compare'
     | '/_authenticated/depth'
+    | '/_authenticated/depth-intake'
     | '/_authenticated/discovery'
     | '/_authenticated/drugs'
     | '/_authenticated/exposure'
@@ -542,6 +555,13 @@ declare module '@tanstack/react-router' {
       path: '/depth'
       fullPath: '/depth'
       preLoaderRoute: typeof AuthenticatedDepthRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/depth-intake': {
+      id: '/_authenticated/depth-intake'
+      path: '/depth-intake'
+      fullPath: '/depth-intake'
+      preLoaderRoute: typeof AuthenticatedDepthIntakeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/discovery': {
@@ -731,6 +751,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoebisRoute: typeof AuthenticatedCoebisRoute
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedDepthRoute: typeof AuthenticatedDepthRoute
+  AuthenticatedDepthIntakeRoute: typeof AuthenticatedDepthIntakeRoute
   AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
   AuthenticatedDrugsRoute: typeof AuthenticatedDrugsRoute
   AuthenticatedExposureRoute: typeof AuthenticatedExposureRoute
@@ -767,6 +788,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoebisRoute: AuthenticatedCoebisRoute,
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedDepthRoute: AuthenticatedDepthRoute,
+  AuthenticatedDepthIntakeRoute: AuthenticatedDepthIntakeRoute,
   AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
   AuthenticatedDrugsRoute: AuthenticatedDrugsRoute,
   AuthenticatedExposureRoute: AuthenticatedExposureRoute,

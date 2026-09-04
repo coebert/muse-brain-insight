@@ -27,6 +27,7 @@ const TOOLS = [
   { to: "/bis-benchmark", label: "COEBIS vs recorded BIS" },
   { to: "/pairing", label: "Pair monitor readings" },
   { to: "/reference", label: "Reference library" },
+  { to: "/depth-intake", label: "Depth corpus intake" },
   { to: "/pathology", label: "Pathology validation" },
   { to: "/suppression", label: "Suppression model" },
   { to: "/flags", label: "Suppression flags vs COEBIS" },
