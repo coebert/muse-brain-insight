@@ -48,6 +48,11 @@ export interface KetamineCaseEpoch {
   stateLabel: DepthStateLabel | null;
   /** Ketamine recorded for the case in the source record. */
   declared: boolean;
+  /**
+   * Where that record came from: "filed" is a clinician's explicit answer on
+   * the case, "inferred" a mention in a regimen, note or effect-site entry.
+   */
+  evidence?: KetamineEvidence;
 }
 
 /** What the ketamine stage is doing to a case. */
@@ -90,6 +95,8 @@ export interface KetamineCaseSummary {
   caseRef: string;
   epochs: number;
   declared: boolean;
+  /** Strongest evidence behind `declared` across the case's epochs. */
+  evidence: KetamineEvidence;
   effect: KetamineEffect;
   /** Mean 13–47 Hz share of the spectrum, 0–1. */
   meanBetaGamma: number | null;
@@ -123,6 +130,8 @@ export interface KetamineCaseReport {
   totals: {
     cases: number;
     declaredCases: number;
+    /** Declared cases whose exposure was filed explicitly, not inferred. */
+    filedCases: number;
     correctingCases: number;
     advisoryCases: number;
     correctedEpochs: number;
@@ -196,6 +205,11 @@ export function stateGrade(epochs: KetamineCaseEpoch[]): StateGrade {
 export function summariseCase(caseEpochs: KetamineCaseEpoch[]): KetamineCaseSummary {
   const first = caseEpochs[0]!;
   const declared = caseEpochs.some((e) => e.declared);
+  const evidence: KetamineEvidence = caseEpochs.some((e) => e.evidence === "filed")
+    ? "filed"
+    : declared
+      ? "inferred"
+      : "none";
   const betaGamma: number[] = [];
   const alphas: number[] = [];
   const slows: number[] = [];
@@ -242,6 +256,7 @@ export function summariseCase(caseEpochs: KetamineCaseEpoch[]): KetamineCaseSumm
     caseRef: first.caseRef,
     epochs: caseEpochs.length,
     declared,
+    evidence,
     effect,
     meanBetaGamma: mean(betaGamma),
     maxBetaGamma: betaGamma.length ? Number(Math.max(...betaGamma).toFixed(3)) : null,
@@ -297,6 +312,7 @@ export function summariseKetamineCases(
     totals: {
       cases: cases.length,
       declaredCases: cases.filter((c) => c.declared).length,
+      filedCases: cases.filter((c) => c.evidence === "filed" && c.declared).length,
       correctingCases: cases.filter((c) => c.effect === "correcting").length,
       advisoryCases: cases.filter((c) => c.effect === "advisory").length,
       correctedEpochs: cases.reduce((a, c) => a + c.correctedEpochs, 0),
