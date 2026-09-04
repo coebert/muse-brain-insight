@@ -237,13 +237,16 @@ export async function runRefitForUser(
   base.runId = runId;
 
   try {
+    const t0 = Date.now();
     // A small global cap keeps only the oldest slice of the pool, which starves
     // newer lineages of the readings they need to clear the gate.
     const matrix = await loadTrainingMatrix(client, 120000, userId, 40000);
+    console.info(`[refit] loaded ${matrix.points.length} points in ${Date.now() - t0}ms`);
 
     const validated = selectValidatedPoints(matrix.points);
     base.validatedPoints = validated.used.length;
     base.rejected = validated.rejected;
+    console.info(`[refit] validated ${validated.used.length} in ${Date.now() - t0}ms`);
 
     const { data: versionRows } = await client
       .from("coebis_model_versions")
@@ -266,10 +269,14 @@ export async function runRefitForUser(
     base.lineagesConsidered = plan.entries.length + plan.deferred.length + plan.skippedUnchanged.length;
 
     for (const entry of plan.entries) {
+      const tLineage = Date.now();
       const result = refitLineage(
         entry.lineageKey,
         entry.points,
         incumbents.get(entry.lineageKey) ?? null,
+      );
+      console.info(
+        `[refit] ${entry.lineageKey}: ${entry.points.length} points in ${Date.now() - tLineage}ms`,
       );
       let version: number | null = null;
 

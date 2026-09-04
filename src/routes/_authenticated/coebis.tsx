@@ -185,6 +185,35 @@ function CoebisDataPage() {
             </p>
           ) : null}
 
+          {data.candidate ? (
+            <div className="panel p-3 text-xs">
+              <p className="mb-1 font-medium">
+                Newest fit from the last refit run · {data.candidate.lineageKey}{" "}
+                {data.candidate.modelVersion}
+                <span
+                  className={
+                    data.candidate.promoted
+                      ? "ml-2 rounded bg-signal/15 px-1.5 py-0.5 text-signal"
+                      : "ml-2 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"
+                  }
+                >
+                  {data.candidate.isActive
+                    ? "in force"
+                    : data.candidate.promoted
+                      ? "promoted"
+                      : "not promoted"}
+                </span>
+              </p>
+              <p className="text-muted-foreground">
+                Held-out error {data.candidate.maeBefore?.toFixed(2) ?? "—"} →{" "}
+                {data.candidate.maeAfter?.toFixed(2) ?? "—"} index points on{" "}
+                {data.candidate.nPoints ?? "—"} readings from {data.candidate.nCases ?? "—"} cases,
+                fitted {when(data.candidate.createdAt)}.{" "}
+                {data.candidate.reason ?? ""}
+              </p>
+            </div>
+          ) : null}
+
           <div role="tablist" aria-label="COEBIS data views" className="flex flex-wrap gap-1.5">
             {TABS.map((t) => (
               <button

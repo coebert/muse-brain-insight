@@ -94,6 +94,23 @@ export interface CoebisTrainingData {
     biasBefore: number | null;
     biasAfter: number | null;
   } | null;
+  /**
+   * The newest fit produced by a refit run, promoted or not. Shown so the page
+   * reports the latest attempt rather than only the model in force.
+   */
+  candidate: {
+    lineageKey: string;
+    modelVersion: string;
+    createdAt: string;
+    promoted: boolean;
+    isActive: boolean;
+    nPoints: number | null;
+    nCases: number | null;
+    maeBefore: number | null;
+    maeAfter: number | null;
+    maeGain: number | null;
+    reason: string | null;
+  } | null;
   knots: CoebisKnotRow[];
   bands: { band: string; n: number; bias: number | null; meanAbsolute: number | null }[];
   cases: CoebisCaseRow[];
@@ -307,6 +324,35 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
     const residuals = active ? computeCoebisResiduals(residualInput) : null;
     const drift = residuals ? detectCoebisDrift(residualInput, residuals.tolerance) : null;
 
+    // The newest fit any refit run produced, whether or not it was promoted, so
+    // the page shows the latest attempt beside the model actually in force.
+    const { data: latestRow } = await context.supabase
+      .from("coebis_model_versions")
+      .select(
+        "lineage_key, version, created_at, promoted, is_active, mae_gain, metrics_before, metrics_after, training, reason",
+      )
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const metric = (v: unknown, key: string): number | null =>
+      v && typeof v === "object" ? num((v as Record<string, unknown>)[key]) : null;
+    const candidate = latestRow
+      ? {
+          lineageKey: String(latestRow.lineage_key),
+          modelVersion: `v${latestRow.version}`,
+          createdAt: String(latestRow.created_at),
+          promoted: Boolean(latestRow.promoted),
+          isActive: Boolean(latestRow.is_active),
+          nPoints: metric(latestRow.training, "n"),
+          nCases: metric(latestRow.training, "cases"),
+          maeBefore: metric(latestRow.metrics_before, "mae"),
+          maeAfter: metric(latestRow.metrics_after, "mae"),
+          maeGain: num(latestRow.mae_gain),
+          reason: latestRow.reason ? String(latestRow.reason) : null,
+        }
+      : null;
+
     return {
       totalPoints: points.length,
       usedPoints: fitPoints.length,
@@ -317,6 +363,7 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
       lastRecordedAt: points[points.length - 1]?.recordedAt ?? null,
       thresholds: { points: MIN_POINTS, sessions: MIN_SESSIONS },
       active,
+      candidate,
       knots,
       bands: analysis.bands,
       cases,
