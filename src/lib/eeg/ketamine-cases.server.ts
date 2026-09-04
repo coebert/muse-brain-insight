@@ -14,7 +14,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { featuresFromBands, summariseKetamineCases, type KetamineCaseEpoch, type KetamineCaseReport } from "./ketamine-cases";
-import { ketamineDeclared } from "./ketamine";
+import { ketamineDeclared, ketamineEvidence } from "./ketamine";
 import { gradeKetamineSubtraction } from "./ketamine-grading";
 import {
   canonicalCaseKey,
@@ -196,6 +196,10 @@ async function loadExternal(
         regimen: typeof covariates?.["regimen"] === "string" ? (covariates["regimen"] as string) : null,
         ketamineCe: num(ce?.["ketamine"]),
       }),
+      evidence: ketamineEvidence({
+        regimen: typeof covariates?.["regimen"] === "string" ? (covariates["regimen"] as string) : null,
+        ketamineCe: num(ce?.["ketamine"]),
+      }),
     });
   }
   return { epochs, scanned: rows.length };
@@ -207,6 +211,7 @@ interface SessionRow {
   regimen: string | null;
   device_name: string | null;
   clinical_features: string[] | null;
+  ketamine_given: boolean | null;
 }
 
 interface AppEpochRow {
@@ -232,7 +237,7 @@ async function loadApp(
 ): Promise<{ epochs: KetamineCaseEpoch[]; scanned: number }> {
   const { data: sessionData, error: sessionError } = await supabase
     .from("eeg_sessions")
-    .select("id, case_code, regimen, device_name, clinical_features")
+    .select("id, case_code, regimen, device_name, clinical_features, ketamine_given")
     .order("started_at", { ascending: false })
     .limit(200);
   if (sessionError) throw new Error(sessionError.message);
@@ -298,6 +303,13 @@ async function loadApp(
       declared: ketamineDeclared({
         regimen: session.regimen,
         markers: [...(markers.get(r.session_id) ?? []), ...(session.clinical_features ?? [])],
+        flag: session.ketamine_given,
+      }),
+      // A clinician-filed answer is a real label; free text is only inferred.
+      evidence: ketamineEvidence({
+        regimen: session.regimen,
+        markers: [...(markers.get(r.session_id) ?? []), ...(session.clinical_features ?? [])],
+        flag: session.ketamine_given,
       }),
     });
   }
