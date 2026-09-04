@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluatePathologyLabels,
   posteriorAtPrior,
+  subsetSuppression,
   type LabelledEpoch,
 } from "./pathology-labels";
 
@@ -52,5 +53,52 @@ describe("evaluatePathologyLabels", () => {
     const post = posteriorAtPrior(0.01, 0.9, 0.9);
     expect(post.ppv!).toBeLessThan(0.1);
     expect(post.npv!).toBeGreaterThan(0.99);
+  });
+});
+
+describe("subsetSuppression", () => {
+  const epoch = (
+    i: number,
+    suppression: "suppressed" | "not_suppressed" | null,
+    sr: number,
+    coebis: number,
+  ): LabelledEpoch => ({
+    lineage: "test",
+    caseRef: `case-${i % 4}`,
+    atSeconds: i,
+    labelSource: "dataset",
+    seizure: null,
+    cns: null,
+    suppression,
+    scores: {
+      coebis,
+      coebisDrugCorrected: coebis - 2,
+      seizureScore: null,
+      suppressionRatio: sr,
+      sef95: null,
+    },
+  });
+
+  it("grades suppression on the same epochs when labels exist", () => {
+    const rows = [
+      ...Array.from({ length: 8 }, (_, i) => epoch(i, "suppressed", 40 + i, 20 + i)),
+      ...Array.from({ length: 8 }, (_, i) => epoch(i + 8, "not_suppressed", i * 0.1, 60 + i)),
+    ];
+    const out = subsetSuppression(rows, (e) => e.scores.coebisDrugCorrected ?? e.scores.coebis!);
+    expect(out.labelled).toBe(16);
+    expect(out.suppressed).toBe(8);
+    expect(out.appAuc).toBe(1);
+    expect(out.coebisAuc).toBe(1);
+    expect(out.correctedAuc).toBe(1);
+    expect(out.verdict).toContain("app suppression AUC");
+  });
+
+  it("reports measured suppression and grades nothing when no label exists", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => epoch(i, null, i < 3 ? 5 : 0, 40));
+    const out = subsetSuppression(rows, (e) => e.scores.coebis!);
+    expect(out.labelled).toBe(0);
+    expect(out.appAuc).toBeNull();
+    expect(out.appFlagged).toBe(3);
+    expect(out.verdict).toContain("cannot be graded on this exact sample");
   });
 });

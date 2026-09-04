@@ -186,7 +186,14 @@ function PriorPanel({ axis }: { axis: LabelAxis }) {
   );
 }
 
-function AxisCard({ axis }: { axis: LabelAxis }) {
+function AxisCard({
+  axis,
+  suppressionAxis,
+}: {
+  axis: LabelAxis;
+  suppressionAxis?: LabelAxis | null;
+}) {
+
   return (
     <Card>
       <CardHeader>
@@ -282,8 +289,69 @@ function AxisCard({ axis }: { axis: LabelAxis }) {
               </table>
             </div>
             <p className="mt-2 text-xs">{axis.benchmark.verdict}</p>
+
+            <div className="mt-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium">Suppression on these same epochs</p>
+                <SufficiencyBadge value={axis.benchmark.suppressionOnSubset.sufficiency} />
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                <div>
+                  <dt className="text-muted-foreground">Recorded suppression labels</dt>
+                  <dd className="font-mono">
+                    {axis.benchmark.suppressionOnSubset.labelled}
+                    {axis.benchmark.suppressionOnSubset.labelled ? (
+                      <span className="ml-1 text-muted-foreground">
+                        ({axis.benchmark.suppressionOnSubset.suppressed} suppressed /{" "}
+                        {axis.benchmark.suppressionOnSubset.clear} clear)
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">App suppression AUC</dt>
+                  <dd className="font-mono">
+                    {fmt(axis.benchmark.suppressionOnSubset.appAuc, 3)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">COEBIS vs suppression</dt>
+                  <dd className="font-mono">
+                    {fmt(axis.benchmark.suppressionOnSubset.coebisAuc, 3)} /{" "}
+                    {fmt(axis.benchmark.suppressionOnSubset.correctedAuc, 3)} corrected
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">App-measured suppression</dt>
+                  <dd className="font-mono">
+                    {fmt(axis.benchmark.suppressionOnSubset.meanAppSuppression, 1, "%")} mean,{" "}
+                    {axis.benchmark.suppressionOnSubset.appFlagged} epochs &ge;1%
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {axis.benchmark.suppressionOnSubset.verdict}
+              </p>
+              {suppressionAxis && suppressionAxis.key !== axis.key ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Graded alongside: the recorded-suppression axis runs on {suppressionAxis.n}{" "}
+                  bedside-monitor epochs across {suppressionAxis.cases} cases (
+                  {suppressionAxis.positives} suppressed), lead score{" "}
+                  {suppressionAxis.scores.find((s) => s.score === suppressionAxis.leadScore)
+                    ?.scoreLabel ?? "—"}{" "}
+                  at AUC{" "}
+                  {fmt(
+                    suppressionAxis.scores.find((s) => s.score === suppressionAxis.leadScore)?.auc ??
+                      null,
+                    3,
+                  )}
+                  . Different recordings, so the two columns are not interchangeable.
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
+
 
         <div className="grid gap-3 sm:grid-cols-2">
           {axis.scores.map((s) => (
@@ -466,8 +534,15 @@ function PathologyPage() {
             </Card>
 
             {data.axes.map((axis) => (
-              <AxisCard key={axis.key} axis={axis} />
+              <AxisCard
+                key={axis.key}
+                axis={axis}
+                suppressionAxis={
+                  data.axes.find((a) => a.key === "recorded-suppression") ?? null
+                }
+              />
             ))}
+
 
             {!data.axes.length ? (
               <Card>
