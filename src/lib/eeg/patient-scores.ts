@@ -231,15 +231,16 @@ function verdictFor(row: {
   suppression: PatientScoreRow["suppression"];
 }): string {
   const parts: string[] = [];
+  if (!row.sufficient) {
+    parts.push(
+      `Only ${row.readings} reading${row.readings === 1 ? "" : "s"} in this case — below the ${MIN_CASE_READINGS} needed to read the agreement figures as describing the case.`,
+    );
+  }
   if (!row.hasModel) {
     parts.push(
       `No promoted COEBIS model for this setup, so the figures are the open index: it sits ${describeBias(row.raw.bias)} the reference.`,
     );
-  } else if (!row.sufficient) {
-    parts.push(
-      `Only ${row.readings} reading${row.readings === 1 ? "" : "s"} in this case — below the ${MIN_CASE_READINGS} needed to read the agreement figures as describing the case.`,
-    );
-  } else {
+  } else if (row.sufficient) {
     const mae = row.agreement?.mae;
     parts.push(
       `COEBIS lands ${mae == null ? "an unmeasured distance" : `${mae.toFixed(1)} points`} from the reference on average and sits ${describeBias(row.agreement?.bias ?? null)} it.`,
