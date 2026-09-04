@@ -558,10 +558,59 @@ export function evaluatePathologyLabels(
   }
 
   const notes: string[] = [];
+  const suppressionRows = epochs.filter((e) => e.suppression != null);
+  const suppressionAxis = buildAxis(
+    "recorded-suppression",
+    "Recorded burst suppression",
+    `Suppression status taken from a bedside monitor's own suppression ratio (≥${MONITOR_SUPPRESSED_PCT}% suppressed, ≤${MONITOR_CLEAR_PCT}% clear; the band between is discarded) or a dataset annotation — never from the app's own suppression calculation.`,
+    "suppressed",
+    "clear",
+    suppressionRows,
+    (e) => e.suppression === "suppressed",
+  );
+  if (suppressionAxis) axes.push(suppressionAxis);
+
+  const stateRows = epochs.filter((e) => e.state === "anaesthetised" || e.state === "awake");
+  const stateAxis = buildAxis(
+    "recorded-state",
+    "Recorded anaesthetised vs awake",
+    "Anaesthetic state taken from the dataset's own event file (loss/return of consciousness markers), with induction and emergence transitions excluded.",
+    "anaesthetised",
+    "awake",
+    stateRows,
+    (e) => e.state === "anaesthetised",
+  );
+  if (stateAxis) axes.push(stateAxis);
+
+  const notes: string[] = [];
   if (!seizureRows.length) {
     notes.push(
       "No epoch carries an independently recorded ictal label yet, so seizure discrimination cannot be measured. Ingest annotated ictal recordings, or mark seizure events on a live case.",
     );
+  } else if (!seizureRows.some((e) => e.seizure === "ictal")) {
+    notes.push(
+      `${seizureRows.length.toLocaleString()} epochs carry a seizure annotation but all are interictal, so only the false-positive rate is measurable.`,
+    );
+  }
+  if (!suppressionRows.length) {
+    notes.push(
+      "No epoch carries a monitor- or dataset-recorded suppression label, so the suppression axis grades nothing. Import bedside suppression ratios (e.g. VitalDB BIS SR) to populate it.",
+    );
+  } else if (!suppressionRows.some((e) => e.suppression === "suppressed")) {
+    notes.push(
+      `${suppressionRows.length.toLocaleString()} epochs carry a recorded suppression label but none reached ${MONITOR_SUPPRESSED_PCT}% monitor SR, so only the false-positive side is measurable.`,
+    );
+  } else if (!suppressionRows.some((e) => e.scores.suppressionRatio != null)) {
+    notes.push(
+      "Recorded suppression labels exist but no app-computed suppression ratio is paired with them, so the axis cannot be graded until those recordings are replayed through the pipeline.",
+    );
+  }
+  if (!stateRows.length) {
+    notes.push(
+      "No dataset event file has established awake and anaesthetised intervals, so the depth-state axis is empty.",
+    );
+  }
+
   } else if (!seizureRows.some((e) => e.seizure === "ictal")) {
     notes.push(
       `${seizureRows.length.toLocaleString()} epochs carry a seizure annotation but all are interictal, so only the false-positive rate is measurable.`,
