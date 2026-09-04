@@ -23,6 +23,7 @@ const TOOLS = [
   { to: "/coebis", label: "COEBIS training data" },
   { to: "/models", label: "Model versions" },
   { to: "/blockers", label: "Blocked lineages" },
+  { to: "/pairing", label: "Pair monitor readings" },
   { to: "/pathology", label: "Pathology validation" },
   { to: "/ketamine", label: "Ketamine signature" },
   { to: "/drugs", label: "Drug library" },
