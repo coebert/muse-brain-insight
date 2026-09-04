@@ -182,7 +182,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="reference"
                 name={row.reference.isMonitor ? "Recorded BIS" : "Reference"}
-                stroke="var(--signal)"
+                stroke="var(--accent-foreground)"
                 dot={false}
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -192,7 +192,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="coebis"
                 name="COEBIS"
-                stroke="var(--primary)"
+                stroke="var(--signal)"
                 dot={false}
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -203,7 +203,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="raw"
                 name="Open index"
-                stroke="var(--muted-foreground)"
+                stroke="var(--chart-5)"
                 strokeDasharray="4 4"
                 dot={false}
                 isAnimationActive={false}
@@ -213,7 +213,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="sef"
                 name="SEF95 (Hz)"
-                stroke="var(--accent-foreground)"
+                stroke="var(--chart-2)"
                 strokeDasharray="2 3"
                 dot={false}
                 isAnimationActive={false}
