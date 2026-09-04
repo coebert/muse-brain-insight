@@ -403,6 +403,7 @@ export function crossValidate(
     after,
     model,
     maeGain,
+    sensitivityGain,
     promotable: blockedBy === null,
     blockedBy,
   };
@@ -582,6 +583,7 @@ export function emptyReport(lineage = "vitaldb"): SuppressionReport {
       after: emptyGrade,
       model: null,
       maeGain: null,
+      sensitivityGain: null,
       promotable: false,
       blockedBy: "no paired suppression readings loaded",
     },
