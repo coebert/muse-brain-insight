@@ -53,8 +53,17 @@ import {
   headerUrlFor,
   parseBrainVisionHeader,
   parseBrainVisionRecording,
+  readBrainVisionChannel,
   type BrainVisionHeader,
 } from "./openneuro-brainvision";
+import {
+  BRAINVISION_DEPTH_DEVICE_ID,
+  BRAINVISION_DEPTH_REFERENCE_KIND,
+  BRAINVISION_DEPTH_SOURCE,
+  brainVisionDepthLineageKey,
+  buildConditionDepthPoints,
+} from "./brainvision-depth";
+
 import { parseEdfHeader } from "./edf";
 import { OpenNeuroStreamAssembler } from "./openneuro-stream";
 import {
@@ -440,7 +449,12 @@ function rowsForBinaryFile(
   summary: ChbSeizure[],
   events: BidsEvent[] = [],
   header: BrainVisionHeader | null = null,
-): { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null } {
+): {
+  rows: PhysionetImportRow[];
+  harmonization: HarmonizationRecord | null;
+  paired?: { lineageKey: string; channel: string; points: EventDepthPoint[] } | null;
+  detail?: string;
+} {
   if (source.kind === "openneuro-bids-brainvision") {
     if (!header) throw new Error("the published .vhdr header could not be read");
     const parsed = parseBrainVisionRecording(bytes, header, {
@@ -454,6 +468,31 @@ function rowsForBinaryFile(
       sampleRateHz: parsed.sampleRate,
       ...(inferred !== "unknown" ? { reference: inferred } : {}),
     });
+    // The published condition is the only depth reference this collection has,
+    // so the decoded span is replayed once and paired against it.
+    let paired: { lineageKey: string; channel: string; points: EventDepthPoint[] } | null = null;
+    let pairedNote = "no condition-referenced readings";
+    const decoded = readBrainVisionChannel(bytes, header);
+    if (parsed.state && decoded.signal.length > decoded.sampleRate * 40) {
+      const replay = replayRawEeg({
+        samples: decoded.signal,
+        sampleRate: decoded.sampleRate,
+      });
+      const built = buildConditionDepthPoints(replay.frames, {
+        caseRef: file.caseRef,
+        channel: decoded.channel,
+        state: parsed.state,
+        durationSeconds: decoded.durationSeconds,
+      });
+      if (built.points.length) {
+        paired = {
+          lineageKey: brainVisionDepthLineageKey(decoded.channel, decoded.sampleRate),
+          channel: decoded.channel,
+          points: built.points,
+        };
+        pairedNote = `${built.points.length} condition-referenced readings (${parsed.state})`;
+      }
+    }
     return {
       rows: brainVisionRows(harmonised, {
         datasetVersion: source.datasetVersion,
@@ -462,8 +501,11 @@ function rowsForBinaryFile(
         state: parsed.state,
       }),
       harmonization: harmonised[0]?.harmonization ?? null,
+      paired,
+      detail: pairedNote,
     };
   }
+
   if (source.kind === "openneuro-bids-edf") {
     const parsed = parseOpenNeuroRecording(bytes, {
       caseRef: file.caseRef,
@@ -843,7 +885,7 @@ export async function runDatasetIntake(
           );
           bytes = raw.byteLength;
           digest = await sha256HexBytes(raw);
-          parsedFile = rowsForBinaryFile(
+          const binaryParsed = rowsForBinaryFile(
             source,
             file,
             raw,
@@ -853,6 +895,13 @@ export async function runDatasetIntake(
               ? await headerFor(file, bvHeaders)
               : null,
           );
+          paired = binaryParsed.paired ?? null;
+          streamNote = binaryParsed.detail ?? "";
+          parsedFile = {
+            rows: binaryParsed.rows,
+            harmonization: binaryParsed.harmonization,
+          };
+
         } else if (source.kind === "dose1-raw") {
           const entry = archiveIndex.get(file.url);
           if (!entry) throw new Error("The archive index has no entry for this recording.");
@@ -888,6 +937,7 @@ export async function runDatasetIntake(
           : `${stored.inserted} new epochs`;
         if (paired?.points.length) {
           const isDose1 = source.kind === "dose1-raw";
+          const isBrainVision = source.kind === "openneuro-bids-brainvision";
           const storedPairs = await importEventDepthCases(
             supabase,
             userId,
@@ -899,7 +949,7 @@ export async function runDatasetIntake(
                 covariates: {
                   ageBand: null,
                   sex: null,
-                  regimen: isDose1 ? "propofol-sedation" : "volatile",
+                  regimen: isDose1 || isBrainVision ? "propofol-sedation" : "volatile",
                 },
                 points: paired.points,
               },
@@ -912,8 +962,16 @@ export async function runDatasetIntake(
                   referenceKind: DOSE1_DEPTH_REFERENCE_KIND,
                   pointFeatures: (p) => ({ moaas: (p as Dose1DepthPoint).moaas }),
                 }
-              : undefined,
+              : isBrainVision
+                ? {
+                    device: BRAINVISION_DEPTH_DEVICE_ID,
+                    source: BRAINVISION_DEPTH_SOURCE,
+                    sourceSite: "openneuro",
+                    referenceKind: BRAINVISION_DEPTH_REFERENCE_KIND,
+                  }
+                : undefined,
           );
+
           outcome.pairedInserted = storedPairs.inserted;
           base.pairedInserted = (base.pairedInserted ?? 0) + storedPairs.inserted;
         }
