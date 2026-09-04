@@ -48,6 +48,13 @@ import {
   parseOpenNeuroRecording,
   type BidsEvent,
 } from "./openneuro";
+import {
+  brainVisionRows,
+  headerUrlFor,
+  parseBrainVisionHeader,
+  parseBrainVisionRecording,
+  type BrainVisionHeader,
+} from "./openneuro-brainvision";
 import { parseEdfHeader } from "./edf";
 import { OpenNeuroStreamAssembler } from "./openneuro-stream";
 import {
@@ -422,8 +429,9 @@ function rowsForFile(
 }
 
 /**
- * Binary (EDF) sources. Only the frontal channel is decoded, and interval
- * labels come from the collection's published summary rather than the file.
+ * Binary (EDF or BrainVision) sources. Only the frontal channel is decoded, and
+ * interval labels come from the collection's published summary, events file or
+ * BIDS condition rather than from the depth model being validated.
  */
 function rowsForBinaryFile(
   source: IntakeSource,
@@ -431,7 +439,31 @@ function rowsForBinaryFile(
   bytes: Uint8Array,
   summary: ChbSeizure[],
   events: BidsEvent[] = [],
+  header: BrainVisionHeader | null = null,
 ): { rows: PhysionetImportRow[]; harmonization: HarmonizationRecord | null } {
+  if (source.kind === "openneuro-bids-brainvision") {
+    if (!header) throw new Error("the published .vhdr header could not be read");
+    const parsed = parseBrainVisionRecording(bytes, header, {
+      caseRef: file.caseRef,
+      fileName: file.name,
+    });
+    const inferred = inferReference(parsed.channel);
+    const harmonised = harmonizeEpochs(parsed.epochs, {
+      ...source.montage,
+      channel: parsed.channel,
+      sampleRateHz: parsed.sampleRate,
+      ...(inferred !== "unknown" ? { reference: inferred } : {}),
+    });
+    return {
+      rows: brainVisionRows(harmonised, {
+        datasetVersion: source.datasetVersion,
+        fileName: file.name,
+        channel: parsed.channel,
+        state: parsed.state,
+      }),
+      harmonization: harmonised[0]?.harmonization ?? null,
+    };
+  }
   if (source.kind === "openneuro-bids-edf") {
     const parsed = parseOpenNeuroRecording(bytes, {
       caseRef: file.caseRef,
@@ -515,6 +547,24 @@ async function eventsFor(file: PlannedFile, cache: Map<string, BidsEvent[]>): Pr
     cache.set(url, []);
     return [];
   }
+}
+
+/**
+ * The BrainVision `.vhdr` beside a recording. Without it the binary cannot be
+ * decoded at all, so a missing header is a failed file rather than an
+ * unlabelled one.
+ */
+async function headerFor(
+  file: PlannedFile,
+  cache: Map<string, BrainVisionHeader>,
+): Promise<BrainVisionHeader> {
+  const url = headerUrlFor(file.url);
+  const cached = cache.get(url);
+  if (cached) return cached;
+  const { text } = await fetchText(url, 2_000_000);
+  const parsed = parseBrainVisionHeader(text);
+  cache.set(url, parsed);
+  return parsed;
 }
 
 
@@ -721,6 +771,8 @@ export async function runDatasetIntake(
     const summaries = new Map<string, ChbSeizure[]>();
     // Published BIDS events per recording, one fetch per file per run.
     const bidsEvents = new Map<string, BidsEvent[]>();
+    // Published BrainVision headers, one fetch per recording per run.
+    const bvHeaders = new Map<string, BrainVisionHeader>();
     try {
       discovered = await discoverFiles(
         source,
@@ -797,6 +849,9 @@ export async function runDatasetIntake(
             raw,
             source.kind === "chbmit-edf" ? await summaryFor(file, summaries) : [],
             source.kind === "openneuro-bids-edf" ? await eventsFor(file, bidsEvents) : [],
+            source.kind === "openneuro-bids-brainvision"
+              ? await headerFor(file, bvHeaders)
+              : null,
           );
         } else if (source.kind === "dose1-raw") {
           const entry = archiveIndex.get(file.url);
