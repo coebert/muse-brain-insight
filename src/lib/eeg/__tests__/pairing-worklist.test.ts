@@ -111,3 +111,15 @@ describe("planPairing", () => {
     expect(plan.unpairedRecordings).toBe(2);
   });
 });
+
+describe("suggestMoments depth spread", () => {
+  it("covers the depth range rather than one state", () => {
+    const epochs = Array.from({ length: 100 }, (_, i) =>
+      moment(i * 10, i < 50 ? 92 : 40 + (i - 50)),
+    );
+    const picked = suggestMoments(epochs, 5);
+    const spread = Math.max(...picked.map((m) => m.appIndex)) - Math.min(...picked.map((m) => m.appIndex));
+    expect(spread).toBeGreaterThan(30);
+    expect(picked.map((m) => m.at)).toEqual([...picked.map((m) => m.at)].sort((a, b) => a - b));
+  });
+});
