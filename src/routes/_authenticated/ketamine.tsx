@@ -23,6 +23,7 @@ import {
   type KetamineEffect,
 } from "@/lib/eeg/ketamine-cases";
 import { KETAMINE_CAP, KETAMINE_FLOOR } from "@/lib/eeg/ketamine";
+import type { ArmGrade } from "@/lib/eeg/ketamine-grading";
 
 export const Route = createFileRoute("/_authenticated/ketamine")({
   head: () => ({
@@ -159,6 +160,86 @@ function CaseRow({ row }: { row: KetamineCaseSummary }) {
   );
 }
 
+
+/**
+ * Before/after grading of the subtraction for one arm. Every metric is shown
+ * as a pair so the reader can see what the correction changed, and what it did
+ * not (the app's suppression ratio, which the stage never touches).
+ */
+function ArmCard({ grade }: { grade: ArmGrade }) {
+  const evidence = grade.arm === "declared";
+  const s = grade.state;
+  const sup = grade.suppression;
+  const pair = (before: number | null | undefined, after: number | null | undefined, dp = 2) => (
+    <span className="tabular-nums">
+      {before == null ? "—" : before.toFixed(dp)}
+      <span className="mx-1 text-muted-foreground">→</span>
+      {after == null ? "—" : after.toFixed(dp)}
+    </span>
+  );
+  return (
+    <Card className={evidence ? undefined : "border-dashed"}>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-base">
+            {evidence ? "Cases that received ketamine" : "Counterfactual: patterned, not recorded"}
+          </CardTitle>
+          <Badge variant={evidence ? "default" : "outline"} className="whitespace-nowrap">
+            {evidence ? "evidence" : "hypothetical"}
+          </Badge>
+          <GradeBadge grade={grade.sufficiency} />
+        </div>
+        <CardDescription>
+          {grade.cases} case{grade.cases === 1 ? "" : "s"} · {grade.epochs.toLocaleString()} epochs ·{" "}
+          {grade.moved.toLocaleString()} moved by the subtraction
+          {grade.meanDelta != null ? ` (mean ${grade.meanDelta.toFixed(1)} points)` : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {grade.epochs ? (
+          <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Depth-state AUC</dt>
+              <dd>{pair(s.before.auc, s.after.auc, 3)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Sensitivity at {ANAESTHESIA_THRESHOLD}</dt>
+              <dd>{pair(s.before.sensitivity, s.after.sensitivity)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Specificity at {ANAESTHESIA_THRESHOLD}</dt>
+              <dd>{pair(s.before.specificity, s.after.specificity)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Awake − anaesthetised separation</dt>
+              <dd>{pair(s.before.separation, s.after.separation, 1)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Anaesthetised epochs read as awake</dt>
+              <dd>{pair(s.before.falselyLight, s.after.falselyLight, 0)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Index during recorded suppression</dt>
+              <dd>{pair(sup.before.meanIndexSuppressed, sup.after.meanIndexSuppressed, 1)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Suppression concordance (app SR)</dt>
+              <dd>{pair(sup.before.concordance, sup.after.concordance)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Labelled epochs (state / suppression)</dt>
+              <dd className="tabular-nums">
+                {s.before.anaesthetised + s.before.awake} / {sup.before.labelled}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+        <p className="text-xs text-muted-foreground">{grade.verdict}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function KetaminePage() {
   const fetchCases = useServerFn(getKetamineCases);
   const { data, isLoading, error } = useQuery({
@@ -236,6 +317,30 @@ function KetaminePage() {
                 </CardHeader>
               </Card>
             ) : null}
+
+            <section className="space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold">
+                  Graded against the recorded labels, before and after the subtraction
+                </h2>
+                <p className="max-w-3xl text-sm text-muted-foreground">
+                  Depth state comes from the source recordings' own annotations and suppression from
+                  the bedside monitor's suppression ratio — neither is derived from the app. The
+                  declared arm is the only evidence; the counterfactual arm shows what the rule would
+                  do on cases that merely look like ketamine, and cannot validate it.
+                </p>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {data.grading.arms.map((g) => (
+                  <ArmCard key={g.arm} grade={g} />
+                ))}
+              </div>
+              <ul className="max-w-3xl list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                {data.grading.notes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </section>
 
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-3">
