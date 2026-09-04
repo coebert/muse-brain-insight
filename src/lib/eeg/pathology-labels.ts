@@ -197,6 +197,12 @@ export interface LineageInventory {
   seizureLabelled: number;
   ictal: number;
   cnsLabelled: number;
+  /** Epochs whose burst suppression was recorded, not computed by the app. */
+  suppressionLabelled: number;
+  suppressed: number;
+  /** Epochs carrying a dataset event-derived anaesthetic state. */
+  stateLabelled: number;
+
   labelSources: LabelSource[];
   scoresPresent: ScoreKey[];
 }
