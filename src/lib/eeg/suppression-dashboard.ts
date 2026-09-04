@@ -163,7 +163,91 @@ export function thin<T>(rows: T[], max = MAX_TRACE_SAMPLES): T[] {
   return out;
 }
 
+/**
+ * Running totals for the COEBIS-versus-BIS comparison.
+ *
+ * Kept as sums so a case and a whole cohort are summarised by the same code,
+ * and so a patient with a long record cannot be averaged twice.
+ */
+export interface BisAccumulator {
+  n: number;
+  sumBis: number;
+  sumIndex: number;
+  sumCapped: number;
+  sumAbsRaw: number;
+  sumAbsCapped: number;
+  sumSignedRaw: number;
+  sumSignedCapped: number;
+  capImproved: number;
+  capWorsened: number;
+}
+
+export function newBisAccumulator(): BisAccumulator {
+  return {
+    n: 0,
+    sumBis: 0,
+    sumIndex: 0,
+    sumCapped: 0,
+    sumAbsRaw: 0,
+    sumAbsCapped: 0,
+    sumSignedRaw: 0,
+    sumSignedCapped: 0,
+    capImproved: 0,
+    capWorsened: 0,
+  };
+}
+
+export function addBisReading(
+  acc: BisAccumulator,
+  bis: number,
+  index: number,
+  cappedIndex: number,
+): void {
+  const rawErr = index - bis;
+  const capErr = cappedIndex - bis;
+  acc.n++;
+  acc.sumBis += bis;
+  acc.sumIndex += index;
+  acc.sumCapped += cappedIndex;
+  acc.sumAbsRaw += Math.abs(rawErr);
+  acc.sumAbsCapped += Math.abs(capErr);
+  acc.sumSignedRaw += rawErr;
+  acc.sumSignedCapped += capErr;
+  if (Math.abs(capErr) < Math.abs(rawErr) - 1e-9) acc.capImproved++;
+  else if (Math.abs(capErr) > Math.abs(rawErr) + 1e-9) acc.capWorsened++;
+}
+
+export function mergeBis(into: BisAccumulator, from: BisAccumulator): void {
+  into.n += from.n;
+  into.sumBis += from.sumBis;
+  into.sumIndex += from.sumIndex;
+  into.sumCapped += from.sumCapped;
+  into.sumAbsRaw += from.sumAbsRaw;
+  into.sumAbsCapped += from.sumAbsCapped;
+  into.sumSignedRaw += from.sumSignedRaw;
+  into.sumSignedCapped += from.sumSignedCapped;
+  into.capImproved += from.capImproved;
+  into.capWorsened += from.capWorsened;
+}
+
+export function summariseBis(acc: BisAccumulator): BisAgreement {
+  const avg = (sum: number): number | null => (acc.n ? round(sum / acc.n) : null);
+  return {
+    n: acc.n,
+    meanBis: avg(acc.sumBis),
+    meanIndex: avg(acc.sumIndex),
+    meanCappedIndex: avg(acc.sumCapped),
+    maeRaw: avg(acc.sumAbsRaw),
+    maeCapped: avg(acc.sumAbsCapped),
+    biasRaw: avg(acc.sumSignedRaw),
+    biasCapped: avg(acc.sumSignedCapped),
+    capImproved: acc.capImproved,
+    capWorsened: acc.capWorsened,
+  };
+}
+
 /** Turn one case's readings into a trace with both scores on one clock. */
+
 export function caseTrace(
   caseRef: string,
   rows: SuppressionPoint[],
