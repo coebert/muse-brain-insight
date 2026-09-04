@@ -74,6 +74,7 @@ type LabelRow = {
 interface PairedRow {
   external_ref: string | null;
   at_seconds: number | null;
+  bis: number | null;
   bis_sr: number | null;
   app_index: number | null;
   app_sr: number | null;

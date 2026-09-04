@@ -15,6 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { getPathologyLabels } from "@/lib/eeg/pathology-labels.functions";
+import type { LabelAxis } from "@/lib/eeg/pathology-labels";
 import {
   getActiveSuppressionModel,
   getSuppressionReport,
@@ -292,8 +294,8 @@ function BisOnBenchmarkCard() {
   });
 
   const axis =
-    data?.axes.find((a) => a.key === "recorded-state" && a.benchmark) ??
-    data?.axes.find((a) => a.benchmark) ??
+    data?.axes.find((a: LabelAxis) => a.key === "recorded-state" && a.benchmark) ??
+    data?.axes.find((a: LabelAxis) => a.benchmark) ??
     null;
   const bench = axis?.benchmark ?? null;
   const bis = bench?.bisOnSubset ?? null;
