@@ -170,6 +170,18 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
             ? ` · ${trace.falselyLight} readings still read light inside recorded suppression`
             : ""}
         </CardDescription>
+        <CardDescription>
+          {trace.bis.n
+            ? `Against the monitor on ${trace.bis.n} readings: BIS ${num(
+                trace.bis.meanBis,
+              )} · COEBIS off by ${num(trace.bis.maeRaw)} points, ${num(
+                trace.bis.maeCapped,
+              )} after the cap (${trace.bis.capImproved} readings closer, ${
+                trace.bis.capWorsened
+              } further away)`
+            : "No monitor index recorded on this case, so only suppression can be compared here."}
+        </CardDescription>
+
       </CardHeader>
       <CardContent>
         <div className="h-56 w-full">
