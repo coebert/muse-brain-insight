@@ -42,23 +42,31 @@ export const VITALDB_WAVE_DEVICE_ID = "vitaldb-snuadc";
 /** Native rate of the SNUADC EEG waveform tracks. */
 export const VITALDB_WAVE_SAMPLE_RATE = 128;
 
-/** Track list to request from the VitalDB API for a paired import. */
+/**
+ * Track list to request from the VitalDB API for a paired import. The frontal
+ * waveform VitalDB actually publishes is the BIS sensor's own EEG1/EEG2
+ * derivation (`BIS/EEG1_WAV`), which is the signal the monitor scored — so the
+ * replayed index and the recorded BIS/SR describe the same electrode.
+ */
 export const VITALDB_PAIRED_TRACKS =
-  "SNUADC/EEG1_WAV,SNUADC/EEG2_WAV,BIS/BIS,BIS/SEF,BIS/SR,BIS/EMG,BIS/SQI," +
+  "BIS/EEG1_WAV,BIS/EEG2_WAV,BIS/BIS,BIS/SEF,BIS/SR,BIS/EMG,BIS/SQI," +
   "Orchestra/PPF20_CE,Orchestra/RFTN20_CE";
 
 /**
- * SNUADC EEG1/EEG2 are the left and right frontal derivations under the BIS
- * sensor, so they occupy the app's frontal analysis positions.
+ * EEG1/EEG2 are the left and right frontal derivations under the BIS sensor,
+ * so they occupy the app's frontal analysis positions.
  */
 const WAVE_ALIASES: Record<string, "AF7" | "AF8"> = {
+  "bis/eeg1_wav": "AF7",
   "snuadc/eeg1_wav": "AF7",
   eeg1_wav: "AF7",
   eeg1: "AF7",
+  "bis/eeg2_wav": "AF8",
   "snuadc/eeg2_wav": "AF8",
   eeg2_wav: "AF8",
   eeg2: "AF8",
 };
+
 
 const TIME_KEYS = new Set(["time", "timestamp", "t", "seconds"]);
 
