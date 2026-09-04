@@ -590,16 +590,21 @@ export async function loadPathologyLabelEvaluation(
     loadMonitorLabels(supabase, paired.index),
     loadApp(supabase, Math.min(limit, 5000)),
   ]);
-  // A case whose bedside suppression ratio already arrived as a reference row
-  // must not be counted twice through its paired readings.
-  const monitorCases = new Set(
-    monitor.rows.map((r) => r.caseRef.slice(r.caseRef.indexOf("/") + 1)),
+  // A case whose reference already arrived through another table must not be
+  // counted twice through its paired readings.
+  const bare = (ref: string) => ref.slice(ref.indexOf("/") + 1);
+  const monitorCases = new Set(monitor.rows.map((r) => bare(r.caseRef)));
+  const datasetStateCases = new Set(
+    external.rows.filter((r) => r.state != null).map((r) => bare(r.caseRef)),
   );
   const pairedLabels = paired.labels
-    .map((r) =>
-      r.suppression && monitorCases.has(r.caseRef) ? { ...r, suppression: null } : r,
-    )
+    .map((r) => ({
+      ...r,
+      suppression: monitorCases.has(r.caseRef) ? null : r.suppression,
+      state: datasetStateCases.has(r.caseRef) ? null : r.state,
+    }))
     .filter((r) => r.suppression != null || r.state != null);
+
   return evaluatePathologyLabels(
     [...external.rows, ...monitor.rows, ...pairedLabels, ...app.rows],
     external.scanned + monitor.scanned + paired.scanned + app.scanned,
