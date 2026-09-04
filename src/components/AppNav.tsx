@@ -22,6 +22,7 @@ const TOOLS = [
   { to: "/performance", label: "Alert tuning" },
   { to: "/coebis", label: "COEBIS training data" },
   { to: "/pathology", label: "Pathology validation" },
+  { to: "/patients", label: "Patient scoreboard" },
   { to: "/outcomes", label: "Case outcomes" },
 
 ] as const;
