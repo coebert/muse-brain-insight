@@ -275,19 +275,47 @@ export function pairedScoreAt(
   return best?.score ?? null;
 }
 
+
+/**
+ * The Data API caps a single response at 1,000 rows, so every load here pages
+ * explicitly. Without this a large lineage silently truncates and the
+ * dashboard reports a fraction of the cases it actually holds.
+ */
+const PAGE_SIZE = 1000;
+
+async function pageAll<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  limit: number,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < limit; from += PAGE_SIZE) {
+    const to = Math.min(from + PAGE_SIZE, limit) - 1;
+    const { data, error } = await query(from, to);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as T[];
+    out.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+  return out;
+}
+
 /**
  * App-side indices produced by replaying an imported recording, keyed by case
  * and second, so a recorded label can be graded against what the app scored.
  */
 async function loadPairedScores(supabase: Client): Promise<PairedScoreIndex> {
   const index: PairedScoreIndex = new Map();
-  const { data, error } = await supabase
-    .from("bis_paired_points")
-    .select("external_ref, at_seconds, app_index, app_sr")
-    .not("external_ref", "is", null)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  for (const r of (data ?? []) as unknown as PairedRow[]) {
+  const rows = await pageAll<PairedRow>(
+    (from, to) =>
+      supabase
+        .from("bis_paired_points")
+        .select("external_ref, at_seconds, app_index, app_sr")
+        .not("external_ref", "is", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    40000,
+  );
+  for (const r of rows) {
     const caseRef = pairedCaseRef(r.external_ref);
     if (!caseRef) continue;
     const list = index.get(caseRef) ?? [];
