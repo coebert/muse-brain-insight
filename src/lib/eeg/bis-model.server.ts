@@ -149,9 +149,9 @@ export async function loadIncumbents(
 export async function loadBisModelReport(
   supabase: Client,
   userId: string,
-  limit = 120000,
+  limit = 200000,
 ): Promise<BisModelReport> {
-  const matrix = await loadTrainingMatrix(supabase, limit, userId, 40000);
+  const matrix = await loadTrainingMatrix(supabase, limit, userId, 100000);
   const validated = selectValidatedPoints(matrix.points);
   const incumbents = await loadIncumbents(supabase, userId);
   const grouped = samplesByLineage(validated.used, incumbents);

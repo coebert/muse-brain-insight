@@ -18,7 +18,7 @@ export const getBisModelReport = createServerFn({ method: "GET" })
   .validator((data: unknown) => Input.parse(data))
   .handler(async ({ data, context }): Promise<BisModelReport> => {
     const { loadBisModelReport } = await import("@/lib/eeg/bis-model.server");
-    return loadBisModelReport(context.supabase, context.userId, data?.limit ?? 120000);
+    return loadBisModelReport(context.supabase, context.userId, data?.limit ?? 200000);
   });
 
 /** Refit and promote every lineage whose candidate clears the gate. */
@@ -27,7 +27,7 @@ export const promoteBisModel = createServerFn({ method: "POST" })
   .validator((data: unknown) => Input.parse(data))
   .handler(async ({ data, context }): Promise<BisPromotionOutcome> => {
     const { loadBisModelReport, promoteBisFits } = await import("@/lib/eeg/bis-model.server");
-    const report = await loadBisModelReport(context.supabase, context.userId, data?.limit ?? 120000);
+    const report = await loadBisModelReport(context.supabase, context.userId, data?.limit ?? 200000);
     return promoteBisFits(context.supabase, context.userId, report, data?.note);
   });
 
