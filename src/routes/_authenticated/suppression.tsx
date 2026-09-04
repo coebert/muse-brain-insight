@@ -201,7 +201,76 @@ function GradeCard({
   );
 }
 
-function SuppressionPage() {
+/**
+ * The calibration in force, and the only way to put one there.
+ *
+ * Promotion re-runs the fit server-side and refuses anything the gate blocks,
+ * so this button cannot push through a calibration the grading rejected.
+ */
+function ActiveModelPanel({ fitPromotable }: { fitPromotable: boolean }) {
+  const queryClient = useQueryClient();
+  const fetchActive = useServerFn(getActiveSuppressionModel);
+  const promote = useServerFn(promoteSuppressionModel);
+  const { data: active } = useQuery({
+    queryKey: ["suppression-active-model"],
+    queryFn: () => fetchActive({}),
+    staleTime: 60_000,
+  });
+  const mutation = useMutation({
+    mutationFn: () => promote({ data: {} }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suppression-active-model"] }),
+  });
+
+  return (
+    <div className="rounded-md border p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-medium">
+            {active
+              ? `In force: v${active.version} on ${active.lineage}`
+              : "No calibration is in force yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {active
+              ? `${active.model.n.toLocaleString()} readings from ${active.model.cases} cases · ${
+                  active.sensitivityGain == null
+                    ? "—"
+                    : `${(active.sensitivityGain * 100).toFixed(1)} pts more suppression found`
+                } · promoted ${new Date(active.createdAt).toLocaleDateString()}`
+              : "Until one is promoted, the raw flat-time detector is what the app uses."}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={active ? "outline" : "default"}
+          disabled={!fitPromotable || mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="mr-1 size-3 animate-spin" /> Refitting…
+            </>
+          ) : active ? (
+            "Refit and promote"
+          ) : (
+            "Promote this fit"
+          )}
+        </Button>
+      </div>
+      {mutation.data ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {mutation.data.promoted ? "Promoted: " : "Not promoted: "}
+          {mutation.data.reason}.
+        </p>
+      ) : null}
+      {mutation.isError ? (
+        <p className="mt-2 text-xs text-critical">{(mutation.error as Error).message}</p>
+      ) : null}
+    </div>
+  );
+}
+
+
   const fetchReport = useServerFn(getSuppressionReport);
   const { data, isLoading } = useQuery<SuppressionReport>({
     queryKey: ["suppression-model"],
