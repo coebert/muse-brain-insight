@@ -25,7 +25,20 @@ import { rocAnalysis, type RocResult } from "./discrimination";
 export type SeizureLabel = "ictal" | "interictal";
 
 /** Where a label came from. Anything the app derived is excluded upstream. */
-export type LabelSource = "dataset" | "clinician";
+export type LabelSource = "dataset" | "clinician" | "monitor";
+
+/** Burst suppression as a *recorded* fact (bedside monitor SR, dataset annotation). */
+export type SuppressionLabel = "suppressed" | "not_suppressed";
+
+/** Anaesthetic state a dataset's own event file establishes. */
+export type DepthStateLabel = "awake" | "induction" | "anaesthetised" | "emergence";
+
+/** Monitor SR at or above this percent is recorded burst suppression. */
+export const MONITOR_SUPPRESSED_PCT = 5;
+/** Monitor SR at or below this percent is a recorded clear (non-suppressed) epoch.
+ * The band between the two is ambiguous and is discarded rather than guessed. */
+export const MONITOR_CLEAR_PCT = 1;
+
 
 export type ScoreKey = "coebis" | "seizureScore" | "suppressionRatio" | "sef95";
 
