@@ -27,7 +27,7 @@ const admin = createClient(url, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const matrix = await loadTrainingMatrix(admin as never, 120000, userId, 40000);
+const matrix = await loadTrainingMatrix(admin as never, 200000, userId, 100000);
 const validated = selectValidatedPoints(matrix.points);
 const byLineage = new Map<string, typeof validated.used>();
 for (const p of validated.used) {
