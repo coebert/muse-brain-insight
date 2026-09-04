@@ -98,7 +98,35 @@ export interface PatientSeriesSample {
   coebis: number | null;
   sr: number | null;
   sef: number | null;
+  /** Reference monitor's own suppression ratio, percent, when it reports one. */
+  refSr: number | null;
+  /** Reference monitor's own spectral edge, Hz, when it reports one. */
+  refSef: number | null;
+  /**
+   * Displayed index minus the reference at this instant: COEBIS where a model
+   * is in force, the open index otherwise. Positive = the app reads lighter.
+   */
+  gap: number | null;
 }
+
+/** Where the displayed index sits against the reference across the case. */
+export interface DivergenceSummary {
+  /** Which trace the gap describes. */
+  source: "coebis" | "open-index";
+  meanAbs: number | null;
+  maxAbs: number | null;
+  /** Case-clock second of the widest gap. */
+  worstAt: number | null;
+  /** Reference value at the widest gap. */
+  worstReference: number | null;
+  /** Displayed index at the widest gap. */
+  worstDisplayed: number | null;
+  /** Share of readings more than 10 points from the reference, percent. */
+  beyond10Pct: number | null;
+  /** Same, restricted to readings at or above the suppression threshold. */
+  beyond10SuppressedPct: number | null;
+}
+
 
 export interface Spread {
   median: number | null;
@@ -156,7 +184,10 @@ export interface PatientScoreRow {
   sufficient: boolean;
   /** Plain reading of this case. */
   verdict: string;
+  /** Where the displayed index parts company with the reference. */
+  divergence: DivergenceSummary;
   series: PatientSeriesSample[];
+
 }
 
 export interface PatientCohort {
@@ -219,6 +250,54 @@ function referenceLabel(kind: ReferenceKind, monitor: string | null): string {
   if (kind === "event-state") return "event-file state";
   return monitor ?? "unspecified reference";
 }
+
+/**
+ * Where the displayed index and the reference part company across a case.
+ * The widest gap is reported with the second it happened and both values, so
+ * it can be read against the suppression and spectral-edge context rather
+ * than as a bare error figure.
+ */
+export function divergenceOf(
+  samples: { at: number; reference: number; displayed: number; sr: number | null }[],
+  source: DivergenceSummary["source"],
+): DivergenceSummary {
+  const usable = samples.filter(
+    (s) => Number.isFinite(s.reference) && Number.isFinite(s.displayed),
+  );
+  if (!usable.length) {
+    return {
+      source,
+      meanAbs: null,
+      maxAbs: null,
+      worstAt: null,
+      worstReference: null,
+      worstDisplayed: null,
+      beyond10Pct: null,
+      beyond10SuppressedPct: null,
+    };
+  }
+  let worst = usable[0]!;
+  for (const s of usable) {
+    if (Math.abs(s.displayed - s.reference) > Math.abs(worst.displayed - worst.reference)) worst = s;
+  }
+  const suppressed = usable.filter((s) => s.sr != null && s.sr >= SUPPRESSION_PCT_THRESHOLD);
+  const beyond = (list: typeof usable) =>
+    list.length
+      ? r1((list.filter((s) => Math.abs(s.displayed - s.reference) > 10).length / list.length) * 100)
+      : null;
+  return {
+    source,
+    meanAbs: r1(meanOf(usable.map((s) => Math.abs(s.displayed - s.reference)))),
+    maxAbs: r1(Math.abs(worst.displayed - worst.reference)),
+    worstAt: Math.round(worst.at),
+    worstReference: r1(worst.reference),
+    worstDisplayed: r1(worst.displayed),
+    beyond10Pct: beyond(usable),
+    beyond10SuppressedPct: suppressed.length ? beyond(suppressed) : null,
+  };
+}
+
+
 
 function verdictFor(row: {
   reference: ReferenceMeta;
@@ -372,6 +451,15 @@ export function buildPatientRows(
       maeGain,
       sufficient,
       verdict: "",
+      divergence: divergenceOf(
+        scored.map(({ point, coebis }) => ({
+          at: point.at,
+          reference: point.reference,
+          displayed: coebis ?? point.appIndex,
+          sr: point.appSr,
+        })),
+        lineageModel ? "coebis" : "open-index",
+      ),
       series: thinCaseSeries(
         scored.map(({ point, coebis }) => ({
           at: Math.round(point.at),
@@ -380,8 +468,12 @@ export function buildPatientRows(
           coebis: r1(coebis),
           sr: r2(point.appSr),
           sef: r2(point.appSef),
+          refSr: r2(point.refSr),
+          refSef: r2(point.refSef),
+          gap: r1((coebis ?? point.appIndex) - point.reference),
         })),
       ),
+
     };
     row.verdict = verdictFor(row);
     rows.push(row);
