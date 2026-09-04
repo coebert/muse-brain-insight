@@ -244,6 +244,20 @@ export function setActiveCaseCovariates(cov: CaseCovariates | null) {
   activeCovariates = cov;
 }
 
+/**
+ * Whether ketamine is on board for the case on screen. Declared exposure is
+ * what licenses the ketamine correction; the EEG pattern alone never is.
+ */
+let activeKetamineExposure: KetamineExposure = "none";
+
+export function getActiveKetamineExposure(): KetamineExposure {
+  return activeKetamineExposure;
+}
+
+export function setActiveKetamineExposure(exposure: KetamineExposure) {
+  activeKetamineExposure = exposure;
+}
+
 /** The patient-specific part of the current COEBIS number, for explanation. */
 export function activeCovariateAdjustment(
   alignment = activeBisAlignment,
