@@ -583,6 +583,9 @@ export function useEegMonitor() {
           setActiveDeviceProfile(p);
           allocateBuffers(p);
           channelTalliesRef.current = emptyChannelTallies(p.channels);
+          // Rate handling and amplitude normalisation are device-specific.
+          coebisV2Ref.current = new LiveCoebisV2(p);
+          setCoebisV2(null);
           if (channelRef.current !== "average" && !p.channels.includes(channelRef.current)) {
             setChannel("average");
           }
