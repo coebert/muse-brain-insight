@@ -238,6 +238,26 @@ function AxisCard({ axis }: { axis: LabelAxis }) {
                     <td className="py-1 pr-3 font-mono">{fmt(axis.benchmark.coebisAuc, 3)}</td>
                     <td className="py-1 text-muted-foreground">—</td>
                   </tr>
+                  <tr className="border-t border-border/40 font-medium">
+                    <td className="py-1 pr-3">
+                      COEBIS, drug-corrected
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        {axis.benchmark.correctedEpochs
+                          ? `(${axis.benchmark.correctedEpochs} epochs moved, mean ${fmt(
+                              axis.benchmark.meanCorrection,
+                              1,
+                            )} pts)`
+                          : "(no recorded agent moved the index here)"}
+                      </span>
+                    </td>
+                    <td className="py-1 pr-3 font-mono">{fmt(axis.benchmark.correctedAuc, 3)}</td>
+                    <td className="py-1 pr-3 font-mono">{fmt(axis.benchmark.correctedAuc, 3)}</td>
+                    <td className="py-1 font-mono">
+                      {axis.benchmark.correctionDelta == null
+                        ? "—"
+                        : `${axis.benchmark.correctionDelta >= 0 ? "+" : ""}${axis.benchmark.correctionDelta.toFixed(3)}`}
+                    </td>
+                  </tr>
                   {axis.benchmark.comparators.map((c) => (
                     <tr key={c.score} className="border-t border-border/40">
                       <td className="py-1 pr-3">
