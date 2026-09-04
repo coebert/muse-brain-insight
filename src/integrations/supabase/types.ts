@@ -1330,6 +1330,57 @@ export type Database = {
         }
         Relationships: []
       }
+      suppression_model_versions: {
+        Row: {
+          coefficients: Json
+          created_at: string
+          data_digest: string
+          id: string
+          is_active: boolean
+          lineage: string
+          mae_gain: number | null
+          metrics_after: Json
+          metrics_before: Json
+          note: string | null
+          sensitivity_gain: number | null
+          training: Json
+          user_id: string
+          version: number
+        }
+        Insert: {
+          coefficients: Json
+          created_at?: string
+          data_digest: string
+          id?: string
+          is_active?: boolean
+          lineage: string
+          mae_gain?: number | null
+          metrics_after?: Json
+          metrics_before?: Json
+          note?: string | null
+          sensitivity_gain?: number | null
+          training?: Json
+          user_id: string
+          version: number
+        }
+        Update: {
+          coefficients?: Json
+          created_at?: string
+          data_digest?: string
+          id?: string
+          is_active?: boolean
+          lineage?: string
+          mae_gain?: number | null
+          metrics_after?: Json
+          metrics_before?: Json
+          note?: string | null
+          sensitivity_gain?: number | null
+          training?: Json
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       tci_ce_points: {
         Row: {
           at_seconds: number
