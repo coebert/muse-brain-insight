@@ -93,18 +93,44 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/** True when the regimen / drug entry records ketamine for this case. */
+/**
+ * True when ketamine is recorded for this case.
+ *
+ * A clinician-filed flag is authoritative in both directions: `flag === true`
+ * declares exposure even when no free text names the drug, and `flag === false`
+ * rules it out even when a note mentions ketamine in passing (a plan that was
+ * abandoned, a contraindication). Only when the flag is absent does the
+ * function fall back to reading the regimen, effect-site entry and markers.
+ */
 export function ketamineDeclared(input: {
   regimen?: string | null;
   ketamineCe?: number | null;
   markers?: string[] | null;
+  /** Explicit case-filing flag: true given, false explicitly not given. */
+  flag?: boolean | null;
 }): boolean {
+  if (input.flag === true) return true;
+  if (input.flag === false) return false;
   if (input.regimen && /ketamine/i.test(input.regimen)) return true;
   if (input.ketamineCe != null && Number.isFinite(input.ketamineCe) && input.ketamineCe > 0) {
     return true;
   }
   return (input.markers ?? []).some((m) => /ketamine/i.test(m));
 }
+
+/** Where a case's ketamine status came from. */
+export type KetamineEvidence = "filed" | "inferred" | "none";
+
+export function ketamineEvidence(input: {
+  regimen?: string | null;
+  ketamineCe?: number | null;
+  markers?: string[] | null;
+  flag?: boolean | null;
+}): KetamineEvidence {
+  if (input.flag === true || input.flag === false) return "filed";
+  return ketamineDeclared(input) ? "inferred" : "none";
+}
+
 
 /**
  * Strength of the ketamine spectral pattern, 0–1.
