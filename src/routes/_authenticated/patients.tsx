@@ -424,7 +424,7 @@ function PatientsPage() {
   const active = rows.find((r) => r.caseKey === selected) ?? rows[0] ?? null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border/60">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <Button asChild variant="ghost" size="sm">
