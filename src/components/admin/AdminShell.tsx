@@ -34,6 +34,7 @@ export const ADMIN_SECTIONS = [
   {
     title: "Data",
     items: [
+      { to: "/capture", label: "Data collection" },
       { to: "/depth-intake", label: "Depth corpus intake" },
       { to: "/reference", label: "Reference library" },
       { to: "/pairing", label: "Pair monitor readings" },
