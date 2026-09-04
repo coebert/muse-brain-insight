@@ -80,6 +80,15 @@ describe("drugStage", () => {
     expect(stage.advisories.length).toBeGreaterThan(0);
   });
 
+  it("does not warn about dexmedetomidine on an ordinary propofol spectrum", () => {
+    // The spindle-and-slow pattern below is what propofol produces; warning on
+    // it would fire on nearly every routine anaesthetic.
+    for (const declared of [[], ["propofol" as const]]) {
+      const stage = drugStage({ ...base, aligned: 45, features: spindly, declared });
+      expect(stage.advisories).toEqual([]);
+    }
+  });
+
   it("skips agents handled by an earlier stage so nothing is subtracted twice", () => {
     const stage = drugStage({
       ...base,
