@@ -12,12 +12,12 @@ const ADMIN_PATHS = new Set<string>(
 );
 
 /** The five bedside destinations. Everything else lives in the admin area. */
-const BEDSIDE = [
+const BEDSIDE: { to: "/" | "/cases" | "/patients" | "/notes"; label: string; exact: boolean }[] = [
   { to: "/", label: "Monitor", exact: true },
-  { to: "/cases", label: "Cases" },
-  { to: "/patients", label: "Patients" },
-  { to: "/notes", label: "Notes" },
-] as const;
+  { to: "/cases", label: "Cases", exact: false },
+  { to: "/patients", label: "Patients", exact: false },
+  { to: "/notes", label: "Notes", exact: false },
+];
 
 /**
  * Shared header navigation. On bedside pages it shows the five clinician
@@ -71,7 +71,7 @@ export function AppNav({
           <Link
             to={item.to}
             activeProps={{ className: "bg-accent" }}
-            activeOptions={item.exact ? { exact: true } : undefined}
+            activeOptions={{ exact: item.exact }}
           >
             {item.label}
           </Link>
