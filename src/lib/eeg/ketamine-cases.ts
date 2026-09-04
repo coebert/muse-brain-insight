@@ -145,7 +145,7 @@ export function epochSignature(epoch: KetamineCaseEpoch): KetamineSignature {
   });
 }
 
-function suppressionGrade(epochs: KetamineCaseEpoch[]): SuppressionGrade {
+export function suppressionGrade(epochs: KetamineCaseEpoch[]): SuppressionGrade {
   const labelled = epochs.filter((e) => e.suppressionLabel != null);
   const withApp = labelled.filter((e) => e.suppressionPct != null);
   const suppressed = labelled.filter((e) => e.suppressionLabel === "suppressed").length;
@@ -165,7 +165,7 @@ function suppressionGrade(epochs: KetamineCaseEpoch[]): SuppressionGrade {
   return { labelled: labelled.length, suppressed, appMeanSr, concordance, grade };
 }
 
-function stateGrade(epochs: KetamineCaseEpoch[]): StateGrade {
+export function stateGrade(epochs: KetamineCaseEpoch[]): StateGrade {
   const arm = (label: DepthStateLabel) =>
     epochs.filter((e) => e.stateLabel === label && e.coebis != null).map((e) => e.coebis as number);
   const anaes = arm("anaesthetised");
