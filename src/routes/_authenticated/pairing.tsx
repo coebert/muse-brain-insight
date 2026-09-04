@@ -21,6 +21,7 @@ import { formatClock } from "@/lib/eeg/format";
 import type { PairingCandidate, PairingMoment } from "@/lib/eeg/pairing-worklist";
 import { getPairingMoments, getPairingWorklist } from "@/lib/eeg/pairing-worklist.functions";
 import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
+import { unseal } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/pairing")({
   head: () => ({
@@ -169,7 +170,15 @@ function PairingPage() {
 
   const worklist = useQuery({
     queryKey: ["pairing-worklist"],
-    queryFn: () => fetchWorklist({ data: {} }),
+    queryFn: async () => {
+      const report = await fetchWorklist({ data: {} });
+      // Case codes are stored sealed; open them so the worklist reads as cases.
+      const candidates = (await unseal(
+        report.candidates as unknown as Record<string, unknown>[],
+        ["caseCode"],
+      )) as unknown as typeof report.candidates;
+      return { ...report, candidates };
+    },
   });
 
   const data = worklist.data;
