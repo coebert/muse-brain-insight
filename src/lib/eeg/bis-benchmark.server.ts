@@ -27,7 +27,7 @@ export async function loadBisBenchmark(
   const validated = selectValidatedPoints(matrix.points);
   const incumbents = await loadIncumbents(supabase, userId);
   const grouped = samplesByLineage(validated.used, incumbents);
-  const active = new Map(loadActiveBisModels ? [] : []);
+  const active = new Map<string, BisModel>();
   for (const m of await loadActiveBisModels(supabase, userId)) active.set(m.lineage, m.model);
 
   const pairs: BenchmarkPair[] = [];
