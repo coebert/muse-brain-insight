@@ -611,11 +611,7 @@ export function evaluatePathologyLabels(
     );
   }
 
-  } else if (!seizureRows.some((e) => e.seizure === "ictal")) {
-    notes.push(
-      `${seizureRows.length.toLocaleString()} epochs carry a seizure annotation but all are interictal, so only the false-positive rate is measurable.`,
-    );
-  }
+
   if (!cnsLevels.length) {
     notes.push(
       "No case records a CNS diagnosis alongside a control group, so CNS axes are empty. File chronic CNS disease and acute pathology on cases to populate this.",
