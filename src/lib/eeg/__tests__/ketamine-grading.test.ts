@@ -49,7 +49,7 @@ describe("gradeKetamineSubtraction", () => {
     ),
     // Genuinely awake epochs, no pattern.
     ...Array.from({ length: 12 }, (_, i) =>
-      epoch({ caseRef: "k1", atSeconds: 100 + i, coebis: 95, features: calm, stateLabel: "awake" }),
+      epoch({ caseRef: "k1", atSeconds: 100 + i, coebis: 88, features: calm, stateLabel: "awake" }),
     ),
   ];
 
@@ -60,6 +60,9 @@ describe("gradeKetamineSubtraction", () => {
     expect(declared.moved).toBe(12);
     expect(declared.state.before.falselyLight).toBe(12);
     expect(declared.state.after.falselyLight).toBe(0);
+    // Before the subtraction the two arms sit on the same value and the index
+    // cannot tell them apart; after it, the anaesthetised epochs move down.
+    expect(declared.state.before.auc).toBe(0.5);
     expect(declared.state.after.auc).toBeGreaterThan(declared.state.before.auc!);
     expect(declared.state.aucGain).toBeGreaterThan(0);
   });
