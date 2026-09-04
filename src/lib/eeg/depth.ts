@@ -26,6 +26,13 @@ import {
 } from "./covariates";
 import { monitorEntropy, type MonitorEntropy } from "./entropy-monitor";
 import { coebisAdjunct, NO_ADJUNCT, type AdjunctCorrection } from "./coebis-adjuncts";
+import {
+  ketamineCorrection,
+  NO_KETAMINE,
+  type KetamineExposure,
+  type KetamineFeatures,
+  type KetamineSignature,
+} from "./ketamine";
 import { getActiveMontageFeatures } from "./psi-features";
 
 export interface DepthComponents {
