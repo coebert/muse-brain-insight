@@ -65,12 +65,38 @@ export interface FlagAgreement {
   clear: number;
 }
 
+/**
+ * COEBIS against the monitor's own index, on the readings where both exist.
+ *
+ * Graded before and after the suppression cap so the cap can be seen to help
+ * or hurt: it is only allowed to pull the number down, so a fall in error here
+ * means it pulled down where the monitor also read deep.
+ */
+export interface BisAgreement {
+  /** Readings carrying both a monitor index and a COEBIS score. */
+  n: number;
+  meanBis: number | null;
+  meanIndex: number | null;
+  meanCappedIndex: number | null;
+  /** Mean absolute difference from the monitor, in index points. */
+  maeRaw: number | null;
+  maeCapped: number | null;
+  /** Signed mean difference: positive means COEBIS reads lighter than BIS. */
+  biasRaw: number | null;
+  biasCapped: number | null;
+  /** Readings the cap moved closer to the monitor, and further from it. */
+  capImproved: number;
+  capWorsened: number;
+}
+
 export interface CaseTrace {
   caseRef: string;
   points: number;
   /** Length of the record in seconds. */
   durationSeconds: number;
   flags: FlagAgreement;
+  /** COEBIS against the real monitor index over this case. */
+  bis: BisAgreement;
   /** Mean COEBIS across the case, before and after the cap. */
   meanIndex: number | null;
   meanCappedIndex: number | null;
@@ -88,6 +114,7 @@ export interface CaseTrace {
   falselyLight: number;
   samples: TraceSample[];
 }
+
 
 /** Whether the suppression fit is allowed to act, and what is missing if not. */
 export interface GateStatus {
