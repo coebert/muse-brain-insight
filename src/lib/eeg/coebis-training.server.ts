@@ -46,7 +46,14 @@ export async function loadTrainingMatrix(
    * client (the scheduled refit job), where RLS does not scope the read.
    */
   userId?: string,
+  /**
+   * Cap per acquisition lineage. Without it, one heavily ingested lineage
+   * (VitalDB) consumes the whole global budget and smaller lineages such as
+   * DOSE-I never reach the refit at all.
+   */
+  perLineageLimit = Number.POSITIVE_INFINITY,
 ): Promise<TrainingMatrix> {
+
   // The data API caps a single response at 1000 rows, so a plain `.limit()`
   // silently truncates the oldest slice of the pool and hides whole lineages
   // from the refit. Page through explicitly instead.
@@ -136,9 +143,21 @@ export async function loadTrainingMatrix(
     } satisfies CoebisTrainingPoint;
   });
 
-  const usable = points.filter((p) => Number.isFinite(p.bis) && Number.isFinite(p.appIndex));
+  const finite = points.filter((p) => Number.isFinite(p.bis) && Number.isFinite(p.appIndex));
+  // Keep the newest slice of each lineage rather than the newest slice of the
+  // pool, so every acquisition setup arrives at the refit with its own budget.
+  const perLineage = new Map<string, number>();
+  const usable = Number.isFinite(perLineageLimit)
+    ? [...finite].reverse().filter((p) => {
+        const key = p.lineageKey ?? "unlabelled";
+        const seen = (perLineage.get(key) ?? 0) + 1;
+        perLineage.set(key, seen);
+        return seen <= perLineageLimit;
+      }).reverse()
+    : finite;
   return {
     points: usable,
+
     cases: new Set(usable.map((p) => p.sessionId).filter(Boolean)).size,
     unfiled,
     missingAge,
