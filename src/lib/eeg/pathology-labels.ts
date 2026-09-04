@@ -516,6 +516,10 @@ export function evaluatePathologyLabels(
       seizureLabelled: rows.filter((r) => r.seizure != null).length,
       ictal: rows.filter((r) => r.seizure === "ictal").length,
       cnsLabelled: rows.filter((r) => r.cns != null).length,
+      suppressionLabelled: rows.filter((r) => r.suppression != null).length,
+      suppressed: rows.filter((r) => r.suppression === "suppressed").length,
+      stateLabelled: rows.filter((r) => r.state != null).length,
+
       labelSources: [...new Set(rows.map((r) => r.labelSource))],
       scoresPresent: SCORE_META.filter((m) => rows.some((r) => r.scores[m.key] != null)).map(
         (m) => m.key,
