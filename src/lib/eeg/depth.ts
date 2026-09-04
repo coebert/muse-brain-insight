@@ -655,7 +655,23 @@ export class DepthIndexEstimator {
             bsr,
             quality: 1 - gatedFraction,
           });
-    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total);
+    // Ketamine stage: recognise the NMDA-antagonist beta/gamma pattern so it is
+    // not reported as a lighter patient. Applied after the adjuncts, on the
+    // displayed number only — the raw OpenIBIS index and any paired readings
+    // logged for fitting are untouched.
+    const afterAdjunct =
+      aligned == null ? null : clamp(aligned + adjunct.total, 0, 100);
+    const ketamine =
+      afterAdjunct == null
+        ? NO_KETAMINE
+        : ketamineCorrection({
+            aligned: afterAdjunct,
+            features: bandShares(rows),
+            exposure: activeKetamineExposure,
+            bsr,
+            quality: 1 - gatedFraction,
+          });
+    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total + ketamine.delta);
     const coebis = this.smoothCoebis(coebisRaw, epochSeconds);
     return {
       index,
