@@ -324,6 +324,35 @@ export const getCoebisTrainingData = createServerFn({ method: "GET" })
     const residuals = active ? computeCoebisResiduals(residualInput) : null;
     const drift = residuals ? detectCoebisDrift(residualInput, residuals.tolerance) : null;
 
+    // The newest fit any refit run produced, whether or not it was promoted, so
+    // the page shows the latest attempt beside the model actually in force.
+    const { data: latestRow } = await context.supabase
+      .from("coebis_model_versions")
+      .select(
+        "lineage_key, model_version, created_at, promoted, is_active, mae_gain, metrics_before, metrics_after, training, reason",
+      )
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const metric = (v: unknown, key: string): number | null =>
+      v && typeof v === "object" ? num((v as Record<string, unknown>)[key]) : null;
+    const candidate = latestRow
+      ? {
+          lineageKey: String(latestRow.lineage_key),
+          modelVersion: String(latestRow.model_version ?? "coebis"),
+          createdAt: String(latestRow.created_at),
+          promoted: Boolean(latestRow.promoted),
+          isActive: Boolean(latestRow.is_active),
+          nPoints: metric(latestRow.training, "n"),
+          nCases: metric(latestRow.training, "cases"),
+          maeBefore: metric(latestRow.metrics_before, "mae"),
+          maeAfter: metric(latestRow.metrics_after, "mae"),
+          maeGain: num(latestRow.mae_gain),
+          reason: latestRow.reason ? String(latestRow.reason) : null,
+        }
+      : null;
+
     return {
       totalPoints: points.length,
       usedPoints: fitPoints.length,
