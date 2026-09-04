@@ -243,10 +243,18 @@ export function detectCva(
   });
 
   if (!usableWindow.length) {
+    // Name the cause: one side's contact failing is a very different story
+    // from both sides being noisy, and only the first looks like a stroke.
+    const leftPoor = windowPoints.every((p) => p.leftSqi < settings.minSqi);
+    const rightPoor = windowPoints.every((p) => p.rightSqi < settings.minSqi);
+    const oneSided = leftPoor !== rightPoor;
+    const poorSide = leftPoor ? "left" : "right";
     return withBaseline({
       status: "stable",
-      note: "Signal quality is too poor right now to judge left against right.",
-      excludedBy: "signal quality",
+      note: oneSided
+        ? `The ${poorSide} side has lost signal, but its contact quality fell at the same time — treat this as an electrode problem, not a stroke.`
+        : "Signal quality is too poor right now to judge left against right.",
+      excludedBy: oneSided ? "sensor contact" : "signal quality",
     });
   }
 
