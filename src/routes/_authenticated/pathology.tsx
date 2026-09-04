@@ -226,7 +226,8 @@ function AxisCard({ axis }: { axis: LabelAxis }) {
                 <thead className="text-muted-foreground">
                   <tr className="text-left">
                     <th className="py-1 pr-3 font-normal">Index</th>
-                    <th className="py-1 pr-3 font-normal">AUC</th>
+                    <th className="py-1 pr-3 font-normal">AUC (published direction)</th>
+                    <th className="py-1 pr-3 font-normal">Best orientation</th>
                     <th className="py-1 font-normal">vs COEBIS</th>
                   </tr>
                 </thead>
@@ -234,22 +235,30 @@ function AxisCard({ axis }: { axis: LabelAxis }) {
                   <tr className="border-t border-border/40 font-medium">
                     <td className="py-1 pr-3">COEBIS</td>
                     <td className="py-1 pr-3 font-mono">{fmt(axis.benchmark.coebisAuc, 3)}</td>
+                    <td className="py-1 pr-3 font-mono">{fmt(axis.benchmark.coebisAuc, 3)}</td>
                     <td className="py-1 text-muted-foreground">—</td>
                   </tr>
                   {axis.benchmark.comparators.map((c) => (
                     <tr key={c.score} className="border-t border-border/40">
-                      <td className="py-1 pr-3">{c.label}</td>
+                      <td className="py-1 pr-3">
+                        {c.label}
+                        {c.inverted ? (
+                          <span className="ml-1 text-muted-foreground">(runs backwards here)</span>
+                        ) : null}
+                      </td>
                       <td className="py-1 pr-3 font-mono">{fmt(c.auc, 3)}</td>
+                      <td className="py-1 pr-3 font-mono">{fmt(c.orientedAuc, 3)}</td>
                       <td className="py-1 font-mono">
-                        {c.auc == null || axis.benchmark!.coebisAuc == null
+                        {c.orientedAuc == null || axis.benchmark!.coebisAuc == null
                           ? "—"
-                          : `${axis.benchmark!.coebisAuc - c.auc >= 0 ? "+" : ""}${(
-                              axis.benchmark!.coebisAuc - c.auc
+                          : `${axis.benchmark!.coebisAuc - c.orientedAuc >= 0 ? "+" : ""}${(
+                              axis.benchmark!.coebisAuc - c.orientedAuc
                             ).toFixed(3)}`}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+
               </table>
             </div>
             <p className="mt-2 text-xs">{axis.benchmark.verdict}</p>
