@@ -26,6 +26,8 @@ const TOOLS = [
   { to: "/pathology", label: "Pathology validation" },
   { to: "/ketamine", label: "Ketamine signature" },
   { to: "/drugs", label: "Drug library" },
+  { to: "/exposure", label: "Drug exposure" },
+
   { to: "/patients", label: "Patient scoreboard" },
   { to: "/outcomes", label: "Case outcomes" },
 

@@ -20,6 +20,7 @@ import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
 import { Route as AuthenticatedDrugsRouteImport } from './routes/_authenticated/drugs'
+import { Route as AuthenticatedExposureRouteImport } from './routes/_authenticated/exposure'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedKetamineRouteImport } from './routes/_authenticated/ketamine'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
@@ -88,6 +89,11 @@ const AuthenticatedDiscoveryRoute = AuthenticatedDiscoveryRouteImport.update({
 const AuthenticatedDrugsRoute = AuthenticatedDrugsRouteImport.update({
   id: '/drugs',
   path: '/drugs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExposureRoute = AuthenticatedExposureRouteImport.update({
+  id: '/exposure',
+  path: '/exposure',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/compare': typeof AuthenticatedCompareRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/drugs': typeof AuthenticatedDrugsRoute
+  '/exposure': typeof AuthenticatedExposureRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/compare': typeof AuthenticatedCompareRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/drugs': typeof AuthenticatedDrugsRoute
+  '/exposure': typeof AuthenticatedExposureRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
   '/_authenticated/drugs': typeof AuthenticatedDrugsRoute
+  '/_authenticated/exposure': typeof AuthenticatedExposureRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/ketamine': typeof AuthenticatedKetamineRoute
   '/_authenticated/models': typeof AuthenticatedModelsRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/discovery'
     | '/drugs'
+    | '/exposure'
     | '/feedback'
     | '/ketamine'
     | '/models'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/discovery'
     | '/drugs'
+    | '/exposure'
     | '/feedback'
     | '/ketamine'
     | '/models'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/_authenticated/compare'
     | '/_authenticated/discovery'
     | '/_authenticated/drugs'
+    | '/_authenticated/exposure'
     | '/_authenticated/feedback'
     | '/_authenticated/ketamine'
     | '/_authenticated/models'
@@ -419,6 +431,13 @@ declare module '@tanstack/react-router' {
       path: '/drugs'
       fullPath: '/drugs'
       preLoaderRoute: typeof AuthenticatedDrugsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exposure': {
+      id: '/_authenticated/exposure'
+      path: '/exposure'
+      fullPath: '/exposure'
+      preLoaderRoute: typeof AuthenticatedExposureRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feedback': {
@@ -538,6 +557,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
   AuthenticatedDrugsRoute: typeof AuthenticatedDrugsRoute
+  AuthenticatedExposureRoute: typeof AuthenticatedExposureRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedKetamineRoute: typeof AuthenticatedKetamineRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
@@ -564,6 +584,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
   AuthenticatedDrugsRoute: AuthenticatedDrugsRoute,
+  AuthenticatedExposureRoute: AuthenticatedExposureRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedKetamineRoute: AuthenticatedKetamineRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRoute,
