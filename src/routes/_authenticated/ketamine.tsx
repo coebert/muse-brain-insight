@@ -117,7 +117,13 @@ function CaseRow({ row }: { row: KetamineCaseSummary }) {
       <TableCell>
         <EffectBadge effect={row.effect} />
         <div className="mt-1 text-xs text-muted-foreground">
-          {row.declared ? "ketamine recorded" : "not recorded"} · {row.epochs} epochs
+          {row.declared
+            ? row.evidence === "filed"
+              ? "ketamine filed on the case"
+              : "ketamine mentioned in the record"
+            : row.evidence === "filed"
+              ? "ketamine ruled out on the case"
+              : "not recorded"} · {row.epochs} epochs
         </div>
       </TableCell>
       <TableCell className="text-right tabular-nums text-xs">
@@ -292,6 +298,7 @@ function KetaminePage() {
               {[
                 { label: "Cases measured", value: data.totals.cases },
                 { label: "Ketamine recorded", value: data.totals.declaredCases },
+                { label: "Filed on the case", value: data.totals.filedCases },
                 { label: "Cases being corrected", value: data.totals.correctingCases },
                 { label: "Advisory (pattern, no record)", value: data.totals.advisoryCases },
               ].map((s) => (
