@@ -597,13 +597,14 @@ export async function loadPathologyLabelEvaluation(
   const datasetStateCases = new Set(
     external.rows.filter((r) => r.state != null).map((r) => bare(r.caseRef)),
   );
-  const pairedLabels = paired.labels
+  const pairedLabels: LabelledEpoch[] = paired.labels
     .map((r) => ({
       ...r,
-      suppression: monitorCases.has(r.caseRef) ? null : r.suppression,
-      state: datasetStateCases.has(r.caseRef) ? null : r.state,
+      suppression: monitorCases.has(r.caseRef) ? null : (r.suppression ?? null),
+      state: datasetStateCases.has(r.caseRef) ? null : (r.state ?? null),
     }))
     .filter((r) => r.suppression != null || r.state != null);
+
 
   return evaluatePathologyLabels(
     [...external.rows, ...monitor.rows, ...pairedLabels, ...app.rows],
