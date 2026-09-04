@@ -574,7 +574,7 @@ export function evaluatePathologyLabels(
   const stateAxis = buildAxis(
     "recorded-state",
     "Recorded anaesthetised vs awake",
-    "Anaesthetic state taken from the dataset's own event file (loss/return of consciousness markers), with induction and emergence transitions excluded.",
+    "Anaesthetic state recorded by the source itself — a dataset event file (loss/return of consciousness markers) or a bedside MOAA/S observation carried on the paired reading. Induction, emergence and intermediate sedation are excluded.",
     "anaesthetised",
     "awake",
     stateRows,
