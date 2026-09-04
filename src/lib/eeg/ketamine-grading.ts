@@ -37,7 +37,13 @@
  */
 
 import { rocAuc } from "./diagnosis-model";
-import { MIN_AXIS_CASES, MIN_AXIS_EPOCHS, type Sufficiency } from "./pathology-labels";
+import {
+  MIN_AXIS_CASES,
+  MIN_AXIS_EPOCHS,
+  type DepthStateLabel,
+  type Sufficiency,
+  type SuppressionLabel,
+} from "./pathology-labels";
 import {
   ANAESTHESIA_THRESHOLD,
   APP_SUPPRESSED_PCT,
@@ -57,8 +63,9 @@ export interface GradedEpoch {
   /** Index after it — identical when the stage did not move this epoch. */
   after: number;
   suppressionPct: number | null;
-  suppressionLabel: "suppressed" | "clear" | null;
-  stateLabel: "anaesthetised" | "awake" | null;
+  suppressionLabel: SuppressionLabel | null;
+  /** Only the two unambiguous states are graded; induction/emergence are dropped. */
+  stateLabel: DepthStateLabel | null;
 }
 
 export interface StateDiscrimination {
@@ -128,7 +135,9 @@ function sufficiencyOf(n: number, posCases: number, negCases: number): Sufficien
 }
 
 function discriminate(epochs: GradedEpoch[], pick: (e: GradedEpoch) => number): StateDiscrimination {
-  const labelled = epochs.filter((e) => e.stateLabel != null);
+  const labelled = epochs.filter(
+    (e) => e.stateLabel === "anaesthetised" || e.stateLabel === "awake",
+  );
   const anaes = labelled.filter((e) => e.stateLabel === "anaesthetised");
   const awake = labelled.filter((e) => e.stateLabel === "awake");
   // Higher index = more awake, so the AUC is taken with "awake" as positive.
@@ -203,7 +212,9 @@ function verdictFor(arm: GradingArm, grade: Omit<ArmGrade, "verdict">): string {
 function gradeArm(arm: GradingArm, epochs: GradedEpoch[]): ArmGrade {
   const moved = epochs.filter((e) => e.after !== e.before);
   const cases = new Set(epochs.map((e) => e.caseRef));
-  const labelled = epochs.filter((e) => e.stateLabel != null);
+  const labelled = epochs.filter(
+    (e) => e.stateLabel === "anaesthetised" || e.stateLabel === "awake",
+  );
   const before = discriminate(epochs, (e) => e.before);
   const after = discriminate(epochs, (e) => e.after);
   const grade: Omit<ArmGrade, "verdict"> = {
