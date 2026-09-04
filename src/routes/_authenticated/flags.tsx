@@ -170,6 +170,18 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
             ? ` · ${trace.falselyLight} readings still read light inside recorded suppression`
             : ""}
         </CardDescription>
+        <CardDescription>
+          {trace.bis.n
+            ? `Against the monitor on ${trace.bis.n} readings: BIS ${num(
+                trace.bis.meanBis,
+              )} · COEBIS off by ${num(trace.bis.maeRaw)} points, ${num(
+                trace.bis.maeCapped,
+              )} after the cap (${trace.bis.capImproved} readings closer, ${
+                trace.bis.capWorsened
+              } further away)`
+            : "No monitor index recorded on this case, so only suppression can be compared here."}
+        </CardDescription>
+
       </CardHeader>
       <CardContent>
         <div className="h-56 w-full">
@@ -203,6 +215,16 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
               />
               <Line
                 type="monotone"
+                dataKey="monitorIndex"
+                name="BIS (monitor)"
+                stroke="var(--color-success, currentColor)"
+                dot={false}
+                strokeWidth={1.75}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
                 dataKey="index"
                 name="COEBIS"
                 stroke="var(--color-signal, currentColor)"
@@ -210,6 +232,7 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
                 strokeWidth={1.5}
                 isAnimationActive={false}
               />
+
               <Line
                 type="monotone"
                 dataKey="cappedIndex"
@@ -269,7 +292,10 @@ function FlagsPage() {
   const load = useServerFn(getSuppressionDashboard);
   const { data, isLoading, error } = useQuery({
     queryKey: ["suppression-dashboard"],
-    queryFn: () => load({ data: {} }),
+    // Every labelled reading, so the cohort figures cover the same patients
+    // the calibration in force was fitted and graded on.
+    queryFn: () => load({ data: { limit: 80000 } }),
+
     staleTime: 60_000,
   });
 
@@ -311,11 +337,17 @@ function FlagsPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  Flag agreement across the cases shown
+                  Flag agreement across all {data.patients} patients
                 </CardTitle>
                 <CardDescription>
                   Every reading counted once: the monitor's suppression ratio against the app's
-                  estimate, at the same {MONITOR_SUPPRESSED_PCT}% threshold.
+                  estimate, at the same {MONITOR_SUPPRESSED_PCT}% threshold, using the{" "}
+                  {data.modelSource === "promoted"
+                    ? "calibration in force"
+                    : data.modelSource === "candidate fit"
+                      ? "candidate fit (not yet promoted)"
+                      : "raw detector, with no calibration in force"}
+                  .
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -323,6 +355,45 @@ function FlagsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">
+                COEBIS against the real monitor across patients
+              </CardTitle>
+              <CardDescription>
+                {data.bisTotals.n
+                  ? `${data.bisTotals.n.toLocaleString()} readings from ${
+                      data.casesWithBis
+                    } patients carry a bedside BIS number at the same second.`
+                  : "No reading carries a bedside BIS number, so the depth numbers cannot be compared here."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <Metric label="Mean BIS" value={num(data.bisTotals.meanBis)} />
+              <Metric
+                label="Mean COEBIS"
+                value={num(data.bisTotals.meanIndex)}
+                hint={`${num(data.bisTotals.meanCappedIndex)} after the cap`}
+              />
+              <Metric
+                label="Off the monitor by"
+                value={num(data.bisTotals.maeRaw, 1, " pts")}
+                hint={`${num(data.bisTotals.maeCapped, 1, " pts")} after the cap`}
+              />
+              <Metric
+                label="Reads lighter by"
+                value={num(data.bisTotals.biasRaw, 1, " pts")}
+                hint={`${num(data.bisTotals.biasCapped, 1, " pts")} after the cap`}
+              />
+              <Metric
+                label="Cap moved it closer"
+                value={data.bisTotals.capImproved.toLocaleString()}
+                hint={`${data.bisTotals.capWorsened.toLocaleString()} further away`}
+              />
+            </CardContent>
+          </Card>
+
 
           {data.cases.length ? (
             <div className="grid gap-4 xl:grid-cols-2">

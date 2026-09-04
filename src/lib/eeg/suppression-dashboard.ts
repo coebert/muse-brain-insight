@@ -65,12 +65,38 @@ export interface FlagAgreement {
   clear: number;
 }
 
+/**
+ * COEBIS against the monitor's own index, on the readings where both exist.
+ *
+ * Graded before and after the suppression cap so the cap can be seen to help
+ * or hurt: it is only allowed to pull the number down, so a fall in error here
+ * means it pulled down where the monitor also read deep.
+ */
+export interface BisAgreement {
+  /** Readings carrying both a monitor index and a COEBIS score. */
+  n: number;
+  meanBis: number | null;
+  meanIndex: number | null;
+  meanCappedIndex: number | null;
+  /** Mean absolute difference from the monitor, in index points. */
+  maeRaw: number | null;
+  maeCapped: number | null;
+  /** Signed mean difference: positive means COEBIS reads lighter than BIS. */
+  biasRaw: number | null;
+  biasCapped: number | null;
+  /** Readings the cap moved closer to the monitor, and further from it. */
+  capImproved: number;
+  capWorsened: number;
+}
+
 export interface CaseTrace {
   caseRef: string;
   points: number;
   /** Length of the record in seconds. */
   durationSeconds: number;
   flags: FlagAgreement;
+  /** COEBIS against the real monitor index over this case. */
+  bis: BisAgreement;
   /** Mean COEBIS across the case, before and after the cap. */
   meanIndex: number | null;
   meanCappedIndex: number | null;
@@ -88,6 +114,7 @@ export interface CaseTrace {
   falselyLight: number;
   samples: TraceSample[];
 }
+
 
 /** Whether the suppression fit is allowed to act, and what is missing if not. */
 export interface GateStatus {
@@ -107,12 +134,24 @@ export interface GateStatus {
   maeGain: number | null;
 }
 
+/** Where the suppression coefficients on this page came from. */
+export type ModelSource = "promoted" | "candidate fit" | "raw detector";
+
 export interface SuppressionDashboard {
   gate: GateStatus;
-  /** Flag agreement summed over every case shown. */
+  /** Which calibration produced the estimates drawn here. */
+  modelSource: ModelSource;
+  /** Flag agreement summed over every patient, not only those drawn. */
   totals: FlagAgreement;
+  /** COEBIS against the real monitor index across the whole cohort. */
+  bisTotals: BisAgreement;
+  /** Patients carrying a monitor index as well as a suppression ratio. */
+  casesWithBis: number;
+  /** Patients in the loaded readings. */
+  patients: number;
   cases: CaseTrace[];
 }
+
 
 const round = (v: number, dp = 1): number => {
   const f = 10 ** dp;
@@ -136,7 +175,91 @@ export function thin<T>(rows: T[], max = MAX_TRACE_SAMPLES): T[] {
   return out;
 }
 
+/**
+ * Running totals for the COEBIS-versus-BIS comparison.
+ *
+ * Kept as sums so a case and a whole cohort are summarised by the same code,
+ * and so a patient with a long record cannot be averaged twice.
+ */
+export interface BisAccumulator {
+  n: number;
+  sumBis: number;
+  sumIndex: number;
+  sumCapped: number;
+  sumAbsRaw: number;
+  sumAbsCapped: number;
+  sumSignedRaw: number;
+  sumSignedCapped: number;
+  capImproved: number;
+  capWorsened: number;
+}
+
+export function newBisAccumulator(): BisAccumulator {
+  return {
+    n: 0,
+    sumBis: 0,
+    sumIndex: 0,
+    sumCapped: 0,
+    sumAbsRaw: 0,
+    sumAbsCapped: 0,
+    sumSignedRaw: 0,
+    sumSignedCapped: 0,
+    capImproved: 0,
+    capWorsened: 0,
+  };
+}
+
+export function addBisReading(
+  acc: BisAccumulator,
+  bis: number,
+  index: number,
+  cappedIndex: number,
+): void {
+  const rawErr = index - bis;
+  const capErr = cappedIndex - bis;
+  acc.n++;
+  acc.sumBis += bis;
+  acc.sumIndex += index;
+  acc.sumCapped += cappedIndex;
+  acc.sumAbsRaw += Math.abs(rawErr);
+  acc.sumAbsCapped += Math.abs(capErr);
+  acc.sumSignedRaw += rawErr;
+  acc.sumSignedCapped += capErr;
+  if (Math.abs(capErr) < Math.abs(rawErr) - 1e-9) acc.capImproved++;
+  else if (Math.abs(capErr) > Math.abs(rawErr) + 1e-9) acc.capWorsened++;
+}
+
+export function mergeBis(into: BisAccumulator, from: BisAccumulator): void {
+  into.n += from.n;
+  into.sumBis += from.sumBis;
+  into.sumIndex += from.sumIndex;
+  into.sumCapped += from.sumCapped;
+  into.sumAbsRaw += from.sumAbsRaw;
+  into.sumAbsCapped += from.sumAbsCapped;
+  into.sumSignedRaw += from.sumSignedRaw;
+  into.sumSignedCapped += from.sumSignedCapped;
+  into.capImproved += from.capImproved;
+  into.capWorsened += from.capWorsened;
+}
+
+export function summariseBis(acc: BisAccumulator): BisAgreement {
+  const avg = (sum: number): number | null => (acc.n ? round(sum / acc.n) : null);
+  return {
+    n: acc.n,
+    meanBis: avg(acc.sumBis),
+    meanIndex: avg(acc.sumIndex),
+    meanCappedIndex: avg(acc.sumCapped),
+    maeRaw: avg(acc.sumAbsRaw),
+    maeCapped: avg(acc.sumAbsCapped),
+    biasRaw: avg(acc.sumSignedRaw),
+    biasCapped: avg(acc.sumSignedCapped),
+    capImproved: acc.capImproved,
+    capWorsened: acc.capWorsened,
+  };
+}
+
 /** Turn one case's readings into a trace with both scores on one clock. */
+
 export function caseTrace(
   caseRef: string,
   rows: SuppressionPoint[],
@@ -152,6 +275,7 @@ export function caseTrace(
   let capEngaged = 0;
   let maxCapShift = 0;
   let falselyLight = 0;
+  const bisAcc = newBisAccumulator();
 
   for (const p of ordered) {
     const estimatedSr = model ? predictSr(model, p.appSr, p.appIndex) : p.appSr;
@@ -172,6 +296,9 @@ export function caseTrace(
     if (paired) capped.push(paired.cappedIndex);
     monitorSrs.push(p.bisSr);
     estimatedSrs.push(estimatedSr);
+    if (p.bis != null && p.appIndex != null && paired) {
+      addBisReading(bisAcc, p.bis, p.appIndex, paired.cappedIndex);
+    }
 
     samples.push({
       at: p.atSeconds,
@@ -194,6 +321,7 @@ export function caseTrace(
     points: ordered.length,
     durationSeconds: Math.max(0, last - first),
     flags,
+    bis: summariseBis(bisAcc),
     meanIndex: mean(indices),
     meanCappedIndex: mean(capped),
     meanMonitorSr: mean(monitorSrs) ?? 0,
@@ -204,6 +332,7 @@ export function caseTrace(
     samples: thin(samples),
   };
 }
+
 
 /** Gate status read straight off the cross-validated fit. */
 export function gateStatus(fit: SuppressionFitReport): GateStatus {
@@ -224,16 +353,38 @@ export function gateStatus(fit: SuppressionFitReport): GateStatus {
   };
 }
 
+/** Options controlling which model the dashboard reads. */
+export interface DashboardOptions {
+  maxCases?: number;
+  /**
+   * The calibration in force. When omitted the dashboard falls back to the
+   * cross-validated fit, and when that is blocked to the raw detector, so the
+   * page never silently reports an unpromoted model as if it were live.
+   */
+  activeModel?: SuppressionModel | null;
+  /** Where the coefficients came from, for the page to state plainly. */
+  modelSource?: ModelSource;
+}
+
 /**
- * Build the whole dashboard: the gate, the summed flag agreement and the
- * per-case traces, ranked by how much suppression the monitor recorded so the
- * cases that matter clinically come first.
+ * Build the whole dashboard: the gate, the summed flag agreement, the cohort
+ * COEBIS-versus-BIS comparison and the per-case traces, ranked by how much
+ * suppression the monitor recorded so the cases that matter clinically come
+ * first.
  */
 export function buildSuppressionDashboard(
   points: SuppressionPoint[],
   fit: SuppressionFitReport,
-  maxCases = MAX_DASHBOARD_CASES,
+  options: DashboardOptions | number = {},
 ): SuppressionDashboard {
+  const opts: DashboardOptions =
+    typeof options === "number" ? { maxCases: options } : options;
+  const maxCases = opts.maxCases ?? MAX_DASHBOARD_CASES;
+  const model = opts.activeModel !== undefined ? opts.activeModel : fit.model;
+  const modelSource: ModelSource =
+    opts.modelSource ??
+    (opts.activeModel ? "promoted" : model ? "candidate fit" : "raw detector");
+
   const byCase = new Map<string, SuppressionPoint[]>();
   for (const p of points) {
     const list = byCase.get(p.caseRef);
@@ -241,8 +392,38 @@ export function buildSuppressionDashboard(
     else byCase.set(p.caseRef, [p]);
   }
 
-  const traces = [...byCase.entries()]
-    .map(([caseRef, rows]) => caseTrace(caseRef, rows, fit.model))
+  const all = [...byCase.entries()].map(([caseRef, rows]) =>
+    caseTrace(caseRef, rows, model),
+  );
+
+  // The cohort figures count every patient, not only the ones drawn below,
+  // so the headline never flatters itself by dropping the quiet cases.
+  const totals: FlagAgreement = { agreed: 0, missed: 0, falseAlarms: 0, clear: 0 };
+  const bisAcc = newBisAccumulator();
+  let casesWithBis = 0;
+  for (const t of all) {
+    totals.agreed += t.flags.agreed;
+    totals.missed += t.flags.missed;
+    totals.falseAlarms += t.flags.falseAlarms;
+    totals.clear += t.flags.clear;
+    if (t.bis.n) {
+      casesWithBis++;
+      mergeBis(bisAcc, {
+        n: t.bis.n,
+        sumBis: (t.bis.meanBis ?? 0) * t.bis.n,
+        sumIndex: (t.bis.meanIndex ?? 0) * t.bis.n,
+        sumCapped: (t.bis.meanCappedIndex ?? 0) * t.bis.n,
+        sumAbsRaw: (t.bis.maeRaw ?? 0) * t.bis.n,
+        sumAbsCapped: (t.bis.maeCapped ?? 0) * t.bis.n,
+        sumSignedRaw: (t.bis.biasRaw ?? 0) * t.bis.n,
+        sumSignedCapped: (t.bis.biasCapped ?? 0) * t.bis.n,
+        capImproved: t.bis.capImproved,
+        capWorsened: t.bis.capWorsened,
+      });
+    }
+  }
+
+  const traces = all
     .sort(
       (a, b) =>
         b.flags.agreed + b.flags.missed - (a.flags.agreed + a.flags.missed) ||
@@ -250,13 +431,14 @@ export function buildSuppressionDashboard(
     )
     .slice(0, maxCases);
 
-  const totals: FlagAgreement = { agreed: 0, missed: 0, falseAlarms: 0, clear: 0 };
-  for (const t of traces) {
-    totals.agreed += t.flags.agreed;
-    totals.missed += t.flags.missed;
-    totals.falseAlarms += t.flags.falseAlarms;
-    totals.clear += t.flags.clear;
-  }
-
-  return { gate: gateStatus(fit), totals, cases: traces };
+  return {
+    gate: gateStatus(fit),
+    modelSource,
+    totals,
+    bisTotals: summariseBis(bisAcc),
+    casesWithBis,
+    patients: all.length,
+    cases: traces,
+  };
 }
+
