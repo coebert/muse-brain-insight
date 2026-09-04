@@ -505,6 +505,8 @@ async function loadExternal(
         "source_lineage, case_ref, at_seconds, label, label_source, sef95, suppression_ratio, covariates, spectrum_db, bands, freq_start_hz, freq_step_hz",
       )
       .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+
       .range(from, Math.min(from + PAGE, limit) - 1);
     if (error) throw new Error(error.message);
     const page = (data ?? []) as unknown as ExternalRow[];
