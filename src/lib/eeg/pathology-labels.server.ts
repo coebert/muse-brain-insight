@@ -335,13 +335,18 @@ async function loadMonitorLabels(
   supabase: Client,
   paired: PairedScoreIndex,
 ): Promise<{ rows: LabelledEpoch[]; scanned: number }> {
-  const { data, error } = await supabase
-    .from("external_reference_points")
-    .select("source, source_lineage, case_ref, at_seconds, bis_sr, bis_sef")
-    .not("bis_sr", "is", null)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  const page = (data ?? []) as unknown as MonitorRow[];
+  const page = await pageAll<MonitorRow>(
+    (from, to) =>
+      supabase
+        .from("external_reference_points")
+        .select("source, source_lineage, case_ref, at_seconds, bis_sr, bis_sef")
+        .not("bis_sr", "is", null)
+        .order("case_ref", { ascending: true })
+        .order("at_seconds", { ascending: true })
+        .range(from, to),
+    20000,
+  );
+
   const counts = new Map<string, number>();
   const rows: LabelledEpoch[] = [];
   for (const r of page) {
