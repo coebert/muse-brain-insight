@@ -160,3 +160,48 @@ describe("buildSuppressionDashboard", () => {
     expect(dash.gate.active).toBe(false);
   });
 });
+
+describe("COEBIS against the real monitor index", () => {
+  it("grades each case on readings carrying both numbers, before and after the cap", () => {
+    const rows = [
+      point({ atSeconds: 0, appIndex: 60, bis: 50, appSr: 0, bisSr: 0 }),
+      point({ atSeconds: 10, appIndex: 40, bis: 50, appSr: 0, bisSr: 0 }),
+    ];
+    const trace = caseTrace("case-1", rows, null);
+    expect(trace.bis.n).toBe(2);
+    expect(trace.bis.meanBis).toBe(50);
+    expect(trace.bis.maeRaw).toBe(10);
+    expect(trace.bis.biasRaw).toBe(0);
+  });
+
+  it("ignores readings with no monitor index rather than scoring them as agreement", () => {
+    const rows = [
+      point({ atSeconds: 0, appIndex: 60, bis: null }),
+      point({ atSeconds: 10, appIndex: 60, bis: 50 }),
+    ];
+    expect(caseTrace("case-1", rows, null).bis.n).toBe(1);
+  });
+
+  it("counts every patient in the cohort totals, not only the cases drawn", () => {
+    const points = [...record("a"), ...record("b"), ...record("c")];
+    const fit = crossValidate("vitaldb", points);
+    const full = buildSuppressionDashboard(points, fit);
+    const drawnOne = buildSuppressionDashboard(points, fit, { maxCases: 1 });
+    expect(drawnOne.cases).toHaveLength(1);
+    expect(drawnOne.patients).toBe(3);
+    expect(drawnOne.bisTotals.n).toBe(full.bisTotals.n);
+    expect(drawnOne.totals).toEqual(full.totals);
+  });
+
+  it("names the calibration in force rather than implying a candidate is live", () => {
+    const points = record("a");
+    const fit = crossValidate("vitaldb", points);
+    expect(buildSuppressionDashboard(points, fit).modelSource).not.toBe("promoted");
+    expect(
+      buildSuppressionDashboard(points, fit, {
+        activeModel: { intercept: 0, bSr: 1, bSqrtSr: 0, bIndexDeficit: 0, n: 10, cases: 5 },
+        modelSource: "promoted",
+      }).modelSource,
+    ).toBe("promoted");
+  });
+});
