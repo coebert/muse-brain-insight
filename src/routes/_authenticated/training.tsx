@@ -220,7 +220,10 @@ function FoldPanel({ lineageKey }: { lineageKey: string }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {folds.isLoading ? (
-          <p className="text-sm text-muted-foreground">Scoring every patient in this setup…</p>
+          <p className="text-sm text-muted-foreground">
+            Scoring every patient in this setup — the model is refitted once per patient, so a large
+            setup can take a minute or two.
+          </p>
         ) : folds.isError ? (
           <p className="text-sm text-destructive">Could not score this setup.</p>
         ) : !report || !report.folds.length ? (
