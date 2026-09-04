@@ -53,8 +53,9 @@ describe("recorded labels from imported datasets", () => {
     expect(monitorSuppressionLabel(0)).toBe("not_suppressed");
     expect(monitorSuppressionLabel(3)).toBeNull();
     expect(monitorSuppressionLabel(null)).toBeNull();
-    // Stored as a fraction rather than a percent.
-    expect(monitorSuppressionLabel(0.4)).toBeNull();
+    // A fraction is normalised to percent before thresholding.
+    expect(monitorSuppressionLabel(0.4)).toBe("suppressed");
+    expect(monitorSuppressionLabel(0.005)).toBe("not_suppressed");
   });
 
   it("reads ds004541 event-derived states and ignores app-derived labels", () => {
