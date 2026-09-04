@@ -19,6 +19,7 @@ import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
 import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
+import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
 import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
@@ -78,6 +79,11 @@ const AuthenticatedDiscoveryRoute = AuthenticatedDiscoveryRouteImport.update({
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOutcomesRoute = AuthenticatedOutcomesRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/compare': typeof AuthenticatedCompareRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/models': typeof AuthenticatedModelsRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/compare': typeof AuthenticatedCompareRoute
   '/discovery': typeof AuthenticatedDiscoveryRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/models': typeof AuthenticatedModelsRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/_authenticated/compare': typeof AuthenticatedCompareRoute
   '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
+  '/_authenticated/models': typeof AuthenticatedModelsRoute
   '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
   '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/discovery'
     | '/feedback'
+    | '/models'
     | '/outcomes'
     | '/pathology'
     | '/patients'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/compare'
     | '/discovery'
     | '/feedback'
+    | '/models'
     | '/outcomes'
     | '/pathology'
     | '/patients'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated/compare'
     | '/_authenticated/discovery'
     | '/_authenticated/feedback'
+    | '/_authenticated/models'
     | '/_authenticated/outcomes'
     | '/_authenticated/pathology'
     | '/_authenticated/patients'
@@ -354,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/models': {
+      id: '/_authenticated/models'
+      path: '/models'
+      fullPath: '/models'
+      preLoaderRoute: typeof AuthenticatedModelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/outcomes': {
       id: '/_authenticated/outcomes'
       path: '/outcomes'
@@ -442,6 +461,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
   AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
+  AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
   AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
   AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
   AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
@@ -463,6 +483,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCompareRoute: AuthenticatedCompareRoute,
   AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
+  AuthenticatedModelsRoute: AuthenticatedModelsRoute,
   AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
   AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
   AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
