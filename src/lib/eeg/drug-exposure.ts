@@ -294,6 +294,12 @@ export function summariseDrugExposure(
   notes.push(
     "Depth-state separation and suppression agreement are graded against independently recorded labels only. Where a case carries none, the grade is withheld rather than assumed.",
   );
+  const labelledWithoutIndex = epochs.filter((e) => e.stateLabel != null && e.coebis == null).length;
+  if (labelledWithoutIndex) {
+    notes.push(
+      `${labelledWithoutIndex.toLocaleString()} labelled epochs carry no index at that moment, because their recording has no paired monitor reading to score against. They are counted but not graded; no index is inferred for them.`,
+    );
+  }
 
   return {
     cases,
