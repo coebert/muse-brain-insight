@@ -18,20 +18,36 @@ type Client = SupabaseClient<any, any, any>;
 
 const PAGE_SIZE = 1000;
 /** Epochs kept per case, so one long recording cannot dominate the scan. */
-const MAX_EPOCHS_PER_CASE = 200;
+const MAX_EPOCHS_PER_CASE = 120;
 
 async function pageAll<T>(
   query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
   limit: number,
 ): Promise<T[]> {
+  // The spectral corpus runs to tens of thousands of rows, so pages are fetched
+  // in concurrent batches; a strictly serial walk makes the page feel hung.
+  const CONCURRENCY = 8;
   const out: T[] = [];
-  for (let from = 0; from < limit; from += PAGE_SIZE) {
-    const to = Math.min(from + PAGE_SIZE, limit) - 1;
-    const { data, error } = await query(from, to);
-    if (error) throw new Error(error.message);
-    const page = (data ?? []) as T[];
-    out.push(...page);
-    if (page.length < to - from + 1) break;
+  for (let base = 0; base < limit; base += PAGE_SIZE * CONCURRENCY) {
+    const starts: number[] = [];
+    for (let i = 0; i < CONCURRENCY; i += 1) {
+      const from = base + i * PAGE_SIZE;
+      if (from < limit) starts.push(from);
+    }
+    const pages = await Promise.all(
+      starts.map(async (from) => {
+        const to = Math.min(from + PAGE_SIZE, limit) - 1;
+        const { data, error } = await query(from, to);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as T[];
+      }),
+    );
+    let short = false;
+    for (const page of pages) {
+      out.push(...page);
+      if (page.length < PAGE_SIZE) short = true;
+    }
+    if (short) break;
   }
   return out;
 }
