@@ -63,6 +63,8 @@ export interface DepthReading {
   entropy?: MonitorEntropy | null;
   /** Adjunct (Entropy/PSI-informed) correction folded into COEBIS. */
   adjunct?: AdjunctCorrection;
+  /** Ketamine recognition: spectral pattern, advisory and any correction. */
+  ketamine?: KetamineSignature;
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
