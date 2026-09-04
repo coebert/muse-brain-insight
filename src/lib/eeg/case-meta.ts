@@ -23,6 +23,14 @@ export interface CaseMeta {
   regimen: string;
   /** Clinical frailty grouping, used to personalise COEBIS. */
   frailty: string;
+  /**
+   * Explicit ketamine exposure: "yes", "no" or "" for not recorded. A filed
+   * answer is what licenses the ketamine subtraction, rather than the EEG
+   * pattern or a passing mention in free text.
+   */
+  ketamineGiven: string;
+  /** Optional detail about the ketamine exposure (route, timing, dose band). */
+  ketamineDetail: string;
 }
 
 export const EMPTY_CASE_META: CaseMeta = {
@@ -40,7 +48,22 @@ export const EMPTY_CASE_META: CaseMeta = {
   acutePathology: [],
   regimen: "",
   frailty: "",
+  ketamineGiven: "",
+  ketamineDetail: "",
 };
+
+/** Tri-state answers for the filed ketamine flag. */
+export const KETAMINE_FLAG_OPTIONS = [
+  { value: "unrecorded", label: "Not recorded" },
+  { value: "yes", label: "Ketamine given" },
+  { value: "no", label: "No ketamine" },
+];
+
+/** Map the filed answer to the stored boolean (null = not recorded). */
+export function ketamineFlagValue(v: string): boolean | null {
+  return v === "yes" ? true : v === "no" ? false : null;
+}
+
 
 export const CONTEXTS = [
   { value: "general_anaesthesia", label: "General anaesthesia" },

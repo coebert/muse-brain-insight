@@ -24,6 +24,7 @@ function summary(over: Partial<KetamineCaseSummary> = {}): KetamineCaseSummary {
     caseRef: "case-1",
     epochs: 100,
     declared: true,
+    evidence: "filed",
     effect: "correcting",
     meanBetaGamma: 0.3,
     maxBetaGamma: 0.5,

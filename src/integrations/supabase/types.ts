@@ -950,6 +950,8 @@ export type Database = {
           ended_at: string | null
           frailty: string | null
           id: string
+          ketamine_detail: string | null
+          ketamine_given: boolean | null
           location: string | null
           max_suppression_ratio: number
           mean_suppression_ratio: number
@@ -983,6 +985,8 @@ export type Database = {
           ended_at?: string | null
           frailty?: string | null
           id?: string
+          ketamine_detail?: string | null
+          ketamine_given?: boolean | null
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
@@ -1016,6 +1020,8 @@ export type Database = {
           ended_at?: string | null
           frailty?: string | null
           id?: string
+          ketamine_detail?: string | null
+          ketamine_given?: boolean | null
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number

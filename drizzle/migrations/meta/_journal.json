@@ -92,6 +92,13 @@
       "when": 1788538243797,
       "tag": "0012_suppression_model_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788541335387,
+      "tag": "0013_add_ketamine_flag_to_sessions",
+      "breakpoints": true
     }
   ]
 }

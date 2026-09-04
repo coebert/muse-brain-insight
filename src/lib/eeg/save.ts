@@ -1,3 +1,4 @@
+import { ketamineFlagValue } from "./case-meta";
 import { supabase } from "@/integrations/supabase/client";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { sealTexts } from "@/lib/privacy.functions";
@@ -49,6 +50,10 @@ export interface SessionMeta {
   regimen: string;
   /** Frailty grouping (covariate for COEBIS). */
   frailty: string;
+  /** Filed ketamine flag: "yes", "no", or "" when not recorded. */
+  ketamineGiven?: string;
+  /** Optional detail about the ketamine exposure. */
+  ketamineDetail?: string;
 }
 
 /** Coarse banding keeps records non-identifying even when age is recorded. */
@@ -185,6 +190,9 @@ export async function saveSession(
         sex: meta.sex || null,
         regimen: meta.regimen || null,
         frailty: meta.frailty || null,
+        ketamine_given: ketamineFlagValue(meta.ketamineGiven ?? ""),
+        ketamine_detail:
+          (meta.ketamineGiven ?? "") === "yes" ? meta.ketamineDetail?.trim() || null : null,
         admission_diagnosis: sealedDiagnosis ?? null,
         clinical_features: meta.clinicalFeatures,
         chronic_conditions: validatedClinical.chronicConditions,
