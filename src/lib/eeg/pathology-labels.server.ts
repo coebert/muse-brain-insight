@@ -305,7 +305,7 @@ async function loadPairedScores(supabase: Client): Promise<PairedScoreIndex> {
 /** Monitor-recorded suppression labels (e.g. VitalDB bedside BIS SR). */
 async function loadMonitorLabels(
   supabase: Client,
-  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+  paired: PairedScoreIndex,
 ): Promise<{ rows: LabelledEpoch[]; scanned: number }> {
   const { data, error } = await supabase
     .from("external_reference_points")
@@ -322,7 +322,7 @@ async function loadMonitorLabels(
     const caseRef = `${r.source_lineage}/${r.case_ref}`;
     if (!keep(counts, caseRef)) continue;
     const at = Number(r.at_seconds ?? 0);
-    const scores = paired.get(scoreKey(r.case_ref, at));
+    const scores = pairedScoreAt(paired, r.case_ref, at);
     rows.push({
       lineage: r.source_lineage,
       caseRef,
@@ -348,7 +348,7 @@ async function loadMonitorLabels(
 async function loadExternal(
   supabase: Client,
   limit: number,
-  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+  paired: PairedScoreIndex,
 ): Promise<{
   rows: LabelledEpoch[];
   scanned: number;
@@ -377,7 +377,7 @@ async function loadExternal(
       const caseRef = `${r.source_lineage}/${r.case_ref}`;
       if (!keep(counts, caseRef)) continue;
       const at = Number(r.at_seconds ?? 0);
-      const appScores = paired.get(scoreKey(r.case_ref, at));
+      const appScores = pairedScoreAt(paired, r.case_ref, at);
       rows.push({
         lineage: r.source_lineage,
         caseRef,
