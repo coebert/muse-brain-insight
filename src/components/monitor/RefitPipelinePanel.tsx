@@ -66,10 +66,13 @@ export function RefitPipelinePanel() {
         </div>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        The scheduled job refits COEBIS per acquisition lineage on newly validated readings, scores
-        the candidate leave-one-case-out against the model currently in force, and only promotes it
-        when held-out error clearly improves. Every candidate is versioned either way.
+        The scheduled job refits COEBIS per acquisition lineage on newly validated readings and
+        scores the candidate leave-one-case-out. A lineage with no model in force promotes its first
+        fit automatically as soon as it clears the data gate and cross-validates, provided that fit
+        is not worse than the published index; every later version must clearly improve held-out
+        error without losing agreement. Every candidate is versioned either way.
       </p>
+
 
       {error ? <p className="mt-3 text-xs text-critical">{(error as Error).message}</p> : null}
 

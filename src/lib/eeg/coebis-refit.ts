@@ -203,6 +203,13 @@ export function refitLineage(
   const cccLoss =
     before.ccc != null && cv.outOfSample.ccc != null ? before.ccc - cv.outOfSample.ccc : 0;
 
+  // A lineage with no model in force has nothing to protect: once it clears
+  // the gate and cross-validates, its first fit is promoted automatically
+  // rather than waiting for a manual override. The incumbent thresholds still
+  // apply to every later version, and a first fit that is worse than the raw
+  // published index is still refused.
+  const firstFit = beforeSource === "raw_index";
+
   let promote = false;
   let reason: string;
   if (!model) {
@@ -210,7 +217,17 @@ export function refitLineage(
   } else if (cv.folds < 2) {
     reason = "Not enough cases to cross-validate the candidate.";
   } else if (maeGain == null) {
-    reason = "No comparable held-out error for the incumbent.";
+    reason = firstFit
+      ? "No comparable held-out error for the published index."
+      : "No comparable held-out error for the incumbent.";
+  } else if (firstFit) {
+    if (maeGain < 0) {
+      promote = false;
+      reason = `First fit for this lineage is worse than the published index by ${Math.abs(maeGain).toFixed(2)} points; not promoted.`;
+    } else {
+      promote = true;
+      reason = `First fit for this lineage: gate cleared (${points.length} readings across ${cases} cases) and held-out error ${before.mae?.toFixed(2)} → ${cv.outOfSample.mae?.toFixed(2)} across ${cv.folds} folds. Promoted automatically as the lineage baseline.`;
+    }
   } else if (maeGain < MIN_MAE_GAIN) {
     reason = `Held-out error improves by only ${maeGain.toFixed(2)} points (needs ${MIN_MAE_GAIN}); keeping the current model.`;
   } else if (cccLoss > MAX_CCC_LOSS) {
@@ -219,6 +236,7 @@ export function refitLineage(
     promote = true;
     reason = `Held-out error falls ${maeGain.toFixed(2)} points (${before.mae?.toFixed(2)} → ${cv.outOfSample.mae?.toFixed(2)}) across ${cv.folds} folds.`;
   }
+
 
   return {
     lineageKey,
