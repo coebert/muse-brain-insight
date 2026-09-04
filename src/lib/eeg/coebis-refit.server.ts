@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { harvestCaptures, type HarvestReport } from "./capture-harvest.server";
 import { loadTrainingMatrix } from "./coebis-training.server";
 import type { CoebisModel, CoebisTrainingPoint } from "./coebis-covariates";
 import {
@@ -400,6 +401,19 @@ export async function runScheduledRefit(admin: Client): Promise<ScheduledRefitRe
     return { ran: false, skipped: "Another refit run holds the lease.", users: 0, reports: [] };
   }
   try {
+    // Fold any finished-but-unfiled recordings into the training pool first,
+    // so this run learns from them straight away.
+    let harvest: HarvestReport | null = null;
+    try {
+      harvest = await harvestCaptures(admin);
+    } catch (err) {
+      harvest = {
+        considered: 0,
+        harvested: 0,
+        epochsCopied: 0,
+        errors: [err instanceof Error ? err.message : String(err)],
+      };
+    }
     const users = await selectDueUsers(admin);
     const reports: RefitRunReport[] = [];
     for (const userId of users) {
@@ -407,7 +421,7 @@ export async function runScheduledRefit(admin: Client): Promise<ScheduledRefitRe
     }
     const failed = reports.find((r) => r.status === "failed");
     await releaseLease(admin, { lastError: failed?.error ?? null });
-    return { ran: true, users: users.length, reports };
+    return { ran: true, users: users.length, reports, harvest };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await releaseLease(admin, { lastError: message });
