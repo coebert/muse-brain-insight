@@ -304,8 +304,11 @@ function SuppressionPage() {
                   </p>
 
                 )}
+
+                <ActiveModelPanel fitPromotable={data.fit.promotable} />
               </CardContent>
             </Card>
+
 
             <GradeCard
               title="Graded against the monitor's suppression ratio"
