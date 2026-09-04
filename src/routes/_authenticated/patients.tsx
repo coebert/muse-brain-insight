@@ -316,6 +316,9 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
             <dd className="font-mono">
               {num(row.sef95.app.median, 1, " Hz")} (p10 {num(row.sef95.app.p10, 1)} · p90{" "}
               {num(row.sef95.app.p90, 1)})
+              {row.sef95.referenceMedian != null
+                ? ` · monitor ${row.sef95.referenceMedian.toFixed(1)} Hz`
+                : ""}
             </dd>
           </div>
           <div>
@@ -325,8 +328,26 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
               {num(row.agreement?.within10, 0, "%")}
             </dd>
           </div>
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Widest divergence</dt>
+            <dd className="font-mono">
+              {row.divergence.maxAbs == null
+                ? "—"
+                : `${row.divergence.maxAbs.toFixed(1)} pts at ${Math.round((row.divergence.worstAt ?? 0) / 60)} min (${row.divergence.source === "coebis" ? "COEBIS" : "open index"} ${num(row.divergence.worstDisplayed, 0)} vs reference ${num(row.divergence.worstReference, 0)})`}
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-muted-foreground">Beyond ±10 points</dt>
+            <dd className="font-mono">
+              {num(row.divergence.beyond10Pct, 0, "%")} of readings
+              {row.divergence.beyond10SuppressedPct != null
+                ? ` · ${row.divergence.beyond10SuppressedPct.toFixed(0)}% inside suppression`
+                : ""}
+            </dd>
+          </div>
         </dl>
         <p className="text-xs text-muted-foreground">{row.verdict}</p>
+
       </CardContent>
     </Card>
   );
