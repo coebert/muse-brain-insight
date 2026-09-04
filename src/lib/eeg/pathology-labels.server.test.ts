@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { caseCnsLabel, datasetCnsLabel, datasetSeizureLabel } from "./pathology-labels.server";
+import {
+  caseCnsLabel,
+  datasetCnsLabel,
+  datasetSeizureLabel,
+  datasetStateLabel,
+  monitorSuppressionLabel,
+  pairedCaseRef,
+} from "./pathology-labels.server";
 
 describe("dataset label extraction", () => {
   it("reads ictal status from annotated intervals", () => {
@@ -37,5 +44,32 @@ describe("case CNS labels", () => {
 
   it("falls back to legacy free-text features", () => {
     expect(caseCnsLabel([], [], ["IHCA", "Stroke"])).toBe("hypoxic_brain_injury");
+  });
+});
+
+describe("recorded labels from imported datasets", () => {
+  it("reads bedside monitor suppression and discards the ambiguous band", () => {
+    expect(monitorSuppressionLabel(12)).toBe("suppressed");
+    expect(monitorSuppressionLabel(0)).toBe("not_suppressed");
+    expect(monitorSuppressionLabel(3)).toBeNull();
+    expect(monitorSuppressionLabel(null)).toBeNull();
+    // Stored as a fraction rather than a percent.
+    expect(monitorSuppressionLabel(0.4)).toBeNull();
+  });
+
+  it("reads ds004541 event-derived states and ignores app-derived labels", () => {
+    expect(datasetStateLabel("anaesthetised", "dataset")).toBe("anaesthetised");
+    expect(datasetStateLabel("awake", "dataset")).toBe("awake");
+    expect(datasetStateLabel("induction", "dataset")).toBe("induction");
+    expect(datasetStateLabel("anaesthetised", "derived")).toBeNull();
+    expect(datasetStateLabel(null, "dataset")).toBeNull();
+  });
+
+  it("maps paired app readings back to their case", () => {
+    expect(
+      pairedCaseRef("openneuro-ds004541:sub-02-ses-01-eeg:AF3:143.0"),
+    ).toBe("sub-02-ses-01-eeg");
+    expect(pairedCaseRef("vitaldb:3:30")).toBe("vitaldb-3");
+    expect(pairedCaseRef("nonsense")).toBeNull();
   });
 });
