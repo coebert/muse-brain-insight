@@ -52,6 +52,11 @@ export async function loadTrainingMatrix(
    * DOSE-I never reach the refit at all.
    */
   perLineageLimit = Number.POSITIVE_INFINITY,
+  /**
+   * Restrict to one acquisition setup. Used by views that only score a single
+   * lineage, so they do not pay to page the whole pool.
+   */
+  lineageKey?: string,
 ): Promise<TrainingMatrix> {
 
   // The data API caps a single response at 1000 rows, so a plain `.limit()`
@@ -66,6 +71,7 @@ export async function loadTrainingMatrix(
         "at_seconds, bis, app_index, app_sr, app_sef, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
       );
     if (userId) query = query.eq("user_id", userId);
+    if (lineageKey) query = query.eq("source_lineage", lineageKey);
     const { data: pointRows, error } = await query
       .order("recorded_at", { ascending: true })
       .range(from, Math.min(from + PAGE, limit) - 1);
