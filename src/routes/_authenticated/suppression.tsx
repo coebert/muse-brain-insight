@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDown, CheckCircle2, Loader2, ShieldAlert, Waves } from "lucide-react";
 
@@ -14,7 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getSuppressionReport } from "@/lib/eeg/suppression-model.functions";
+import { Button } from "@/components/ui/button";
+import {
+  getActiveSuppressionModel,
+  getSuppressionReport,
+  promoteSuppressionModel,
+  type PromotionOutcome,
+} from "@/lib/eeg/suppression-model.functions";
+
 import {
   CAP_FULL_PCT,
   CAP_ONSET_PCT,
@@ -201,11 +208,85 @@ function GradeCard({
   );
 }
 
+/**
+ * The calibration in force, and the only way to put one there.
+ *
+ * Promotion re-runs the fit server-side and refuses anything the gate blocks,
+ * so this button cannot push through a calibration the grading rejected.
+ */
+function ActiveModelPanel({ fitPromotable }: { fitPromotable: boolean }) {
+  const queryClient = useQueryClient();
+  const fetchActive = useServerFn(getActiveSuppressionModel);
+  const promote = useServerFn(promoteSuppressionModel);
+  const { data: active } = useQuery({
+    queryKey: ["suppression-active-model"],
+    queryFn: () => fetchActive({}),
+    staleTime: 60_000,
+  });
+  const mutation = useMutation<PromotionOutcome>({
+    mutationFn: () => promote({ data: {} }) as Promise<PromotionOutcome>,
+
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["suppression-active-model"] }),
+  });
+
+  return (
+    <div className="rounded-md border p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-medium">
+            {active
+              ? `In force: v${active.version} on ${active.lineage}`
+              : "No calibration is in force yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {active
+              ? `${active.model.n.toLocaleString()} readings from ${active.model.cases} cases · ${
+                  active.sensitivityGain == null
+                    ? "—"
+                    : `${(active.sensitivityGain * 100).toFixed(1)} pts more suppression found`
+                } · promoted ${new Date(active.createdAt).toLocaleDateString()}`
+              : "Until one is promoted, the raw flat-time detector is what the app uses."}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant={active ? "outline" : "default"}
+          disabled={!fitPromotable || mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="mr-1 size-3 animate-spin" /> Refitting…
+            </>
+          ) : active ? (
+            "Refit and promote"
+          ) : (
+            "Promote this fit"
+          )}
+        </Button>
+      </div>
+      {mutation.data ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {mutation.data.promoted ? "Promoted: " : "Not promoted: "}
+          {mutation.data.reason}.
+        </p>
+      ) : null}
+      {mutation.isError ? (
+        <p className="mt-2 text-xs text-critical">{(mutation.error as Error).message}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function SuppressionPage() {
+
   const fetchReport = useServerFn(getSuppressionReport);
   const { data, isLoading } = useQuery<SuppressionReport>({
     queryKey: ["suppression-model"],
-    queryFn: () => fetchReport({ data: {} }),
+    // The whole labelled set, so the page grades the same readings the
+    // promoted calibration was fitted on rather than the first 40,000.
+    queryFn: () => fetchReport({ data: { limit: 80000 } }),
+
     staleTime: 60_000,
   });
 
@@ -304,8 +385,11 @@ function SuppressionPage() {
                   </p>
 
                 )}
+
+                <ActiveModelPanel fitPromotable={data.fit.promotable} />
               </CardContent>
             </Card>
+
 
             <GradeCard
               title="Graded against the monitor's suppression ratio"
