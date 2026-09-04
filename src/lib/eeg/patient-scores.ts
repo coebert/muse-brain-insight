@@ -17,9 +17,9 @@ import {
   agreementSummary,
   predictCoebis,
   type AgreementSummary,
-  type CaseCovariates,
   type CoebisModel,
 } from "./coebis-covariates";
+import type { CaseCovariates } from "./covariates";
 
 /** app_sr / bis_sr are stored as percentages; at or above this counts as suppressed. */
 export const SUPPRESSION_PCT_THRESHOLD = 5;
