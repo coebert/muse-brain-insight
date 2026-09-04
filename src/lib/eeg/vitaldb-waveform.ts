@@ -201,7 +201,173 @@ export function combineChannels(wave: VitalDbWaveform): Float64Array {
   return out;
 }
 
+/* ------------------------------------------------------- per-track files -- */
+
+/**
+ * VitalDB serves each track as its own two-column file (`Time,<track>`), and
+ * only stamps a time on the first rows of a segment and the last row — the grid
+ * in between is implicit. These helpers turn that layout into the waveform and
+ * numeric structures the pairing code expects.
+ */
+export interface VitalDbTrackFile {
+  /** Track name exactly as VitalDB publishes it, e.g. `BIS/EEG1_WAV`. */
+  name: string;
+  text: string;
+}
+
+interface ParsedTrack {
+  times: (number | null)[];
+  values: (number | null)[];
+}
+
+function parseTrackFile(text: string): ParsedTrack {
+  const lines = text.split(/\r?\n/);
+  const times: (number | null)[] = [];
+  const values: (number | null)[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line == null || !line.length) continue;
+    const comma = line.indexOf(",");
+    if (comma < 0) continue;
+    times.push(num(line.slice(0, comma)));
+    values.push(num(line.slice(comma + 1)));
+  }
+  return { times, values };
+}
+
+/**
+ * One waveform track. Leading and trailing gaps are trimmed rather than filled,
+ * so a stretch the monitor never recorded is not replayed as flat line — which
+ * the estimator would read as suppression. Interior gaps hold the last sample.
+ */
+export function parseVitalDbWaveTrack(
+  file: VitalDbTrackFile,
+  fallbackSampleRate = VITALDB_WAVE_SAMPLE_RATE,
+): { channel: "AF7" | "AF8"; samples: Float64Array; sampleRate: number; startSeconds: number } {
+  const channel = WAVE_ALIASES[file.name.trim().toLowerCase()];
+  if (!channel) throw new Error(`Unrecognised waveform track "${file.name}".`);
+  const { times, values } = parseTrackFile(file.text);
+  if (!values.length) throw new Error(`Waveform track "${file.name}" is empty.`);
+
+  // The grid is uniform: derive its step from adjacent stamps when present,
+  // otherwise from the span between the first and last stamp.
+  let step: number | null = null;
+  let firstIndex = -1;
+  let firstTime = 0;
+  let lastIndex = -1;
+  let lastTime = 0;
+  for (let i = 0; i < times.length; i++) {
+    const t = times[i];
+    if (t == null) continue;
+    if (firstIndex < 0) {
+      firstIndex = i;
+      firstTime = t;
+    } else if (step == null && i - lastIndex === 1) {
+      step = t - lastTime;
+    }
+    lastIndex = i;
+    lastTime = t;
+  }
+  if (step == null && lastIndex > firstIndex) step = (lastTime - firstTime) / (lastIndex - firstIndex);
+  if (step == null || !Number.isFinite(step) || step <= 0) step = 1 / fallbackSampleRate;
+
+  let from = values.findIndex((v) => v != null);
+  let to = values.length - 1;
+  while (to >= 0 && values[to] == null) to--;
+  if (from < 0 || to < from) throw new Error(`Waveform track "${file.name}" has no samples.`);
+
+  const samples = new Float64Array(to - from + 1);
+  let last = values[from]!;
+  for (let i = from; i <= to; i++) {
+    const v = values[i];
+    if (v != null) last = v;
+    samples[i - from] = last;
+  }
+  const startSeconds = (firstIndex >= 0 ? firstTime : 0) + (from - Math.max(firstIndex, 0)) * step;
+  return {
+    channel,
+    samples,
+    sampleRate: Math.round((1 / step) * 100) / 100,
+    startSeconds: Math.max(0, Math.round(startSeconds * 1000) / 1000),
+  };
+}
+
+/** Combine the per-channel waveform files into one aligned recording. */
+export function assembleVitalDbWaveform(
+  files: VitalDbTrackFile[],
+  fallbackSampleRate = VITALDB_WAVE_SAMPLE_RATE,
+): VitalDbWaveform {
+  const parsed = files
+    .filter((f) => WAVE_ALIASES[f.name.trim().toLowerCase()])
+    .map((f) => parseVitalDbWaveTrack(f, fallbackSampleRate));
+  if (!parsed.length) throw new Error("No EEG waveform track was supplied.");
+  const sampleRate = parsed[0]!.sampleRate;
+  const startSeconds = Math.max(...parsed.map((p) => p.startSeconds));
+  const channels: VitalDbWaveChannel[] = [];
+  for (const p of parsed) {
+    // Trim each channel to the shared start so the two derivations stay in step.
+    const skip = Math.max(0, Math.round((startSeconds - p.startSeconds) * sampleRate));
+    channels.push({ channel: p.channel, samples: p.samples.subarray(skip) });
+  }
+  const n = Math.min(...channels.map((c) => c.samples.length));
+  return {
+    channels: channels
+      .map((c) => ({ channel: c.channel, samples: c.samples.subarray(0, n) }))
+      .sort((a, b) => (a.channel === "AF7" ? -1 : b.channel === "AF7" ? 1 : 0)),
+    sampleRate,
+    startSeconds,
+    durationSeconds: n / sampleRate,
+  };
+}
+
+const NUMERIC_FIELDS: Record<string, "bis" | "sef" | "sr" | "emg" | "sqi"> = {
+  "bis/bis": "bis",
+  "bis/sef": "sef",
+  "bis/sr": "sr",
+  "bis/emg": "emg",
+  "bis/sqi": "sqi",
+};
+
+const CE_FIELDS: Record<string, string> = {
+  "orchestra/ppf20_ce": "propofol",
+  "orchestra/rftn20_ce": "remifentanil",
+  "orchestra/rftn50_ce": "remifentanil",
+  "orchestra/aft20_ce": "alfentanil",
+  "orchestra/ket20_ce": "ketamine",
+};
+
+/** Merge the slow monitor tracks onto one per-second timeline. */
+export function assembleVitalDbNumerics(files: VitalDbTrackFile[]): VitalDbTrackSample[] {
+  const bySecond = new Map<number, VitalDbTrackSample>();
+  const at = (t: number): VitalDbTrackSample => {
+    const key = Math.round(t);
+    let s = bySecond.get(key);
+    if (!s) {
+      s = { t: key, bis: null, sef: null, sr: null, emg: null, sqi: null, ce: {} };
+      bySecond.set(key, s);
+    }
+    return s;
+  };
+  for (const file of files) {
+    const key = file.name.trim().toLowerCase();
+    const field = NUMERIC_FIELDS[key];
+    const drug = CE_FIELDS[key];
+    if (!field && !drug) continue;
+    const { times, values } = parseTrackFile(file.text);
+    for (let i = 0; i < values.length; i++) {
+      const v = values[i];
+      const t = times[i];
+      if (v == null || t == null) continue;
+      const s = at(t);
+      if (field) s[field] = v;
+      else if (drug) s.ce[drug] = v;
+    }
+  }
+  return [...bySecond.values()].sort((a, b) => a.t - b.t);
+}
+
 /* --------------------------------------------------------------- pairing -- */
+
 
 export interface VitalDbPairedPoint {
   atSeconds: number;
