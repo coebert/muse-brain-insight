@@ -229,6 +229,9 @@ async function loadExternal(
   const head = Math.ceil(perCase * 0.6);
   const tail = perCase - head;
 
+  /** Labelled epochs pulled on top of the profile slice, so grades have data. */
+  const labelSlice = Math.max(perCase, 200);
+
   const slices = await pooled(cases, 8, async ({ lineage, caseRef }) => {
     const base = () =>
       supabase
@@ -236,26 +239,37 @@ async function loadExternal(
         .select(SELECT_COLUMNS)
         .eq("source_lineage", lineage)
         .eq("case_ref", caseRef);
-    const [{ data: first, error: firstError }, { data: last, error: lastError }] = await Promise.all([
+    const [
+      { data: first, error: firstError },
+      { data: last, error: lastError },
+      { data: labelled, error: labelError },
+    ] = await Promise.all([
       base().order("at_seconds", { ascending: true }).limit(head),
       base().order("at_seconds", { ascending: false }).limit(tail),
+      base().not("label", "is", null).order("at_seconds", { ascending: true }).limit(labelSlice),
     ]);
     if (firstError) throw new Error(firstError.message);
     if (lastError) throw new Error(lastError.message);
+    if (labelError) throw new Error(labelError.message);
     const seen = new Set<number>();
-    const merged: ExternalRow[] = [];
-    for (const row of [...((first ?? []) as ExternalRow[]), ...((last ?? []) as ExternalRow[])]) {
-      const at = Number(row.at_seconds ?? 0);
-      if (seen.has(at)) continue;
-      seen.add(at);
-      merged.push(row);
-    }
+    const merged: { row: ExternalRow; labelSlice: boolean }[] = [];
+    const add = (rows: ExternalRow[], fromLabelSlice: boolean) => {
+      for (const row of rows) {
+        const at = Number(row.at_seconds ?? 0);
+        if (seen.has(at)) continue;
+        seen.add(at);
+        merged.push({ row, labelSlice: fromLabelSlice });
+      }
+    };
+    add((first ?? []) as ExternalRow[], false);
+    add((last ?? []) as ExternalRow[], false);
+    add((labelled ?? []) as ExternalRow[], true);
     return merged;
   });
   const rows = slices.flat();
 
   const epochs: DrugExposureEpoch[] = [];
-  for (const r of rows) {
+  for (const { row: r, labelSlice: fromLabelSlice } of rows) {
     const covariates = r.covariates ?? {};
 
     const at = Number(r.at_seconds ?? 0);
@@ -271,6 +285,7 @@ async function loadExternal(
       suppressionLabel:
         datasetSuppressionLabel(covariates, r.label) ?? pairedLabel?.suppression ?? null,
       stateLabel: datasetStateLabel(r.label, r.label_source) ?? pairedLabel?.state ?? null,
+      labelSlice: fromLabelSlice,
       declared: declaredDrugs({
         regimen: typeof covariates["regimen"] === "string" ? (covariates["regimen"] as string) : null,
         notes: [
@@ -282,6 +297,7 @@ async function loadExternal(
       }),
     });
   }
+
   return { epochs, scanned: rows.length };
 }
 
