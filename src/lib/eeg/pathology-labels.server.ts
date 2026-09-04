@@ -216,57 +216,137 @@ interface PairedRow {
 
 /**
  * Case key a paired app reading belongs to. Paired refs are
- * `openneuro-ds004541:<case>:<channel>:<t>` and `vitaldb:<case>:<t>`.
+ * `openneuro-ds004541:<case>:<channel>:<t>`, `vitaldb:<case>:<t>` for the
+ * monitor-numerics import and `vitaldb:wave:<case>:<t>` for a reading produced
+ * by replaying the bedside EEG waveform through the app's own estimator.
  */
 export function pairedCaseRef(ref: string | null): string | null {
   if (!ref) return null;
   const parts = ref.split(":");
   if (parts.length < 3) return null;
-  if (/^vitaldb/i.test(parts[0] ?? "")) return `vitaldb-${parts[1]}`;
+  if (/^vitaldb/i.test(parts[0] ?? "")) {
+    const rest = parts[1] === "wave" ? parts.slice(2) : parts.slice(1);
+    return rest[0] ? `vitaldb-${rest[0]}` : null;
+  }
   return parts[1] ?? null;
 }
 
-function scoreKey(caseRef: string, atSeconds: number): string {
-  return `${caseRef}|${Math.round(atSeconds)}`;
+export interface PairedScore {
+  coebis: number | null;
+  suppressionRatio: number | null;
+}
+
+/** Replayed app scores per case, ordered by case time for nearest matching. */
+export type PairedScoreIndex = Map<string, { at: number; score: PairedScore }[]>;
+
+/**
+ * How far a replayed second may sit from a labelled second and still be read as
+ * the same moment. The monitor labels are bucketed on a 10 s grid while the
+ * replay lands on the waveform's own clock, so an exact-second join would
+ * silently discard every VitalDB pairing.
+ */
+export const PAIRED_MATCH_SECONDS = 5;
+
+/** Nearest replayed score to a labelled second, or null outside tolerance. */
+export function pairedScoreAt(
+  index: PairedScoreIndex,
+  caseRef: string,
+  atSeconds: number,
+  tolerance = PAIRED_MATCH_SECONDS,
+): PairedScore | null {
+  const list = index.get(caseRef);
+  if (!list?.length) return null;
+  let lo = 0;
+  let hi = list.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid]!.at < atSeconds) lo = mid + 1;
+    else hi = mid;
+  }
+  const candidates = [list[lo - 1], list[lo], list[lo + 1]].filter(Boolean) as {
+    at: number;
+    score: PairedScore;
+  }[];
+  let best: { at: number; score: PairedScore } | null = null;
+  for (const c of candidates) {
+    if (Math.abs(c.at - atSeconds) > tolerance) continue;
+    if (!best || Math.abs(c.at - atSeconds) < Math.abs(best.at - atSeconds)) best = c;
+  }
+  return best?.score ?? null;
+}
+
+
+/**
+ * The Data API caps a single response at 1,000 rows, so every load here pages
+ * explicitly. Without this a large lineage silently truncates and the
+ * dashboard reports a fraction of the cases it actually holds.
+ */
+const PAGE_SIZE = 1000;
+
+async function pageAll<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  limit: number,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < limit; from += PAGE_SIZE) {
+    const to = Math.min(from + PAGE_SIZE, limit) - 1;
+    const { data, error } = await query(from, to);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as T[];
+    out.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+  return out;
 }
 
 /**
  * App-side indices produced by replaying an imported recording, keyed by case
  * and second, so a recorded label can be graded against what the app scored.
  */
-async function loadPairedScores(
-  supabase: Client,
-): Promise<Map<string, { coebis: number | null; suppressionRatio: number | null }>> {
-  const index = new Map<string, { coebis: number | null; suppressionRatio: number | null }>();
-  const { data, error } = await supabase
-    .from("bis_paired_points")
-    .select("external_ref, at_seconds, app_index, app_sr")
-    .not("external_ref", "is", null)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  for (const r of (data ?? []) as unknown as PairedRow[]) {
+async function loadPairedScores(supabase: Client): Promise<PairedScoreIndex> {
+  const index: PairedScoreIndex = new Map();
+  const rows = await pageAll<PairedRow>(
+    (from, to) =>
+      supabase
+        .from("bis_paired_points")
+        .select("external_ref, at_seconds, app_index, app_sr")
+        .not("external_ref", "is", null)
+        .order("id", { ascending: true })
+        .range(from, to),
+    40000,
+  );
+  for (const r of rows) {
     const caseRef = pairedCaseRef(r.external_ref);
     if (!caseRef) continue;
-    index.set(scoreKey(caseRef, Number(r.at_seconds ?? 0)), {
-      coebis: num(r.app_index),
-      suppressionRatio: asPercent(num(r.app_sr)),
+    const list = index.get(caseRef) ?? [];
+    list.push({
+      at: Number(r.at_seconds ?? 0),
+      score: { coebis: num(r.app_index), suppressionRatio: asPercent(num(r.app_sr)) },
     });
+    index.set(caseRef, list);
   }
+  for (const list of index.values()) list.sort((a, b) => a.at - b.at);
   return index;
 }
+
 
 /** Monitor-recorded suppression labels (e.g. VitalDB bedside BIS SR). */
 async function loadMonitorLabels(
   supabase: Client,
-  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+  paired: PairedScoreIndex,
 ): Promise<{ rows: LabelledEpoch[]; scanned: number }> {
-  const { data, error } = await supabase
-    .from("external_reference_points")
-    .select("source, source_lineage, case_ref, at_seconds, bis_sr, bis_sef")
-    .not("bis_sr", "is", null)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  const page = (data ?? []) as unknown as MonitorRow[];
+  const page = await pageAll<MonitorRow>(
+    (from, to) =>
+      supabase
+        .from("external_reference_points")
+        .select("source, source_lineage, case_ref, at_seconds, bis_sr, bis_sef")
+        .not("bis_sr", "is", null)
+        .order("case_ref", { ascending: true })
+        .order("at_seconds", { ascending: true })
+        .range(from, to),
+    20000,
+  );
+
   const counts = new Map<string, number>();
   const rows: LabelledEpoch[] = [];
   for (const r of page) {
@@ -275,7 +355,7 @@ async function loadMonitorLabels(
     const caseRef = `${r.source_lineage}/${r.case_ref}`;
     if (!keep(counts, caseRef)) continue;
     const at = Number(r.at_seconds ?? 0);
-    const scores = paired.get(scoreKey(r.case_ref, at));
+    const scores = pairedScoreAt(paired, r.case_ref, at);
     rows.push({
       lineage: r.source_lineage,
       caseRef,
@@ -301,7 +381,7 @@ async function loadMonitorLabels(
 async function loadExternal(
   supabase: Client,
   limit: number,
-  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+  paired: PairedScoreIndex,
 ): Promise<{
   rows: LabelledEpoch[];
   scanned: number;
@@ -330,7 +410,7 @@ async function loadExternal(
       const caseRef = `${r.source_lineage}/${r.case_ref}`;
       if (!keep(counts, caseRef)) continue;
       const at = Number(r.at_seconds ?? 0);
-      const appScores = paired.get(scoreKey(r.case_ref, at));
+      const appScores = pairedScoreAt(paired, r.case_ref, at);
       rows.push({
         lineage: r.source_lineage,
         caseRef,
