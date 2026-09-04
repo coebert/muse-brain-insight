@@ -204,6 +204,47 @@ export function CaseFields({
           </Select>
         </div>
       </div>
+      <div className="rounded-md border border-border/70 p-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Ketamine</Label>
+            <Select
+              value={meta.ketamineGiven || "unrecorded"}
+              onValueChange={(v) =>
+                onChange({ ...meta, ketamineGiven: v === "unrecorded" ? "" : v })
+              }
+            >
+              <SelectTrigger className="mt-1.5 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KETAMINE_FLAG_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor={`${idPrefix}-ket-detail`}>Ketamine detail</Label>
+            <Input
+              id={`${idPrefix}-ket-detail`}
+              className="mt-1.5"
+              placeholder="e.g. 0.3 mg/kg bolus at induction"
+              value={meta.ketamineDetail}
+              disabled={meta.ketamineGiven !== "yes"}
+              onChange={(e) => onChange({ ...meta, ketamineDetail: e.target.value })}
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Answering here is what licenses the ketamine correction on this case. “No ketamine” rules
+          it out even if a note mentions the drug; leaving it unrecorded falls back to reading the
+          regimen and notes, which only ever raises an advisory.
+        </p>
+      </div>
+
       <div>
         <Label htmlFor={`${idPrefix}-dx`}>Admission diagnosis</Label>
         <Input
