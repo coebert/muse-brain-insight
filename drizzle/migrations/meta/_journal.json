@@ -120,6 +120,13 @@
       "when": 1788556336793,
       "tag": "0016_capture_sessions_and_epochs",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788556794362,
+      "tag": "0017_move_has_role_out_of_api_schema",
+      "breakpoints": true
     }
   ]
 }
