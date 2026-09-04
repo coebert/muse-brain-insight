@@ -39,6 +39,7 @@ import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSuppressionRouteImport } from './routes/_authenticated/suppression'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
+import { Route as AuthenticatedTrainingRouteImport } from './routes/_authenticated/training'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
 import { Route as AuthenticatedCaseCaseRefRouteImport } from './routes/_authenticated/case.$caseRef'
@@ -197,6 +198,11 @@ const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTrainingRoute = AuthenticatedTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
   id: '/trends',
   path: '/trends',
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/training': typeof AuthenticatedTrainingRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
+  '/training': typeof AuthenticatedTrainingRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/suppression': typeof AuthenticatedSuppressionRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
+  '/_authenticated/training': typeof AuthenticatedTrainingRoute
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/suppression'
     | '/terms'
+    | '/training'
     | '/trends'
     | '/validate'
     | '/case/$caseRef'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/suppression'
     | '/terms'
+    | '/training'
     | '/trends'
     | '/validate'
     | '/'
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/suppression'
     | '/_authenticated/terms'
+    | '/_authenticated/training'
     | '/_authenticated/trends'
     | '/_authenticated/validate'
     | '/_authenticated/'
@@ -665,6 +677,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTermsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/training': {
+      id: '/_authenticated/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof AuthenticatedTrainingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/trends': {
       id: '/_authenticated/trends'
       path: '/trends'
@@ -731,6 +750,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSuppressionRoute: typeof AuthenticatedSuppressionRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
+  AuthenticatedTrainingRoute: typeof AuthenticatedTrainingRoute
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -766,6 +786,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSuppressionRoute: AuthenticatedSuppressionRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
+  AuthenticatedTrainingRoute: AuthenticatedTrainingRoute,
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

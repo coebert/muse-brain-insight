@@ -22,6 +22,7 @@ const TOOLS = [
   { to: "/performance", label: "Alert tuning" },
   { to: "/coebis", label: "COEBIS training data" },
   { to: "/models", label: "Model versions" },
+  { to: "/training", label: "Refit training history" },
   { to: "/blockers", label: "Blocked lineages" },
   { to: "/bis-benchmark", label: "COEBIS vs recorded BIS" },
   { to: "/pairing", label: "Pair monitor readings" },
