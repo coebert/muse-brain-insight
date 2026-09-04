@@ -237,7 +237,9 @@ export async function runRefitForUser(
   base.runId = runId;
 
   try {
-    const matrix = await loadTrainingMatrix(client, 5000, userId);
+    // A small global cap keeps only the oldest slice of the pool, which starves
+    // newer lineages of the readings they need to clear the gate.
+    const matrix = await loadTrainingMatrix(client, 40000, userId);
     const validated = selectValidatedPoints(matrix.points);
     base.validatedPoints = validated.used.length;
     base.rejected = validated.rejected;
