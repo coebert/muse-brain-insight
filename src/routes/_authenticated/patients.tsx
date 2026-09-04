@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
 import { getPatientScores } from "@/lib/eeg/patient-scores.functions";
 import {
   MIN_CASE_READINGS,
@@ -115,7 +116,34 @@ function StatCard({
   );
 }
 
-function CaseDetail({ row }: { row: PatientScoreRow }) {
+/** How far a lineage is from the promotion gate, read off the loaded cases. */
+interface GateProgress {
+  readings: number;
+  cases: number;
+  cleared: boolean;
+}
+
+function lineageGates(rows: PatientScoreRow[]): Map<string, GateProgress> {
+  const gates = new Map<string, GateProgress>();
+  for (const row of rows) {
+    const g = gates.get(row.lineageKey) ?? { readings: 0, cases: 0, cleared: false };
+    g.readings += row.readings;
+    g.cases += 1;
+    gates.set(row.lineageKey, g);
+  }
+  for (const g of gates.values()) g.cleared = g.readings >= MIN_POINTS && g.cases >= MIN_SESSIONS;
+  return gates;
+}
+
+/** Says why a case has no COEBIS score instead of leaving it blank. */
+function modelLabel(row: PatientScoreRow, gate: GateProgress | undefined): string {
+  if (row.modelVersion != null) return ` \u00b7 COEBIS v${row.modelVersion}`;
+  if (!gate) return " \u00b7 no model";
+  if (gate.cleared) return ` \u00b7 no model \u00b7 gate cleared, awaiting a refit`;
+  return ` \u00b7 no model \u00b7 ${gate.readings}/${MIN_POINTS} readings, ${gate.cases}/${MIN_SESSIONS} cases`;
+}
+
+function CaseDetail({ row, gate }: { row: PatientScoreRow; gate: GateProgress | undefined }) {
   return (
     <Card>
       <CardHeader>
@@ -124,7 +152,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
             <CardTitle className="truncate">{row.caseLabel}</CardTitle>
             <CardDescription className="truncate">
               {row.lineageKey}
-              {row.modelVersion == null ? " · no model" : ` · COEBIS v${row.modelVersion}`}
+              {modelLabel(row, gate)}
             </CardDescription>
           </div>
           <ReferenceBadge row={row} />
@@ -391,6 +419,8 @@ function PatientsPage() {
     return sorted;
   }, [data, lineage, referenceFilter, sort]);
 
+  const gates = useMemo(() => lineageGates(data?.rows ?? []), [data]);
+
   const active = rows.find((r) => r.caseKey === selected) ?? rows[0] ?? null;
 
   return (
@@ -538,7 +568,7 @@ function PatientsPage() {
                             <div className="max-w-[220px] truncate font-medium">{row.caseLabel}</div>
                             <div className="max-w-[220px] truncate text-xs text-muted-foreground">
                               {row.lineageKey}
-                              {row.modelVersion == null ? " · no model" : ` · v${row.modelVersion}`}
+                              {modelLabel(row, gates.get(row.lineageKey))}
                               {row.sufficient ? "" : " · thin"}
                             </div>
                           </td>
@@ -591,7 +621,7 @@ function PatientsPage() {
               </CardContent>
             </Card>
 
-            {active ? <CaseDetail row={active} /> : null}
+            {active ? <CaseDetail row={active} gate={gates.get(active.lineageKey)} /> : null}
 
             <p className="text-xs text-muted-foreground">
               Cases with fewer than {MIN_CASE_READINGS} readings are marked “thin”: their agreement
