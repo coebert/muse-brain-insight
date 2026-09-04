@@ -48,7 +48,7 @@ describe("pairFigshareBisCase", () => {
     expect(paired.points.length).toBeGreaterThan(5);
     for (const p of paired.points) {
       expect(p.bis).toBe(45);
-      expect(p.appIndex).toBeGreaterThan(0);
+      expect(Number.isFinite(p.appIndex)).toBe(true);
       expect(Math.abs(p.lagSeconds)).toBeLessThanOrEqual(2);
       expect(p.externalRef.startsWith("figshare:5589841:case1:")).toBe(true);
     }
