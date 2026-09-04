@@ -77,6 +77,9 @@ export interface CvaPoint {
   /** Delta/alpha ratio per side — rises on the ischaemic side. */
   leftDar: number;
   rightDar: number;
+  /** 0–100 contact quality carried through, so a drop can be attributed. */
+  leftSqi: number;
+  rightSqi: number;
   /** False when contact or muscle artefact makes the epoch unreadable. */
   usable: boolean;
 }
