@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useSyncExternalStore } from "react";
-import { Bluetooth, ChevronDown, Moon, Square, Sun, X } from "lucide-react";
+import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react";
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
@@ -305,7 +305,7 @@ function BedsidePage() {
 
         <section className="mt-4 flex flex-wrap items-center gap-2">
           {caseState === "running" ? (
-            <Button variant="outline" className="min-h-11" onClick={() => endCase(true)}>
+            <Button variant="outline" className="min-h-11" onClick={() => endCase(false)}>
               <Square className="size-4" /> End case
             </Button>
           ) : (
