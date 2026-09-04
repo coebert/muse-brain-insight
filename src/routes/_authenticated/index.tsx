@@ -42,6 +42,7 @@ import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
 import { CoebisV2LivePanel } from "@/components/monitor/CoebisV2LivePanel";
 import { HeadbandTracePanel } from "@/components/monitor/HeadbandTracePanel";
+import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
@@ -929,6 +930,16 @@ function Monitor() {
               profile={deviceProfile}
               streaming={streaming}
               contactOk={monitor.contactOk}
+            />
+
+            {/* Sudden one-sided loss of EEG — the stroke pattern. */}
+            <CvaWatchPanel
+              hemiSpectra={monitor.hemiSpectra}
+              sqiHistory={monitor.sqiHistory}
+              bilateral={
+                deviceProfile.channels.some((c) => c === "TP9" || c === "AF7") &&
+                deviceProfile.channels.some((c) => c === "TP10" || c === "AF8")
+              }
             />
 
 
