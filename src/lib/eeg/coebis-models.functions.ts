@@ -58,13 +58,15 @@ const num = (v: unknown): number | null => {
 
 function metricsOf(raw: unknown): VersionMetrics {
   const m = (raw ?? {}) as Record<string, unknown>;
-  return {
+  const out: VersionMetrics = {
     mae: num(m["mae"]),
     bias: num(m["bias"]),
     ccc: num(m["ccc"]),
-    n: num(m["n"]) ?? undefined,
-    source: typeof m["source"] === "string" ? (m["source"] as string) : undefined,
   };
+  const n = num(m["n"]);
+  if (n != null) out.n = n;
+  if (typeof m["source"] === "string") out.source = m["source"] as string;
+  return out;
 }
 
 /**
