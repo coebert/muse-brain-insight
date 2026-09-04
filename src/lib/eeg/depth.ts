@@ -713,6 +713,7 @@ export class DepthIndexEstimator {
       adjunct,
       coebis,
       coebisRaw,
+      ketamine,
       coebisBaseline: activeBisAlignment == null,
     };
   }
