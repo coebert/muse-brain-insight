@@ -32,7 +32,7 @@ export const getCoebisBlockers = createServerFn({ method: "GET" })
     const { selectValidatedPoints } = await import("@/lib/eeg/coebis-refit");
     const { MIN_POINTS, MIN_SESSIONS } = await import("@/lib/eeg/bis-drift");
 
-    const matrix = await loadTrainingMatrix(context.supabase, 60000, undefined, 20000);
+    const matrix = await loadTrainingMatrix(context.supabase, 200000, undefined, 60000);
     const validated = selectValidatedPoints(matrix.points);
 
     const { data: versionRows } = await context.supabase
