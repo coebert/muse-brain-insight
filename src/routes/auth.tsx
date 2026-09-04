@@ -20,8 +20,6 @@ import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
 import { startPasskeyLogin, finishPasskeyLogin } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/auth")({
-  // Session state lives in browser storage, so render this screen client-side only.
-  ssr: false,
   head: () => ({
     meta: [
       { title: "Clinician sign in — CortexTrace EEG monitor" },
