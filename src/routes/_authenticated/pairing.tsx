@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -222,8 +222,8 @@ function PairingPage() {
               </TableHeader>
               <TableBody>
                 {data.candidates.map((c) => (
-                  <>
-                    <TableRow key={c.sessionId}>
+                  <Fragment key={c.sessionId}>
+                    <TableRow>
                       <TableCell className="font-medium">
                         {c.caseCode ?? c.sessionId.slice(0, 8)}
                         <div className="text-xs text-muted-foreground">
@@ -256,7 +256,7 @@ function PairingPage() {
                       </TableCell>
                     </TableRow>
                     {open === c.sessionId ? (
-                      <TableRow key={`${c.sessionId}-entry`}>
+                      <TableRow>
                         <TableCell colSpan={5} className="bg-muted/30 p-0">
                           <CaseEntry
                             candidate={c}
@@ -268,7 +268,7 @@ function PairingPage() {
                         </TableCell>
                       </TableRow>
                     ) : null}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>

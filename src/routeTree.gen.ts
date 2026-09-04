@@ -25,6 +25,7 @@ import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedKetamineRouteImport } from './routes/_authenticated/ketamine'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
+import { Route as AuthenticatedPairingRouteImport } from './routes/_authenticated/pairing'
 import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
@@ -116,6 +117,11 @@ const AuthenticatedOutcomesRoute = AuthenticatedOutcomesRouteImport.update({
   path: '/outcomes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPairingRoute = AuthenticatedPairingRouteImport.update({
+  id: '/pairing',
+  path: '/pairing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPathologyRoute = AuthenticatedPathologyRouteImport.update({
   id: '/pathology',
   path: '/pathology',
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
+  '/pairing': typeof AuthenticatedPairingRoute
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
+  '/pairing': typeof AuthenticatedPairingRoute
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/_authenticated/ketamine': typeof AuthenticatedKetamineRoute
   '/_authenticated/models': typeof AuthenticatedModelsRoute
   '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
+  '/_authenticated/pairing': typeof AuthenticatedPairingRoute
   '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/ketamine'
     | '/models'
     | '/outcomes'
+    | '/pairing'
     | '/pathology'
     | '/patients'
     | '/performance'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/ketamine'
     | '/models'
     | '/outcomes'
+    | '/pairing'
     | '/pathology'
     | '/patients'
     | '/performance'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ketamine'
     | '/_authenticated/models'
     | '/_authenticated/outcomes'
+    | '/_authenticated/pairing'
     | '/_authenticated/pathology'
     | '/_authenticated/patients'
     | '/_authenticated/performance'
@@ -468,6 +480,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOutcomesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pairing': {
+      id: '/_authenticated/pairing'
+      path: '/pairing'
+      fullPath: '/pairing'
+      preLoaderRoute: typeof AuthenticatedPairingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pathology': {
       id: '/_authenticated/pathology'
       path: '/pathology'
@@ -562,6 +581,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKetamineRoute: typeof AuthenticatedKetamineRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
   AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
+  AuthenticatedPairingRoute: typeof AuthenticatedPairingRoute
   AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
   AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
@@ -589,6 +609,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKetamineRoute: AuthenticatedKetamineRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRoute,
   AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
+  AuthenticatedPairingRoute: AuthenticatedPairingRoute,
   AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
   AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
