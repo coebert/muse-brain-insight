@@ -68,20 +68,48 @@ interface ExternalRow {
   covariates: Record<string, unknown> | null;
 }
 
-async function loadExternal(supabase: Client, limit: number): Promise<{
+/**
+ * Lineage names, taken from the small intake and reference tables rather than
+ * from a distinct scan of the 60k-row spectral table.
+ */
+async function knownLineages(supabase: Client): Promise<string[]> {
+  const [{ data: intake }, { data: reference }] = await Promise.all([
+    supabase.from("dataset_intake_files").select("lineage").limit(2000),
+    supabase.from("external_reference_points").select("source_lineage").limit(2000),
+  ]);
+  const set = new Set<string>();
+  for (const r of (intake ?? []) as { lineage: string | null }[]) if (r.lineage) set.add(r.lineage);
+  for (const r of (reference ?? []) as { source_lineage: string | null }[]) {
+    if (r.source_lineage) set.add(r.source_lineage);
+  }
+  return [...set];
+}
+
+/**
+ * Spectral epochs, read per lineage so no single large corpus crowds the
+ * others out, and capped per case so one long recording cannot dominate.
+ */
+async function loadExternal(supabase: Client, perLineage: number): Promise<{
   epochs: DrugLibraryEpoch[];
   scanned: number;
 }> {
-  const rows = await pageAll<ExternalRow>(
-    (from, to) =>
-      supabase
-        .from("external_spectral_epochs")
-        .select("source_lineage, case_ref, bands, covariates")
-        .order("case_ref", { ascending: true })
-        .order("at_seconds", { ascending: true })
-        .range(from, to),
-    limit,
+  const lineages = await knownLineages(supabase);
+  const perLineageRows = await Promise.all(
+    lineages.map((lineage) =>
+      pageAll<ExternalRow>(
+        (from, to) =>
+          supabase
+            .from("external_spectral_epochs")
+            .select("source_lineage, case_ref, bands, covariates")
+            .eq("source_lineage", lineage)
+            .order("case_ref", { ascending: true })
+            .order("at_seconds", { ascending: true })
+            .range(from, to),
+        perLineage,
+      ),
+    ),
   );
+  const rows = perLineageRows.flat();
   const keep = keeper();
   const epochs: DrugLibraryEpoch[] = [];
   for (const r of rows) {
@@ -106,6 +134,7 @@ async function loadExternal(supabase: Client, limit: number): Promise<{
   }
   return { epochs, scanned: rows.length };
 }
+
 
 interface ReferenceRow {
   source_lineage: string;
