@@ -14,14 +14,29 @@ export interface Person {
 }
 
 async function callerIsAdmin(context: {
-  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }> };
+  supabase: {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => {
+          eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data: unknown }> };
+        };
+      };
+    };
+  };
   userId: string;
 }): Promise<boolean> {
-  const { data } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
-  });
-  return data === true;
+  // The role check reads the caller's own row under row-level security, which
+  // is enforced by the database rather than by anything the browser sends.
+  const { data } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return Boolean(data);
 }
 
 /** Role of the signed-in clinician. Everyone who is not an admin is a clinician. */
