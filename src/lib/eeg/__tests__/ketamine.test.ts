@@ -127,3 +127,21 @@ describe("ketamine correction", () => {
     expect(Math.abs(poor.delta)).toBeLessThan(Math.abs(good.delta));
   });
 });
+
+describe("filed ketamine flag", () => {
+  it("declares exposure from the filed flag alone", () => {
+    expect(ketamineDeclared({ flag: true })).toBe(true);
+    expect(ketamineEvidence({ flag: true })).toBe("filed");
+  });
+
+  it("rules exposure out even when free text mentions the drug", () => {
+    expect(ketamineDeclared({ regimen: "propofol, ketamine considered", flag: false })).toBe(false);
+    expect(ketamineEvidence({ regimen: "ketamine considered", flag: false })).toBe("filed");
+  });
+
+  it("falls back to the record when nothing is filed", () => {
+    expect(ketamineDeclared({ regimen: "propofol / ketamine" })).toBe(true);
+    expect(ketamineEvidence({ regimen: "propofol / ketamine" })).toBe("inferred");
+    expect(ketamineEvidence({ regimen: "propofol" })).toBe("none");
+  });
+});
