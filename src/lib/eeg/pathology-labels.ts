@@ -292,9 +292,40 @@ export interface ComparatorBenchmark {
   comparators: ComparatorScore[];
   /** Suppression, read on exactly the same epochs as the depth comparison. */
   suppressionOnSubset: SubsetSuppression;
+  /** Recorded BIS, read on exactly the same epochs as the depth comparison. */
+  bisOnSubset: SubsetBis;
   sufficiency: Sufficiency;
   verdict: string;
 }
+
+/**
+ * COEBIS against the published bedside BIS number on the benchmark's own
+ * epochs. Only epochs whose paired reading carries a recorded BIS value count;
+ * nothing is imputed, and where no epoch carries one the panel says so rather
+ * than grading against a substitute.
+ */
+export interface SubsetBis {
+  /** Benchmark epochs carrying a recorded BIS value. */
+  n: number;
+  cases: number;
+  meanBis: number | null;
+  meanCoebis: number | null;
+  /** Mean absolute COEBIS − BIS, in index points. */
+  mae: number | null;
+  /** Mean signed COEBIS − BIS: negative means COEBIS reads deeper. */
+  bias: number | null;
+  /** Pearson correlation between COEBIS and BIS on these epochs. */
+  correlation: number | null;
+  /** The same three numbers for the drug-corrected index. */
+  correctedMae: number | null;
+  correctedBias: number | null;
+  correctedCorrelation: number | null;
+  /** Epochs where a drug correction actually moved the index. */
+  correctedEpochs: number;
+  sufficiency: Sufficiency;
+  verdict: string;
+}
+
 
 /**
  * What suppression is doing on the benchmark's own epochs.
