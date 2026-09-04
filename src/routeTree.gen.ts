@@ -24,6 +24,7 @@ import { Route as AuthenticatedExposureRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
 import { Route as AuthenticatedKetamineRouteImport } from './routes/_authenticated/ketamine'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
+import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
 import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
 import { Route as AuthenticatedPairingRouteImport } from './routes/_authenticated/pairing'
 import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
@@ -111,6 +112,11 @@ const AuthenticatedKetamineRoute = AuthenticatedKetamineRouteImport.update({
 const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
   id: '/models',
   path: '/models',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedNotesRoute = AuthenticatedNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOutcomesRoute = AuthenticatedOutcomesRouteImport.update({
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
+  '/notes': typeof AuthenticatedNotesRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/pairing': typeof AuthenticatedPairingRoute
   '/pathology': typeof AuthenticatedPathologyRoute
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof AuthenticatedFeedbackRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
+  '/notes': typeof AuthenticatedNotesRoute
   '/outcomes': typeof AuthenticatedOutcomesRoute
   '/pairing': typeof AuthenticatedPairingRoute
   '/pathology': typeof AuthenticatedPathologyRoute
@@ -262,6 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
   '/_authenticated/ketamine': typeof AuthenticatedKetamineRoute
   '/_authenticated/models': typeof AuthenticatedModelsRoute
+  '/_authenticated/notes': typeof AuthenticatedNotesRoute
   '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
   '/_authenticated/pairing': typeof AuthenticatedPairingRoute
   '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/ketamine'
     | '/models'
+    | '/notes'
     | '/outcomes'
     | '/pairing'
     | '/pathology'
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/ketamine'
     | '/models'
+    | '/notes'
     | '/outcomes'
     | '/pairing'
     | '/pathology'
@@ -355,6 +366,7 @@ export interface FileRouteTypes {
     | '/_authenticated/feedback'
     | '/_authenticated/ketamine'
     | '/_authenticated/models'
+    | '/_authenticated/notes'
     | '/_authenticated/outcomes'
     | '/_authenticated/pairing'
     | '/_authenticated/pathology'
@@ -485,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedModelsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/notes': {
+      id: '/_authenticated/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AuthenticatedNotesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/outcomes': {
       id: '/_authenticated/outcomes'
       path: '/outcomes'
@@ -599,6 +618,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
   AuthenticatedKetamineRoute: typeof AuthenticatedKetamineRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
+  AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
   AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
   AuthenticatedPairingRoute: typeof AuthenticatedPairingRoute
   AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
@@ -628,6 +648,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
   AuthenticatedKetamineRoute: AuthenticatedKetamineRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRoute,
+  AuthenticatedNotesRoute: AuthenticatedNotesRoute,
   AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
   AuthenticatedPairingRoute: AuthenticatedPairingRoute,
   AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
