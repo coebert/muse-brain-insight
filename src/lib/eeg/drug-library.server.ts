@@ -248,11 +248,11 @@ async function loadApp(supabase: Client, limit: number): Promise<{
 }
 
 /** Per-agent EEG signature, source lineages and case coverage. */
-export async function loadDrugLibrary(supabase: Client, limit = 30000): Promise<DrugLibraryReport> {
+export async function loadDrugLibrary(supabase: Client, perLineage = 6000): Promise<DrugLibraryReport> {
   const [external, reference, app] = await Promise.all([
-    loadExternal(supabase, limit),
-    loadReference(supabase, 20000),
-    loadApp(supabase, 5000),
+    loadExternal(supabase, perLineage),
+    loadReference(supabase, 10000),
+    loadApp(supabase, 4000),
   ]);
   return summariseDrugLibrary(
     [...external.epochs, ...reference.epochs, ...app.epochs],
