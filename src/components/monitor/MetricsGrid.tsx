@@ -2,6 +2,7 @@ import type React from "react";
 
 import { MetricTile } from "@/components/monitor/MetricTile";
 import { CoebisFitBadge, coebisFitHint } from "@/components/monitor/CoebisFitBadge";
+import { ketamineHint } from "@/lib/eeg/ketamine";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { COMPOSITE_BAND_LABEL, NOCICEPTION_BAND_LABEL } from "@/lib/eeg/composite";
@@ -92,11 +93,14 @@ export function MetricsGrid({
               info="coebis"
               label="COEBIS"
               value={latest?.depth.coebis != null ? String(latest.depth.coebis) : "—"}
-              hint={
+              hint={[
                 latest?.depth.coebis != null
                   ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
-                  : `${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
-              }
+                  : `${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`,
+                ketamineHint(latest?.depth.ketamine),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
               badge={<CoebisFitBadge model={coebisModel} compact />}
               tone={
                 latest?.depth.coebis == null || latest.depth.held
