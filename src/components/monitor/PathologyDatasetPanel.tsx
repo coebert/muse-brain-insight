@@ -168,7 +168,7 @@ function DatasetCard({ info }: { info: PathologyDatasetInfo }) {
           <Brain className="h-3.5 w-3.5 text-primary" aria-hidden />
         )}
         <h4 className="text-xs font-semibold">{info.label}</h4>
-        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
           {info.category === "seizure" ? "Seizure" : "CNS disease"}
         </span>
       </header>

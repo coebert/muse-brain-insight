@@ -336,7 +336,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
               <p className="text-muted-foreground">{attAnalysis.privacy}</p>
               {attAnalysis.correlations.length ? (
                 <div className="max-h-52 overflow-auto rounded-md border border-border/70">
-                  <table className="w-full text-left font-mono text-[10px] tabular-nums">
+                  <table className="w-full text-left font-mono text-[11px] tabular-nums">
                     <thead className="sticky top-0 bg-card text-muted-foreground">
                       <tr><th className="px-2 py-1">Write</th><th className="px-2 py-1">Reply</th><th className="px-2 py-1">Bytes</th><th className="px-2 py-1">Command hex</th></tr>
                     </thead>
@@ -368,7 +368,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
             Live notifications (latest {recent.length} of {blePacketInspector.totalSeen})
           </p>
           <div className="mt-1 max-h-52 overflow-auto rounded-md border border-border/70">
-            <table className="w-full text-left font-mono text-[10px] tabular-nums">
+            <table className="w-full text-left font-mono text-[11px] tabular-nums">
               <thead className="sticky top-0 bg-card text-muted-foreground">
                 <tr>
                   <th className="px-2 py-1">Time</th>
@@ -401,7 +401,7 @@ export function BleDiagnosticsPanel({ epochs, deviceLabel, sampleRate }: BleDiag
           </p>
           <div className="mt-1 max-h-64 overflow-auto rounded-md border border-border/70 p-2">
             {entries.slice(-120).map((entry, index) => (
-              <div key={`${entry.at}-${index}`} className="font-mono text-[10px] leading-relaxed">
+              <div key={`${entry.at}-${index}`} className="font-mono text-[11px] leading-relaxed">
                 <span className="text-muted-foreground">
                   {(entry.t / 1000).toFixed(2)}s{" "}
                 </span>

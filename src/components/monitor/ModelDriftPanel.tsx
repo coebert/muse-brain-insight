@@ -79,26 +79,26 @@ export function ModelDriftPanel() {
             </div>
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Δ MAE</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Δ MAE</p>
                 <p className="text-sm text-foreground">{signed(d.maeDelta)}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   {plain(d.baselineMae)} → {plain(d.currentMae)}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Δ bias</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Δ bias</p>
                 <p className="text-sm text-foreground">{signed(d.biasDelta)}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Δ CCC</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Δ CCC</p>
                 <p className="text-sm text-foreground">{signed(d.cccDelta, 3)}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Weight drift
                 </p>
                 <p className="text-sm text-foreground">{plain(d.maxWeightDrift)}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   rms {plain(d.rmsWeightDrift)}
                 </p>
               </div>

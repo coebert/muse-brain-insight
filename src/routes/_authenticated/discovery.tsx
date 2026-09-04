@@ -115,7 +115,7 @@ function DiscoveryPage() {
   }, [selected, onlySignificant]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border/60 bg-card/40">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4">
           <Button asChild variant="ghost" size="sm" className="min-h-11">

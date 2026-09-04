@@ -306,6 +306,11 @@ export function drugStage({
   for (const spec of DRUG_SPECS) {
     if (spec.role !== "corrected" || declaredSet.has(spec.key)) continue;
     if (spec.key === "ketamine") continue; // its own stage raises this advisory
+    // The spindle-rich slow pattern an alpha-2 agonist produces is also the
+    // ordinary signature of propofol and the volatiles, so it identifies no
+    // drug on its own. Advising on it would warn on every routine GABAergic
+    // anaesthetic. These agents are corrected only when they are recorded.
+    if (spec.direction === 1) continue;
     if (drugPatternScore(spec.key, features) >= ADVISORY_SCORE) {
       advisories.push(
         `The spectrum shows the pattern ${spec.label.toLowerCase()} produces, but it is not recorded for this case. If it is running, the index is biased; record it so COEBIS can correct for it.`,

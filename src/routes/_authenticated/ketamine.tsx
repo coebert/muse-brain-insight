@@ -257,7 +257,7 @@ function KetaminePage() {
   }, [data, onlyAffected]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border/60 px-4 py-3">
         <AppNav />
       </header>
