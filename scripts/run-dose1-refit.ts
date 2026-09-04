@@ -1,0 +1,11 @@
+import { readFileSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
+import { runRefitForUser } from "@/lib/eeg/coebis-refit.server";
+const session = JSON.parse(readFileSync(`${process.env["HOME"]}/.cache/lovable-auth/session.json`,"utf8")) as any;
+const url = process.env["VITE_SUPABASE_URL"]!;
+const key = process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? process.env["VITE_SUPABASE_ANON_KEY"]!;
+const sb = createClient(url, key, { auth:{persistSession:false,autoRefreshToken:false}, global:{headers:{Authorization:`Bearer ${session.access_token}`}}});
+const userId = (await sb.auth.getUser(session.access_token)).data.user!.id;
+const admin = createClient(url, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, { auth:{persistSession:false,autoRefreshToken:false}});
+const r = await runRefitForUser(admin as never, userId, "dose-i-raw-intake");
+console.log(JSON.stringify(r, null, 2).slice(0, 6000));

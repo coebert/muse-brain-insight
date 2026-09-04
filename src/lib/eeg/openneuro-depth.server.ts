@@ -22,6 +22,20 @@ export interface EventDepthCase {
   points: EventDepthPoint[];
 }
 
+/**
+ * Where the readings came from. Defaults describe ds004541; another
+ * event-referenced source passes its own device, source and reference kind so
+ * the two never share a lineage or masquerade as each other.
+ */
+export interface EventDepthProvenance {
+  device?: string;
+  source?: string;
+  sourceSite?: string;
+  referenceKind?: string;
+  /** Extra per-reading provenance, e.g. the clinical score behind a reference. */
+  pointFeatures?: (point: EventDepthPoint) => Record<string, unknown>;
+}
+
 export interface EventDepthImportResult {
   cases: number;
   inserted: number;
@@ -38,7 +52,12 @@ export async function importEventDepthCases(
   supabase: Client,
   userId: string,
   cases: EventDepthCase[],
+  provenance: EventDepthProvenance = {},
 ): Promise<EventDepthImportResult> {
+  const device = provenance.device ?? OPENNEURO_DEPTH_DEVICE_ID;
+  const source = provenance.source ?? OPENNEURO_DS004541_SOURCE;
+  const sourceSite = provenance.sourceSite ?? "openneuro";
+  const referenceKind = provenance.referenceKind ?? OPENNEURO_DEPTH_REFERENCE_KIND;
   const rows = cases.flatMap((c) =>
     c.points.map((p) => ({
       user_id: userId,
@@ -54,16 +73,16 @@ export async function importEventDepthCases(
       sqi: null,
       lag_seconds: 0,
       context: "general",
-      device: OPENNEURO_DEPTH_DEVICE_ID,
-      source: OPENNEURO_DS004541_SOURCE,
-      source_site: "openneuro",
+      device,
+      source,
+      source_site: sourceSite,
       source_lineage: c.lineageKey,
       feature_source: "replay",
       external_ref: p.externalRef,
       features: {
         imported: true,
         replayed: true,
-        referenceKind: OPENNEURO_DEPTH_REFERENCE_KIND,
+        referenceKind,
         referenceSigma: p.referenceSigma,
         state: p.state,
         channel: c.channel,
@@ -71,6 +90,7 @@ export async function importEventDepthCases(
         ageBand: c.covariates.ageBand,
         sex: c.covariates.sex,
         regimen: c.covariates.regimen,
+        ...(provenance.pointFeatures?.(p) ?? {}),
       } as unknown as never,
     })),
   );

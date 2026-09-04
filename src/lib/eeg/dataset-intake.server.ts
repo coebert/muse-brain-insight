@@ -57,6 +57,18 @@ import {
 } from "./openneuro-depth";
 import { importEventDepthCases } from "./openneuro-depth.server";
 import { replayRawEeg } from "./replay";
+import {
+  buildMoaasDepthPoints,
+  clippedSeconds,
+  DOSE1_DEPTH_DEVICE_ID,
+  DOSE1_DEPTH_REFERENCE_KIND,
+  DOSE1_DEPTH_SOURCE,
+  dose1DepthLineageKey,
+  moaasIntervals,
+  parseDose1RawCsv,
+  type Dose1DepthPoint,
+} from "./dose1-raw";
+import { readZipIndex, zipMemberByteRange, zipMemberText, type ZipMember } from "./zip-index";
 
 type Client = SupabaseClient<any, any, any>;
 
@@ -254,6 +266,53 @@ async function expandArchive(
   return out;
 }
 
+/** Members of an archive that is only ever read by byte range, keyed by URL. */
+export type ArchiveIndex = Map<string, { archiveUrl: string; member: ZipMember }>;
+
+/**
+ * Read a large archive's member index from its tail alone.
+ *
+ * A ZIP keeps its directory at the end, so a couple of megabytes is enough to
+ * learn where each recording starts. Nothing else is downloaded here.
+ */
+async function indexArchive(
+  source: IntakeSource,
+  archive: DiscoveredFile,
+  index: ArchiveIndex,
+  auth?: string,
+): Promise<DiscoveredFile[]> {
+  const total = archive.bytes;
+  if (!total) throw new Error(`${archive.name} publishes no size, so its index cannot be located.`);
+  const tailBytes = Math.min(total, 4_000_000);
+  const tailStart = total - tailBytes;
+  const tail = await fetchRange(archive.url, tailStart, total - 1, FETCH_TIMEOUT_MS, auth);
+  if (tail.byteLength < tailBytes) {
+    throw new Error(
+      `${archive.name} was served whole instead of by range; refusing to download ${Math.round(total / 1e6)} MB.`,
+    );
+  }
+  const members = readZipIndex(tail, tailStart);
+  const out: DiscoveredFile[] = [];
+  for (const member of members) {
+    if (!source.filePattern.test(member.name)) continue;
+    const url = `${archive.url}#${member.name}`;
+    index.set(url, { archiveUrl: archive.url, member });
+    out.push({ name: member.name, url, bytes: member.uncompressedSize });
+  }
+  return out;
+}
+
+/** Fetch and inflate one archive member with a single byte range. */
+async function fetchArchiveMember(
+  entry: { archiveUrl: string; member: ZipMember },
+  auth?: string,
+): Promise<{ text: string; bytes: number }> {
+  const { start, end } = zipMemberByteRange(entry.member);
+  const bytes = await fetchRange(entry.archiveUrl, start, end, 300_000, auth);
+  const text = await zipMemberText(entry.member, bytes);
+  return { text, bytes: entry.member.compressedSize };
+}
+
 /**
  * List the files a source currently publishes. Nothing is downloaded except a
  * published index — or, for archive-packaged records, the single archive whose
@@ -263,6 +322,7 @@ export async function discoverFiles(
   source: IntakeSource,
   cache?: Map<string, string>,
   auth?: string,
+  archiveIndex?: ArchiveIndex,
 ): Promise<DiscoveredFile[]> {
   const listing = source.listing;
   let files: DiscoveredFile[];
@@ -283,7 +343,13 @@ export async function discoverFiles(
   const expanded: DiscoveredFile[] = [];
   for (const f of files) {
     if (!source.archivePattern.test(f.name)) continue;
-    expanded.push(...(await expandArchive(source, f, cache, auth)));
+    expanded.push(
+      ...(source.archiveIndexOnly
+        ? archiveIndex
+          ? await indexArchive(source, f, archiveIndex, auth)
+          : []
+        : await expandArchive(source, f, cache, auth)),
+    );
   }
   return expanded.length ? expanded : files.filter((f) => source.filePattern.test(f.name));
 }
@@ -542,6 +608,52 @@ async function streamOpenNeuroFile(
   };
 }
 
+/**
+ * Replay one DOSE-I raw recording against its MOAA/S annotations.
+ *
+ * DOSE-I publishes no bedside depth index, so the reference here is the
+ * clinical sedation score mapped onto the 0–100 scale with an explicit spread.
+ * Only stable, unclipped stretches survive, and the readings are stored under
+ * their own lineage marked as a score reference — they can never be mistaken
+ * for a monitor value.
+ */
+function dose1RawPaired(
+  file: PlannedFile,
+  text: string,
+): { paired: { lineageKey: string; channel: string; points: Dose1DepthPoint[] } | null; detail: string } {
+  const channel = "EEG_1";
+  const recording = parseDose1RawCsv(text, { channel });
+  if (!recording.samples.length || !recording.observations.length) {
+    return { paired: null, detail: "no usable EEG samples or MOAA/S annotations" };
+  }
+  const intervals = moaasIntervals(recording.observations, recording.durationSeconds);
+  const replay = replayRawEeg({
+    samples: recording.samples,
+    sampleRate: recording.sampleRate,
+  });
+  const built = buildMoaasDepthPoints(
+    replay.frames,
+    intervals,
+    { caseRef: file.caseRef, channel },
+    { clipped: clippedSeconds(recording.samples, recording.sampleRate) },
+  );
+  const scores = Object.entries(built.scores)
+    .map(([k, v]) => `MOAA/S ${k}: ${v}`)
+    .join(", ");
+  const detail = built.points.length
+    ? `${Math.round(recording.durationSeconds / 60)} min replayed; ${built.points.length} score-referenced readings (${scores}); ${built.rejected.clipped} dropped for clipping`
+    : `${Math.round(recording.durationSeconds / 60)} min replayed; no stable unclipped stretch (${built.rejected.shortInterval} short runs, ${built.rejected.clipped} clipped)`;
+  if (!built.points.length) return { paired: null, detail };
+  return {
+    paired: {
+      lineageKey: dose1DepthLineageKey(recording.sampleRate),
+      channel,
+      points: built.points,
+    },
+    detail,
+  };
+}
+
 /* --------------------------------------------------------------- run --- */
 
 async function alreadyIngested(supabase: Client, sourceId: string): Promise<Set<string>> {
@@ -603,12 +715,19 @@ export async function runDatasetIntake(
     let discovered: DiscoveredFile[] = [];
     // Members of an expanded archive, keyed by their member URL.
     const archived = new Map<string, string>();
+    // Members of an archive read by byte range rather than downloaded whole.
+    const archiveIndex: ArchiveIndex = new Map();
     // Subject seizure summaries, one fetch per subject per run.
     const summaries = new Map<string, ChbSeizure[]>();
     // Published BIDS events per recording, one fetch per file per run.
     const bidsEvents = new Map<string, BidsEvent[]>();
     try {
-      discovered = await discoverFiles(source, gate.eligible ? archived : undefined, auth);
+      discovered = await discoverFiles(
+        source,
+        gate.eligible ? archived : undefined,
+        auth,
+        archiveIndex,
+      );
     } catch (e) {
       base.reason = `Could not read the published index: ${e instanceof Error ? e.message : String(e)}`;
       results.push(base);
@@ -679,6 +798,18 @@ export async function runDatasetIntake(
             source.kind === "chbmit-edf" ? await summaryFor(file, summaries) : [],
             source.kind === "openneuro-bids-edf" ? await eventsFor(file, bidsEvents) : [],
           );
+        } else if (source.kind === "dose1-raw") {
+          const entry = archiveIndex.get(file.url);
+          if (!entry) throw new Error("The archive index has no entry for this recording.");
+          const fetched = await fetchArchiveMember(entry, auth);
+          bytes = fetched.bytes;
+          digest = await sha256Hex(fetched.text);
+          const replayed = dose1RawPaired(file, fetched.text);
+          paired = replayed.paired;
+          streamNote = replayed.detail;
+          // The raw archive contributes score-referenced readings only; its
+          // spectra are already held from the published pEEG route.
+          parsedFile = { rows: [], harmonization: null };
         } else {
           const member = archived.get(file.url);
           const fetched = member
@@ -701,15 +832,33 @@ export async function runDatasetIntake(
           ? `${stored.inserted} new epochs, ${stored.skipped} already held`
           : `${stored.inserted} new epochs`;
         if (paired?.points.length) {
-          const storedPairs = await importEventDepthCases(supabase, userId, [
-            {
-              caseRef: file.caseRef,
-              lineageKey: paired.lineageKey,
-              channel: paired.channel,
-              covariates: { ageBand: null, sex: null, regimen: "volatile" },
-              points: paired.points,
-            },
-          ]);
+          const isDose1 = source.kind === "dose1-raw";
+          const storedPairs = await importEventDepthCases(
+            supabase,
+            userId,
+            [
+              {
+                caseRef: file.caseRef,
+                lineageKey: paired.lineageKey,
+                channel: paired.channel,
+                covariates: {
+                  ageBand: null,
+                  sex: null,
+                  regimen: isDose1 ? "propofol-sedation" : "volatile",
+                },
+                points: paired.points,
+              },
+            ],
+            isDose1
+              ? {
+                  device: DOSE1_DEPTH_DEVICE_ID,
+                  source: DOSE1_DEPTH_SOURCE,
+                  sourceSite: "zenodo",
+                  referenceKind: DOSE1_DEPTH_REFERENCE_KIND,
+                  pointFeatures: (p) => ({ moaas: (p as Dose1DepthPoint).moaas }),
+                }
+              : undefined,
+          );
           outcome.pairedInserted = storedPairs.inserted;
           base.pairedInserted = (base.pairedInserted ?? 0) + storedPairs.inserted;
         }
