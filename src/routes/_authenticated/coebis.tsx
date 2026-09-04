@@ -13,6 +13,7 @@ import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionCompa
 import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
 import { BedsideCalibrationPanel } from "@/components/monitor/BedsideCalibrationPanel";
+import { CoebisEnginePanel } from "@/components/monitor/CoebisEnginePanel";
 import { BisModelPanel } from "@/components/monitor/BisModelPanel";
 import { ProspectiveValidationPanel } from "@/components/monitor/ProspectiveValidationPanel";
 import { DataExchangePanel } from "@/components/monitor/DataExchangePanel";
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 
 const TABS = [
   { key: "readings", label: "Paired readings" },
+  { key: "engine", label: "Engine" },
   { key: "bis-model", label: "BIS model" },
   { key: "calibration", label: "Calibration" },
   { key: "validation", label: "Validation" },
@@ -237,6 +239,7 @@ function CoebisDataPage() {
             ))}
           </div>
 
+          {tab === "engine" ? <CoebisEnginePanel /> : null}
           {tab === "bis-model" ? <BisModelPanel /> : null}
           {tab === "calibration" ? <BedsideCalibrationPanel /> : null}
 
