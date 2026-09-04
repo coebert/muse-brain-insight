@@ -40,7 +40,25 @@ export const MONITOR_SUPPRESSED_PCT = 5;
 export const MONITOR_CLEAR_PCT = 1;
 
 
-export type ScoreKey = "coebis" | "seizureScore" | "suppressionRatio" | "sef95";
+export type ScoreKey =
+  | "coebis"
+  | "seizureScore"
+  | "suppressionRatio"
+  | "sef95"
+  | "stateEntropy"
+  | "responseEntropy"
+  | "betaRatio"
+  | "alphaDelta";
+
+/** Comparators recomputed from the published algorithm, not quoted from a paper. */
+export const COMPARATOR_SCORES: ScoreKey[] = [
+  "stateEntropy",
+  "responseEntropy",
+  "betaRatio",
+  "alphaDelta",
+  "sef95",
+];
+
 
 export interface ScoreMeta {
   key: ScoreKey;
@@ -85,6 +103,38 @@ export const SCORE_META: ScoreMeta[] = [
     direction: "lower",
     note: "Spectral edge; falls with slowing from any cause.",
   },
+  {
+    key: "stateEntropy",
+    label: "State Entropy (published)",
+    unit: "",
+    dp: 1,
+    direction: "lower",
+    note: "GE/Datex M-Entropy SE, 0.8–32 Hz, recomputed from this epoch's spectrum.",
+  },
+  {
+    key: "responseEntropy",
+    label: "Response Entropy (published)",
+    unit: "",
+    dp: 1,
+    direction: "lower",
+    note: "M-Entropy RE, 0.8–47 Hz; includes frontal EMG.",
+  },
+  {
+    key: "betaRatio",
+    label: "Beta ratio (published)",
+    unit: "log",
+    dp: 2,
+    direction: "lower",
+    note: "Rampil's BIS subparameter log10(P30–47 / P11–20). Not the BIS composite.",
+  },
+  {
+    key: "alphaDelta",
+    label: "Alpha/delta ratio (published)",
+    unit: "dB",
+    dp: 1,
+    direction: "lower",
+    note: "Standard ICU quantitative-EEG depth marker.",
+  },
 ];
 
 export interface EpochScores {
@@ -92,6 +142,12 @@ export interface EpochScores {
   seizureScore: number | null;
   suppressionRatio: number | null;
   sef95: number | null;
+  /** Published comparators, recomputed from the stored spectrum where one exists. */
+  stateEntropy?: number | null;
+  responseEntropy?: number | null;
+  betaRatio?: number | null;
+  alphaDelta?: number | null;
+
 }
 
 /** One analysed epoch carrying at least one independently recorded label. */
@@ -186,9 +242,47 @@ export interface LabelAxis {
   /** Mean suppression ratio in each class — confounding check. */
   suppressionPositive: number | null;
   suppressionNegative: number | null;
+  /** COEBIS against the best published comparator on exactly these epochs. */
+  benchmark: ComparatorBenchmark | null;
   sufficiency: Sufficiency;
   verdict: string;
 }
+
+/** Head-to-head between COEBIS and the published indices on one axis. */
+export interface ComparatorBenchmark {
+  /** Epochs where COEBIS and the comparators are both available. */
+  n: number;
+  cases: number;
+  coebisAuc: number | null;
+  bestComparator: ScoreKey | null;
+  bestComparatorLabel: string | null;
+  bestComparatorAuc: number | null;
+  /** COEBIS AUC minus the best comparator's, on the paired subset. */
+  delta: number | null;
+  /** Every comparator's AUC on the same paired subset, best first. */
+  comparators: ComparatorScore[];
+  sufficiency: Sufficiency;
+  verdict: string;
+}
+
+export interface ComparatorScore {
+  score: ScoreKey;
+  label: string;
+  /** AUC at the index's published orientation (e.g. entropy falls with depth). */
+  auc: number | null;
+  /**
+   * Discrimination regardless of sign, max(AUC, 1-AUC). An index whose
+   * published direction is reversed on this sample still separates the groups
+   * — propofol alpha spindles invert the alpha/delta ratio, for instance — and
+   * hiding that would flatter COEBIS.
+   */
+  orientedAuc: number | null;
+  /** True when the published direction is reversed on this sample. */
+  inverted: boolean;
+}
+
+
+
 
 export interface LineageInventory {
   lineage: string;
@@ -405,10 +499,114 @@ function axisVerdict(axis: Omit<LabelAxis, "verdict">): string {
     Math.abs(axis.suppressionPositive - axis.suppressionNegative) > 5
       ? ` Suppression differs between the groups (${axis.suppressionPositive.toFixed(1)}% vs ${axis.suppressionNegative.toFixed(1)}%), so part of this separation may be sedation depth rather than pathology.`
       : "";
-  return `${lead.scoreLabel} leads at AUC ${lead.auc.toFixed(2)}.${confound}`;
+  const bench = axis.benchmark ? ` ${axis.benchmark.verdict}` : "";
+  return `${lead.scoreLabel} leads at AUC ${lead.auc.toFixed(2)}.${confound}${bench}`;
+
+}
+
+/**
+ * COEBIS against the published comparators on *identical* epochs.
+ *
+ * Every index is graded on the one subset where COEBIS and each usable
+ * comparator are all present, so a comparator cannot look better simply by
+ * being defined on an easier slice of the recording. Comparators that are
+ * missing from most of the labelled epochs (no stored spectrum for that
+ * lineage, typically) are dropped rather than imputed.
+ */
+export function comparatorBenchmark(
+  epochs: LabelledEpoch[],
+  isPositive: (e: LabelledEpoch) => boolean,
+): ComparatorBenchmark | null {
+  const value = (e: LabelledEpoch, key: ScoreKey): number | null => {
+    const v = e.scores[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
+  const withCoebis = epochs.filter((e) => value(e, "coebis") != null);
+  if (!withCoebis.length) return null;
+
+  const usable = COMPARATOR_SCORES.filter(
+    (key) => withCoebis.filter((e) => value(e, key) != null).length >= MIN_AXIS_EPOCHS,
+  );
+  if (!usable.length) return null;
+
+  const subset = withCoebis.filter((e) => usable.every((key) => value(e, key) != null));
+  if (!subset.length) return null;
+
+  const positives = subset.filter(isPositive);
+  const negatives = subset.filter((e) => !isPositive(e));
+  const posCases = new Set(positives.map((e) => e.caseRef)).size;
+  const negCases = new Set(negatives.map((e) => e.caseRef)).size;
+  const sufficiency = sufficiencyOf(subset.length, posCases, negCases);
+  if (!positives.length || !negatives.length) return null;
+
+  const aucOf = (key: ScoreKey): number | null => {
+    const meta = SCORE_META.find((m) => m.key === key);
+    if (!meta) return null;
+    return directionalRoc(
+      subset.map((e) => ({ value: value(e, key) as number, positive: isPositive(e) })),
+      meta.direction,
+    ).auc;
+  };
+  const coebisAuc = round(aucOf("coebis"), 3);
+  const comparators: ComparatorScore[] = usable
+    .map((key) => {
+      const auc = round(aucOf(key), 3);
+      const oriented = auc == null ? null : round(Math.max(auc, 1 - auc), 3);
+      return {
+        score: key,
+        label: SCORE_META.find((m) => m.key === key)?.label ?? key,
+        auc,
+        orientedAuc: oriented,
+        inverted: auc != null && auc < 0.5,
+      };
+    })
+    .sort((a, b) => (b.orientedAuc ?? 0) - (a.orientedAuc ?? 0));
+  // Judge each comparator on its best orientation: an index that runs backwards
+  // on this sample still separates the groups, and crediting only its published
+  // direction would hand COEBIS a win it did not earn.
+  const best = comparators.find((c) => c.orientedAuc != null) ?? null;
+  const delta =
+    coebisAuc != null && best?.orientedAuc != null
+      ? round(coebisAuc - best.orientedAuc, 3)
+      : null;
+
+  const verdict = (() => {
+    if (coebisAuc == null || best?.orientedAuc == null) {
+      return "Not enough overlapping epochs to compare COEBIS with the published indices.";
+    }
+    const qualifier =
+      sufficiency === "sufficient"
+        ? ""
+        : ` Provisional: ${posCases} positive and ${negCases} negative case(s) on the shared subset.`;
+    const flipped = best.inverted
+      ? ` ${best.label} runs backwards on this sample and is credited at its reversed orientation.`
+      : "";
+    const head = `On the ${subset.length} epochs where all indices exist, COEBIS AUC ${coebisAuc.toFixed(2)} vs ${best.label} ${best.orientedAuc.toFixed(2)}`;
+    if (delta == null) return `${head}.${flipped}${qualifier}`;
+    if (delta >= 0.05)
+      return `${head} — COEBIS ahead by ${delta.toFixed(2)}.${flipped}${qualifier}`;
+    if (delta <= -0.05)
+      return `${head} — the published index is ahead by ${Math.abs(delta).toFixed(2)}; COEBIS adds nothing here.${flipped}${qualifier}`;
+    return `${head} — indistinguishable (Δ ${delta.toFixed(2)}); COEBIS matches the published algorithms rather than beating them.${flipped}${qualifier}`;
+  })();
+
+
+  return {
+    n: subset.length,
+    cases: new Set(subset.map((e) => e.caseRef)).size,
+    coebisAuc,
+    bestComparator: best?.score ?? null,
+    bestComparatorLabel: best?.label ?? null,
+    bestComparatorAuc: best?.orientedAuc ?? null,
+    delta,
+    comparators,
+    sufficiency,
+    verdict,
+  };
 }
 
 function buildAxis(
+
   key: string,
   label: string,
   description: string,
@@ -461,7 +659,9 @@ function buildAxis(
       mean(negatives.map((e) => e.scores.suppressionRatio).filter((v): v is number => v != null)),
       2,
     ),
+    benchmark: comparatorBenchmark(epochs, isPositive),
     sufficiency: sufficiencyOf(epochs.length, posCases.size, negCases.size),
+
   };
   return { ...base, verdict: axisVerdict(base) };
 }

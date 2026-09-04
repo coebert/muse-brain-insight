@@ -17,6 +17,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ACUTE_PATHOLOGY, CHRONIC_CONDITIONS, NONE_KEY } from "./clinical-covariates";
+import { alphaDeltaFromBands, publishedIndices } from "./published-indices";
+
 import {
   evaluatePathologyLabels,
   MONITOR_CLEAR_PCT,
@@ -125,7 +127,12 @@ interface ExternalRow {
   sef95: number | null;
   suppression_ratio: number | null;
   covariates: Record<string, unknown> | null;
+  spectrum_db: number[] | null;
+  bands: Record<string, unknown> | null;
+  freq_start_hz: number | null;
+  freq_step_hz: number | null;
 }
+
 
 interface AppEpochRow {
   session_id: string;
@@ -135,6 +142,8 @@ interface AppEpochRow {
   spectral_edge_95: number | null;
   depth_index: number | null;
   depth_components: Record<string, unknown> | null;
+  bands: Record<string, unknown> | null;
+
 }
 
 interface SessionRow {
@@ -252,6 +261,24 @@ export type PairedScoreIndex = Map<string, { at: number; score: PairedScore }[]>
  */
 export const PAIRED_MATCH_SECONDS = 5;
 
+/**
+ * One case key for a recording that two tables name differently.
+ *
+ * DOSE-I is the case in point: the paired readings key on the raw file name
+ * (`data-10-197`) while the imported spectra key on the derived pEEG export
+ * (`pEEG-pEEG-10-197_pEEG`). Both carry the same subject number, and without
+ * folding them together the published comparators (which need the spectrum)
+ * and COEBIS (which lives on the paired reading) never meet on one epoch.
+ */
+export function canonicalCaseKey(caseRef: string): string {
+  const ref = caseRef.toLowerCase();
+  if (/(^|[^a-z])(peeg|data)[-_]/.test(ref)) {
+    const subject = /(\d{1,3}-\d{2,4})/.exec(ref);
+    if (subject) return `dose-i-${subject[1]}`;
+  }
+  return caseRef;
+}
+
 /** Nearest replayed score to a labelled second, or null outside tolerance. */
 export function pairedScoreAt(
   index: PairedScoreIndex,
@@ -259,7 +286,8 @@ export function pairedScoreAt(
   atSeconds: number,
   tolerance = PAIRED_MATCH_SECONDS,
 ): PairedScore | null {
-  const list = index.get(caseRef);
+  const list = index.get(caseRef) ?? index.get(canonicalCaseKey(caseRef));
+
   if (!list?.length) return null;
   let lo = 0;
   let hi = list.length - 1;
@@ -354,10 +382,13 @@ async function loadPaired(
       suppressionRatio: asPercent(num(r.app_sr)),
     };
     if (caseRef) {
-      const list = index.get(caseRef) ?? [];
-      list.push({ at, score: scores });
-      index.set(caseRef, list);
+      for (const key of new Set([caseRef, canonicalCaseKey(caseRef)])) {
+        const list = index.get(key) ?? [];
+        list.push({ at, score: scores });
+        index.set(key, list);
+      }
     }
+
 
     const suppression = monitorSuppressionLabel(num(r.bis_sr));
     const state = pairedStateLabel(features["state"]);
@@ -454,7 +485,7 @@ async function loadExternal(
     const { data, error } = await supabase
       .from("external_spectral_epochs")
       .select(
-        "source_lineage, case_ref, at_seconds, label, label_source, sef95, suppression_ratio, covariates",
+        "source_lineage, case_ref, at_seconds, label, label_source, sef95, suppression_ratio, covariates, spectrum_db, bands, freq_start_hz, freq_step_hz",
       )
       .order("created_at", { ascending: true })
       .range(from, Math.min(from + PAGE, limit) - 1);
@@ -486,7 +517,17 @@ async function loadExternal(
           seizureScore: null,
           suppressionRatio: appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio)),
           sef95: num(r.sef95),
+          // Published comparators, recomputed from this epoch's own spectrum
+          // so COEBIS is graded against them on identical data.
+          ...publishedIndices(
+            Array.isArray(r.spectrum_db) ? (r.spectrum_db as number[]) : null,
+            num(r.freq_start_hz) ?? 0.5,
+            num(r.freq_step_hz) ?? 0.5,
+            appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio)),
+            r.bands ?? null,
+          ),
         },
+
       });
     }
     if (page.length < PAGE) break;
@@ -533,7 +574,7 @@ async function loadApp(supabase: Client, limit: number): Promise<{
   const { data, error } = await supabase
     .from("eeg_epochs")
     .select(
-      "session_id, t_offset_seconds, seizure_score, suppression_ratio, spectral_edge_95, depth_index, depth_components",
+      "session_id, t_offset_seconds, seizure_score, suppression_ratio, spectral_edge_95, depth_index, depth_components, bands",
     )
     .in("session_id", [...byId.keys()])
     .order("created_at", { ascending: false })
@@ -574,16 +615,21 @@ async function loadApp(supabase: Client, limit: number): Promise<{
         seizureScore: num(r.seizure_score),
         suppressionRatio: asPercent(num(r.suppression_ratio)),
         sef95: num(r.spectral_edge_95),
+        // Local epochs keep band powers, not the full spectrum, so only the
+        // band-ratio comparator can be recomputed here.
+        alphaDelta: alphaDeltaFromBands(r.bands ?? null),
       },
+
     });
   }
   return { rows, scanned: epochs.length };
 }
 
-export async function loadPathologyLabelEvaluation(
+/** Every labelled epoch the grading runs on, before any statistics. */
+export async function loadLabelledEpochs(
   supabase: Client,
   limit = 8000,
-): Promise<PathologyLabelEvaluation> {
+): Promise<{ epochs: LabelledEpoch[]; scanned: number }> {
   const paired = await loadPaired(supabase);
   const [external, monitor, app] = await Promise.all([
     loadExternal(supabase, limit, paired.index),
@@ -605,10 +651,17 @@ export async function loadPathologyLabelEvaluation(
     }))
     .filter((r) => r.suppression != null || r.state != null);
 
-
-  return evaluatePathologyLabels(
-    [...external.rows, ...monitor.rows, ...pairedLabels, ...app.rows],
-    external.scanned + monitor.scanned + paired.scanned + app.scanned,
-  );
-
+  return {
+    epochs: [...external.rows, ...monitor.rows, ...pairedLabels, ...app.rows],
+    scanned: external.scanned + monitor.scanned + paired.scanned + app.scanned,
+  };
 }
+
+export async function loadPathologyLabelEvaluation(
+  supabase: Client,
+  limit = 8000,
+): Promise<PathologyLabelEvaluation> {
+  const { epochs, scanned } = await loadLabelledEpochs(supabase, limit);
+  return evaluatePathologyLabels(epochs, scanned);
+}
+
