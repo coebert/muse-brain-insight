@@ -288,7 +288,7 @@ export function parseVitalDbWaveTrack(
     channel,
     samples,
     sampleRate: Math.round((1 / step) * 100) / 100,
-    startSeconds: Math.max(0, Math.round(startSeconds * 1000) / 1000),
+    startSeconds: Math.max(0, Math.round(startSeconds * 1e6) / 1e6),
   };
 }
 
