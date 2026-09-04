@@ -216,28 +216,71 @@ interface PairedRow {
 
 /**
  * Case key a paired app reading belongs to. Paired refs are
- * `openneuro-ds004541:<case>:<channel>:<t>` and `vitaldb:<case>:<t>`.
+ * `openneuro-ds004541:<case>:<channel>:<t>`, `vitaldb:<case>:<t>` for the
+ * monitor-numerics import and `vitaldb:wave:<case>:<t>` for a reading produced
+ * by replaying the bedside EEG waveform through the app's own estimator.
  */
 export function pairedCaseRef(ref: string | null): string | null {
   if (!ref) return null;
   const parts = ref.split(":");
   if (parts.length < 3) return null;
-  if (/^vitaldb/i.test(parts[0] ?? "")) return `vitaldb-${parts[1]}`;
+  if (/^vitaldb/i.test(parts[0] ?? "")) {
+    const rest = parts[1] === "wave" ? parts.slice(2) : parts.slice(1);
+    return rest[0] ? `vitaldb-${rest[0]}` : null;
+  }
   return parts[1] ?? null;
 }
 
-function scoreKey(caseRef: string, atSeconds: number): string {
-  return `${caseRef}|${Math.round(atSeconds)}`;
+export interface PairedScore {
+  coebis: number | null;
+  suppressionRatio: number | null;
+}
+
+/** Replayed app scores per case, ordered by case time for nearest matching. */
+export type PairedScoreIndex = Map<string, { at: number; score: PairedScore }[]>;
+
+/**
+ * How far a replayed second may sit from a labelled second and still be read as
+ * the same moment. The monitor labels are bucketed on a 10 s grid while the
+ * replay lands on the waveform's own clock, so an exact-second join would
+ * silently discard every VitalDB pairing.
+ */
+export const PAIRED_MATCH_SECONDS = 5;
+
+/** Nearest replayed score to a labelled second, or null outside tolerance. */
+export function pairedScoreAt(
+  index: PairedScoreIndex,
+  caseRef: string,
+  atSeconds: number,
+  tolerance = PAIRED_MATCH_SECONDS,
+): PairedScore | null {
+  const list = index.get(caseRef);
+  if (!list?.length) return null;
+  let lo = 0;
+  let hi = list.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid]!.at < atSeconds) lo = mid + 1;
+    else hi = mid;
+  }
+  const candidates = [list[lo - 1], list[lo], list[lo + 1]].filter(Boolean) as {
+    at: number;
+    score: PairedScore;
+  }[];
+  let best: { at: number; score: PairedScore } | null = null;
+  for (const c of candidates) {
+    if (Math.abs(c.at - atSeconds) > tolerance) continue;
+    if (!best || Math.abs(c.at - atSeconds) < Math.abs(best.at - atSeconds)) best = c;
+  }
+  return best?.score ?? null;
 }
 
 /**
  * App-side indices produced by replaying an imported recording, keyed by case
  * and second, so a recorded label can be graded against what the app scored.
  */
-async function loadPairedScores(
-  supabase: Client,
-): Promise<Map<string, { coebis: number | null; suppressionRatio: number | null }>> {
-  const index = new Map<string, { coebis: number | null; suppressionRatio: number | null }>();
+async function loadPairedScores(supabase: Client): Promise<PairedScoreIndex> {
+  const index: PairedScoreIndex = new Map();
   const { data, error } = await supabase
     .from("bis_paired_points")
     .select("external_ref, at_seconds, app_index, app_sr")
@@ -247,13 +290,17 @@ async function loadPairedScores(
   for (const r of (data ?? []) as unknown as PairedRow[]) {
     const caseRef = pairedCaseRef(r.external_ref);
     if (!caseRef) continue;
-    index.set(scoreKey(caseRef, Number(r.at_seconds ?? 0)), {
-      coebis: num(r.app_index),
-      suppressionRatio: asPercent(num(r.app_sr)),
+    const list = index.get(caseRef) ?? [];
+    list.push({
+      at: Number(r.at_seconds ?? 0),
+      score: { coebis: num(r.app_index), suppressionRatio: asPercent(num(r.app_sr)) },
     });
+    index.set(caseRef, list);
   }
+  for (const list of index.values()) list.sort((a, b) => a.at - b.at);
   return index;
 }
+
 
 /** Monitor-recorded suppression labels (e.g. VitalDB bedside BIS SR). */
 async function loadMonitorLabels(
