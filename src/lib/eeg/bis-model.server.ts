@@ -101,7 +101,7 @@ export async function loadActiveBisModels(
 }
 
 /** Turn validated COEBIS training points into BIS-model samples, per lineage. */
-function samplesByLineage(
+export function samplesByLineage(
   points: CoebisTrainingPoint[],
   incumbents: Map<string, CoebisModel | null>,
 ): Map<string, BisSample[]> {
@@ -127,7 +127,7 @@ function samplesByLineage(
   return out;
 }
 
-async function loadIncumbents(
+export async function loadIncumbents(
   supabase: Client,
   userId: string,
 ): Promise<Map<string, CoebisModel | null>> {

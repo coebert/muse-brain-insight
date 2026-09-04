@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDown, CheckCircle2, Loader2, ShieldAlert, Waves } from "lucide-react";
@@ -310,7 +310,11 @@ function BisOnBenchmarkCard() {
         <CardDescription>
           {bench
             ? `The same ${bench.n.toLocaleString()} epochs across ${bench.cases} case${bench.cases === 1 ? "" : "s"} the depth comparison is quoted on — ${axis?.label ?? ""}.`
-            : "The epochs the depth comparison is quoted on."}
+            : "The epochs the depth comparison is quoted on."}{" "}
+          <Link to="/bis-benchmark" className="underline underline-offset-4">
+            See the same comparison across every paired case
+          </Link>
+          .
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
