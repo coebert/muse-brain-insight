@@ -41,6 +41,7 @@ import {
 } from "@/lib/eeg/depth";
 import { declaredDrugs } from "@/lib/eeg/drug-signatures";
 import { ketamineDeclared } from "@/lib/eeg/ketamine";
+import { ketamineFlagValue } from "@/lib/eeg/case-meta";
 import { deriveClinicalCovariates } from "@/lib/eeg/clinical-covariates";
 import { ageBand } from "@/lib/eeg/save";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
@@ -287,11 +288,13 @@ function useCaseSessionState() {
       ketamineDeclared({
         regimen: meta.regimen,
         markers: [meta.notes, meta.caseSummary],
+        // The filed flag is authoritative in both directions.
+        flag: ketamineFlagValue(meta.ketamineGiven),
       })
         ? "declared"
         : "none",
     );
-  }, [meta.regimen, meta.notes, meta.caseSummary]);
+  }, [meta.regimen, meta.notes, meta.caseSummary, meta.ketamineGiven]);
 
   // The other declared agents. Propofol and the volatiles are recorded too, but
   // as reference drugs: their signature is the depth being measured, so the
