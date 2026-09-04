@@ -87,6 +87,9 @@ export interface BisAgreement {
   /** Readings the cap moved closer to the monitor, and further from it. */
   capImproved: number;
   capWorsened: number;
+  /** Readings where COEBIS landed within 5 / 10 points of the monitor. */
+  within5: number;
+  within10: number;
 }
 
 export interface CaseTrace {
@@ -192,6 +195,8 @@ export interface BisAccumulator {
   sumSignedCapped: number;
   capImproved: number;
   capWorsened: number;
+  within5: number;
+  within10: number;
 }
 
 export function newBisAccumulator(): BisAccumulator {
@@ -206,6 +211,8 @@ export function newBisAccumulator(): BisAccumulator {
     sumSignedCapped: 0,
     capImproved: 0,
     capWorsened: 0,
+    within5: 0,
+    within10: 0,
   };
 }
 
@@ -227,6 +234,9 @@ export function addBisReading(
   acc.sumSignedCapped += capErr;
   if (Math.abs(capErr) < Math.abs(rawErr) - 1e-9) acc.capImproved++;
   else if (Math.abs(capErr) > Math.abs(rawErr) + 1e-9) acc.capWorsened++;
+  // Graded on the capped number, because that is the one clinicians read.
+  if (Math.abs(capErr) <= 5) acc.within5++;
+  if (Math.abs(capErr) <= 10) acc.within10++;
 }
 
 export function mergeBis(into: BisAccumulator, from: BisAccumulator): void {
@@ -240,6 +250,8 @@ export function mergeBis(into: BisAccumulator, from: BisAccumulator): void {
   into.sumSignedCapped += from.sumSignedCapped;
   into.capImproved += from.capImproved;
   into.capWorsened += from.capWorsened;
+  into.within5 += from.within5;
+  into.within10 += from.within10;
 }
 
 export function summariseBis(acc: BisAccumulator): BisAgreement {
@@ -255,6 +267,8 @@ export function summariseBis(acc: BisAccumulator): BisAgreement {
     biasCapped: avg(acc.sumSignedCapped),
     capImproved: acc.capImproved,
     capWorsened: acc.capWorsened,
+    within5: acc.within5,
+    within10: acc.within10,
   };
 }
 
