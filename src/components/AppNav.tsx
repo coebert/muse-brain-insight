@@ -26,6 +26,8 @@ const TOOLS = [
   { to: "/pairing", label: "Pair monitor readings" },
   { to: "/reference", label: "Reference library" },
   { to: "/pathology", label: "Pathology validation" },
+  { to: "/suppression", label: "Suppression model" },
+
   { to: "/ketamine", label: "Ketamine signature" },
   { to: "/drugs", label: "Drug library" },
   { to: "/exposure", label: "Drug exposure" },

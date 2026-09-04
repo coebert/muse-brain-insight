@@ -34,6 +34,7 @@ import { Route as AuthenticatedReferenceRouteImport } from './routes/_authentica
 import { Route as AuthenticatedReplayRouteImport } from './routes/_authenticated/replay'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSuppressionRouteImport } from './routes/_authenticated/suppression'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
@@ -165,6 +166,12 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSuppressionRoute =
+  AuthenticatedSuppressionRouteImport.update({
+    id: '/suppression',
+    path: '/suppression',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -217,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
@@ -247,6 +255,7 @@ export interface FileRoutesByTo {
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
@@ -280,6 +289,7 @@ export interface FileRoutesById {
   '/_authenticated/replay': typeof AuthenticatedReplayRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/suppression': typeof AuthenticatedSuppressionRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/replay'
     | '/sessions'
     | '/settings'
+    | '/suppression'
     | '/terms'
     | '/trends'
     | '/validate'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/replay'
     | '/sessions'
     | '/settings'
+    | '/suppression'
     | '/terms'
     | '/trends'
     | '/validate'
@@ -376,6 +388,7 @@ export interface FileRouteTypes {
     | '/_authenticated/replay'
     | '/_authenticated/sessions'
     | '/_authenticated/settings'
+    | '/_authenticated/suppression'
     | '/_authenticated/terms'
     | '/_authenticated/trends'
     | '/_authenticated/validate'
@@ -567,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/suppression': {
+      id: '/_authenticated/suppression'
+      path: '/suppression'
+      fullPath: '/suppression'
+      preLoaderRoute: typeof AuthenticatedSuppressionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/terms': {
       id: '/_authenticated/terms'
       path: '/terms'
@@ -628,6 +648,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReplayRoute: typeof AuthenticatedReplayRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedSuppressionRoute: typeof AuthenticatedSuppressionRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
@@ -658,6 +679,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReplayRoute: AuthenticatedReplayRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedSuppressionRoute: AuthenticatedSuppressionRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
