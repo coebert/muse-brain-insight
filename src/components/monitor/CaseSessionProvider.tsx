@@ -72,6 +72,7 @@ import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
+import { linkCaptureToSession } from "@/lib/eeg/auto-capture.functions";
 
 /**
  * Everything a running case owns. Held above the router outlet so a case keeps
@@ -783,6 +784,16 @@ function useCaseSessionState() {
         monitor.elapsed,
         sessionStartedAtMs,
       );
+      // Tie the running continuous capture to the case just filed, so the
+      // nightly harvest leaves it alone rather than filing it a second time.
+      try {
+        await monitor.flushCapture();
+        await linkCaptureToSession({
+          data: { captureKey: monitor.captureKey, sessionId },
+        });
+      } catch {
+        // Best effort: the case itself is already saved.
+      }
       // Keep the contemporaneous dosing record with the case.
       if (user?.id && infusions.length) {
         try {

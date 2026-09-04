@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminBisBenchmarkRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminBlockersRouteImport } from './routes/_authenticated/_admin/blockers'
 import { Route as AuthenticatedAdminBrainwavesRouteImport } from './routes/_authenticated/_admin/brainwaves'
 import { Route as AuthenticatedAdminCalibrateRouteImport } from './routes/_authenticated/_admin/calibrate'
+import { Route as AuthenticatedAdminCaptureRouteImport } from './routes/_authenticated/_admin/capture'
 import { Route as AuthenticatedAdminCoebisRouteImport } from './routes/_authenticated/_admin/coebis'
 import { Route as AuthenticatedAdminCompareRouteImport } from './routes/_authenticated/_admin/compare'
 import { Route as AuthenticatedAdminDepthRouteImport } from './routes/_authenticated/_admin/depth'
@@ -126,6 +127,12 @@ const AuthenticatedAdminCalibrateRoute =
   AuthenticatedAdminCalibrateRouteImport.update({
     id: '/calibrate',
     path: '/calibrate',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCaptureRoute =
+  AuthenticatedAdminCaptureRouteImport.update({
+    id: '/capture',
+    path: '/capture',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCoebisRoute =
@@ -295,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/blockers': typeof AuthenticatedAdminBlockersRoute
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/capture': typeof AuthenticatedAdminCaptureRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
   '/depth': typeof AuthenticatedAdminDepthRoute
@@ -336,6 +344,7 @@ export interface FileRoutesByTo {
   '/blockers': typeof AuthenticatedAdminBlockersRoute
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/capture': typeof AuthenticatedAdminCaptureRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
   '/depth': typeof AuthenticatedAdminDepthRoute
@@ -380,6 +389,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/blockers': typeof AuthenticatedAdminBlockersRoute
   '/_authenticated/_admin/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/_authenticated/_admin/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/_authenticated/_admin/capture': typeof AuthenticatedAdminCaptureRoute
   '/_authenticated/_admin/coebis': typeof AuthenticatedAdminCoebisRoute
   '/_authenticated/_admin/compare': typeof AuthenticatedAdminCompareRoute
   '/_authenticated/_admin/depth': typeof AuthenticatedAdminDepthRoute
@@ -423,6 +433,7 @@ export interface FileRouteTypes {
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
+    | '/capture'
     | '/coebis'
     | '/compare'
     | '/depth'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
+    | '/capture'
     | '/coebis'
     | '/compare'
     | '/depth'
@@ -507,6 +519,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/blockers'
     | '/_authenticated/_admin/brainwaves'
     | '/_authenticated/_admin/calibrate'
+    | '/_authenticated/_admin/capture'
     | '/_authenticated/_admin/coebis'
     | '/_authenticated/_admin/compare'
     | '/_authenticated/_admin/depth'
@@ -646,6 +659,13 @@ declare module '@tanstack/react-router' {
       path: '/calibrate'
       fullPath: '/calibrate'
       preLoaderRoute: typeof AuthenticatedAdminCalibrateRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/capture': {
+      id: '/_authenticated/_admin/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof AuthenticatedAdminCaptureRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/coebis': {
@@ -838,6 +858,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBlockersRoute: typeof AuthenticatedAdminBlockersRoute
   AuthenticatedAdminBrainwavesRoute: typeof AuthenticatedAdminBrainwavesRoute
   AuthenticatedAdminCalibrateRoute: typeof AuthenticatedAdminCalibrateRoute
+  AuthenticatedAdminCaptureRoute: typeof AuthenticatedAdminCaptureRoute
   AuthenticatedAdminCoebisRoute: typeof AuthenticatedAdminCoebisRoute
   AuthenticatedAdminCompareRoute: typeof AuthenticatedAdminCompareRoute
   AuthenticatedAdminDepthRoute: typeof AuthenticatedAdminDepthRoute
@@ -868,6 +889,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBlockersRoute: AuthenticatedAdminBlockersRoute,
   AuthenticatedAdminBrainwavesRoute: AuthenticatedAdminBrainwavesRoute,
   AuthenticatedAdminCalibrateRoute: AuthenticatedAdminCalibrateRoute,
+  AuthenticatedAdminCaptureRoute: AuthenticatedAdminCaptureRoute,
   AuthenticatedAdminCoebisRoute: AuthenticatedAdminCoebisRoute,
   AuthenticatedAdminCompareRoute: AuthenticatedAdminCompareRoute,
   AuthenticatedAdminDepthRoute: AuthenticatedAdminDepthRoute,

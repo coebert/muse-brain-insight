@@ -47,6 +47,12 @@ import {
 } from "@/lib/eeg/stream-integrity";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
+import {
+  CAPTURE_FLUSH_SECONDS,
+  captureRowsFrom,
+  newCaptureKey,
+} from "@/lib/eeg/auto-capture";
+import { captureBatch } from "@/lib/eeg/auto-capture.functions";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 import {
   accumulateChannelQuality,
@@ -414,6 +420,13 @@ export function useEegMonitor() {
     reason: "Both hemispheres usable — primary metrics use the four-electrode average",
   });
   const startedAtRef = useRef<number>(0);
+  /**
+   * Continuous capture: every recording is written to the database while it
+   * runs, so a case that is never filed still reaches the training pool.
+   */
+  const captureKeyRef = useRef<string>(newCaptureKey());
+  const captureSentToRef = useRef<number>(-1);
+  const captureBusyRef = useRef(false);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
   const manualEventsRef = useRef<DetectedEvent[]>([]);
@@ -529,6 +542,8 @@ export function useEegMonitor() {
     waveformStoreRef.current.set(new Float64Array(0));
     rawArchiveRef.current.reset();
     gapStartRef.current = null;
+    captureKeyRef.current = newCaptureKey();
+    captureSentToRef.current = -1;
     startedAtRef.current = Date.now();
     integrityRef.current.start(startedAtRef.current);
     setIntegrity(null);
@@ -991,6 +1006,51 @@ export function useEegMonitor() {
     return () => clearInterval(id);
   }, [status, activeSignal, groupSignal]);
 
+  // Continuous capture flush. Runs while the stream is live and once more when
+  // it stops, so the tail of a case is not lost with the connection.
+  const epochsRef = useRef<Epoch[]>(epochs);
+  epochsRef.current = epochs;
+  const flushCapture = useCallback(async () => {
+    if (captureBusyRef.current) return;
+    const profile = profileRef.current;
+    const rows = captureRowsFrom(
+      epochsRef.current,
+      captureSentToRef.current,
+      startedAtRef.current,
+      HOP_SECONDS,
+    );
+    if (!rows.length) return;
+    captureBusyRef.current = true;
+    try {
+      await captureBatch({
+        data: {
+          captureKey: captureKeyRef.current,
+          startedAt: new Date(startedAtRef.current || Date.now()).toISOString(),
+          deviceName: profile.label,
+          montage: profile.channels.join("-"),
+          sampleRate: profile.sampleRate,
+          lineageKey: `${profile.id}|${profile.channels.join("-")}|${profile.sampleRate}`,
+          epochs: rows,
+        },
+      });
+      captureSentToRef.current = rows[rows.length - 1]!.atSeconds;
+    } catch {
+      // Capture is best-effort: a failed flush is retried on the next tick and
+      // must never interrupt the monitor the clinician is watching.
+    } finally {
+      captureBusyRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status !== "streaming" && status !== "reconnecting") return;
+    const id = setInterval(() => void flushCapture(), CAPTURE_FLUSH_SECONDS * 1000);
+    return () => {
+      clearInterval(id);
+      void flushCapture();
+    };
+  }, [status, flushCapture]);
+
   // Waveform refresh.
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting") return;
@@ -1075,6 +1135,10 @@ export function useEegMonitor() {
     /** How the suppression timer spent the case (analysed vs excluded time). */
     suppressionClock: clock,
     addEvent,
+    /** Key of the running continuous capture, for linking a filed case to it. */
+    captureKey: captureKeyRef.current,
+    /** Force a capture flush (used when a case is ended or filed). */
+    flushCapture,
     connect,
     reconnect,
     stop,

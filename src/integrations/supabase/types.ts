@@ -287,6 +287,143 @@ export type Database = {
           },
         ]
       }
+      capture_epochs: {
+        Row: {
+          amplitude_uv: number | null
+          artifact: boolean
+          at_seconds: number
+          bands: Json
+          capture_id: string
+          depth_index: number | null
+          epoch_index: number
+          epoch_suppression: number | null
+          id: number
+          quality_grade: string | null
+          ratios: Json
+          recorded_at: string
+          sef95: number | null
+          spectrum: Json
+          sqi: number | null
+          suppression_ratio: number | null
+          total_power: number | null
+          user_id: string
+        }
+        Insert: {
+          amplitude_uv?: number | null
+          artifact?: boolean
+          at_seconds: number
+          bands?: Json
+          capture_id: string
+          depth_index?: number | null
+          epoch_index: number
+          epoch_suppression?: number | null
+          id?: number
+          quality_grade?: string | null
+          ratios?: Json
+          recorded_at?: string
+          sef95?: number | null
+          spectrum?: Json
+          sqi?: number | null
+          suppression_ratio?: number | null
+          total_power?: number | null
+          user_id?: string
+        }
+        Update: {
+          amplitude_uv?: number | null
+          artifact?: boolean
+          at_seconds?: number
+          bands?: Json
+          capture_id?: string
+          depth_index?: number | null
+          epoch_index?: number
+          epoch_suppression?: number | null
+          id?: number
+          quality_grade?: string | null
+          ratios?: Json
+          recorded_at?: string
+          sef95?: number | null
+          spectrum?: Json
+          sqi?: number | null
+          suppression_ratio?: number | null
+          total_power?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_epochs_capture_id_fkey"
+            columns: ["capture_id"]
+            isOneToOne: false
+            referencedRelation: "capture_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capture_sessions: {
+        Row: {
+          capture_key: string
+          created_at: string
+          device_name: string | null
+          epoch_count: number
+          filed_session_id: string | null
+          harvested_at: string | null
+          harvested_session_id: string | null
+          id: string
+          last_seen_at: string
+          lineage_key: string | null
+          montage: string | null
+          sample_rate: number | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          capture_key: string
+          created_at?: string
+          device_name?: string | null
+          epoch_count?: number
+          filed_session_id?: string | null
+          harvested_at?: string | null
+          harvested_session_id?: string | null
+          id?: string
+          last_seen_at?: string
+          lineage_key?: string | null
+          montage?: string | null
+          sample_rate?: number | null
+          started_at?: string
+          user_id?: string
+        }
+        Update: {
+          capture_key?: string
+          created_at?: string
+          device_name?: string | null
+          epoch_count?: number
+          filed_session_id?: string | null
+          harvested_at?: string | null
+          harvested_session_id?: string | null
+          id?: string
+          last_seen_at?: string
+          lineage_key?: string | null
+          montage?: string | null
+          sample_rate?: number | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capture_sessions_filed_session_id_fkey"
+            columns: ["filed_session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capture_sessions_harvested_session_id_fkey"
+            columns: ["harvested_session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_note_facts: {
         Row: {
           confirmed: boolean
