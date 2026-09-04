@@ -129,23 +129,53 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">{row.reference.note}</p>
-        <div className="h-72 w-full">
+        <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={row.series} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+            <ComposedChart data={row.series} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
               <XAxis
                 dataKey="at"
+                type="number"
+                domain={["dataMin", "dataMax"]}
                 tickFormatter={(v: number) => `${Math.round(v / 60)}m`}
                 stroke="currentColor"
                 className="text-xs text-muted-foreground"
               />
-              <YAxis domain={[0, 100]} stroke="currentColor" className="text-xs text-muted-foreground" />
+              <YAxis
+                yAxisId="index"
+                domain={[0, 100]}
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+                label={{ value: "index / SR %", angle: -90, position: "insideLeft", fontSize: 10 }}
+              />
+              <YAxis
+                yAxisId="hz"
+                orientation="right"
+                domain={[0, 30]}
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+                label={{ value: "SEF95 Hz", angle: 90, position: "insideRight", fontSize: 10 }}
+              />
               <Tooltip
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
                 labelFormatter={(v: number) => `${Math.round(Number(v) / 60)} min into the case`}
               />
               <Legend />
+              <Area
+                yAxisId="index"
+                type="monotone"
+                dataKey="sr"
+                name="Suppression ratio %"
+                stroke="hsl(var(--critical))"
+                fill="hsl(var(--critical))"
+                fillOpacity={0.12}
+                strokeOpacity={0.5}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
               <Line
+                yAxisId="index"
                 type="monotone"
                 dataKey="reference"
                 name={row.reference.isMonitor ? "Recorded BIS" : "Reference"}
@@ -155,6 +185,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 isAnimationActive={false}
               />
               <Line
+                yAxisId="index"
                 type="monotone"
                 dataKey="coebis"
                 name="COEBIS"
@@ -165,6 +196,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 connectNulls
               />
               <Line
+                yAxisId="index"
                 type="monotone"
                 dataKey="raw"
                 name="Open index"
@@ -173,9 +205,66 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 dot={false}
                 isAnimationActive={false}
               />
-            </LineChart>
+              <Line
+                yAxisId="hz"
+                type="monotone"
+                dataKey="sef"
+                name="SEF95 (Hz)"
+                stroke="hsl(var(--accent-foreground))"
+                strokeDasharray="2 3"
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
+        <div className="h-32 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={row.series} margin={{ top: 4, right: 8, bottom: 4, left: 0 }} syncId={row.caseKey}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+              <XAxis
+                dataKey="at"
+                type="number"
+                domain={["dataMin", "dataMax"]}
+                tickFormatter={(v: number) => `${Math.round(v / 60)}m`}
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+              />
+              <YAxis
+                domain={[-40, 40]}
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+                label={{ value: "gap", angle: -90, position: "insideLeft", fontSize: 10 }}
+              />
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                labelFormatter={(v: number) => `${Math.round(Number(v) / 60)} min into the case`}
+              />
+              <ReferenceLine y={0} stroke="hsl(var(--signal))" />
+              <ReferenceLine y={10} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+              <ReferenceLine y={-10} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+              <Area
+                type="monotone"
+                dataKey="gap"
+                name={`${row.divergence.source === "coebis" ? "COEBIS" : "Open index"} − reference`}
+                stroke="hsl(var(--primary))"
+                fill="hsl(var(--primary))"
+                fillOpacity={0.2}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Upper panel shares one 0–100 axis for the index traces and the app's suppression ratio in
+          percent; SEF95 is read on the right-hand hertz axis. The lower panel is the same reading
+          minus the reference, so a departure from the zero line is a divergence — dashed lines mark
+          ±10 points. Positive means the app reads lighter than the reference.
+        </p>
+
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-4">
           <div>
             <dt className="text-muted-foreground">Readings</dt>
