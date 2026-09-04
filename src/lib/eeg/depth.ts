@@ -445,6 +445,32 @@ function meanBandPowerDb(rows: (Float64Array | null)[], from: number, to: number
   return n ? sum / n : NaN;
 }
 
+/**
+ * Linear-power band shares of the 0.5–47 Hz spectrum, averaged over the
+ * rolling window. Used by the ketamine detector, which needs the shape of the
+ * spectrum rather than the openibis log ratios.
+ */
+function bandShares(rows: Float64Array[]): KetamineFeatures {
+  if (!rows.length) return { betaFraction: null, gammaFraction: null, alphaFraction: null, slowFraction: null };
+  const band = (from: number, to: number) => {
+    const a = binOf(from);
+    const b = binOf(to);
+    let s = 0;
+    for (const row of rows) for (let k = a; k <= b; k++) if (row[k]! > 0) s += row[k]!;
+    return s;
+  };
+  const total = band(0.5, 47);
+  if (!(total > 0)) {
+    return { betaFraction: null, gammaFraction: null, alphaFraction: null, slowFraction: null };
+  }
+  return {
+    betaFraction: band(13, 30) / total,
+    gammaFraction: band(30, 47) / total,
+    alphaFraction: band(8, 12) / total,
+    slowFraction: band(0.5, 4) / total,
+  };
+}
+
 function concentration(row: Float64Array, fromA: number, toA: number, fromB: number, toB: number) {
   const a0 = binOf(fromA);
   const b0 = binOf(toA);
