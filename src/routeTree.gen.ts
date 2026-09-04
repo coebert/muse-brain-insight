@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedBlockersRouteImport } from './routes/_authenticated/blockers'
 import { Route as AuthenticatedBrainwavesRouteImport } from './routes/_authenticated/brainwaves'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
@@ -45,6 +46,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBlockersRoute = AuthenticatedBlockersRouteImport.update({
+  id: '/blockers',
+  path: '/blockers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBrainwavesRoute = AuthenticatedBrainwavesRouteImport.update({
@@ -153,6 +159,7 @@ const ApiPublicHooksCoebisRefitRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/blockers': typeof AuthenticatedBlockersRoute
   '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/cases': typeof AuthenticatedCasesRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/blockers': typeof AuthenticatedBlockersRoute
   '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
   '/cases': typeof AuthenticatedCasesRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/blockers': typeof AuthenticatedBlockersRoute
   '/_authenticated/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/blockers'
     | '/brainwaves'
     | '/calibrate'
     | '/cases'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/blockers'
     | '/brainwaves'
     | '/calibrate'
     | '/cases'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/blockers'
     | '/_authenticated/brainwaves'
     | '/_authenticated/calibrate'
     | '/_authenticated/cases'
@@ -327,6 +339,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/blockers': {
+      id: '/_authenticated/blockers'
+      path: '/blockers'
+      fullPath: '/blockers'
+      preLoaderRoute: typeof AuthenticatedBlockersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/brainwaves': {
@@ -473,6 +492,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBlockersRoute: typeof AuthenticatedBlockersRoute
   AuthenticatedBrainwavesRoute: typeof AuthenticatedBrainwavesRoute
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
@@ -496,6 +516,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBlockersRoute: AuthenticatedBlockersRoute,
   AuthenticatedBrainwavesRoute: AuthenticatedBrainwavesRoute,
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
