@@ -121,6 +121,13 @@ describe("refitLineage", () => {
     expect(result.model).not.toBeNull();
   });
 
+  it("promotes a first fit automatically once the gate is cleared", () => {
+    const result = refitLineage("muse2:af7af8:256", points, null);
+    expect(result.beforeSource).toBe("raw_index");
+    expect(result.promote).toBe(true);
+    expect(result.reason).toMatch(/First fit for this lineage/);
+  });
+
   it("keeps the incumbent when the candidate adds nothing", () => {
     const first = refitLineage("muse2:af7af8:256", points, null);
     const second = refitLineage("muse2:af7af8:256", points, first.model);
@@ -129,6 +136,7 @@ describe("refitLineage", () => {
     expect(second.reason).toMatch(/keeping the current model|agreement/);
   });
 });
+
 
 describe("summariseRun", () => {
   it("reports nothing to do plainly", () => {
