@@ -12,8 +12,13 @@ const ADMIN_PATHS = new Set<string>(
 );
 
 /** The five bedside destinations. Everything else lives in the admin area. */
-const BEDSIDE: { to: "/" | "/cases" | "/patients" | "/notes"; label: string; exact: boolean }[] = [
+const BEDSIDE: {
+  to: "/" | "/bedside" | "/cases" | "/patients" | "/notes";
+  label: string;
+  exact: boolean;
+}[] = [
   { to: "/", label: "Monitor", exact: true },
+  { to: "/bedside", label: "Bedside", exact: false },
   { to: "/cases", label: "Cases", exact: false },
   { to: "/patients", label: "Patients", exact: false },
   { to: "/notes", label: "Notes", exact: false },
