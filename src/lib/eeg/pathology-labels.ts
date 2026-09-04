@@ -104,8 +104,13 @@ export interface LabelledEpoch {
   seizure: SeizureLabel | null;
   /** Recorded CNS disease category, e.g. "seizure_disorder", "stroke", "none". */
   cns: string | null;
+  /** Burst suppression established by a bedside monitor or dataset annotation. */
+  suppression?: SuppressionLabel | null;
+  /** Anaesthetic state established by a dataset's event file. */
+  state?: DepthStateLabel | null;
   scores: EpochScores;
 }
+
 
 /** Minimum labelled epochs before a number is more than a hint. */
 export const MIN_AXIS_EPOCHS = 40;
