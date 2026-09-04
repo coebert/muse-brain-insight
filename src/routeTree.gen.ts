@@ -29,6 +29,7 @@ import { Route as AuthenticatedPairingRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
+import { Route as AuthenticatedReferenceRouteImport } from './routes/_authenticated/reference'
 import { Route as AuthenticatedReplayRouteImport } from './routes/_authenticated/replay'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -138,6 +139,11 @@ const AuthenticatedPerformanceRoute =
     path: '/performance',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReferenceRoute = AuthenticatedReferenceRouteImport.update({
+  id: '/reference',
+  path: '/reference',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReplayRoute = AuthenticatedReplayRouteImport.update({
   id: '/replay',
   path: '/replay',
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/reference': typeof AuthenticatedReferenceRoute
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/reference': typeof AuthenticatedReferenceRoute
   '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -259,6 +267,7 @@ export interface FileRoutesById {
   '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
+  '/_authenticated/reference': typeof AuthenticatedReferenceRoute
   '/_authenticated/replay': typeof AuthenticatedReplayRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/pathology'
     | '/patients'
     | '/performance'
+    | '/reference'
     | '/replay'
     | '/sessions'
     | '/settings'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/pathology'
     | '/patients'
     | '/performance'
+    | '/reference'
     | '/replay'
     | '/sessions'
     | '/settings'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pathology'
     | '/_authenticated/patients'
     | '/_authenticated/performance'
+    | '/_authenticated/reference'
     | '/_authenticated/replay'
     | '/_authenticated/sessions'
     | '/_authenticated/settings'
@@ -508,6 +520,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPerformanceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reference': {
+      id: '/_authenticated/reference'
+      path: '/reference'
+      fullPath: '/reference'
+      preLoaderRoute: typeof AuthenticatedReferenceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/replay': {
       id: '/_authenticated/replay'
       path: '/replay'
@@ -585,6 +604,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
   AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
+  AuthenticatedReferenceRoute: typeof AuthenticatedReferenceRoute
   AuthenticatedReplayRoute: typeof AuthenticatedReplayRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -613,6 +633,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
   AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
+  AuthenticatedReferenceRoute: AuthenticatedReferenceRoute,
   AuthenticatedReplayRoute: AuthenticatedReplayRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

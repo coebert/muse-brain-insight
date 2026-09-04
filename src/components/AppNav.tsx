@@ -24,6 +24,7 @@ const TOOLS = [
   { to: "/models", label: "Model versions" },
   { to: "/blockers", label: "Blocked lineages" },
   { to: "/pairing", label: "Pair monitor readings" },
+  { to: "/reference", label: "Reference library" },
   { to: "/pathology", label: "Pathology validation" },
   { to: "/ketamine", label: "Ketamine signature" },
   { to: "/drugs", label: "Drug library" },
