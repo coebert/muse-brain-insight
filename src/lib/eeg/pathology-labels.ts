@@ -290,9 +290,41 @@ export interface ComparatorBenchmark {
   correctedVsBest: number | null;
   /** Every comparator's AUC on the same paired subset, best first. */
   comparators: ComparatorScore[];
+  /** Suppression, read on exactly the same epochs as the depth comparison. */
+  suppressionOnSubset: SubsetSuppression;
   sufficiency: Sufficiency;
   verdict: string;
 }
+
+/**
+ * What suppression is doing on the benchmark's own epochs.
+ *
+ * Where those epochs carry a recorded suppression label (a bedside monitor's
+ * own suppression ratio, or a dataset annotation) the same indices are graded
+ * against it, so depth and suppression are read on one sample rather than two.
+ * Where they do not, the panel says so and reports only the app's measured
+ * suppression, which is a confounder read and not a grade.
+ */
+export interface SubsetSuppression {
+  /** Epochs on the benchmark subset carrying a recorded suppression label. */
+  labelled: number;
+  suppressed: number;
+  clear: number;
+  cases: number;
+  /** App suppression ratio graded against the recorded label. */
+  appAuc: number | null;
+  /** COEBIS graded against the recorded suppression label. */
+  coebisAuc: number | null;
+  /** Drug-corrected COEBIS graded against the recorded suppression label. */
+  correctedAuc: number | null;
+  /** Mean app-measured suppression over the whole benchmark subset. */
+  meanAppSuppression: number | null;
+  /** Benchmark epochs where the app measured any suppression at all (≥1%). */
+  appFlagged: number;
+  sufficiency: Sufficiency;
+  verdict: string;
+}
+
 
 export interface ComparatorScore {
   score: ScoreKey;
@@ -534,6 +566,85 @@ function axisVerdict(axis: Omit<LabelAxis, "verdict">): string {
 }
 
 /**
+ * Suppression read on the benchmark's own epochs, so the depth comparison and
+ * the suppression grading are never quoted off two different samples.
+ */
+export function subsetSuppression(
+  subset: LabelledEpoch[],
+  correctedValue: (e: LabelledEpoch) => number,
+): SubsetSuppression {
+  const srValues = subset
+    .map((e) => e.scores.suppressionRatio)
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  const meanAppSuppression = round(mean(srValues), 2);
+  const appFlagged = srValues.filter((v) => v >= 1).length;
+
+  const labelled = subset.filter((e) => e.suppression != null);
+  const suppressed = labelled.filter((e) => e.suppression === "suppressed");
+  const clear = labelled.filter((e) => e.suppression === "not_suppressed");
+  const cases = new Set(labelled.map((e) => e.caseRef)).size;
+  const posCases = new Set(suppressed.map((e) => e.caseRef)).size;
+  const negCases = new Set(clear.map((e) => e.caseRef)).size;
+  const sufficiency = sufficiencyOf(labelled.length, posCases, negCases);
+
+  const gradeable = suppressed.length > 0 && clear.length > 0;
+  const isSuppressed = (e: LabelledEpoch) => e.suppression === "suppressed";
+  const auc = (
+    pick: (e: LabelledEpoch) => number | null,
+    direction: "higher" | "lower",
+  ): number | null => {
+    if (!gradeable) return null;
+    const values = labelled
+      .map((e) => ({ value: pick(e), positive: isSuppressed(e) }))
+      .filter((v): v is { value: number; positive: boolean } => v.value != null);
+    if (!values.some((v) => v.positive) || !values.some((v) => !v.positive)) return null;
+    return round(directionalRoc(values, direction).auc, 3);
+  };
+
+  const appAuc = auc((e) => e.scores.suppressionRatio ?? null, "higher");
+  const coebisAuc = auc((e) => e.scores.coebis ?? null, "lower");
+  const correctedAuc = auc((e) => correctedValue(e), "lower");
+
+  const verdict = (() => {
+    const measured =
+      meanAppSuppression == null
+        ? "The app recorded no suppression figure on these epochs."
+        : `The app measured ${meanAppSuppression.toFixed(1)}% suppression on average across the ${subset.length} benchmark epochs, with ${appFlagged} above 1%.`;
+    if (!labelled.length) {
+      return `${measured} None of them carries a monitor- or dataset-recorded suppression label, so suppression cannot be graded on this exact sample; the recorded-suppression axis grades it on the bedside-monitor recordings instead.`;
+    }
+    if (!gradeable) {
+      return `${measured} ${labelled.length} carry a recorded suppression label but only one class is present, so only one side of the grading is measurable.`;
+    }
+    const parts = [
+      appAuc == null ? null : `app suppression AUC ${appAuc.toFixed(2)}`,
+      coebisAuc == null ? null : `COEBIS ${coebisAuc.toFixed(2)}`,
+      correctedAuc == null ? null : `drug-corrected ${correctedAuc.toFixed(2)}`,
+    ].filter(Boolean);
+    const qualifier =
+      sufficiency === "sufficient"
+        ? ""
+        : ` Provisional: ${posCases} suppressed and ${negCases} clear case(s).`;
+    return `${measured} Against the ${suppressed.length} recorded suppressed and ${clear.length} clear epochs on this same subset: ${parts.join(", ")}.${qualifier}`;
+  })();
+
+  return {
+    labelled: labelled.length,
+    suppressed: suppressed.length,
+    clear: clear.length,
+    cases,
+    appAuc,
+    coebisAuc,
+    correctedAuc,
+    meanAppSuppression,
+    appFlagged,
+    sufficiency,
+    verdict,
+  };
+}
+
+
+/**
  * COEBIS against the published comparators on *identical* epochs.
  *
  * Every index is graded on the one subset where COEBIS and each usable
@@ -669,8 +780,9 @@ export function comparatorBenchmark(
     return `${head} — indistinguishable (Δ ${delta.toFixed(2)}); COEBIS matches the published algorithms rather than beating them.${tail}`;
   })();
 
-
   return {
+    suppressionOnSubset: subsetSuppression(subset, correctedValue),
+
     n: subset.length,
     cases: new Set(subset.map((e) => e.caseRef)).size,
     coebisAuc,
