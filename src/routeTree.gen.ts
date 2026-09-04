@@ -22,6 +22,7 @@ import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDrugsRouteImport } from './routes/_authenticated/drugs'
 import { Route as AuthenticatedExposureRouteImport } from './routes/_authenticated/exposure'
 import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
+import { Route as AuthenticatedFlagsRouteImport } from './routes/_authenticated/flags'
 import { Route as AuthenticatedKetamineRouteImport } from './routes/_authenticated/ketamine'
 import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
@@ -103,6 +104,11 @@ const AuthenticatedExposureRoute = AuthenticatedExposureRouteImport.update({
 const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFlagsRoute = AuthenticatedFlagsRouteImport.update({
+  id: '/flags',
+  path: '/flags',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedKetamineRoute = AuthenticatedKetamineRouteImport.update({
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/drugs': typeof AuthenticatedDrugsRoute
   '/exposure': typeof AuthenticatedExposureRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/flags': typeof AuthenticatedFlagsRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
   '/notes': typeof AuthenticatedNotesRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/drugs': typeof AuthenticatedDrugsRoute
   '/exposure': typeof AuthenticatedExposureRoute
   '/feedback': typeof AuthenticatedFeedbackRoute
+  '/flags': typeof AuthenticatedFlagsRoute
   '/ketamine': typeof AuthenticatedKetamineRoute
   '/models': typeof AuthenticatedModelsRoute
   '/notes': typeof AuthenticatedNotesRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/_authenticated/drugs': typeof AuthenticatedDrugsRoute
   '/_authenticated/exposure': typeof AuthenticatedExposureRoute
   '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
+  '/_authenticated/flags': typeof AuthenticatedFlagsRoute
   '/_authenticated/ketamine': typeof AuthenticatedKetamineRoute
   '/_authenticated/models': typeof AuthenticatedModelsRoute
   '/_authenticated/notes': typeof AuthenticatedNotesRoute
@@ -312,6 +321,7 @@ export interface FileRouteTypes {
     | '/drugs'
     | '/exposure'
     | '/feedback'
+    | '/flags'
     | '/ketamine'
     | '/models'
     | '/notes'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/drugs'
     | '/exposure'
     | '/feedback'
+    | '/flags'
     | '/ketamine'
     | '/models'
     | '/notes'
@@ -376,6 +387,7 @@ export interface FileRouteTypes {
     | '/_authenticated/drugs'
     | '/_authenticated/exposure'
     | '/_authenticated/feedback'
+    | '/_authenticated/flags'
     | '/_authenticated/ketamine'
     | '/_authenticated/models'
     | '/_authenticated/notes'
@@ -494,6 +506,13 @@ declare module '@tanstack/react-router' {
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/flags': {
+      id: '/_authenticated/flags'
+      path: '/flags'
+      fullPath: '/flags'
+      preLoaderRoute: typeof AuthenticatedFlagsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ketamine': {
@@ -636,6 +655,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDrugsRoute: typeof AuthenticatedDrugsRoute
   AuthenticatedExposureRoute: typeof AuthenticatedExposureRoute
   AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
+  AuthenticatedFlagsRoute: typeof AuthenticatedFlagsRoute
   AuthenticatedKetamineRoute: typeof AuthenticatedKetamineRoute
   AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
   AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
@@ -667,6 +687,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDrugsRoute: AuthenticatedDrugsRoute,
   AuthenticatedExposureRoute: AuthenticatedExposureRoute,
   AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
+  AuthenticatedFlagsRoute: AuthenticatedFlagsRoute,
   AuthenticatedKetamineRoute: AuthenticatedKetamineRoute,
   AuthenticatedModelsRoute: AuthenticatedModelsRoute,
   AuthenticatedNotesRoute: AuthenticatedNotesRoute,
