@@ -87,12 +87,18 @@ export const getPatientScores = createServerFn({ method: "GET" })
         : (caseRef ?? "unfiled readings");
 
       const rawKind = features?.["referenceKind"] == null ? null : String(features["referenceKind"]);
+      const sourceId = (r["source"] as string | null) ?? null;
       const referenceKind: ReferenceKind =
         rawKind && REFERENCE_KINDS.has(rawKind as ReferenceKind)
           ? (rawKind as ReferenceKind)
           : sessionId
             ? "monitor"
-            : "unknown";
+            : // VitalDB publishes the recorded bedside BIS track itself, so those
+              // readings are a monitor output even though they carry no kind.
+              sourceId === "vitaldb"
+              ? "monitor"
+              : "unknown";
+
 
       return {
         caseKey,
