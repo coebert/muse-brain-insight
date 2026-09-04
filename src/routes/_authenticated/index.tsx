@@ -932,6 +932,16 @@ function Monitor() {
               contactOk={monitor.contactOk}
             />
 
+            {/* Sudden one-sided loss of EEG — the stroke pattern. */}
+            <CvaWatchPanel
+              hemiSpectra={monitor.hemiSpectra}
+              sqiHistory={monitor.sqiHistory}
+              bilateral={
+                deviceProfile.channels.some((c) => c === "TP9" || c === "AF7") &&
+                deviceProfile.channels.some((c) => c === "TP10" || c === "AF8")
+              }
+            />
+
 
             {/* Real-time seizure alert cards, newest first */}
             {caseState !== "idle" ? (
