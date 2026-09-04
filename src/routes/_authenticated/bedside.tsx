@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react";
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
@@ -250,6 +251,18 @@ function BedsidePage() {
             }
           />
         </section>
+
+        {/* Sudden one-sided loss of EEG — visible at the trolley, not folded away. */}
+        <div className="mt-3">
+          <CvaWatchPanel
+            hemiSpectra={monitor.hemiSpectra}
+            sqiHistory={monitor.sqiHistory}
+            bilateral={
+              profile.channels.some((c) => c === "TP9" || c === "AF7") &&
+              profile.channels.some((c) => c === "TP10" || c === "AF8")
+            }
+          />
+        </div>
 
         {/* Everything else folds away, so the number owns the screen. */}
         <Collapsible open={detailOpen} onOpenChange={setDetailOpen} className="mt-3">
