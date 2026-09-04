@@ -38,6 +38,7 @@ import {
   setActiveDeviceProfile,
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
+import { LiveCoebisV2, type LiveCoebisV2Reading } from "@/lib/eeg/coebis-v2-device";
 import {
   StreamIntegrityMonitor,
   suppressionClock,
@@ -385,6 +386,13 @@ export function useEegMonitor() {
    */
   const profileRef = useRef<DeviceProfile>(MUSE_2_PROFILE);
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfile>(MUSE_2_PROFILE);
+  /**
+   * The rebuilt depth index, run live on whatever band is streaming. It is
+   * rebuilt whenever the montage changes, because its rate and amplitude
+   * handling depend on the device.
+   */
+  const coebisV2Ref = useRef<LiveCoebisV2>(new LiveCoebisV2(MUSE_2_PROFILE));
+  const [coebisV2, setCoebisV2] = useState<LiveCoebisV2Reading | null>(null);
   const sourceRef = useRef<EegSource | null>(null);
   /** Last successful connection request, so a manual retry can repeat it. */
   const lastConnectRef = useRef<{
@@ -515,6 +523,8 @@ export function useEegMonitor() {
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
     channelTalliesRef.current = emptyChannelTallies(profileRef.current.channels);
+    coebisV2Ref.current.reset();
+    setCoebisV2(null);
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
     rawArchiveRef.current.reset();
@@ -573,6 +583,9 @@ export function useEegMonitor() {
           setActiveDeviceProfile(p);
           allocateBuffers(p);
           channelTalliesRef.current = emptyChannelTallies(p.channels);
+          // Rate handling and amplitude normalisation are device-specific.
+          coebisV2Ref.current = new LiveCoebisV2(p);
+          setCoebisV2(null);
           if (channelRef.current !== "average" && !p.channels.includes(channelRef.current)) {
             setChannel("average");
           }
@@ -796,6 +809,11 @@ export function useEegMonitor() {
         ? groupSignal(decision.side === "left" ? leftChannels : rightChannels, EPOCH_LEN)
         : activeSignal(EPOCH_LEN);
       const epoch = analyzerRef.current.analyze(primarySignal, t);
+
+      // COEBIS-2 reads the same primary signal, resampled onto the rate it was
+      // fitted at and amplitude-normalised when the band has no microvolt scale.
+      const v2 = coebisV2Ref.current.update(primarySignal, MUSE_SAMPLE_RATE, HOP_SECONDS);
+      if (v2) setCoebisV2(v2);
 
       // Side-specific metrics so alarms can name the affected hemisphere.
       const MAX_HEMI_EVENTS = 400;
@@ -1045,6 +1063,10 @@ export function useEegMonitor() {
     channelStateHistory,
     summary,
     deviceProfile,
+    /** Latest COEBIS-2 reading for this band, with its applicability. */
+    coebisV2,
+    /** How COEBIS-2 is being read on this montage. */
+    coebisV2Setup: coebisV2Ref.current.deviceSetup,
     reconnectAttempt,
     analysisSource,
     dataGapSeconds,

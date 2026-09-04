@@ -41,6 +41,7 @@ import { bleDiagnostics, blePacketInspector } from "@/lib/eeg/ble-diagnostics";
 import {
   FOCUSCALM_PROFILE,
   profileFromChannelMap,
+  REGUL8_PROFILE,
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
 import {
@@ -2110,14 +2111,16 @@ export class BleHeadsetSource implements EegSource {
   /** Montage for the mapped stream, with the FocusCalm caveats when it fits. */
   private buildProfile(map: ChannelMap, sampleRate: number): DeviceProfile {
     const mapped = (Object.keys(map) as (keyof ChannelMap)[]).filter((c) => map[c]);
-    const looksFocusCalm = /focus|brainco|regul8/i.test(this.name);
+    const looksRegul8 = /regul8/i.test(this.name);
+    const looksFocusCalm = looksRegul8 || /focus|brainco/i.test(this.name);
     if (looksFocusCalm && mapped.length === 1 && mapped[0] === "AF7") {
+      const base = looksRegul8 ? REGUL8_PROFILE : FOCUSCALM_PROFILE;
       return {
-        ...FOCUSCALM_PROFILE,
+        ...base,
         label: this.name,
         sampleRate,
         calibratedAmplitude: Boolean(this.options.uvPerCount),
-        capabilities: { ...FOCUSCALM_PROFILE.capabilities, battery: Boolean(this.batteryChar) },
+        capabilities: { ...base.capabilities, battery: Boolean(this.batteryChar) },
       };
     }
     const generic = profileFromChannelMap({

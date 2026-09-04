@@ -128,6 +128,24 @@ export const FOCUSCALM_PROFILE = profile({
   capabilities: { battery: true, reconnect: true, contactSensing: false },
 });
 
+/**
+ * Regul8 — a single frontal differential band on the same BrainCo FC-11 style
+ * stream as FocusCalm. Kept as its own profile rather than folded into that
+ * one so recordings carry the device they were actually made on, and so the
+ * depth engine's montage caveats name the band the clinician is wearing.
+ */
+export const REGUL8_PROFILE = profile({
+  id: "regul8",
+  label: "Regul8 (single frontal channel)",
+  transport: "ble",
+  channels: ["AF7"],
+  sampleRate: 250,
+  sourceLabels: { AF7: "Fp1–Fp2" },
+  calibratedAmplitude: false,
+  note: "One frontal channel, auto-gained rather than calibrated in microvolts. Spectral shape, spectral edge and suppression fraction stay interpretable; hemispheric asymmetry and bilateral coherence are unavailable, and absolute amplitude thresholds are relative to this recording.",
+  capabilities: { battery: true, reconnect: true, contactSensing: false },
+});
+
 /** Two-channel frontal montage, the common shape of clinical BIS-style strips. */
 export const FRONTAL_PAIR_PROFILE = profile({
   id: "frontal-pair",
@@ -143,9 +161,11 @@ export const FRONTAL_PAIR_PROFILE = profile({
 export const DEVICE_PROFILES: DeviceProfile[] = [
   MUSE_2_PROFILE,
   FRONTAL_PAIR_PROFILE,
+  REGUL8_PROFILE,
   FOCUSCALM_PROFILE,
   SIMULATED_PROFILE,
 ];
+
 
 export function deviceProfileById(id: string): DeviceProfile | undefined {
   return DEVICE_PROFILES.find((p) => p.id === id);
