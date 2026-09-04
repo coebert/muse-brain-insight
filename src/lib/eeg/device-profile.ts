@@ -161,9 +161,11 @@ export const FRONTAL_PAIR_PROFILE = profile({
 export const DEVICE_PROFILES: DeviceProfile[] = [
   MUSE_2_PROFILE,
   FRONTAL_PAIR_PROFILE,
+  REGUL8_PROFILE,
   FOCUSCALM_PROFILE,
   SIMULATED_PROFILE,
 ];
+
 
 export function deviceProfileById(id: string): DeviceProfile | undefined {
   return DEVICE_PROFILES.find((p) => p.id === id);
