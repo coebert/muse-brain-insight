@@ -278,7 +278,99 @@ function ActiveModelPanel({ fitPromotable }: { fitPromotable: boolean }) {
   );
 }
 
+/**
+ * COEBIS against the published BIS number on exactly the benchmark epochs —
+ * the same sample the depth comparison is quoted on, shown next to what
+ * suppression is doing there, so the two are never read off different slices.
+ */
+function BisOnBenchmarkCard() {
+  const fetchLabels = useServerFn(getPathologyLabels);
+  const { data, isLoading } = useQuery({
+    queryKey: ["pathology-labels", "bis-benchmark"],
+    queryFn: () => fetchLabels({ data: { limit: 8000 } }),
+    staleTime: 60_000,
+  });
+
+  const axis =
+    data?.axes.find((a) => a.key === "recorded-state" && a.benchmark) ??
+    data?.axes.find((a) => a.benchmark) ??
+    null;
+  const bench = axis?.benchmark ?? null;
+  const bis = bench?.bisOnSubset ?? null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Waves className="size-4" /> COEBIS vs published BIS, on the benchmark
+          epochs
+        </CardTitle>
+        <CardDescription>
+          {bench
+            ? `The same ${bench.n.toLocaleString()} epochs across ${bench.cases} case${bench.cases === 1 ? "" : "s"} the depth comparison is quoted on — ${axis?.label ?? ""}.`
+            : "The epochs the depth comparison is quoted on."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Reading the labelled
+            epochs…
+          </div>
+        ) : !bench || !bis ? (
+          <p className="text-sm text-muted-foreground">
+            No labelled epoch carries both a stored spectrum and a COEBIS
+            reading yet, so there is no shared sample to compare on.
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric
+                label="Epochs with a BIS"
+                value={`${bis.n.toLocaleString()} / ${bench.n.toLocaleString()}`}
+                hint={`${bis.cases} case${bis.cases === 1 ? "" : "s"}`}
+              />
+              <Metric
+                label="Mean BIS vs COEBIS"
+                value={`${num(bis.meanBis)} / ${num(bis.meanCoebis)}`}
+                hint="Monitor number, then the app's"
+              />
+              <Metric
+                label="Gap to BIS"
+                value={num(bis.mae, 1, " pts")}
+                hint={
+                  bis.bias == null
+                    ? "Mean absolute difference"
+                    : `${bis.bias < 0 ? "reads deeper" : "reads lighter"} by ${Math.abs(bis.bias).toFixed(1)}`
+                }
+              />
+              <Metric
+                label="Gap after drug correction"
+                value={num(bis.correctedMae, 1, " pts")}
+                hint={`${bis.correctedEpochs.toLocaleString()} epochs corrected`}
+              />
+            </div>
+            <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+              {bis.verdict}
+            </p>
+            <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+              Suppression on these same epochs: {bench.suppressionOnSubset.verdict}
+            </p>
+            {bis.sufficiency !== "sufficient" && bis.n ? (
+              <Badge variant="outline" className="gap-1">
+                <ShieldAlert className="size-3" /> Provisional — too few cases to
+                generalise
+              </Badge>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function SuppressionPage() {
+
 
   const fetchReport = useServerFn(getSuppressionReport);
   const { data, isLoading } = useQuery<SuppressionReport>({
