@@ -150,3 +150,22 @@ describe("summariseDrugExposure", () => {
     expect(empty.totals.cases).toBe(0);
   });
 });
+
+describe("label-slice epochs", () => {
+  it("keeps label-slice rows out of the descriptive means but inside the counts", () => {
+    const base = {
+      lineage: "l",
+      caseRef: "c1",
+      features: {} as never,
+      suppressionPct: 0,
+      suppressionLabel: null,
+      declared: ["propofol"] as never,
+    };
+    const summary = summariseExposureCase([
+      { ...base, atSeconds: 0, coebis: 80, stateLabel: null },
+      { ...base, atSeconds: 10, coebis: 20, stateLabel: "anaesthetised", labelSlice: true },
+    ] as never);
+    expect(summary.meanIndex).toBe(80);
+    expect(summary.epochs).toBe(2);
+  });
+});
