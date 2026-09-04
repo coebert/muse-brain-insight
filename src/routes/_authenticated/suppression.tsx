@@ -266,13 +266,25 @@ function SuppressionPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <Metric
-                    label="Held-out gain"
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Metric
+                    label="Suppression found"
+                    value={
+                      data.fit.sensitivityGain == null
+                        ? "—"
+                        : `${data.fit.sensitivityGain > 0 ? "+" : ""}${(data.fit.sensitivityGain * 100).toFixed(1)} pts`
+                    }
+                    hint="Extra recorded suppression caught, held out"
+                  />
+                  <Metric
+                    label="Accuracy cost"
                     value={num(data.fit.maeGain, 2, " SR pts")}
-                    hint="Error removed versus the raw detector"
+                    hint="Negative means error rose elsewhere"
                   />
                   <Metric
                     label="Readings"
                     value={data.fit.points.toLocaleString()}
+
                     hint={`${data.fit.cases} independent cases`}
                   />
                   <Metric
