@@ -94,6 +94,23 @@ export interface CoebisTrainingData {
     biasBefore: number | null;
     biasAfter: number | null;
   } | null;
+  /**
+   * The newest fit produced by a refit run, promoted or not. Shown so the page
+   * reports the latest attempt rather than only the model in force.
+   */
+  candidate: {
+    lineageKey: string;
+    modelVersion: string;
+    createdAt: string;
+    promoted: boolean;
+    isActive: boolean;
+    nPoints: number | null;
+    nCases: number | null;
+    maeBefore: number | null;
+    maeAfter: number | null;
+    maeGain: number | null;
+    reason: string | null;
+  } | null;
   knots: CoebisKnotRow[];
   bands: { band: string; n: number; bias: number | null; meanAbsolute: number | null }[];
   cases: CoebisCaseRow[];
