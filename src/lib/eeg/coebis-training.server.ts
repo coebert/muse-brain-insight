@@ -47,18 +47,26 @@ export async function loadTrainingMatrix(
    */
   userId?: string,
 ): Promise<TrainingMatrix> {
-  let query = supabase
-    .from("bis_paired_points")
-    .select(
-      "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
-    );
-  if (userId) query = query.eq("user_id", userId);
-  const { data: pointRows, error } = await query
-    .order("recorded_at", { ascending: true })
-    .limit(limit);
-  if (error) throw new Error(error.message);
-
-  const rows = (pointRows ?? []) as unknown as Record<string, unknown>[];
+  // The data API caps a single response at 1000 rows, so a plain `.limit()`
+  // silently truncates the oldest slice of the pool and hides whole lineages
+  // from the refit. Page through explicitly instead.
+  const PAGE = 1000;
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0; from < limit; from += PAGE) {
+    let query = supabase
+      .from("bis_paired_points")
+      .select(
+        "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
+      );
+    if (userId) query = query.eq("user_id", userId);
+    const { data: pointRows, error } = await query
+      .order("recorded_at", { ascending: true })
+      .range(from, Math.min(from + PAGE, limit) - 1);
+    if (error) throw new Error(error.message);
+    const page = (pointRows ?? []) as unknown as Record<string, unknown>[];
+    rows.push(...page);
+    if (page.length < PAGE) break;
+  }
   const sessionIds = [
     ...new Set(rows.map((r) => r["session_id"]).filter((v): v is string => typeof v === "string")),
   ];
