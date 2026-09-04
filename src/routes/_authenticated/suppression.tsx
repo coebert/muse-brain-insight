@@ -297,10 +297,12 @@ function SuppressionPage() {
                   </p>
                 ) : (
                   <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
-                    The calibration beats the raw detector on cases it never
-                    saw, with enough suppressed readings behind it to mean
-                    something.
+                    On cases it never saw, the calibration catches suppression
+                    the raw detector misses. It is not more accurate on average
+                    — it reads slightly high on clear stretches — so it is used
+                    to lower the depth number, never to reassure.
                   </p>
+
                 )}
               </CardContent>
             </Card>
