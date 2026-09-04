@@ -14,7 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getSuppressionReport } from "@/lib/eeg/suppression-model.functions";
+import { Button } from "@/components/ui/button";
+import {
+  getActiveSuppressionModel,
+  getSuppressionReport,
+  promoteSuppressionModel,
+  type PromotionOutcome,
+} from "@/lib/eeg/suppression-model.functions";
+
 import {
   CAP_FULL_PCT,
   CAP_ONSET_PCT,
