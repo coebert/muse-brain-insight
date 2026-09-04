@@ -15,6 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { featuresFromBands, summariseKetamineCases, type KetamineCaseEpoch, type KetamineCaseReport } from "./ketamine-cases";
 import { ketamineDeclared } from "./ketamine";
+import { gradeKetamineSubtraction } from "./ketamine-grading";
 import {
   canonicalCaseKey,
   datasetStateLabel,
@@ -308,8 +309,10 @@ export async function loadKetamineCases(
     loadExternal(supabase, limit, paired),
     loadApp(supabase, 5000),
   ]);
+  const epochs = [...external.epochs, ...app.epochs];
   return summariseKetamineCases(
-    [...external.epochs, ...app.epochs],
+    epochs,
     external.scanned + app.scanned,
+    gradeKetamineSubtraction(epochs),
   );
 }
