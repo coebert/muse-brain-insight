@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
@@ -61,6 +62,10 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
   id: '/cases',
   path: '/cases',
@@ -93,150 +98,150 @@ const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
 } as any)
 const AuthenticatedAdminBisBenchmarkRoute =
   AuthenticatedAdminBisBenchmarkRouteImport.update({
-    id: '/_admin/bis-benchmark',
+    id: '/bis-benchmark',
     path: '/bis-benchmark',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminBlockersRoute =
   AuthenticatedAdminBlockersRouteImport.update({
-    id: '/_admin/blockers',
+    id: '/blockers',
     path: '/blockers',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminBrainwavesRoute =
   AuthenticatedAdminBrainwavesRouteImport.update({
-    id: '/_admin/brainwaves',
+    id: '/brainwaves',
     path: '/brainwaves',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCalibrateRoute =
   AuthenticatedAdminCalibrateRouteImport.update({
-    id: '/_admin/calibrate',
+    id: '/calibrate',
     path: '/calibrate',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCoebisRoute =
   AuthenticatedAdminCoebisRouteImport.update({
-    id: '/_admin/coebis',
+    id: '/coebis',
     path: '/coebis',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCompareRoute =
   AuthenticatedAdminCompareRouteImport.update({
-    id: '/_admin/compare',
+    id: '/compare',
     path: '/compare',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminDepthRoute = AuthenticatedAdminDepthRouteImport.update({
-  id: '/_admin/depth',
+  id: '/depth',
   path: '/depth',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminDepthIntakeRoute =
   AuthenticatedAdminDepthIntakeRouteImport.update({
-    id: '/_admin/depth-intake',
+    id: '/depth-intake',
     path: '/depth-intake',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminDiscoveryRoute =
   AuthenticatedAdminDiscoveryRouteImport.update({
-    id: '/_admin/discovery',
+    id: '/discovery',
     path: '/discovery',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminDrugsRoute = AuthenticatedAdminDrugsRouteImport.update({
-  id: '/_admin/drugs',
+  id: '/drugs',
   path: '/drugs',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminExposureRoute =
   AuthenticatedAdminExposureRouteImport.update({
-    id: '/_admin/exposure',
+    id: '/exposure',
     path: '/exposure',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminFeedbackRoute =
   AuthenticatedAdminFeedbackRouteImport.update({
-    id: '/_admin/feedback',
+    id: '/feedback',
     path: '/feedback',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminFlagsRoute = AuthenticatedAdminFlagsRouteImport.update({
-  id: '/_admin/flags',
+  id: '/flags',
   path: '/flags',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminKetamineRoute =
   AuthenticatedAdminKetamineRouteImport.update({
-    id: '/_admin/ketamine',
+    id: '/ketamine',
     path: '/ketamine',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminModelsRoute =
   AuthenticatedAdminModelsRouteImport.update({
-    id: '/_admin/models',
+    id: '/models',
     path: '/models',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOutcomesRoute =
   AuthenticatedAdminOutcomesRouteImport.update({
-    id: '/_admin/outcomes',
+    id: '/outcomes',
     path: '/outcomes',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPairingRoute =
   AuthenticatedAdminPairingRouteImport.update({
-    id: '/_admin/pairing',
+    id: '/pairing',
     path: '/pairing',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPathologyRoute =
   AuthenticatedAdminPathologyRouteImport.update({
-    id: '/_admin/pathology',
+    id: '/pathology',
     path: '/pathology',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPerformanceRoute =
   AuthenticatedAdminPerformanceRouteImport.update({
-    id: '/_admin/performance',
+    id: '/performance',
     path: '/performance',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminReferenceRoute =
   AuthenticatedAdminReferenceRouteImport.update({
-    id: '/_admin/reference',
+    id: '/reference',
     path: '/reference',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminReplayRoute =
   AuthenticatedAdminReplayRouteImport.update({
-    id: '/_admin/replay',
+    id: '/replay',
     path: '/replay',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminSuppressionRoute =
   AuthenticatedAdminSuppressionRouteImport.update({
-    id: '/_admin/suppression',
+    id: '/suppression',
     path: '/suppression',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminTrainingRoute =
   AuthenticatedAdminTrainingRouteImport.update({
-    id: '/_admin/training',
+    id: '/training',
     path: '/training',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminTrendsRoute =
   AuthenticatedAdminTrendsRouteImport.update({
-    id: '/_admin/trends',
+    id: '/trends',
     path: '/trends',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminValidateRoute =
   AuthenticatedAdminValidateRouteImport.update({
-    id: '/_admin/validate',
+    id: '/validate',
     path: '/validate',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedCaseCaseRefRoute =
   AuthenticatedCaseCaseRefRouteImport.update({
@@ -296,13 +301,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/': typeof AuthenticatedIndexRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/notes': typeof AuthenticatedNotesRoute
   '/patients': typeof AuthenticatedPatientsRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/terms': typeof AuthenticatedTermsRoute
-  '/': typeof AuthenticatedIndexRoute
   '/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
   '/blockers': typeof AuthenticatedAdminBlockersRoute
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
@@ -336,6 +341,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/notes': typeof AuthenticatedNotesRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
@@ -414,13 +420,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/'
     | '/cases'
     | '/notes'
     | '/patients'
     | '/sessions'
     | '/settings'
     | '/terms'
-    | '/'
     | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
@@ -453,6 +459,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/_admin'
     | '/_authenticated/cases'
     | '/_authenticated/notes'
     | '/_authenticated/patients'
@@ -519,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_admin': {
+      id: '/_authenticated/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cases': {
       id: '/_authenticated/cases'
       path: '/cases'
@@ -566,175 +580,175 @@ declare module '@tanstack/react-router' {
       path: '/bis-benchmark'
       fullPath: '/bis-benchmark'
       preLoaderRoute: typeof AuthenticatedAdminBisBenchmarkRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/blockers': {
       id: '/_authenticated/_admin/blockers'
       path: '/blockers'
       fullPath: '/blockers'
       preLoaderRoute: typeof AuthenticatedAdminBlockersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/brainwaves': {
       id: '/_authenticated/_admin/brainwaves'
       path: '/brainwaves'
       fullPath: '/brainwaves'
       preLoaderRoute: typeof AuthenticatedAdminBrainwavesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/calibrate': {
       id: '/_authenticated/_admin/calibrate'
       path: '/calibrate'
       fullPath: '/calibrate'
       preLoaderRoute: typeof AuthenticatedAdminCalibrateRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/coebis': {
       id: '/_authenticated/_admin/coebis'
       path: '/coebis'
       fullPath: '/coebis'
       preLoaderRoute: typeof AuthenticatedAdminCoebisRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/compare': {
       id: '/_authenticated/_admin/compare'
       path: '/compare'
       fullPath: '/compare'
       preLoaderRoute: typeof AuthenticatedAdminCompareRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/depth': {
       id: '/_authenticated/_admin/depth'
       path: '/depth'
       fullPath: '/depth'
       preLoaderRoute: typeof AuthenticatedAdminDepthRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/depth-intake': {
       id: '/_authenticated/_admin/depth-intake'
       path: '/depth-intake'
       fullPath: '/depth-intake'
       preLoaderRoute: typeof AuthenticatedAdminDepthIntakeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/discovery': {
       id: '/_authenticated/_admin/discovery'
       path: '/discovery'
       fullPath: '/discovery'
       preLoaderRoute: typeof AuthenticatedAdminDiscoveryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/drugs': {
       id: '/_authenticated/_admin/drugs'
       path: '/drugs'
       fullPath: '/drugs'
       preLoaderRoute: typeof AuthenticatedAdminDrugsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/exposure': {
       id: '/_authenticated/_admin/exposure'
       path: '/exposure'
       fullPath: '/exposure'
       preLoaderRoute: typeof AuthenticatedAdminExposureRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/feedback': {
       id: '/_authenticated/_admin/feedback'
       path: '/feedback'
       fullPath: '/feedback'
       preLoaderRoute: typeof AuthenticatedAdminFeedbackRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/flags': {
       id: '/_authenticated/_admin/flags'
       path: '/flags'
       fullPath: '/flags'
       preLoaderRoute: typeof AuthenticatedAdminFlagsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/ketamine': {
       id: '/_authenticated/_admin/ketamine'
       path: '/ketamine'
       fullPath: '/ketamine'
       preLoaderRoute: typeof AuthenticatedAdminKetamineRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/models': {
       id: '/_authenticated/_admin/models'
       path: '/models'
       fullPath: '/models'
       preLoaderRoute: typeof AuthenticatedAdminModelsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/outcomes': {
       id: '/_authenticated/_admin/outcomes'
       path: '/outcomes'
       fullPath: '/outcomes'
       preLoaderRoute: typeof AuthenticatedAdminOutcomesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/pairing': {
       id: '/_authenticated/_admin/pairing'
       path: '/pairing'
       fullPath: '/pairing'
       preLoaderRoute: typeof AuthenticatedAdminPairingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/pathology': {
       id: '/_authenticated/_admin/pathology'
       path: '/pathology'
       fullPath: '/pathology'
       preLoaderRoute: typeof AuthenticatedAdminPathologyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/performance': {
       id: '/_authenticated/_admin/performance'
       path: '/performance'
       fullPath: '/performance'
       preLoaderRoute: typeof AuthenticatedAdminPerformanceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/reference': {
       id: '/_authenticated/_admin/reference'
       path: '/reference'
       fullPath: '/reference'
       preLoaderRoute: typeof AuthenticatedAdminReferenceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/replay': {
       id: '/_authenticated/_admin/replay'
       path: '/replay'
       fullPath: '/replay'
       preLoaderRoute: typeof AuthenticatedAdminReplayRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/suppression': {
       id: '/_authenticated/_admin/suppression'
       path: '/suppression'
       fullPath: '/suppression'
       preLoaderRoute: typeof AuthenticatedAdminSuppressionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/training': {
       id: '/_authenticated/_admin/training'
       path: '/training'
       fullPath: '/training'
       preLoaderRoute: typeof AuthenticatedAdminTrainingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/trends': {
       id: '/_authenticated/_admin/trends'
       path: '/trends'
       fullPath: '/trends'
       preLoaderRoute: typeof AuthenticatedAdminTrendsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/validate': {
       id: '/_authenticated/_admin/validate'
       path: '/validate'
       fullPath: '/validate'
       preLoaderRoute: typeof AuthenticatedAdminValidateRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/case/$caseRef': {
       id: '/_authenticated/case/$caseRef'
@@ -760,14 +774,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
-  AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
-  AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
-  AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBisBenchmarkRoute: typeof AuthenticatedAdminBisBenchmarkRoute
   AuthenticatedAdminBlockersRoute: typeof AuthenticatedAdminBlockersRoute
   AuthenticatedAdminBrainwavesRoute: typeof AuthenticatedAdminBrainwavesRoute
@@ -793,18 +800,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminTrainingRoute: typeof AuthenticatedAdminTrainingRoute
   AuthenticatedAdminTrendsRoute: typeof AuthenticatedAdminTrendsRoute
   AuthenticatedAdminValidateRoute: typeof AuthenticatedAdminValidateRoute
-  AuthenticatedCaseCaseRefRoute: typeof AuthenticatedCaseCaseRefRoute
-  AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
 }
 
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCasesRoute: AuthenticatedCasesRoute,
-  AuthenticatedNotesRoute: AuthenticatedNotesRoute,
-  AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
-  AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedTermsRoute: AuthenticatedTermsRoute,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBisBenchmarkRoute: AuthenticatedAdminBisBenchmarkRoute,
   AuthenticatedAdminBlockersRoute: AuthenticatedAdminBlockersRoute,
   AuthenticatedAdminBrainwavesRoute: AuthenticatedAdminBrainwavesRoute,
@@ -830,6 +828,33 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminTrainingRoute: AuthenticatedAdminTrainingRoute,
   AuthenticatedAdminTrendsRoute: AuthenticatedAdminTrendsRoute,
   AuthenticatedAdminValidateRoute: AuthenticatedAdminValidateRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
+  AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
+  AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
+  AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedCaseCaseRefRoute: typeof AuthenticatedCaseCaseRefRoute
+  AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedCasesRoute: AuthenticatedCasesRoute,
+  AuthenticatedNotesRoute: AuthenticatedNotesRoute,
+  AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
+  AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedTermsRoute: AuthenticatedTermsRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCaseCaseRefRoute: AuthenticatedCaseCaseRefRoute,
   AuthenticatedReportIdRoute: AuthenticatedReportIdRoute,
 }
