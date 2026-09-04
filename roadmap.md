@@ -7,4 +7,6 @@
 - [ ] Train suppression model on VitalDB SR labels (bis_sr≥5 vs ≤1) on app_sr+app_sef, versioned storage, wire into pathology labels + depth suppression flag.
 - [x] /blockers page: gate status per lineage (cases/readings still needed, data-block vs evidence-block) + covariate headroom, pooled and per lineage.
 - [ ] Patient dashboard: gate status column/filter; verify VitalDB lineage now shows promoted model.
+- [x] figshare 5589841 intake (CC-BY, 24 surgical cases, raw frontal EEG + bedside BIS): 16,933 paired readings under figshare-ma-bis|AF7|125; first fit cleared the gate and v1 PROMOTED (MAE 31.43→12.05 across 24 case-folds, +19.38).
+- [x] ds004541 exhausted — all 8 published anaesthesia recordings ingested; re-run attempts 0 files.
 - [ ] Optional: continue VitalDB intake (candidates.txt has ~5,500 more cases).
