@@ -388,7 +388,10 @@ export interface ScheduledRefitResult {
   skipped?: string;
   users: number;
   reports: RefitRunReport[];
+  /** What the continuous-capture harvest folded in before this run. */
+  harvest?: HarvestReport | null;
 }
+
 
 /** Entry point for the scheduled trigger. */
 export async function runScheduledRefit(admin: Client): Promise<ScheduledRefitResult> {
