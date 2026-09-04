@@ -25,7 +25,20 @@ import { rocAnalysis, type RocResult } from "./discrimination";
 export type SeizureLabel = "ictal" | "interictal";
 
 /** Where a label came from. Anything the app derived is excluded upstream. */
-export type LabelSource = "dataset" | "clinician";
+export type LabelSource = "dataset" | "clinician" | "monitor";
+
+/** Burst suppression as a *recorded* fact (bedside monitor SR, dataset annotation). */
+export type SuppressionLabel = "suppressed" | "not_suppressed";
+
+/** Anaesthetic state a dataset's own event file establishes. */
+export type DepthStateLabel = "awake" | "induction" | "anaesthetised" | "emergence";
+
+/** Monitor SR at or above this percent is recorded burst suppression. */
+export const MONITOR_SUPPRESSED_PCT = 5;
+/** Monitor SR at or below this percent is a recorded clear (non-suppressed) epoch.
+ * The band between the two is ambiguous and is discarded rather than guessed. */
+export const MONITOR_CLEAR_PCT = 1;
+
 
 export type ScoreKey = "coebis" | "seizureScore" | "suppressionRatio" | "sef95";
 
@@ -91,8 +104,13 @@ export interface LabelledEpoch {
   seizure: SeizureLabel | null;
   /** Recorded CNS disease category, e.g. "seizure_disorder", "stroke", "none". */
   cns: string | null;
+  /** Burst suppression established by a bedside monitor or dataset annotation. */
+  suppression?: SuppressionLabel | null;
+  /** Anaesthetic state established by a dataset's event file. */
+  state?: DepthStateLabel | null;
   scores: EpochScores;
 }
+
 
 /** Minimum labelled epochs before a number is more than a hint. */
 export const MIN_AXIS_EPOCHS = 40;
@@ -179,6 +197,12 @@ export interface LineageInventory {
   seizureLabelled: number;
   ictal: number;
   cnsLabelled: number;
+  /** Epochs whose burst suppression was recorded, not computed by the app. */
+  suppressionLabelled: number;
+  suppressed: number;
+  /** Epochs carrying a dataset event-derived anaesthetic state. */
+  stateLabelled: number;
+
   labelSources: LabelSource[];
   scoresPresent: ScoreKey[];
 }
@@ -492,6 +516,10 @@ export function evaluatePathologyLabels(
       seizureLabelled: rows.filter((r) => r.seizure != null).length,
       ictal: rows.filter((r) => r.seizure === "ictal").length,
       cnsLabelled: rows.filter((r) => r.cns != null).length,
+      suppressionLabelled: rows.filter((r) => r.suppression != null).length,
+      suppressed: rows.filter((r) => r.suppression === "suppressed").length,
+      stateLabelled: rows.filter((r) => r.state != null).length,
+
       labelSources: [...new Set(rows.map((r) => r.labelSource))],
       scoresPresent: SCORE_META.filter((m) => rows.some((r) => r.scores[m.key] != null)).map(
         (m) => m.key,
@@ -530,6 +558,31 @@ export function evaluatePathologyLabels(
   }
 
   const notes: string[] = [];
+  const suppressionRows = epochs.filter((e) => e.suppression != null);
+  const suppressionAxis = buildAxis(
+    "recorded-suppression",
+    "Recorded burst suppression",
+    `Suppression status taken from a bedside monitor's own suppression ratio (≥${MONITOR_SUPPRESSED_PCT}% suppressed, ≤${MONITOR_CLEAR_PCT}% clear; the band between is discarded) or a dataset annotation — never from the app's own suppression calculation.`,
+    "suppressed",
+    "clear",
+    suppressionRows,
+    (e) => e.suppression === "suppressed",
+  );
+  if (suppressionAxis) axes.push(suppressionAxis);
+
+  const stateRows = epochs.filter((e) => e.state === "anaesthetised" || e.state === "awake");
+  const stateAxis = buildAxis(
+    "recorded-state",
+    "Recorded anaesthetised vs awake",
+    "Anaesthetic state taken from the dataset's own event file (loss/return of consciousness markers), with induction and emergence transitions excluded.",
+    "anaesthetised",
+    "awake",
+    stateRows,
+    (e) => e.state === "anaesthetised",
+  );
+  if (stateAxis) axes.push(stateAxis);
+
+  const notes: string[] = [];
   if (!seizureRows.length) {
     notes.push(
       "No epoch carries an independently recorded ictal label yet, so seizure discrimination cannot be measured. Ingest annotated ictal recordings, or mark seizure events on a live case.",
@@ -539,6 +592,26 @@ export function evaluatePathologyLabels(
       `${seizureRows.length.toLocaleString()} epochs carry a seizure annotation but all are interictal, so only the false-positive rate is measurable.`,
     );
   }
+  if (!suppressionRows.length) {
+    notes.push(
+      "No epoch carries a monitor- or dataset-recorded suppression label, so the suppression axis grades nothing. Import bedside suppression ratios (e.g. VitalDB BIS SR) to populate it.",
+    );
+  } else if (!suppressionRows.some((e) => e.suppression === "suppressed")) {
+    notes.push(
+      `${suppressionRows.length.toLocaleString()} epochs carry a recorded suppression label but none reached ${MONITOR_SUPPRESSED_PCT}% monitor SR, so only the false-positive side is measurable.`,
+    );
+  } else if (!suppressionRows.some((e) => e.scores.suppressionRatio != null)) {
+    notes.push(
+      "Recorded suppression labels exist but no app-computed suppression ratio is paired with them, so the axis cannot be graded until those recordings are replayed through the pipeline.",
+    );
+  }
+  if (!stateRows.length) {
+    notes.push(
+      "No dataset event file has established awake and anaesthetised intervals, so the depth-state axis is empty.",
+    );
+  }
+
+
   if (!cnsLevels.length) {
     notes.push(
       "No case records a CNS diagnosis alongside a control group, so CNS axes are empty. File chronic CNS disease and acute pathology on cases to populate this.",
