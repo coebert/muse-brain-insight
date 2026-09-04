@@ -25,6 +25,7 @@ import { DATASET_MONTAGE } from "./physionet";
 import { SEDATION_ICU_MONTAGE } from "./sedation-icu";
 import { pathologyDataset } from "./pathology-datasets";
 import { OPENNEURO_DS004541_MONTAGE } from "./openneuro";
+import { OPENNEURO_DS005620_MONTAGE } from "./openneuro-brainvision";
 
 /** Montages of the pathology collections the automated scan can reach. */
 const PATHOLOGY_MONTAGE = {
@@ -42,7 +43,8 @@ export type IntakeKind =
   | "dose1-raw"
   | "icare"
   | "chbmit-edf"
-  | "openneuro-bids-edf";
+  | "openneuro-bids-edf"
+  | "openneuro-bids-brainvision";
 
 /** Whether the licence allows this scan to fetch files at all. */
 export type IntakeAccess = "open" | "credentialed" | "manual";
@@ -278,6 +280,32 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     montage: OPENNEURO_DS004541_MONTAGE,
     maxFilesPerRun: 2,
     maxBytesPerFile: 2_000_000_000,
+  },
+  {
+    id: "openneuro-ds005620",
+    label: "OpenNeuro ds005620 — propofol sedation with repeated awakenings",
+    kind: "openneuro-bids-brainvision",
+    lineage: "external:openneuro:ds005620",
+    datasetVersion: "1.0.0",
+    licence: "CC BY 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+    access: "open",
+    accessNote:
+      "CC BY 4.0: programmatic retrieval and derived features are permitted with attribution to Bajwa et al.",
+    homepage: "https://openneuro.org/datasets/ds005620",
+    listing: { type: "openneuro", datasetId: "ds005620", tag: "1.0.0" },
+    filePattern: /_eeg\.eeg$/i,
+    binary: true,
+    // 65 channels of float32 at 5 kHz is 1.3 MB of file per second. The depth
+    // reference is the recording condition, constant across the file, so a
+    // leading minute is representative and the 390 MB runs are never held.
+    rangeBytes: 80_000_000,
+    fallbackSampleRate: 500,
+    montage: OPENNEURO_DS005620_MONTAGE,
+    // Six recordings is one subject's awake/sedation set; twelve reaches a
+    // second subject per run, and re-runs pick up where the last one stopped.
+    maxFilesPerRun: 12,
+    maxBytesPerFile: 400_000_000,
   },
   {
     id: "physionet-i-care",
