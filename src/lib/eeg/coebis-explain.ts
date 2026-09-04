@@ -11,6 +11,7 @@ import { covariateAdjustment, covariateLabel, type CaseCovariates } from "./cova
 import { knotCorrection, type BisAlignment } from "./depth";
 import type { AdjunctCorrection } from "./coebis-adjuncts";
 import type { KetamineSignature } from "./ketamine";
+import { DRUG_BY_KEY, type DrugStage } from "./drug-signatures";
 
 export interface CoebisExplainStep {
   /** Short step name, e.g. "Patient adjustment: age 75-89". */
@@ -45,6 +46,7 @@ export function explainCoebis(
   cov: CaseCovariates | null | undefined,
   adjunct?: AdjunctCorrection | null,
   ketamine?: KetamineSignature | null,
+  drugs?: DrugStage | null,
 ): CoebisExplanation {
   const caveats: string[] = [];
   if (openIbis == null || !alignment) {
@@ -151,6 +153,29 @@ export function explainCoebis(
       "Ketamine is recorded for this case; the index is being watched for spurious beta/gamma inflation, none of which is present in the current epoch.",
     );
   }
+
+  // The other declared agents, each a bounded step of its own so the panel can
+  // show exactly which drug moved the number and by how much.
+  for (const entry of drugs?.entries ?? []) {
+    if (entry.delta === 0) continue;
+    value += entry.delta;
+    steps.push({
+      label: `${entry.label} correction`,
+      delta: Number(entry.delta.toFixed(1)),
+      value: Number(value.toFixed(1)),
+      detail: entry.rationale,
+    });
+    caveats.push(
+      `${entry.label} is recorded for this case: its EEG signature is treated as drug effect rather than ${
+        entry.delta < 0 ? "wakefulness" : "depth"
+      }. The correction is bounded, so still judge depth clinically.`,
+    );
+  }
+  for (const key of drugs?.reference ?? []) {
+    const spec = DRUG_BY_KEY.get(key);
+    if (spec) caveats.push(`No correction for ${spec.label.toLowerCase()}. ${spec.rationale}`);
+  }
+  for (const advisory of drugs?.advisories ?? []) caveats.push(advisory);
 
   const final = clamp(value, 0, 100);
   if (final !== value) {

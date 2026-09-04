@@ -34,7 +34,12 @@ import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
 import { describeMigration, migrateBrowserModelConfigs } from "@/lib/eeg/model-migration";
 import { syncBisAlignment } from "@/lib/eeg/bis-alignment";
-import { setActiveCaseCovariates, setActiveKetamineExposure } from "@/lib/eeg/depth";
+import {
+  setActiveCaseCovariates,
+  setActiveDeclaredDrugs,
+  setActiveKetamineExposure,
+} from "@/lib/eeg/depth";
+import { declaredDrugs } from "@/lib/eeg/drug-signatures";
 import { ketamineDeclared } from "@/lib/eeg/ketamine";
 import { deriveClinicalCovariates } from "@/lib/eeg/clinical-covariates";
 import { ageBand } from "@/lib/eeg/save";
@@ -285,6 +290,18 @@ function useCaseSessionState() {
       })
         ? "declared"
         : "none",
+    );
+  }, [meta.regimen, meta.notes, meta.caseSummary]);
+
+  // The other declared agents. Propofol and the volatiles are recorded too, but
+  // as reference drugs: their signature is the depth being measured, so the
+  // stage reports them and subtracts nothing.
+  useEffect(() => {
+    setActiveDeclaredDrugs(
+      declaredDrugs({
+        regimen: meta.regimen,
+        notes: [meta.notes, meta.caseSummary],
+      }),
     );
   }, [meta.regimen, meta.notes, meta.caseSummary]);
 

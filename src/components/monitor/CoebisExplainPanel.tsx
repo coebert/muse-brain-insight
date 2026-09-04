@@ -12,6 +12,7 @@ import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { explainCoebis } from "@/lib/eeg/coebis-explain";
 import type { AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import type { KetamineSignature } from "@/lib/eeg/ketamine";
+import type { DrugStage } from "@/lib/eeg/drug-signatures";
 import type { CaseCovariates } from "@/lib/eeg/covariates";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export function CoebisExplainPanel({
   covariates,
   adjunct,
   ketamine,
+  drugs,
   className,
 }: {
   openIbis: number | null | undefined;
@@ -28,10 +30,12 @@ export function CoebisExplainPanel({
   adjunct?: AdjunctCorrection | null;
   /** Ketamine recognition for the live epoch, when present. */
   ketamine?: KetamineSignature | null;
+  /** Other declared anaesthetic agents corrected for on this epoch. */
+  drugs?: DrugStage | null;
   className?: string;
 }) {
   const model = useCoebisModel();
-  const explanation = explainCoebis(openIbis, model, covariates, adjunct, ketamine);
+  const explanation = explainCoebis(openIbis, model, covariates, adjunct, ketamine, drugs);
 
   return (
     <Popover>

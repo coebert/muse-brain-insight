@@ -33,6 +33,12 @@ import {
   type KetamineFeatures,
   type KetamineSignature,
 } from "./ketamine";
+import {
+  drugStage,
+  NO_DRUG_STAGE,
+  type DrugKey,
+  type DrugStage,
+} from "./drug-signatures";
 import { getActiveMontageFeatures } from "./psi-features";
 
 export interface DepthComponents {
@@ -72,6 +78,8 @@ export interface DepthReading {
   adjunct?: AdjunctCorrection;
   /** Ketamine recognition: spectral pattern, advisory and any correction. */
   ketamine?: KetamineSignature;
+  /** Other declared anaesthetic agents whose EEG signature biases the index. */
+  drugs?: DrugStage;
   /**
    * COEBIS — the app's own continuously refitted index, derived from the
    * published OpenIBIS value by the correction learned from paired readings
@@ -256,6 +264,20 @@ export function getActiveKetamineExposure(): KetamineExposure {
 
 export function setActiveKetamineExposure(exposure: KetamineExposure) {
   activeKetamineExposure = exposure;
+}
+
+/**
+ * Anaesthetic agents recorded for the case on screen. As with ketamine, only a
+ * declaration licenses a correction; the EEG pattern alone raises an advisory.
+ */
+let activeDeclaredDrugs: DrugKey[] = [];
+
+export function getActiveDeclaredDrugs(): DrugKey[] {
+  return activeDeclaredDrugs;
+}
+
+export function setActiveDeclaredDrugs(drugs: DrugKey[]) {
+  activeDeclaredDrugs = drugs;
 }
 
 /** The patient-specific part of the current COEBIS number, for explanation. */
@@ -697,7 +719,28 @@ export class DepthIndexEstimator {
             bsr,
             quality: 1 - gatedFraction,
           });
-    const coebisRaw = computeCoebis(rawValue, alignment, adjunct.total + ketamine.delta);
+    // Same treatment for the other declared agents: nitrous oxide, xenon and
+    // benzodiazepines bias the index up, dexmedetomidine biases it down, and
+    // propofol/volatile are the reference drugs the index was derived on, so
+    // nothing is subtracted for them.
+    const features = bandShares(rows);
+    const drugs =
+      afterAdjunct == null
+        ? NO_DRUG_STAGE
+        : drugStage({
+            aligned: clamp(afterAdjunct + ketamine.delta, 0, 100),
+            features,
+            declared: activeDeclaredDrugs,
+            bsr,
+            quality: 1 - gatedFraction,
+            alreadyApplied: ketamine.delta,
+            handledElsewhere: ["ketamine"],
+          });
+    const coebisRaw = computeCoebis(
+      rawValue,
+      alignment,
+      adjunct.total + ketamine.delta + drugs.delta,
+    );
     const coebis = this.smoothCoebis(coebisRaw, epochSeconds);
     return {
       index,
@@ -714,6 +757,7 @@ export class DepthIndexEstimator {
       coebis,
       coebisRaw,
       ketamine,
+      drugs,
       coebisBaseline: activeBisAlignment == null,
     };
   }

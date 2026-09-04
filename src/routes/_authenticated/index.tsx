@@ -937,6 +937,7 @@ function Monitor() {
                   covariates={depthTargetInputs}
                   adjunct={latest?.depth.adjunct ?? null}
                   ketamine={latest?.depth.ketamine ?? null}
+                  drugs={latest?.depth.drugs ?? null}
                 />
                 {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
                 <CoebisModelPicker />
