@@ -184,7 +184,10 @@ export interface PatientScoreRow {
   sufficient: boolean;
   /** Plain reading of this case. */
   verdict: string;
+  /** Where the displayed index parts company with the reference. */
+  divergence: DivergenceSummary;
   series: PatientSeriesSample[];
+
 }
 
 export interface PatientCohort {
