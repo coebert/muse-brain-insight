@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
+import { Route as AuthenticatedBedsideRouteImport } from './routes/_authenticated/bedside'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
@@ -66,6 +67,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/_admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBedsideRoute = AuthenticatedBedsideRouteImport.update({
+  id: '/bedside',
+  path: '/bedside',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
@@ -278,6 +284,7 @@ const ApiPublicHooksCoebisRefitRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/bedside': typeof AuthenticatedBedsideRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/notes': typeof AuthenticatedNotesRoute
   '/patients': typeof AuthenticatedPatientsRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/': typeof AuthenticatedIndexRoute
+  '/bedside': typeof AuthenticatedBedsideRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/notes': typeof AuthenticatedNotesRoute
   '/patients': typeof AuthenticatedPatientsRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/bedside': typeof AuthenticatedBedsideRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/notes': typeof AuthenticatedNotesRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
@@ -403,6 +412,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/bedside'
     | '/cases'
     | '/notes'
     | '/patients'
@@ -443,6 +453,7 @@ export interface FileRouteTypes {
   to:
     | '/auth'
     | '/'
+    | '/bedside'
     | '/cases'
     | '/notes'
     | '/patients'
@@ -484,6 +495,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/_admin'
+    | '/_authenticated/bedside'
     | '/_authenticated/cases'
     | '/_authenticated/notes'
     | '/_authenticated/patients'
@@ -557,6 +569,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bedside': {
+      id: '/_authenticated/bedside'
+      path: '/bedside'
+      fullPath: '/bedside'
+      preLoaderRoute: typeof AuthenticatedBedsideRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cases': {
@@ -879,6 +898,7 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedBedsideRoute: typeof AuthenticatedBedsideRoute
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
   AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
@@ -892,6 +912,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedBedsideRoute: AuthenticatedBedsideRoute,
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedNotesRoute: AuthenticatedNotesRoute,
   AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
