@@ -61,23 +61,26 @@ function numericMap(input: unknown): Record<string, number> {
 }
 
 /**
- * Turn the epochs the monitor has produced since the last flush into rows.
+ * Turn the epochs recorded since the last flush into rows.
  *
- * `fromIndex` is the count already sent, so a re-run of the same window sends
- * nothing twice; the database's `(capture_id, epoch_index)` key makes a retry
- * after a dropped response harmless as well.
+ * The index is derived from the epoch's own timestamp rather than its position
+ * in the array, because the live buffer thins older epochs as a case runs on.
+ * That keeps the index stable, so a retry after a dropped response writes the
+ * same row rather than a duplicate.
  */
 export function captureRowsFrom(
   epochs: Epoch[],
-  fromIndex: number,
+  afterSeconds: number,
   sessionStart: number,
+  hopSeconds = 1,
   limit = CAPTURE_MAX_BATCH,
 ): CaptureEpochRow[] {
   const rows: CaptureEpochRow[] = [];
-  for (let i = fromIndex; i < epochs.length && rows.length < limit; i++) {
-    const e = epochs[i]!;
+  for (const e of epochs) {
+    if (rows.length >= limit) break;
+    if (!(e.t > afterSeconds)) continue;
     rows.push({
-      epochIndex: i,
+      epochIndex: Math.round(e.t / Math.max(hopSeconds, 0.001)),
       atSeconds: e.t,
       recordedAt: new Date(sessionStart + e.t * 1000).toISOString(),
       depthIndex: num(e.depth?.index),
