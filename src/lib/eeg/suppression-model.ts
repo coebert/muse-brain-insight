@@ -324,6 +324,9 @@ export interface SuppressionFitReport {
   model: SuppressionModel | null;
   /** MAE points gained out of sample; negative means the fit is worse. */
   maeGain: number | null;
+  /** Held-out sensitivity gained over the raw detector, 0–1. */
+  sensitivityGain: number | null;
+
   /** Whether the fit meets the volume and improvement bar. */
   promotable: boolean;
   /** Plain-language reason when it is not promotable. */
