@@ -304,35 +304,91 @@ async function pageAll<T>(
   return out;
 }
 
+/** Anaesthetic state a paired reading carries from its source recording. */
+export function pairedStateLabel(state: unknown): DepthStateLabel | null {
+  if (typeof state !== "string") return null;
+  const s = state.trim().toLowerCase();
+  if (s === "awake" || s === "baseline") return "awake";
+  if (s === "induction") return "induction";
+  if (s === "anaesthetised" || s === "anesthetised" || s === "maintenance") return "anaesthetised";
+  if (s === "emergence" || s === "recovery") return "emergence";
+  // "sedated" and anything else is deliberately not forced onto the
+  // anaesthetised/awake contrast.
+  return null;
+}
+
 /**
- * App-side indices produced by replaying an imported recording, keyed by case
- * and second, so a recorded label can be graded against what the app scored.
+ * Every paired reading in the database, in one pass: the app-side score index
+ * used to grade other label tables, plus the labels the paired rows themselves
+ * carry (a bedside suppression ratio, or the source recording's own state).
+ *
+ * This is what makes the grading lineage-agnostic: VitalDB is not the only
+ * lineage with a recorded reference, and the non-VitalDB lineages
+ * (ds004541 event states, DOSE-I MOAA/S states, Muse cases with a bedside SR)
+ * were previously scored but never graded.
  */
-async function loadPairedScores(supabase: Client): Promise<PairedScoreIndex> {
+async function loadPaired(
+  supabase: Client,
+): Promise<{ index: PairedScoreIndex; labels: LabelledEpoch[]; scanned: number }> {
   const index: PairedScoreIndex = new Map();
   const rows = await pageAll<PairedRow>(
     (from, to) =>
       supabase
         .from("bis_paired_points")
-        .select("external_ref, at_seconds, app_index, app_sr")
-        .not("external_ref", "is", null)
+        .select(
+          "source_lineage, external_ref, at_seconds, bis, bis_sr, app_index, app_sr, features",
+        )
         .order("id", { ascending: true })
         .range(from, to),
     40000,
   );
+  const labels: LabelledEpoch[] = [];
+  const counts = new Map<string, number>();
   for (const r of rows) {
-    const caseRef = pairedCaseRef(r.external_ref);
-    if (!caseRef) continue;
-    const list = index.get(caseRef) ?? [];
-    list.push({
-      at: Number(r.at_seconds ?? 0),
-      score: { coebis: num(r.app_index), suppressionRatio: asPercent(num(r.app_sr)) },
+    const features = (r.features ?? {}) as Record<string, unknown>;
+    const featureCase = typeof features["caseRef"] === "string" ? features["caseRef"] : null;
+    const caseRef = featureCase ?? pairedCaseRef(r.external_ref);
+    const at = Number(r.at_seconds ?? 0);
+    const scores: PairedScore = {
+      coebis: num(r.app_index),
+      suppressionRatio: asPercent(num(r.app_sr)),
+    };
+    if (caseRef) {
+      const list = index.get(caseRef) ?? [];
+      list.push({ at, score: scores });
+      index.set(caseRef, list);
+    }
+
+    const suppression = monitorSuppressionLabel(num(r.bis_sr));
+    const state = pairedStateLabel(features["state"]);
+    if (!suppression && !state) continue;
+    const lineage = r.source_lineage ?? "unlabelled";
+    const key = caseRef ?? `${lineage}/unkeyed`;
+    if (!keep(counts, key)) continue;
+    labels.push({
+      lineage,
+      caseRef: key,
+      atSeconds: at,
+      // A recorded reference travelling with the reading: a monitor's own
+      // suppression ratio, or the source recording's state annotation.
+      labelSource: suppression ? "monitor" : "dataset",
+      seizure: null,
+      cns: null,
+      suppression,
+      state,
+      scores: {
+        coebis: scores.coebis,
+        seizureScore: null,
+        suppressionRatio: scores.suppressionRatio,
+        sef95: null,
+      },
     });
-    index.set(caseRef, list);
   }
   for (const list of index.values()) list.sort((a, b) => a.at - b.at);
-  return index;
+  return { index, labels, scanned: rows.length };
 }
+
+
 
 
 /** Monitor-recorded suppression labels (e.g. VitalDB bedside BIS SR). */
