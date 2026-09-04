@@ -251,7 +251,7 @@ function BedsidePage() {
 
         <section className="mt-4 flex flex-wrap gap-2">
           {caseState === "running" ? (
-            <Button variant="outline" className="min-h-11" onClick={() => void endCase()}>
+            <Button variant="outline" className="min-h-11" onClick={() => endCase(false)}>
               <Square className="size-4" /> Stop
             </Button>
           ) : (
