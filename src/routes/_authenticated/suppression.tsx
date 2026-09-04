@@ -283,7 +283,10 @@ function SuppressionPage() {
   const fetchReport = useServerFn(getSuppressionReport);
   const { data, isLoading } = useQuery<SuppressionReport>({
     queryKey: ["suppression-model"],
-    queryFn: () => fetchReport({ data: {} }),
+    // The whole labelled set, so the page grades the same readings the
+    // promoted calibration was fitted on rather than the first 40,000.
+    queryFn: () => fetchReport({ data: { limit: 80000 } }),
+
     staleTime: 60_000,
   });
 
