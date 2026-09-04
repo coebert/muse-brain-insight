@@ -31,7 +31,7 @@ const supabase = createClient(url, key, {
   global: { headers: { Authorization: `Bearer ${session.access_token}` } },
 });
 
-const userId = session.user?.id;
+const userId = session.user_id ?? session.user?.id;
 if (!userId) throw new Error("No user id in the cached session");
 
 const { data: sessionRows, error: sessErr } = await supabase
