@@ -22,7 +22,7 @@ const LINEAGE = "muse-2|TP9-AF7-AF8-TP10|256";
 
 const session = JSON.parse(
   readFileSync(`${process.env["HOME"]}/.cache/lovable-auth/session.json`, "utf8"),
-) as { access_token: string; user?: { id: string } };
+) as { access_token: string; user_id?: string; user?: { id: string } };
 
 const url = process.env["VITE_SUPABASE_URL"]!;
 const key = process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? process.env["VITE_SUPABASE_ANON_KEY"]!;
