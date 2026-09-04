@@ -43,7 +43,7 @@ describe("ds004541 intake", () => {
     expect(source?.lineage).toBe("external:openneuro:ds004541");
     expect(source?.access).toBe("open");
     expect(source?.binary).toBe(true);
-    expect(source?.rangeBytes).toBeGreaterThan(0);
+    expect(source?.streamChunkBytes).toBeGreaterThan(0);
     expect(source?.filePattern.test("sub-02_ses-01_task-anesthesia_eeg.edf")).toBe(true);
     expect(source?.filePattern.test("sub-02_ses-01_task-anesthesia_events.tsv")).toBe(false);
   });
