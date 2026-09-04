@@ -23,6 +23,7 @@ const TOOLS = [
   { to: "/coebis", label: "COEBIS training data" },
   { to: "/models", label: "Model versions" },
   { to: "/blockers", label: "Blocked lineages" },
+  { to: "/bis-benchmark", label: "COEBIS vs recorded BIS" },
   { to: "/pairing", label: "Pair monitor readings" },
   { to: "/reference", label: "Reference library" },
   { to: "/pathology", label: "Pathology validation" },

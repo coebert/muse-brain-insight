@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedBisBenchmarkRouteImport } from './routes/_authenticated/bis-benchmark'
 import { Route as AuthenticatedBlockersRouteImport } from './routes/_authenticated/blockers'
 import { Route as AuthenticatedBrainwavesRouteImport } from './routes/_authenticated/brainwaves'
 import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
@@ -57,6 +58,12 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBisBenchmarkRoute =
+  AuthenticatedBisBenchmarkRouteImport.update({
+    id: '/bis-benchmark',
+    path: '/bis-benchmark',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBlockersRoute = AuthenticatedBlockersRouteImport.update({
   id: '/blockers',
   path: '/blockers',
@@ -215,6 +222,7 @@ const ApiPublicHooksCoebisRefitRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
   '/blockers': typeof AuthenticatedBlockersRoute
   '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
@@ -248,6 +256,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
   '/blockers': typeof AuthenticatedBlockersRoute
   '/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/calibrate': typeof AuthenticatedCalibrateRoute
@@ -284,6 +293,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
   '/_authenticated/blockers': typeof AuthenticatedBlockersRoute
   '/_authenticated/brainwaves': typeof AuthenticatedBrainwavesRoute
   '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
@@ -321,6 +331,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
@@ -354,6 +365,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
@@ -389,6 +401,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/bis-benchmark'
     | '/_authenticated/blockers'
     | '/_authenticated/brainwaves'
     | '/_authenticated/calibrate'
@@ -449,6 +462,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bis-benchmark': {
+      id: '/_authenticated/bis-benchmark'
+      path: '/bis-benchmark'
+      fullPath: '/bis-benchmark'
+      preLoaderRoute: typeof AuthenticatedBisBenchmarkRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/blockers': {
@@ -665,6 +685,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBisBenchmarkRoute: typeof AuthenticatedBisBenchmarkRoute
   AuthenticatedBlockersRoute: typeof AuthenticatedBlockersRoute
   AuthenticatedBrainwavesRoute: typeof AuthenticatedBrainwavesRoute
   AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
@@ -698,6 +719,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBisBenchmarkRoute: AuthenticatedBisBenchmarkRoute,
   AuthenticatedBlockersRoute: AuthenticatedBlockersRoute,
   AuthenticatedBrainwavesRoute: AuthenticatedBrainwavesRoute,
   AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
