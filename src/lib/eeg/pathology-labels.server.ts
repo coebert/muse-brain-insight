@@ -19,8 +19,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACUTE_PATHOLOGY, CHRONIC_CONDITIONS, NONE_KEY } from "./clinical-covariates";
 import {
   evaluatePathologyLabels,
+  MONITOR_CLEAR_PCT,
+  MONITOR_SUPPRESSED_PCT,
+  type DepthStateLabel,
   type LabelledEpoch,
   type PathologyLabelEvaluation,
+  type SuppressionLabel,
 } from "./pathology-labels";
 
 type Client = SupabaseClient<any, any, any>;
@@ -160,7 +164,7 @@ function keep(counts: Map<string, number>, caseRef: string): boolean {
 export function datasetStateLabel(
   label: string | null,
   labelSource: string | null,
-): LabelledEpoch["state"] {
+): DepthStateLabel | null {
   if (labelSource !== "dataset" || typeof label !== "string") return null;
   const l = label.trim().toLowerCase();
   if (l === "awake" || l === "baseline") return "awake";
@@ -174,7 +178,7 @@ export function datasetStateLabel(
 export function datasetSuppressionLabel(
   covariates: Record<string, unknown> | null,
   label: string | null,
-): LabelledEpoch["suppression"] {
+): SuppressionLabel | null {
   if (typeof label === "string" && /^(burst[_ -]?suppression|suppressed)$/i.test(label.trim())) {
     return "suppressed";
   }
@@ -186,12 +190,21 @@ export function datasetSuppressionLabel(
  * Suppression status a bedside monitor recorded. The ambiguous band between
  * the two thresholds is returned as `null` so nothing is guessed.
  */
-export function monitorSuppressionLabel(sr: number | null): LabelledEpoch["suppression"] {
+export function monitorSuppressionLabel(sr: number | null): SuppressionLabel | null {
   const pct = asPercent(sr);
   if (pct == null) return null;
   if (pct >= MONITOR_SUPPRESSED_PCT) return "suppressed";
   if (pct <= MONITOR_CLEAR_PCT) return "not_suppressed";
   return null;
+}
+
+interface MonitorRow {
+  source: string;
+  source_lineage: string;
+  case_ref: string;
+  at_seconds: number | null;
+  bis_sr: number | null;
+  bis_sef: number | null;
 }
 
 interface PairedRow {
@@ -430,12 +443,14 @@ export async function loadPathologyLabelEvaluation(
   supabase: Client,
   limit = 8000,
 ): Promise<PathologyLabelEvaluation> {
-  const [external, app] = await Promise.all([
-    loadExternal(supabase, limit),
+  const paired = await loadPairedScores(supabase);
+  const [external, monitor, app] = await Promise.all([
+    loadExternal(supabase, limit, paired),
+    loadMonitorLabels(supabase, paired),
     loadApp(supabase, Math.min(limit, 5000)),
   ]);
   return evaluatePathologyLabels(
-    [...external.rows, ...app.rows],
-    external.scanned + app.scanned,
+    [...external.rows, ...monitor.rows, ...app.rows],
+    external.scanned + monitor.scanned + app.scanned,
   );
 }
