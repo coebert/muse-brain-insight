@@ -100,9 +100,14 @@ export function openNeuroDepthLineageKey(channel: string, sampleRate: number): s
 export function buildEventDepthPoints(
   frames: ReplayFrame[],
   intervals: PathologyAnnotation[],
-  meta: { caseRef: string; channel: string },
-  options: EventDepthOptions = {},
+  meta: { caseRef: string; channel: string; refPrefix?: string },
+  options: EventDepthOptions & {
+    /** State anchors to use; defaults to the ds004541 pair. */
+    anchors?: Record<string, { depth: number; sigma: number }>;
+  } = {},
 ): EventDepthResult {
+  const anchors = options.anchors ?? EVENT_DEPTH_ANCHORS;
+  const refPrefix = meta.refPrefix ?? OPENNEURO_DEPTH_DEVICE_ID;
   const stride = Math.max(1, options.strideSeconds ?? 10);
   const guard = Math.max(0, options.guardSeconds ?? 60);
   const minInterval = Math.max(guard * 2 + stride, options.minIntervalSeconds ?? 180);
@@ -110,7 +115,8 @@ export function buildEventDepthPoints(
   const states: Record<string, number> = {};
 
   const usable = intervals.filter((iv) => {
-    const anchor = EVENT_DEPTH_ANCHORS[iv.label ?? ""];
+    const anchor = anchors[iv.label ?? ""];
+
     if (!anchor) {
       rejected.transition++;
       return false;
@@ -124,7 +130,7 @@ export function buildEventDepthPoints(
 
   const points: EventDepthPoint[] = [];
   for (const iv of usable) {
-    const anchor = EVENT_DEPTH_ANCHORS[iv.label!]!;
+    const anchor = anchors[iv.label!]!;
     const from = iv.startSeconds + guard;
     const to = iv.stopSeconds - guard;
     let taken = -Infinity;
@@ -152,7 +158,7 @@ export function buildEventDepthPoints(
           ? Number(frame.suppressionRatio.toFixed(1))
           : null,
         reliable: true,
-        externalRef: `openneuro-ds004541:${meta.caseRef}:${meta.channel}:${at.toFixed(1)}`,
+        externalRef: `${refPrefix}:${meta.caseRef}:${meta.channel}:${at.toFixed(1)}`,
       });
       states[iv.label!] = (states[iv.label!] ?? 0) + 1;
     }
