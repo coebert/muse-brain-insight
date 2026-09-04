@@ -160,7 +160,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 label={{ value: "SEF95 Hz", angle: 90, position: "insideRight", fontSize: 10 }}
               />
               <Tooltip
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }}
                 labelFormatter={(v: number) => `${Math.round(Number(v) / 60)} min into the case`}
               />
               <Legend />
@@ -169,8 +169,8 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="sr"
                 name="Suppression ratio %"
-                stroke="hsl(var(--critical))"
-                fill="hsl(var(--critical))"
+                stroke="var(--critical)"
+                fill="var(--critical)"
                 fillOpacity={0.12}
                 strokeOpacity={0.5}
                 dot={false}
@@ -182,7 +182,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="reference"
                 name={row.reference.isMonitor ? "Recorded BIS" : "Reference"}
-                stroke="hsl(var(--signal))"
+                stroke="var(--signal)"
                 dot={false}
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -192,7 +192,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="coebis"
                 name="COEBIS"
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 dot={false}
                 strokeWidth={2}
                 isAnimationActive={false}
@@ -203,7 +203,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="raw"
                 name="Open index"
-                stroke="hsl(var(--muted-foreground))"
+                stroke="var(--muted-foreground)"
                 strokeDasharray="4 4"
                 dot={false}
                 isAnimationActive={false}
@@ -213,7 +213,7 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 type="monotone"
                 dataKey="sef"
                 name="SEF95 (Hz)"
-                stroke="hsl(var(--accent-foreground))"
+                stroke="var(--accent-foreground)"
                 strokeDasharray="2 3"
                 dot={false}
                 isAnimationActive={false}
@@ -241,18 +241,18 @@ function CaseDetail({ row }: { row: PatientScoreRow }) {
                 label={{ value: "gap", angle: -90, position: "insideLeft", fontSize: 10 }}
               />
               <Tooltip
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }}
                 labelFormatter={(v: number) => `${Math.round(Number(v) / 60)} min into the case`}
               />
-              <ReferenceLine y={0} stroke="hsl(var(--signal))" />
-              <ReferenceLine y={10} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
-              <ReferenceLine y={-10} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+              <ReferenceLine y={0} stroke="var(--signal)" />
+              <ReferenceLine y={10} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
+              <ReferenceLine y={-10} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
               <Area
                 type="monotone"
                 dataKey="gap"
                 name={`${row.divergence.source === "coebis" ? "COEBIS" : "Open index"} − reference`}
-                stroke="hsl(var(--primary))"
-                fill="hsl(var(--primary))"
+                stroke="var(--primary)"
+                fill="var(--primary)"
                 fillOpacity={0.2}
                 dot={false}
                 isAnimationActive={false}
