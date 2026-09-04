@@ -1451,7 +1451,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reference_coverage: {
+        Args: never
+        Returns: {
+          case_count: number
+          format_id: string
+          row_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

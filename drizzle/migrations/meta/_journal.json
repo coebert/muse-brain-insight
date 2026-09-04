@@ -50,6 +50,13 @@
       "when": 1788462852126,
       "tag": "0006_coebis_refit_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788523498573,
+      "tag": "0007_reference_coverage_function",
+      "breakpoints": true
     }
   ]
 }
