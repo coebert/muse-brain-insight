@@ -292,7 +292,10 @@ function FlagsPage() {
   const load = useServerFn(getSuppressionDashboard);
   const { data, isLoading, error } = useQuery({
     queryKey: ["suppression-dashboard"],
-    queryFn: () => load({ data: {} }),
+    // Every labelled reading, so the cohort figures cover the same patients
+    // the calibration in force was fitted and graded on.
+    queryFn: () => load({ data: { limit: 80000 } }),
+
     staleTime: 60_000,
   });
 
