@@ -7,5 +7,5 @@ const key = process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ?? process.env["VITE_SU
 const sb = createClient(url, key, { auth:{persistSession:false,autoRefreshToken:false}, global:{headers:{Authorization:`Bearer ${session.access_token}`}}});
 const userId = (await sb.auth.getUser(session.access_token)).data.user!.id;
 const admin = createClient(url, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, { auth:{persistSession:false,autoRefreshToken:false}});
-const r = await runRefitForUser(admin as never, userId, "dose-i-raw-intake");
+const r = await runRefitForUser(admin as never, userId, (process.env["REFIT_TRIGGER"] ?? "manual"));
 console.log(JSON.stringify(r, null, 2).slice(0, 6000));
