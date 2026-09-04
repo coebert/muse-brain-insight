@@ -584,14 +584,25 @@ export async function loadPathologyLabelEvaluation(
   supabase: Client,
   limit = 8000,
 ): Promise<PathologyLabelEvaluation> {
-  const paired = await loadPairedScores(supabase);
+  const paired = await loadPaired(supabase);
   const [external, monitor, app] = await Promise.all([
-    loadExternal(supabase, limit, paired),
-    loadMonitorLabels(supabase, paired),
+    loadExternal(supabase, limit, paired.index),
+    loadMonitorLabels(supabase, paired.index),
     loadApp(supabase, Math.min(limit, 5000)),
   ]);
-  return evaluatePathologyLabels(
-    [...external.rows, ...monitor.rows, ...app.rows],
-    external.scanned + monitor.scanned + app.scanned,
+  // A case whose bedside suppression ratio already arrived as a reference row
+  // must not be counted twice through its paired readings.
+  const monitorCases = new Set(
+    monitor.rows.map((r) => r.caseRef.slice(r.caseRef.indexOf("/") + 1)),
   );
+  const pairedLabels = paired.labels
+    .map((r) =>
+      r.suppression && monitorCases.has(r.caseRef) ? { ...r, suppression: null } : r,
+    )
+    .filter((r) => r.suppression != null || r.state != null);
+  return evaluatePathologyLabels(
+    [...external.rows, ...monitor.rows, ...pairedLabels, ...app.rows],
+    external.scanned + monitor.scanned + paired.scanned + app.scanned,
+  );
+
 }
