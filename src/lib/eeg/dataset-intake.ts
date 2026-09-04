@@ -39,6 +39,7 @@ export type IntakeKind =
   | "physionet-power"
   | "dose1"
   | "dose1-peeg"
+  | "dose1-raw"
   | "icare"
   | "chbmit-edf"
   | "openneuro-bids-edf";
@@ -109,6 +110,12 @@ export interface IntakeSource {
   archivePattern?: RegExp;
   /** Cap on the archive download itself, separate from the per-member cap. */
   maxArchiveBytes?: number;
+  /**
+   * The archive is too large to download whole, so only its index is read and
+   * each member is fetched later with its own byte range. Requires the host to
+   * honour range requests; the scan fails loudly if it does not.
+   */
+  archiveIndexOnly?: boolean;
   /**
    * Files are binary (EDF) rather than text, so they are fetched as bytes and
    * digested as bytes. Text-only parsers must not be used with this.
@@ -201,6 +208,31 @@ export const INTAKE_SOURCES: IntakeSource[] = [
     montage: SEDATION_ICU_MONTAGE.dose1,
     maxFilesPerRun: 10,
     maxBytesPerFile: 40_000_000,
+  },
+  {
+    id: "zenodo-dose-i-raw",
+    label: "DOSE-I — raw sedation EEG (Zenodo)",
+    // The 724 MB `data.zip` holds one CSV per procedure with the two raw
+    // frontal channels and the MOAA/S score. It is never downloaded whole:
+    // the archive index is read from its tail and each recording is pulled
+    // with a single byte range.
+    kind: "dose1-raw",
+    lineage: "external:zenodo:dose-i-raw",
+    datasetVersion: "2025-11 (v1)",
+    licence: "Creative Commons Attribution 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+    access: "open",
+    accessNote:
+      "Open CC-BY record with a click-through data use agreement: no re-identification, research use only.",
+    homepage: "https://zenodo.org/records/18483292",
+    listing: { type: "zenodo", recordUrl: "https://zenodo.org/api/records/18483292" },
+    filePattern: /\.csv$/i,
+    archivePattern: /^data\.zip$/i,
+    archiveIndexOnly: true,
+    fallbackSampleRate: 125,
+    montage: SEDATION_ICU_MONTAGE.dose1,
+    maxFilesPerRun: 12,
+    maxBytesPerFile: 60_000_000,
   },
   {
     id: "physionet-chbmit",
