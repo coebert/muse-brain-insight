@@ -179,6 +179,7 @@ export function caseTrace(
   let capEngaged = 0;
   let maxCapShift = 0;
   let falselyLight = 0;
+  const bisAcc = newBisAccumulator();
 
   for (const p of ordered) {
     const estimatedSr = model ? predictSr(model, p.appSr, p.appIndex) : p.appSr;
@@ -199,6 +200,9 @@ export function caseTrace(
     if (paired) capped.push(paired.cappedIndex);
     monitorSrs.push(p.bisSr);
     estimatedSrs.push(estimatedSr);
+    if (p.bis != null && p.appIndex != null && paired) {
+      addBisReading(bisAcc, p.bis, p.appIndex, paired.cappedIndex);
+    }
 
     samples.push({
       at: p.atSeconds,
@@ -221,6 +225,7 @@ export function caseTrace(
     points: ordered.length,
     durationSeconds: Math.max(0, last - first),
     flags,
+    bis: summariseBis(bisAcc),
     meanIndex: mean(indices),
     meanCappedIndex: mean(capped),
     meanMonitorSr: mean(monitorSrs) ?? 0,
@@ -231,6 +236,7 @@ export function caseTrace(
     samples: thin(samples),
   };
 }
+
 
 /** Gate status read straight off the cross-validated fit. */
 export function gateStatus(fit: SuppressionFitReport): GateStatus {
