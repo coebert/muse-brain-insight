@@ -12,6 +12,7 @@ import { CoebisDriftAlert } from "@/components/monitor/CoebisDriftAlert";
 import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionComparison";
 import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
+import { BisModelPanel } from "@/components/monitor/BisModelPanel";
 import { ProspectiveValidationPanel } from "@/components/monitor/ProspectiveValidationPanel";
 import { DataExchangePanel } from "@/components/monitor/DataExchangePanel";
 import { formatClock } from "@/lib/eeg/format";
@@ -50,6 +51,7 @@ export const Route = createFileRoute("/_authenticated/coebis")({
 
 const TABS = [
   { key: "readings", label: "Paired readings" },
+  { key: "bis-model", label: "BIS model" },
   { key: "validation", label: "Validation" },
   { key: "prospective", label: "Prospective" },
   { key: "residuals", label: "Residuals" },
@@ -232,6 +234,8 @@ function CoebisDataPage() {
               </button>
             ))}
           </div>
+
+          {tab === "bis-model" ? <BisModelPanel /> : null}
 
           {tab === "validation" ? <CoebisValidationPanel /> : null}
 

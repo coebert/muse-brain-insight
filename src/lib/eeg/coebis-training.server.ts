@@ -63,7 +63,7 @@ export async function loadTrainingMatrix(
     let query = supabase
       .from("bis_paired_points")
       .select(
-        "at_seconds, bis, app_index, app_sr, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
+        "at_seconds, bis, app_index, app_sr, app_sef, session_id, reliable, sqi, depth_confidence, recorded_at, context, ce, features, source_lineage",
       );
     if (userId) query = query.eq("user_id", userId);
     const { data: pointRows, error } = await query
@@ -122,6 +122,7 @@ export async function loadTrainingMatrix(
       bis: Number(r["bis"]),
       appIndex: Number(r["app_index"]),
       appSr: r["app_sr"] == null ? null : Number(r["app_sr"]),
+      appSef: r["app_sef"] == null ? null : Number(r["app_sef"]),
       sessionId,
       reliable: Boolean(r["reliable"]),
       sqi: r["sqi"] == null ? null : Number(r["sqi"]),
