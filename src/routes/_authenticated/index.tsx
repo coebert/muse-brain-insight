@@ -40,6 +40,7 @@ import { ageBand } from "@/lib/eeg/save";
 import { CaseDialogs } from "@/components/monitor/CaseDialogs";
 import { DetectionThresholds } from "@/components/monitor/DetectionThresholds";
 import { useCaseAi } from "@/hooks/useCaseAi";
+import { CoebisV2LivePanel } from "@/components/monitor/CoebisV2LivePanel";
 import { DepthWindowPanel } from "@/components/monitor/DepthWindowPanel";
 import { SeizureRiskPanel } from "@/components/monitor/SeizureRiskPanel";
 import { SeizureAlertCards } from "@/components/monitor/SeizureAlertCards";
@@ -904,6 +905,12 @@ function Monitor() {
                 covariates={depthTargetInputs}
                 entropy={latest?.depth.entropy ?? null}
                 adjunct={latest?.depth.adjunct ?? null}
+              />
+              {/* The rebuilt engine, read on the band actually streaming. */}
+              <CoebisV2LivePanel
+                reading={monitor.coebisV2}
+                setup={monitor.coebisV2Setup}
+                profile={monitor.deviceProfile}
               />
               <TciPanel
                 infusions={infusions}
