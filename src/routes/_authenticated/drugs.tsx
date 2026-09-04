@@ -195,7 +195,7 @@ function DrugLibraryPage() {
                                   <span className="metric-value">{l.cases} cases</span>
                                   <span className="text-[11px] text-muted-foreground">
                                     {l.epochs.toLocaleString()} epochs
-                                    {l.meanScore == null
+                                    {e.role !== "corrected" || l.meanScore == null
                                       ? ""
                                       : ` · mean pattern ${l.meanScore.toFixed(2)}`}
                                   </span>
