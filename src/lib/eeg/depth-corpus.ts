@@ -284,15 +284,9 @@ export function pairCorpusCase(entry: CorpusCase, options: PairOptions): CorpusC
   const rejected = { unmatched: 0, noIndex: 0 };
   const points: CorpusPoint[] = [];
 
-  // Scores are timed either by the file's own clock or, when there is none, by
-  // the sample position they sat on divided by the stated rate.
-  const timed = entry.scores
-    .map((s) => ({
-      ...s,
-      at: entry.scores.length && Number.isFinite(s.at) ? s.at : 0,
-    }))
-    .map((s) => ({ ...s, at: s.at > entry.samples.length ? s.at : s.at }))
-    .sort((a, b) => a.at - b.at);
+  // Scores arrive already in seconds: either the file's own clock, or the
+  // sample position converted by `retimeByRate` before this call.
+  const timed = [...entry.scores].sort((a, b) => a.at - b.at);
 
   let taken = -Infinity;
   let j = 0;
