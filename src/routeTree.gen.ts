@@ -39,6 +39,7 @@ import { Route as AuthenticatedSuppressionRouteImport } from './routes/_authenti
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
+import { Route as AuthenticatedCaseCaseRefRouteImport } from './routes/_authenticated/case.$caseRef'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
 import { Route as ApiPublicHooksCoebisRefitRouteImport } from './routes/api/public/hooks/coebis-refit'
 
@@ -193,6 +194,12 @@ const AuthenticatedValidateRoute = AuthenticatedValidateRouteImport.update({
   path: '/validate',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCaseCaseRefRoute =
+  AuthenticatedCaseCaseRefRouteImport.update({
+    id: '/case/$caseRef',
+    path: '/case/$caseRef',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
   id: '/report/$id',
   path: '/report/$id',
@@ -235,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof AuthenticatedTermsRoute
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
+  '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/trends': typeof AuthenticatedTrendsRoute
   '/validate': typeof AuthenticatedValidateRoute
   '/': typeof AuthenticatedIndexRoute
+  '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
@@ -303,6 +312,7 @@ export interface FileRoutesById {
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/trends'
     | '/validate'
+    | '/case/$caseRef'
     | '/report/$id'
     | '/api/public/hooks/coebis-refit'
   fileRoutesByTo: FileRoutesByTo
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/trends'
     | '/validate'
     | '/'
+    | '/case/$caseRef'
     | '/report/$id'
     | '/api/public/hooks/coebis-refit'
   id:
@@ -405,6 +417,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trends'
     | '/_authenticated/validate'
     | '/_authenticated/'
+    | '/_authenticated/case/$caseRef'
     | '/_authenticated/report/$id'
     | '/api/public/hooks/coebis-refit'
   fileRoutesById: FileRoutesById
@@ -627,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedValidateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/case/$caseRef': {
+      id: '/_authenticated/case/$caseRef'
+      path: '/case/$caseRef'
+      fullPath: '/case/$caseRef'
+      preLoaderRoute: typeof AuthenticatedCaseCaseRefRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/report/$id': {
       id: '/_authenticated/report/$id'
       path: '/report/$id'
@@ -673,6 +693,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedCaseCaseRefRoute: typeof AuthenticatedCaseCaseRefRoute
   AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
 }
 
@@ -705,6 +726,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedCaseCaseRefRoute: AuthenticatedCaseCaseRefRoute,
   AuthenticatedReportIdRoute: AuthenticatedReportIdRoute,
 }
 

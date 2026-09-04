@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
 import { Badge } from "@/components/ui/badge";
@@ -283,6 +283,11 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
         <div className="mt-3">
           <FlagCounts flags={trace.flags} />
         </div>
+        <Button asChild variant="outline" size="sm" className="mt-3 min-h-11 sm:min-h-9">
+          <Link to="/case/$caseRef" params={{ caseRef: trace.caseRef }}>
+            Open case file <ArrowRight className="size-4" />
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
