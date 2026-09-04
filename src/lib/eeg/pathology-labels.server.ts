@@ -19,8 +19,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ACUTE_PATHOLOGY, CHRONIC_CONDITIONS, NONE_KEY } from "./clinical-covariates";
 import {
   evaluatePathologyLabels,
+  MONITOR_CLEAR_PCT,
+  MONITOR_SUPPRESSED_PCT,
+  type DepthStateLabel,
   type LabelledEpoch,
   type PathologyLabelEvaluation,
+  type SuppressionLabel,
 } from "./pathology-labels";
 
 type Client = SupabaseClient<any, any, any>;
@@ -156,7 +160,149 @@ function keep(counts: Map<string, number>, caseRef: string): boolean {
   return seen % 10 === 0;
 }
 
-async function loadExternal(supabase: Client, limit: number): Promise<{
+/** Anaesthetic state a dataset's own event file recorded for one epoch. */
+export function datasetStateLabel(
+  label: string | null,
+  labelSource: string | null,
+): DepthStateLabel | null {
+  if (labelSource !== "dataset" || typeof label !== "string") return null;
+  const l = label.trim().toLowerCase();
+  if (l === "awake" || l === "baseline") return "awake";
+  if (l === "induction") return "induction";
+  if (l === "anaesthetised" || l === "anesthetised" || l === "maintenance") return "anaesthetised";
+  if (l === "emergence" || l === "recovery") return "emergence";
+  return null;
+}
+
+/** Suppression a dataset annotated for one epoch, if it says so explicitly. */
+export function datasetSuppressionLabel(
+  covariates: Record<string, unknown> | null,
+  label: string | null,
+): SuppressionLabel | null {
+  if (typeof label === "string" && /^(burst[_ -]?suppression|suppressed)$/i.test(label.trim())) {
+    return "suppressed";
+  }
+  const monitorSr = num(covariates?.["monitor_suppression_ratio"] ?? covariates?.["bis_sr"]);
+  return monitorSuppressionLabel(monitorSr);
+}
+
+/**
+ * Suppression status a bedside monitor recorded. The ambiguous band between
+ * the two thresholds is returned as `null` so nothing is guessed.
+ */
+export function monitorSuppressionLabel(sr: number | null): SuppressionLabel | null {
+  const pct = asPercent(sr);
+  if (pct == null) return null;
+  if (pct >= MONITOR_SUPPRESSED_PCT) return "suppressed";
+  if (pct <= MONITOR_CLEAR_PCT) return "not_suppressed";
+  return null;
+}
+
+interface MonitorRow {
+  source: string;
+  source_lineage: string;
+  case_ref: string;
+  at_seconds: number | null;
+  bis_sr: number | null;
+  bis_sef: number | null;
+}
+
+interface PairedRow {
+  external_ref: string | null;
+  at_seconds: number | null;
+  app_index: number | null;
+  app_sr: number | null;
+}
+
+/**
+ * Case key a paired app reading belongs to. Paired refs are
+ * `openneuro-ds004541:<case>:<channel>:<t>` and `vitaldb:<case>:<t>`.
+ */
+export function pairedCaseRef(ref: string | null): string | null {
+  if (!ref) return null;
+  const parts = ref.split(":");
+  if (parts.length < 3) return null;
+  if (/^vitaldb/i.test(parts[0] ?? "")) return `vitaldb-${parts[1]}`;
+  return parts[1] ?? null;
+}
+
+function scoreKey(caseRef: string, atSeconds: number): string {
+  return `${caseRef}|${Math.round(atSeconds)}`;
+}
+
+/**
+ * App-side indices produced by replaying an imported recording, keyed by case
+ * and second, so a recorded label can be graded against what the app scored.
+ */
+async function loadPairedScores(
+  supabase: Client,
+): Promise<Map<string, { coebis: number | null; suppressionRatio: number | null }>> {
+  const index = new Map<string, { coebis: number | null; suppressionRatio: number | null }>();
+  const { data, error } = await supabase
+    .from("bis_paired_points")
+    .select("external_ref, at_seconds, app_index, app_sr")
+    .not("external_ref", "is", null)
+    .limit(20000);
+  if (error) throw new Error(error.message);
+  for (const r of (data ?? []) as unknown as PairedRow[]) {
+    const caseRef = pairedCaseRef(r.external_ref);
+    if (!caseRef) continue;
+    index.set(scoreKey(caseRef, Number(r.at_seconds ?? 0)), {
+      coebis: num(r.app_index),
+      suppressionRatio: asPercent(num(r.app_sr)),
+    });
+  }
+  return index;
+}
+
+/** Monitor-recorded suppression labels (e.g. VitalDB bedside BIS SR). */
+async function loadMonitorLabels(
+  supabase: Client,
+  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+): Promise<{ rows: LabelledEpoch[]; scanned: number }> {
+  const { data, error } = await supabase
+    .from("external_reference_points")
+    .select("source, source_lineage, case_ref, at_seconds, bis_sr, bis_sef")
+    .not("bis_sr", "is", null)
+    .limit(20000);
+  if (error) throw new Error(error.message);
+  const page = (data ?? []) as unknown as MonitorRow[];
+  const counts = new Map<string, number>();
+  const rows: LabelledEpoch[] = [];
+  for (const r of page) {
+    const suppression = monitorSuppressionLabel(num(r.bis_sr));
+    if (!suppression) continue;
+    const caseRef = `${r.source_lineage}/${r.case_ref}`;
+    if (!keep(counts, caseRef)) continue;
+    const at = Number(r.at_seconds ?? 0);
+    const scores = paired.get(scoreKey(r.case_ref, at));
+    rows.push({
+      lineage: r.source_lineage,
+      caseRef,
+      atSeconds: at,
+      labelSource: "monitor",
+      seizure: null,
+      cns: null,
+      suppression,
+      state: null,
+      scores: {
+        coebis: scores?.coebis ?? null,
+        seizureScore: null,
+        // The app's own suppression figure when the recording was replayed;
+        // never the monitor's own SR, which is the label being graded.
+        suppressionRatio: scores?.suppressionRatio ?? null,
+        sef95: null,
+      },
+    });
+  }
+  return { rows, scanned: page.length };
+}
+
+async function loadExternal(
+  supabase: Client,
+  limit: number,
+  paired: Map<string, { coebis: number | null; suppressionRatio: number | null }>,
+): Promise<{
   rows: LabelledEpoch[];
   scanned: number;
 }> {
@@ -178,26 +324,33 @@ async function loadExternal(supabase: Client, limit: number): Promise<{
       const covariates = r.covariates ?? null;
       const seizure = datasetSeizureLabel(covariates, r.label, r.label_source);
       const cns = datasetCnsLabel(covariates);
-      if (!seizure && !cns) continue;
+      const state = datasetStateLabel(r.label, r.label_source);
+      const suppression = datasetSuppressionLabel(covariates, r.label);
+      if (!seizure && !cns && !state && !suppression) continue;
       const caseRef = `${r.source_lineage}/${r.case_ref}`;
       if (!keep(counts, caseRef)) continue;
+      const at = Number(r.at_seconds ?? 0);
+      const appScores = paired.get(scoreKey(r.case_ref, at));
       rows.push({
         lineage: r.source_lineage,
         caseRef,
-        atSeconds: Number(r.at_seconds ?? 0),
+        atSeconds: at,
         labelSource: "dataset",
         seizure,
         cns,
+        suppression,
+        state,
         scores: {
-          coebis: null,
+          coebis: appScores?.coebis ?? null,
           seizureScore: null,
-          suppressionRatio: asPercent(num(r.suppression_ratio)),
+          suppressionRatio: appScores?.suppressionRatio ?? asPercent(num(r.suppression_ratio)),
           sef95: num(r.sef95),
         },
       });
     }
     if (page.length < PAGE) break;
   }
+
   return { rows, scanned };
 }
 
@@ -290,12 +443,14 @@ export async function loadPathologyLabelEvaluation(
   supabase: Client,
   limit = 8000,
 ): Promise<PathologyLabelEvaluation> {
-  const [external, app] = await Promise.all([
-    loadExternal(supabase, limit),
+  const paired = await loadPairedScores(supabase);
+  const [external, monitor, app] = await Promise.all([
+    loadExternal(supabase, limit, paired),
+    loadMonitorLabels(supabase, paired),
     loadApp(supabase, Math.min(limit, 5000)),
   ]);
   return evaluatePathologyLabels(
-    [...external.rows, ...app.rows],
-    external.scanned + app.scanned,
+    [...external.rows, ...monitor.rows, ...app.rows],
+    external.scanned + monitor.scanned + app.scanned,
   );
 }

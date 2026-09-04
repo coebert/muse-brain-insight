@@ -557,8 +557,8 @@ export function evaluatePathologyLabels(
     if (axis) axes.push(axis);
   }
 
-  const notes: string[] = [];
   const suppressionRows = epochs.filter((e) => e.suppression != null);
+
   const suppressionAxis = buildAxis(
     "recorded-suppression",
     "Recorded burst suppression",

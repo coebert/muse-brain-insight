@@ -349,6 +349,9 @@ function PathologyPage() {
                       <th className="py-1 pr-3 font-normal">Seizure-labelled</th>
                       <th className="py-1 pr-3 font-normal">Ictal</th>
                       <th className="py-1 pr-3 font-normal">CNS-labelled</th>
+                      <th className="py-1 pr-3 font-normal">Suppression-labelled</th>
+                      <th className="py-1 pr-3 font-normal">Suppressed</th>
+                      <th className="py-1 pr-3 font-normal">State-labelled</th>
                       <th className="py-1 pr-3 font-normal">Label source</th>
                       <th className="py-1 font-normal">Scores stored</th>
                     </tr>
@@ -362,6 +365,9 @@ function PathologyPage() {
                         <td className="py-1 pr-3 font-mono">{l.seizureLabelled}</td>
                         <td className="py-1 pr-3 font-mono">{l.ictal}</td>
                         <td className="py-1 pr-3 font-mono">{l.cnsLabelled}</td>
+                        <td className="py-1 pr-3 font-mono">{l.suppressionLabelled}</td>
+                        <td className="py-1 pr-3 font-mono">{l.suppressed}</td>
+                        <td className="py-1 pr-3 font-mono">{l.stateLabelled}</td>
                         <td className="py-1 pr-3">{l.labelSources.join(", ")}</td>
                         <td className="py-1">
                           {l.scoresPresent
@@ -372,7 +378,7 @@ function PathologyPage() {
                     ))}
                     {!data.lineages.length ? (
                       <tr>
-                        <td colSpan={8} className="py-3 text-muted-foreground">
+                        <td colSpan={11} className="py-3 text-muted-foreground">
                           No independently labelled epochs are stored yet.
                         </td>
                       </tr>
