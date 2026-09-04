@@ -124,6 +124,8 @@ function AuthPage() {
     if (result.error) toast.error("Google sign-in failed.");
   }
 
+  if (!mounted) return null;
+
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background px-4">
       <div className="panel w-full max-w-sm px-6 py-7">
