@@ -173,6 +173,8 @@ export function cvaPoint(input: CvaEpochInput, settings: CvaSettings): CvaPoint 
     total > 0;
   return {
     t: input.t,
+    leftSqi: input.leftSqi ?? 0,
+    rightSqi: input.rightSqi ?? 0,
     leftPower,
     rightPower,
     asymmetry: total > 0 ? ((leftPower - rightPower) / total) * 100 : 0,
