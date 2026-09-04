@@ -264,9 +264,7 @@ function SuppressionPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Metric
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <Metric
                     label="Suppression found"
                     value={
@@ -284,7 +282,6 @@ function SuppressionPage() {
                   <Metric
                     label="Readings"
                     value={data.fit.points.toLocaleString()}
-
                     hint={`${data.fit.cases} independent cases`}
                   />
                   <Metric
@@ -293,6 +290,7 @@ function SuppressionPage() {
                     hint={`At or above ${MONITOR_SUPPRESSED_PCT}% monitor SR`}
                   />
                 </div>
+
                 {data.fit.blockedBy ? (
                   <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
                     Not promoted: {data.fit.blockedBy}.
