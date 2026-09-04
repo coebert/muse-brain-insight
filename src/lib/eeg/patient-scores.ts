@@ -251,6 +251,54 @@ function referenceLabel(kind: ReferenceKind, monitor: string | null): string {
   return monitor ?? "unspecified reference";
 }
 
+/**
+ * Where the displayed index and the reference part company across a case.
+ * The widest gap is reported with the second it happened and both values, so
+ * it can be read against the suppression and spectral-edge context rather
+ * than as a bare error figure.
+ */
+export function divergenceOf(
+  samples: { at: number; reference: number; displayed: number; sr: number | null }[],
+  source: DivergenceSummary["source"],
+): DivergenceSummary {
+  const usable = samples.filter(
+    (s) => Number.isFinite(s.reference) && Number.isFinite(s.displayed),
+  );
+  if (!usable.length) {
+    return {
+      source,
+      meanAbs: null,
+      maxAbs: null,
+      worstAt: null,
+      worstReference: null,
+      worstDisplayed: null,
+      beyond10Pct: null,
+      beyond10SuppressedPct: null,
+    };
+  }
+  let worst = usable[0]!;
+  for (const s of usable) {
+    if (Math.abs(s.displayed - s.reference) > Math.abs(worst.displayed - worst.reference)) worst = s;
+  }
+  const suppressed = usable.filter((s) => s.sr != null && s.sr >= SUPPRESSION_PCT_THRESHOLD);
+  const beyond = (list: typeof usable) =>
+    list.length
+      ? r1((list.filter((s) => Math.abs(s.displayed - s.reference) > 10).length / list.length) * 100)
+      : null;
+  return {
+    source,
+    meanAbs: r1(meanOf(usable.map((s) => Math.abs(s.displayed - s.reference)))),
+    maxAbs: r1(Math.abs(worst.displayed - worst.reference)),
+    worstAt: Math.round(worst.at),
+    worstReference: r1(worst.reference),
+    worstDisplayed: r1(worst.displayed),
+    beyond10Pct: beyond(usable),
+    beyond10SuppressedPct: suppressed.length ? beyond(suppressed) : null,
+  };
+}
+
+
+
 function verdictFor(row: {
   reference: ReferenceMeta;
   hasModel: boolean;
