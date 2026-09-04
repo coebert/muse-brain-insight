@@ -99,6 +99,13 @@
       "when": 1788541335387,
       "tag": "0013_add_ketamine_flag_to_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788541852867,
+      "tag": "0014_create_bis_model_versions",
+      "breakpoints": true
     }
   ]
 }

@@ -141,6 +141,60 @@ export type Database = {
           },
         ]
       }
+      bis_model_versions: {
+        Row: {
+          coefficients: Json
+          correlation_gain: number | null
+          created_at: string
+          data_digest: string | null
+          id: string
+          is_active: boolean
+          lineage: string
+          mae_gain: number | null
+          metrics_after: Json | null
+          metrics_before: Json | null
+          note: string | null
+          terms: Json
+          training: Json | null
+          user_id: string
+          version: number
+        }
+        Insert: {
+          coefficients: Json
+          correlation_gain?: number | null
+          created_at?: string
+          data_digest?: string | null
+          id?: string
+          is_active?: boolean
+          lineage: string
+          mae_gain?: number | null
+          metrics_after?: Json | null
+          metrics_before?: Json | null
+          note?: string | null
+          terms: Json
+          training?: Json | null
+          user_id: string
+          version: number
+        }
+        Update: {
+          coefficients?: Json
+          correlation_gain?: number | null
+          created_at?: string
+          data_digest?: string | null
+          id?: string
+          is_active?: boolean
+          lineage?: string
+          mae_gain?: number | null
+          metrics_after?: Json | null
+          metrics_before?: Json | null
+          note?: string | null
+          terms?: Json
+          training?: Json | null
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       bis_paired_points: {
         Row: {
           app_index: number
