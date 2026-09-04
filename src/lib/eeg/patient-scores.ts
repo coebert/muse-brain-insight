@@ -98,7 +98,35 @@ export interface PatientSeriesSample {
   coebis: number | null;
   sr: number | null;
   sef: number | null;
+  /** Reference monitor's own suppression ratio, percent, when it reports one. */
+  refSr: number | null;
+  /** Reference monitor's own spectral edge, Hz, when it reports one. */
+  refSef: number | null;
+  /**
+   * Displayed index minus the reference at this instant: COEBIS where a model
+   * is in force, the open index otherwise. Positive = the app reads lighter.
+   */
+  gap: number | null;
 }
+
+/** Where the displayed index sits against the reference across the case. */
+export interface DivergenceSummary {
+  /** Which trace the gap describes. */
+  source: "coebis" | "open-index";
+  meanAbs: number | null;
+  maxAbs: number | null;
+  /** Case-clock second of the widest gap. */
+  worstAt: number | null;
+  /** Reference value at the widest gap. */
+  worstReference: number | null;
+  /** Displayed index at the widest gap. */
+  worstDisplayed: number | null;
+  /** Share of readings more than 10 points from the reference, percent. */
+  beyond10Pct: number | null;
+  /** Same, restricted to readings at or above the suppression threshold. */
+  beyond10SuppressedPct: number | null;
+}
+
 
 export interface Spread {
   median: number | null;
