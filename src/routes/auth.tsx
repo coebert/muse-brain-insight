@@ -48,6 +48,13 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<PasskeyFailure | null>(null);
   const [standaloneUrl, setStandaloneUrl] = useState<string | undefined>(undefined);
+  // Session state lives in browser storage, so only render the form after
+  // hydration; server and first client render both produce null (no mismatch).
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user) void navigate({ to: "/sessions" });
