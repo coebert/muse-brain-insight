@@ -19,6 +19,7 @@ import {
   type KetamineSignature,
 } from "./ketamine";
 import type { DepthStateLabel, SuppressionLabel } from "./pathology-labels";
+import { gradeKetamineSubtraction } from "./ketamine-grading";
 
 /** Index at or below which an epoch reads as anaesthetised (from the DOSE-I / ds004541 grading). */
 export const ANAESTHESIA_THRESHOLD = 83;
@@ -115,6 +116,8 @@ export interface KetamineCaseSummary {
 
 export interface KetamineCaseReport {
   cases: KetamineCaseSummary[];
+  /** Before/after grading of the subtraction against the recorded labels. */
+  grading: import("./ketamine-grading").KetamineGradingReport;
   /** Epochs read out of the database, before per-case thinning. */
   scanned: number;
   totals: {
@@ -287,6 +290,7 @@ export function summariseKetamineCases(
 
   return {
     cases,
+    grading: gradeKetamineSubtraction(epochs),
     scanned,
     totals: {
       cases: cases.length,
