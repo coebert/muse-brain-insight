@@ -133,9 +133,14 @@ function DiscoveryPage() {
               </p>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="ml-auto min-h-11">
-            <Link to="/performance">Model performance</Link>
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="min-h-11">
+              <Link to="/terms">Term library</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="min-h-11">
+              <Link to="/performance">Model performance</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
