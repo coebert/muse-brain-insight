@@ -18,6 +18,8 @@ import {
   type KetamineFeatures,
   type KetamineSignature,
 } from "./ketamine";
+import type { KetamineEvidence } from "./ketamine";
+
 import type { DepthStateLabel, SuppressionLabel } from "./pathology-labels";
 import type { KetamineGradingReport } from "./ketamine-grading";
 
