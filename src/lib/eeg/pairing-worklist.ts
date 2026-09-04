@@ -81,11 +81,17 @@ export function suggestMoments(epochs: PairingMoment[], count: number): PairingM
   const inner = usable.filter((e) => e.at >= lo && e.at <= hi);
   const pool = inner.length >= count ? inner : usable;
   if (pool.length <= count) return pool;
-  const step = (pool.length - 1) / (count - 1 || 1);
+  // Pick across the depth range rather than across the clock: a set of readings
+  // all taken while the patient was awake constrains the fit at one end only.
+  const byIndex = [...pool].sort((a, b) => a.appIndex - b.appIndex || a.at - b.at);
+  const step = (byIndex.length - 1) / (count - 1 || 1);
   const picked: PairingMoment[] = [];
-  for (let i = 0; i < count; i++) picked.push(pool[Math.round(i * step)]!);
-  return picked.filter((m, i, arr) => arr.findIndex((o) => o.at === m.at) === i);
+  for (let i = 0; i < count; i++) picked.push(byIndex[Math.round(i * step)]!);
+  return picked
+    .filter((m, i, arr) => arr.findIndex((o) => o.at === m.at) === i)
+    .sort((a, b) => a.at - b.at);
 }
+
 
 /** Work out the shortfall and how to spread it across the open recordings. */
 export function planPairing(
