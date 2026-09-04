@@ -11,7 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildBisBenchmark, type BenchmarkPair, type BisBenchmark } from "./bis-benchmark";
-import { predictBis } from "./bis-model";
+import { predictBis, type BisModel } from "./bis-model";
 import { loadActiveBisModels, loadIncumbents, samplesByLineage } from "./bis-model.server";
 import { selectValidatedPoints } from "./coebis-refit";
 import { loadTrainingMatrix } from "./coebis-training.server";
