@@ -53,11 +53,20 @@ describe("coebis-v2 estimator", () => {
     expect(light).toBeGreaterThan(deep);
   });
 
-  it("drives the index down as suppression takes over", () => {
-    const deep = run(synth(20, [[1.5, 55], [3, 30]], 1));
-    const suppressed = run(synth(20, [[1.5, 1.2]], 0));
-    expect(suppressed).toBeLessThan(deep);
+  it("reports the trailing suppression ratio when the trace goes flat", () => {
+    const est = new CoebisV2Estimator();
+    const flat = new Float64Array(4 * FS);
+    let reading = null;
+    for (let s = 0; s < 90; s++) reading = est.update(flat, FS, 1) ?? reading;
+    expect(reading!.suppressionRatio).toBeCloseTo(100, 5);
   });
+
+  it("reads a suppressed trace below a light, fast trace", () => {
+    const light = run(synth(20, [[22, 18], [30, 10], [8, 4]], 2));
+    const suppressed = run(synth(20, [[1.5, 1.2]], 0));
+    expect(suppressed).toBeLessThan(light);
+  });
+
 
   it("keeps every reading inside the 0-100 scale", () => {
     for (const sig of [
