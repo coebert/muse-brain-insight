@@ -157,6 +157,12 @@ export interface EpochScores {
   seizureScore: number | null;
   suppressionRatio: number | null;
   sef95: number | null;
+  /**
+   * The bedside monitor's own BIS number at this moment, carried by the paired
+   * reading. Present only where the recording published one; never derived.
+   */
+  recordedBis?: number | null;
+
   /** Published comparators, recomputed from the stored spectrum where one exists. */
   stateEntropy?: number | null;
   responseEntropy?: number | null;
@@ -813,6 +819,8 @@ export function comparatorBenchmark(
 
   return {
     suppressionOnSubset: subsetSuppression(subset, correctedValue),
+    bisOnSubset: subsetBis(subset, correctedValue),
+
 
     n: subset.length,
     cases: new Set(subset.map((e) => e.caseRef)).size,
