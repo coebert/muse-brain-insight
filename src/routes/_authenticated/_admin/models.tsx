@@ -19,7 +19,7 @@ import {
 } from "@/lib/eeg/coebis-models.functions";
 import { getLiveAccuracy } from "@/lib/eeg/lineage-live-accuracy.functions";
 
-export const Route = createFileRoute("/_authenticated/models")({
+export const Route = createFileRoute("/_authenticated/_admin/models")({
   head: () => ({
     meta: [
       { title: "COEBIS model versions — CortexTrace" },

@@ -25,7 +25,7 @@ import {
   type Sufficiency,
 } from "@/lib/eeg/pathology-labels";
 
-export const Route = createFileRoute("/_authenticated/pathology")({
+export const Route = createFileRoute("/_authenticated/_admin/pathology")({
   head: () => ({
     meta: [
       { title: "Pathology validation — CortexTrace" },

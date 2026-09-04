@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 import { formatClock } from "@/lib/eeg/format";
 
-export const Route = createFileRoute("/_authenticated/brainwaves")({
+export const Route = createFileRoute("/_authenticated/_admin/brainwaves")({
   head: () => ({
     meta: [
       { title: "Live brainwaves — CortexTrace EEG headband stream" },

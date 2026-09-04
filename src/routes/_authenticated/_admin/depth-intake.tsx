@@ -40,7 +40,7 @@ import {
   type DepthCorpusImportResult,
 } from "@/lib/eeg/depth-corpus.functions";
 
-export const Route = createFileRoute("/_authenticated/depth-intake")({
+export const Route = createFileRoute("/_authenticated/_admin/depth-intake")({
   head: () => ({
     meta: [
       { title: "Depth corpus intake — CortexTrace" },

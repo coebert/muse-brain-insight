@@ -46,7 +46,7 @@ import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 
-export const Route = createFileRoute("/_authenticated/trends")({
+export const Route = createFileRoute("/_authenticated/_admin/trends")({
   // Deep links from case evidence: /trends?session=<id>&t=<seconds>
   validateSearch: (
     search: Record<string, unknown>,

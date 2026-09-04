@@ -23,7 +23,7 @@ import {
   getCoebisVersionResiduals,
 } from "@/lib/eeg/coebis-data.functions";
 
-export const Route = createFileRoute("/_authenticated/coebis")({
+export const Route = createFileRoute("/_authenticated/_admin/coebis")({
   head: () => ({
     meta: [
       { title: "COEBIS training data — CortexTrace" },

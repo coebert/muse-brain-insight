@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/select";
 import { getModelPerformance, type PerformanceBucket } from "@/lib/eeg/model-performance.functions";
 
-export const Route = createFileRoute("/_authenticated/performance")({
+export const Route = createFileRoute("/_authenticated/_admin/performance")({
   head: () => ({
     meta: [
       { title: "AI model performance — CortexTrace" },

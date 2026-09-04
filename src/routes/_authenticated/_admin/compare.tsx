@@ -30,7 +30,7 @@ import { computeCoebis } from "@/lib/eeg/depth";
 import { useCoebisModel } from "@/hooks/useCoebisModel";
 import { correlate, correlationStrength, rollingCorrelation } from "@/lib/eeg/correlation";
 
-export const Route = createFileRoute("/_authenticated/compare")({
+export const Route = createFileRoute("/_authenticated/_admin/compare")({
   head: () => ({
     meta: [
       { title: "Depth index vs SEF95 comparison — CortexTrace" },

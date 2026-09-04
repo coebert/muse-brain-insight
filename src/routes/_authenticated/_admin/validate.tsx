@@ -44,7 +44,7 @@ import {
   type Point,
 } from "@/lib/eeg/agreement";
 
-export const Route = createFileRoute("/_authenticated/validate")({
+export const Route = createFileRoute("/_authenticated/_admin/validate")({
   head: () => ({
     meta: [
       { title: "OpenIBIS agreement report — CortexTrace" },

@@ -43,7 +43,7 @@ import {
 import { MONITOR_SUPPRESSED_PCT } from "@/lib/eeg/suppression-model";
 import { COEBIS_V2_MODEL } from "@/lib/eeg/coebis-v2";
 
-export const Route = createFileRoute("/_authenticated/depth")({
+export const Route = createFileRoute("/_authenticated/_admin/depth")({
   head: () => ({
     meta: [
       { title: "Depth dashboard: real BIS beside COEBIS — CortexTrace" },

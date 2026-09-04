@@ -19,7 +19,7 @@ import type { Agreement, LineageAgreement, Sufficiency } from "@/lib/eeg/bis-ben
 import { getBisBenchmark } from "@/lib/eeg/bis-benchmark.functions";
 import { parseLineageKey } from "@/lib/eeg/model-lineage";
 
-export const Route = createFileRoute("/_authenticated/bis-benchmark")({
+export const Route = createFileRoute("/_authenticated/_admin/bis-benchmark")({
   head: () => ({
     meta: [
       { title: "COEBIS vs recorded BIS — every paired case — CortexTrace" },

@@ -32,7 +32,7 @@ import {
 } from "@/lib/eeg/reference-library.functions";
 import { unseal } from "@/lib/privacy";
 
-export const Route = createFileRoute("/_authenticated/reference")({
+export const Route = createFileRoute("/_authenticated/_admin/reference")({
   head: () => ({
     meta: [
       { title: "Reference library — CortexTrace" },

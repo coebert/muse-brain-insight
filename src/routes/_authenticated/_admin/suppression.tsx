@@ -35,7 +35,7 @@ import {
   type SuppressionReport,
 } from "@/lib/eeg/suppression-model";
 
-export const Route = createFileRoute("/_authenticated/suppression")({
+export const Route = createFileRoute("/_authenticated/_admin/suppression")({
   head: () => ({
     meta: [
       { title: "Suppression model graded against monitor SR — CortexTrace" },

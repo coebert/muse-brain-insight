@@ -56,7 +56,7 @@ import {
 } from "@/lib/eeg/calibration";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/calibrate")({
+export const Route = createFileRoute("/_authenticated/_admin/calibrate")({
   head: () => ({
     meta: [
       { title: "Depth index calibration — CortexTrace" },

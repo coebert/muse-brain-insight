@@ -34,7 +34,7 @@ import { AGE_BANDS, FRAILTY_LEVELS, REGIMENS, type CaseCovariates } from "@/lib/
 import { replayRawEeg, type ReplayResult } from "@/lib/eeg/replay";
 import { getExternalPriors } from "@/lib/eeg/vitaldb.functions";
 
-export const Route = createFileRoute("/_authenticated/replay")({
+export const Route = createFileRoute("/_authenticated/_admin/replay")({
   head: () => ({
     meta: [
       { title: "COEBIS replay dashboard — CortexTrace" },

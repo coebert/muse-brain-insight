@@ -17,7 +17,7 @@ import { getDrugExposure } from "@/lib/eeg/drug-exposure.functions";
 import type { DrugCohort, ExposureCase } from "@/lib/eeg/drug-exposure";
 import type { Grade } from "@/lib/eeg/ketamine-cases";
 
-export const Route = createFileRoute("/_authenticated/exposure")({
+export const Route = createFileRoute("/_authenticated/_admin/exposure")({
   head: () => ({
     meta: [
       { title: "Drug exposure by case — CortexTrace" },

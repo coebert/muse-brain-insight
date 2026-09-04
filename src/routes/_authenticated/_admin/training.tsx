@@ -29,7 +29,7 @@ import {
 import type { LineageHistory } from "@/lib/eeg/training-history";
 import { getFoldScores, getTrainingHistory } from "@/lib/eeg/training-history.functions";
 
-export const Route = createFileRoute("/_authenticated/training")({
+export const Route = createFileRoute("/_authenticated/_admin/training")({
   head: () => ({
     meta: [
       { title: "Refit training history — CortexTrace" },
