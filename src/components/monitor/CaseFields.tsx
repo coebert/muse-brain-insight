@@ -10,7 +10,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CLINICAL_FEATURES, CONTEXTS, SEX_OPTIONS, type CaseMeta } from "@/lib/eeg/case-meta";
+import {
+  CLINICAL_FEATURES,
+  CONTEXTS,
+  KETAMINE_FLAG_OPTIONS,
+  SEX_OPTIONS,
+  type CaseMeta,
+} from "@/lib/eeg/case-meta";
+
 import { scrubCaseText, summariseFindings } from "@/lib/eeg/deid";
 import { FRAILTY_LEVELS, REGIMENS } from "@/lib/eeg/covariates";
 import { Button } from "@/components/ui/button";
