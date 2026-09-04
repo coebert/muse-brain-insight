@@ -157,6 +157,12 @@ export interface EpochScores {
   seizureScore: number | null;
   suppressionRatio: number | null;
   sef95: number | null;
+  /**
+   * The bedside monitor's own BIS number at this moment, carried by the paired
+   * reading. Present only where the recording published one; never derived.
+   */
+  recordedBis?: number | null;
+
   /** Published comparators, recomputed from the stored spectrum where one exists. */
   stateEntropy?: number | null;
   responseEntropy?: number | null;
@@ -292,9 +298,40 @@ export interface ComparatorBenchmark {
   comparators: ComparatorScore[];
   /** Suppression, read on exactly the same epochs as the depth comparison. */
   suppressionOnSubset: SubsetSuppression;
+  /** Recorded BIS, read on exactly the same epochs as the depth comparison. */
+  bisOnSubset: SubsetBis;
   sufficiency: Sufficiency;
   verdict: string;
 }
+
+/**
+ * COEBIS against the published bedside BIS number on the benchmark's own
+ * epochs. Only epochs whose paired reading carries a recorded BIS value count;
+ * nothing is imputed, and where no epoch carries one the panel says so rather
+ * than grading against a substitute.
+ */
+export interface SubsetBis {
+  /** Benchmark epochs carrying a recorded BIS value. */
+  n: number;
+  cases: number;
+  meanBis: number | null;
+  meanCoebis: number | null;
+  /** Mean absolute COEBIS − BIS, in index points. */
+  mae: number | null;
+  /** Mean signed COEBIS − BIS: negative means COEBIS reads deeper. */
+  bias: number | null;
+  /** Pearson correlation between COEBIS and BIS on these epochs. */
+  correlation: number | null;
+  /** The same three numbers for the drug-corrected index. */
+  correctedMae: number | null;
+  correctedBias: number | null;
+  correctedCorrelation: number | null;
+  /** Epochs where a drug correction actually moved the index. */
+  correctedEpochs: number;
+  sufficiency: Sufficiency;
+  verdict: string;
+}
+
 
 /**
  * What suppression is doing on the benchmark's own epochs.
@@ -643,6 +680,109 @@ export function subsetSuppression(
   };
 }
 
+/**
+ * COEBIS against the bedside monitor's own BIS number, on the benchmark's own
+ * epochs. Only epochs whose paired reading carries a recorded BIS count, and
+ * the drug-corrected column is read on exactly the same rows (an epoch with no
+ * correction carries the raw index), so it can never win on an easier slice.
+ */
+export function subsetBis(
+  subset: LabelledEpoch[],
+  correctedValue: (e: LabelledEpoch) => number,
+): SubsetBis {
+  const rows = subset
+    .map((e) => ({
+      caseRef: e.caseRef,
+      bis: e.scores.recordedBis,
+      coebis: e.scores.coebis,
+      corrected: correctedValue(e),
+    }))
+    .filter(
+      (r): r is { caseRef: string; bis: number; coebis: number; corrected: number } =>
+        typeof r.bis === "number" &&
+        Number.isFinite(r.bis) &&
+        typeof r.coebis === "number" &&
+        Number.isFinite(r.coebis),
+    );
+
+  const cases = new Set(rows.map((r) => r.caseRef)).size;
+  const correctedEpochs = rows.filter((r) => Math.abs(r.corrected - r.coebis) > 1e-9).length;
+  const corr = (pick: (r: (typeof rows)[number]) => number): number | null => {
+    if (rows.length < 3) return null;
+    const xs = rows.map(pick);
+    const ys = rows.map((r) => r.bis);
+    const mx = mean(xs)!;
+    const my = mean(ys)!;
+    let sxy = 0;
+    let sxx = 0;
+    let syy = 0;
+    for (let i = 0; i < xs.length; i += 1) {
+      const dx = xs[i]! - mx;
+      const dy = ys[i]! - my;
+      sxy += dx * dy;
+      sxx += dx * dx;
+      syy += dy * dy;
+    }
+    return sxx <= 0 || syy <= 0 ? null : round(sxy / Math.sqrt(sxx * syy), 3);
+  };
+  const errOf = (pick: (r: (typeof rows)[number]) => number) => ({
+    mae: round(mean(rows.map((r) => Math.abs(pick(r) - r.bis))), 2),
+    bias: round(mean(rows.map((r) => pick(r) - r.bis)), 2),
+  });
+  const raw = errOf((r) => r.coebis);
+  const corrected = errOf((r) => r.corrected);
+
+  // The BIS comparison is agreement on a continuous number, not a two-class
+  // grade, so sufficiency is judged on epochs and cases rather than classes.
+  const sufficiency: Sufficiency =
+    rows.length >= MIN_AXIS_EPOCHS && cases >= MIN_AXIS_CASES
+      ? "sufficient"
+      : rows.length >= Math.ceil(MIN_AXIS_EPOCHS / 4) && cases >= 1
+        ? "provisional"
+        : "insufficient";
+
+  const verdict = (() => {
+    if (!rows.length) {
+      return `None of the ${subset.length} benchmark epochs carries a recorded BIS number, so COEBIS cannot be graded against published BIS on this exact sample; the bedside-monitor recordings grade it on their own epochs instead.`;
+    }
+    const head = `On the ${rows.length} of ${subset.length} benchmark epochs carrying a recorded BIS (${cases} case${cases === 1 ? "" : "s"}), COEBIS sits ${raw.mae?.toFixed(1) ?? "—"} points from BIS on average`;
+    const dir =
+      raw.bias == null
+        ? ""
+        : raw.bias < -0.5
+          ? `, reading ${Math.abs(raw.bias).toFixed(1)} points deeper than the monitor`
+          : raw.bias > 0.5
+            ? `, reading ${raw.bias.toFixed(1)} points lighter than the monitor`
+            : ", with no systematic offset";
+    const r = corr((x) => x.coebis);
+    const track = r == null ? "" : `, tracking it at r ${r.toFixed(2)}`;
+    const drug = !correctedEpochs
+      ? " No recorded agent moved the index on these epochs, so the drug-corrected figure is identical."
+      : ` After subtracting the recorded agents' signatures on ${correctedEpochs} of them, the gap is ${corrected.mae?.toFixed(1) ?? "—"} points.`;
+    const qualifier =
+      sufficiency === "sufficient" ? "" : ` Provisional: ${cases} case(s) on this subset.`;
+    return `${head}${dir}${track}.${drug}${qualifier}`;
+  })();
+
+  return {
+    n: rows.length,
+    cases,
+    meanBis: round(mean(rows.map((r) => r.bis)), 1),
+    meanCoebis: round(mean(rows.map((r) => r.coebis)), 1),
+    mae: raw.mae,
+    bias: raw.bias,
+    correlation: corr((r) => r.coebis),
+    correctedMae: corrected.mae,
+    correctedBias: corrected.bias,
+    correctedCorrelation: corr((r) => r.corrected),
+    correctedEpochs,
+    sufficiency,
+    verdict,
+  };
+}
+
+
+
 
 /**
  * COEBIS against the published comparators on *identical* epochs.
@@ -782,6 +922,8 @@ export function comparatorBenchmark(
 
   return {
     suppressionOnSubset: subsetSuppression(subset, correctedValue),
+    bisOnSubset: subsetBis(subset, correctedValue),
+
 
     n: subset.length,
     cases: new Set(subset.map((e) => e.caseRef)).size,

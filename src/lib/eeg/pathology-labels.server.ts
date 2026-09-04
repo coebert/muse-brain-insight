@@ -265,6 +265,8 @@ export function pairedCaseRef(ref: string | null): string | null {
 export interface PairedScore {
   coebis: number | null;
   suppressionRatio: number | null;
+  /** The recording's own published BIS at this second, when it carries one. */
+  bis: number | null;
 }
 
 /** Replayed app scores per case, ordered by case time for nearest matching. */
@@ -397,6 +399,7 @@ async function loadPaired(
     const scores: PairedScore = {
       coebis: num(r.app_index),
       suppressionRatio: asPercent(num(r.app_sr)),
+      bis: num(r.bis),
     };
     if (caseRef) {
       for (const key of new Set([caseRef, canonicalCaseKey(caseRef)])) {
@@ -542,6 +545,9 @@ async function loadExternal(
         scores: {
           coebis: appScores?.coebis ?? null,
           coebisDrugCorrected: corrected.index,
+          // The published bedside BIS for this exact moment, where the paired
+          // reading carries one; never derived from the app's own index.
+          recordedBis: appScores?.bis ?? null,
           seizureScore: null,
           suppressionRatio: suppressionPct,
           sef95: num(r.sef95),

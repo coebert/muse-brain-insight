@@ -73,6 +73,7 @@ interface PairedRow {
   source_lineage: string | null;
   external_ref: string | null;
   at_seconds: number | null;
+  bis: number | null;
   bis_sr: number | null;
   app_index: number | null;
   app_sr: number | null;
@@ -88,7 +89,7 @@ async function loadPaired(supabase: Client, limit: number): Promise<{
     (from, to) =>
       supabase
         .from("bis_paired_points")
-        .select("source_lineage, external_ref, at_seconds, bis_sr, app_index, app_sr, features")
+        .select("source_lineage, external_ref, at_seconds, bis, bis_sr, app_index, app_sr, features")
         .order("id", { ascending: true })
         .range(from, to),
     limit,
@@ -104,7 +105,11 @@ async function loadPaired(supabase: Client, limit: number): Promise<{
     const caseRef = featureCase ?? pairedCaseRef(r.external_ref);
     if (!caseRef) continue;
     const at = Number(r.at_seconds ?? 0);
-    const score = { coebis: num(r.app_index), suppressionRatio: asPercent(num(r.app_sr)) };
+    const score = {
+      coebis: num(r.app_index),
+      suppressionRatio: asPercent(num(r.app_sr)),
+      bis: num(r.bis),
+    };
     for (const key of new Set([caseRef, canonicalCaseKey(caseRef)])) {
       const list = index.get(key) ?? [];
       list.push({ at, score });
