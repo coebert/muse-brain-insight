@@ -270,6 +270,7 @@ function ActiveModelPanel({ fitPromotable }: { fitPromotable: boolean }) {
   );
 }
 
+function SuppressionPage() {
 
   const fetchReport = useServerFn(getSuppressionReport);
   const { data, isLoading } = useQuery<SuppressionReport>({
