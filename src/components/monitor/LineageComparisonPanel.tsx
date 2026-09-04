@@ -101,9 +101,9 @@ function Timeline({ lineage, showRaw }: { lineage: LineageComparison; showRaw: b
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-md border border-border/60 bg-background/60 px-2 py-1.5">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="text-sm font-medium tabular-nums">{value}</p>
-      {hint ? <p className="text-[10px] text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -125,7 +125,7 @@ function LineageCard({ lineage, showRaw }: { lineage: LineageComparison; showRaw
         </div>
         <span
           className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+            "rounded-full px-2 py-0.5 text-[11px] font-medium",
             !lineage.hasModel
               ? "bg-muted text-muted-foreground"
               : lineage.sufficient

@@ -281,10 +281,10 @@ export function LiveSpectrumPanel({ latest, epochs = [], className }: LiveSpectr
               ] as const
             ).map(([label, v]) => (
               <div key={label} className="rounded-md border border-border/70 px-2 py-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
                 <p className="font-mono text-sm tabular-nums text-foreground">
                   {v != null && Number.isFinite(v) ? v.toFixed(1) : "–"}
-                  <span className="ml-1 font-sans text-[10px] text-muted-foreground">µV²</span>
+                  <span className="ml-1 font-sans text-[11px] text-muted-foreground">µV²</span>
                 </p>
               </div>
             ))}
