@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { getDrugLibrary } from "@/lib/eeg/drug-library.functions";
 import { orderedLibrary, type DrugLibraryEntry } from "@/lib/eeg/drug-library";
 
-export const Route = createFileRoute("/_authenticated/drugs")({
+export const Route = createFileRoute("/_authenticated/_admin/drugs")({
   head: () => ({
     meta: [
       { title: "Anaesthetic drug library — CortexTrace" },

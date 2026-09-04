@@ -21,7 +21,7 @@ import {
 } from "@/lib/eeg/covariate-discovery";
 import type { AdoptionState } from "@/lib/eeg/discovery-adoption";
 
-export const Route = createFileRoute("/_authenticated/discovery")({
+export const Route = createFileRoute("/_authenticated/_admin/discovery")({
   head: () => ({
     meta: [
       { title: "Covariate–feature discovery — CortexTrace" },

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { getFeedbackAnalytics, type FeedbackBucket } from "@/lib/eeg/alert-feedback.functions";
 
-export const Route = createFileRoute("/_authenticated/feedback")({
+export const Route = createFileRoute("/_authenticated/_admin/feedback")({
   head: () => ({
     meta: [
       { title: "Alert feedback analytics — CortexTrace" },

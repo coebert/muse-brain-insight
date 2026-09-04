@@ -1,50 +1,29 @@
-import { Link } from "@tanstack/react-router";
-import { Activity, ChevronDown, Settings2 } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Activity, Settings2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useIsAdmin } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_SECTIONS } from "@/components/admin/AdminShell";
 
-const TOOLS = [
-  { to: "/brainwaves", label: "Live brainwaves" },
-  { to: "/trends", label: "Session trends" },
+/** Every address that lives behind the admin gate. */
+const ADMIN_PATHS = new Set<string>(
+  ADMIN_SECTIONS.flatMap((section) => section.items.map((item) => item.to as string)),
+);
 
-  { to: "/compare", label: "Compare metrics" },
-  { to: "/calibrate", label: "Depth calibration" },
-  { to: "/validate", label: "Agreement report" },
-  { to: "/replay", label: "COEBIS replay" },
-  { to: "/feedback", label: "Alert feedback" },
-  { to: "/performance", label: "Alert tuning" },
-  { to: "/coebis", label: "COEBIS training data" },
-  { to: "/models", label: "Model versions" },
-  { to: "/training", label: "Refit training history" },
-  { to: "/blockers", label: "Blocked lineages" },
-  { to: "/bis-benchmark", label: "COEBIS vs recorded BIS" },
-  { to: "/pairing", label: "Pair monitor readings" },
-  { to: "/reference", label: "Reference library" },
-  { to: "/depth-intake", label: "Depth corpus intake" },
-  { to: "/pathology", label: "Pathology validation" },
-  { to: "/suppression", label: "Suppression model" },
-  { to: "/flags", label: "Suppression flags vs COEBIS" },
-  { to: "/depth", label: "Depth dashboard" },
+/** The five bedside destinations. Everything else lives in the admin area. */
+const BEDSIDE: { to: "/" | "/cases" | "/patients" | "/notes"; label: string; exact: boolean }[] = [
+  { to: "/", label: "Monitor", exact: true },
+  { to: "/cases", label: "Cases", exact: false },
+  { to: "/patients", label: "Patients", exact: false },
+  { to: "/notes", label: "Notes", exact: false },
+];
 
-  { to: "/ketamine", label: "Ketamine signature" },
-  { to: "/drugs", label: "Drug library" },
-  { to: "/exposure", label: "Drug exposure" },
-
-  { to: "/patients", label: "Patient scoreboard" },
-  { to: "/notes", label: "Clinical notes" },
-  { to: "/outcomes", label: "Case outcomes" },
-
-
-] as const;
-
-/** Shared header navigation: Monitor, Cases, a Tools menu and Settings. */
+/**
+ * Shared header navigation. On bedside pages it shows the five clinician
+ * destinations; inside the admin area the sidebar takes over and this shrinks
+ * to a way back out.
+ */
 export function AppNav({
   showBrand = true,
   compact = false,
@@ -52,8 +31,25 @@ export function AppNav({
   showBrand?: boolean;
   compact?: boolean;
 }) {
+  const { isAdmin } = useIsAdmin();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const inAdmin = ADMIN_PATHS.has(pathname) || pathname.startsWith("/admin");
+
+  if (inAdmin) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
+          <Link to="/admin">Admin home</Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
+          <Link to="/">Back to monitor</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       {showBrand ? (
         <Link to="/" className="mr-2 flex min-w-0 items-center gap-2">
           <Activity className="size-5 shrink-0 text-signal" />
@@ -63,40 +59,38 @@ export function AppNav({
         </Link>
       ) : null}
 
-      {!compact ? (
-        <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
-          <Link to="/" activeProps={{ className: "bg-accent" }} activeOptions={{ exact: true }}>
-            Monitor
+      {BEDSIDE.filter((item) => !(compact && item.exact)).map((item) => (
+        <Button
+          asChild
+          key={item.to}
+          variant="ghost"
+          size="sm"
+          className="min-h-11 sm:min-h-9"
+          data-testid={`nav-${item.label.toLowerCase()}`}
+        >
+          <Link
+            to={item.to}
+            activeProps={{ className: "bg-accent" }}
+            activeOptions={{ exact: item.exact }}
+          >
+            {item.label}
           </Link>
         </Button>
-      ) : null}
-
-      <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
-        <Link to="/cases" activeProps={{ className: "bg-accent" }}>
-          Cases
-        </Link>
-      </Button>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
-            Tools <ChevronDown className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {TOOLS.map((t) => (
-            <DropdownMenuItem key={t.to} asChild>
-              <Link to={t.to}>{t.label}</Link>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      ))}
 
       <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
         <Link to="/settings" activeProps={{ className: "bg-accent" }}>
           <Settings2 className="size-4" /> Settings
         </Link>
       </Button>
+
+      {isAdmin ? (
+        <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
+          <Link to="/admin" activeProps={{ className: "bg-accent" }}>
+            <ShieldCheck className="size-4" /> Admin
+          </Link>
+        </Button>
+      ) : null}
 
       <Button
         variant="ghost"

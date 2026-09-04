@@ -23,7 +23,7 @@ import { getPairingMoments, getPairingWorklist } from "@/lib/eeg/pairing-worklis
 import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { unseal } from "@/lib/privacy";
 
-export const Route = createFileRoute("/_authenticated/pairing")({
+export const Route = createFileRoute("/_authenticated/_admin/pairing")({
   head: () => ({
     meta: [
       { title: "Pair monitor readings — CortexTrace" },

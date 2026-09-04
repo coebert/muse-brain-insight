@@ -34,7 +34,7 @@ import {
 } from "@/lib/eeg/suppression-dashboard";
 import { MONITOR_SUPPRESSED_PCT } from "@/lib/eeg/suppression-model";
 
-export const Route = createFileRoute("/_authenticated/flags")({
+export const Route = createFileRoute("/_authenticated/_admin/flags")({
   head: () => ({
     meta: [
       { title: "Suppression flags beside COEBIS — CortexTrace" },

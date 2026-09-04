@@ -25,7 +25,7 @@ import {
 import { KETAMINE_CAP, KETAMINE_FLOOR } from "@/lib/eeg/ketamine";
 import type { ArmGrade } from "@/lib/eeg/ketamine-grading";
 
-export const Route = createFileRoute("/_authenticated/ketamine")({
+export const Route = createFileRoute("/_authenticated/_admin/ketamine")({
   head: () => ({
     meta: [
       { title: "Ketamine signature per case — CortexTrace" },

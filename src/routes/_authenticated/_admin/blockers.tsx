@@ -16,7 +16,7 @@ import {
 import type { BlockerStatus, CovariateOpportunity, CovariateStatus } from "@/lib/eeg/coebis-blockers";
 import { getCoebisBlockers } from "@/lib/eeg/coebis-blockers.functions";
 
-export const Route = createFileRoute("/_authenticated/blockers")({
+export const Route = createFileRoute("/_authenticated/_admin/blockers")({
   head: () => ({
     meta: [
       { title: "Blocked lineages & covariate headroom — CortexTrace" },

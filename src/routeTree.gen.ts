@@ -12,39 +12,42 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedBisBenchmarkRouteImport } from './routes/_authenticated/bis-benchmark'
-import { Route as AuthenticatedBlockersRouteImport } from './routes/_authenticated/blockers'
-import { Route as AuthenticatedBrainwavesRouteImport } from './routes/_authenticated/brainwaves'
-import { Route as AuthenticatedCalibrateRouteImport } from './routes/_authenticated/calibrate'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
-import { Route as AuthenticatedCoebisRouteImport } from './routes/_authenticated/coebis'
-import { Route as AuthenticatedCompareRouteImport } from './routes/_authenticated/compare'
-import { Route as AuthenticatedDepthRouteImport } from './routes/_authenticated/depth'
-import { Route as AuthenticatedDepthIntakeRouteImport } from './routes/_authenticated/depth-intake'
-import { Route as AuthenticatedDiscoveryRouteImport } from './routes/_authenticated/discovery'
-import { Route as AuthenticatedDrugsRouteImport } from './routes/_authenticated/drugs'
-import { Route as AuthenticatedExposureRouteImport } from './routes/_authenticated/exposure'
-import { Route as AuthenticatedFeedbackRouteImport } from './routes/_authenticated/feedback'
-import { Route as AuthenticatedFlagsRouteImport } from './routes/_authenticated/flags'
-import { Route as AuthenticatedKetamineRouteImport } from './routes/_authenticated/ketamine'
-import { Route as AuthenticatedModelsRouteImport } from './routes/_authenticated/models'
 import { Route as AuthenticatedNotesRouteImport } from './routes/_authenticated/notes'
-import { Route as AuthenticatedOutcomesRouteImport } from './routes/_authenticated/outcomes'
-import { Route as AuthenticatedPairingRouteImport } from './routes/_authenticated/pairing'
-import { Route as AuthenticatedPathologyRouteImport } from './routes/_authenticated/pathology'
 import { Route as AuthenticatedPatientsRouteImport } from './routes/_authenticated/patients'
-import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
-import { Route as AuthenticatedReferenceRouteImport } from './routes/_authenticated/reference'
-import { Route as AuthenticatedReplayRouteImport } from './routes/_authenticated/replay'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedSuppressionRouteImport } from './routes/_authenticated/suppression'
 import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/terms'
-import { Route as AuthenticatedTrainingRouteImport } from './routes/_authenticated/training'
-import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
-import { Route as AuthenticatedValidateRouteImport } from './routes/_authenticated/validate'
+import { Route as AuthenticatedAdminAdminRouteImport } from './routes/_authenticated/_admin/admin'
+import { Route as AuthenticatedAdminBisBenchmarkRouteImport } from './routes/_authenticated/_admin/bis-benchmark'
+import { Route as AuthenticatedAdminBlockersRouteImport } from './routes/_authenticated/_admin/blockers'
+import { Route as AuthenticatedAdminBrainwavesRouteImport } from './routes/_authenticated/_admin/brainwaves'
+import { Route as AuthenticatedAdminCalibrateRouteImport } from './routes/_authenticated/_admin/calibrate'
+import { Route as AuthenticatedAdminCoebisRouteImport } from './routes/_authenticated/_admin/coebis'
+import { Route as AuthenticatedAdminCompareRouteImport } from './routes/_authenticated/_admin/compare'
+import { Route as AuthenticatedAdminDepthRouteImport } from './routes/_authenticated/_admin/depth'
+import { Route as AuthenticatedAdminDepthIntakeRouteImport } from './routes/_authenticated/_admin/depth-intake'
+import { Route as AuthenticatedAdminDiscoveryRouteImport } from './routes/_authenticated/_admin/discovery'
+import { Route as AuthenticatedAdminDrugsRouteImport } from './routes/_authenticated/_admin/drugs'
+import { Route as AuthenticatedAdminExposureRouteImport } from './routes/_authenticated/_admin/exposure'
+import { Route as AuthenticatedAdminFeedbackRouteImport } from './routes/_authenticated/_admin/feedback'
+import { Route as AuthenticatedAdminFlagsRouteImport } from './routes/_authenticated/_admin/flags'
+import { Route as AuthenticatedAdminKetamineRouteImport } from './routes/_authenticated/_admin/ketamine'
+import { Route as AuthenticatedAdminModelsRouteImport } from './routes/_authenticated/_admin/models'
+import { Route as AuthenticatedAdminOutcomesRouteImport } from './routes/_authenticated/_admin/outcomes'
+import { Route as AuthenticatedAdminPairingRouteImport } from './routes/_authenticated/_admin/pairing'
+import { Route as AuthenticatedAdminPathologyRouteImport } from './routes/_authenticated/_admin/pathology'
+import { Route as AuthenticatedAdminPerformanceRouteImport } from './routes/_authenticated/_admin/performance'
+import { Route as AuthenticatedAdminReferenceRouteImport } from './routes/_authenticated/_admin/reference'
+import { Route as AuthenticatedAdminReplayRouteImport } from './routes/_authenticated/_admin/replay'
+import { Route as AuthenticatedAdminSuppressionRouteImport } from './routes/_authenticated/_admin/suppression'
+import { Route as AuthenticatedAdminTrainingRouteImport } from './routes/_authenticated/_admin/training'
+import { Route as AuthenticatedAdminTrendsRouteImport } from './routes/_authenticated/_admin/trends'
+import { Route as AuthenticatedAdminValidateRouteImport } from './routes/_authenticated/_admin/validate'
 import { Route as AuthenticatedCaseCaseRefRouteImport } from './routes/_authenticated/case.$caseRef'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
+import { Route as AuthenticatedAdminAdminPeopleRouteImport } from './routes/_authenticated/_admin/admin.people'
 import { Route as ApiPublicHooksCoebisRefitRouteImport } from './routes/api/public/hooks/coebis-refit'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -61,25 +64,8 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBisBenchmarkRoute =
-  AuthenticatedBisBenchmarkRouteImport.update({
-    id: '/bis-benchmark',
-    path: '/bis-benchmark',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedBlockersRoute = AuthenticatedBlockersRouteImport.update({
-  id: '/blockers',
-  path: '/blockers',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBrainwavesRoute = AuthenticatedBrainwavesRouteImport.update({
-  id: '/brainwaves',
-  path: '/brainwaves',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCalibrateRoute = AuthenticatedCalibrateRouteImport.update({
-  id: '/calibrate',
-  path: '/calibrate',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/_admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
@@ -87,101 +73,14 @@ const AuthenticatedCasesRoute = AuthenticatedCasesRouteImport.update({
   path: '/cases',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCoebisRoute = AuthenticatedCoebisRouteImport.update({
-  id: '/coebis',
-  path: '/coebis',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCompareRoute = AuthenticatedCompareRouteImport.update({
-  id: '/compare',
-  path: '/compare',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDepthRoute = AuthenticatedDepthRouteImport.update({
-  id: '/depth',
-  path: '/depth',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDepthIntakeRoute =
-  AuthenticatedDepthIntakeRouteImport.update({
-    id: '/depth-intake',
-    path: '/depth-intake',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedDiscoveryRoute = AuthenticatedDiscoveryRouteImport.update({
-  id: '/discovery',
-  path: '/discovery',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDrugsRoute = AuthenticatedDrugsRouteImport.update({
-  id: '/drugs',
-  path: '/drugs',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExposureRoute = AuthenticatedExposureRouteImport.update({
-  id: '/exposure',
-  path: '/exposure',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFeedbackRoute = AuthenticatedFeedbackRouteImport.update({
-  id: '/feedback',
-  path: '/feedback',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFlagsRoute = AuthenticatedFlagsRouteImport.update({
-  id: '/flags',
-  path: '/flags',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedKetamineRoute = AuthenticatedKetamineRouteImport.update({
-  id: '/ketamine',
-  path: '/ketamine',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedModelsRoute = AuthenticatedModelsRouteImport.update({
-  id: '/models',
-  path: '/models',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedNotesRoute = AuthenticatedNotesRouteImport.update({
   id: '/notes',
   path: '/notes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedOutcomesRoute = AuthenticatedOutcomesRouteImport.update({
-  id: '/outcomes',
-  path: '/outcomes',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPairingRoute = AuthenticatedPairingRouteImport.update({
-  id: '/pairing',
-  path: '/pairing',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPathologyRoute = AuthenticatedPathologyRouteImport.update({
-  id: '/pathology',
-  path: '/pathology',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedPatientsRoute = AuthenticatedPatientsRouteImport.update({
   id: '/patients',
   path: '/patients',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPerformanceRoute =
-  AuthenticatedPerformanceRouteImport.update({
-    id: '/performance',
-    path: '/performance',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReferenceRoute = AuthenticatedReferenceRouteImport.update({
-  id: '/reference',
-  path: '/reference',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedReplayRoute = AuthenticatedReplayRouteImport.update({
-  id: '/replay',
-  path: '/replay',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
@@ -194,32 +93,163 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSuppressionRoute =
-  AuthenticatedSuppressionRouteImport.update({
-    id: '/suppression',
-    path: '/suppression',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedTermsRoute = AuthenticatedTermsRouteImport.update({
   id: '/terms',
   path: '/terms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedTrainingRoute = AuthenticatedTrainingRouteImport.update({
-  id: '/training',
-  path: '/training',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedAdminAdminRoute = AuthenticatedAdminAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
-  id: '/trends',
-  path: '/trends',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedAdminBisBenchmarkRoute =
+  AuthenticatedAdminBisBenchmarkRouteImport.update({
+    id: '/bis-benchmark',
+    path: '/bis-benchmark',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBlockersRoute =
+  AuthenticatedAdminBlockersRouteImport.update({
+    id: '/blockers',
+    path: '/blockers',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBrainwavesRoute =
+  AuthenticatedAdminBrainwavesRouteImport.update({
+    id: '/brainwaves',
+    path: '/brainwaves',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCalibrateRoute =
+  AuthenticatedAdminCalibrateRouteImport.update({
+    id: '/calibrate',
+    path: '/calibrate',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCoebisRoute =
+  AuthenticatedAdminCoebisRouteImport.update({
+    id: '/coebis',
+    path: '/coebis',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCompareRoute =
+  AuthenticatedAdminCompareRouteImport.update({
+    id: '/compare',
+    path: '/compare',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDepthRoute = AuthenticatedAdminDepthRouteImport.update({
+  id: '/depth',
+  path: '/depth',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedValidateRoute = AuthenticatedValidateRouteImport.update({
-  id: '/validate',
-  path: '/validate',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedAdminDepthIntakeRoute =
+  AuthenticatedAdminDepthIntakeRouteImport.update({
+    id: '/depth-intake',
+    path: '/depth-intake',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDiscoveryRoute =
+  AuthenticatedAdminDiscoveryRouteImport.update({
+    id: '/discovery',
+    path: '/discovery',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminDrugsRoute = AuthenticatedAdminDrugsRouteImport.update({
+  id: '/drugs',
+  path: '/drugs',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminExposureRoute =
+  AuthenticatedAdminExposureRouteImport.update({
+    id: '/exposure',
+    path: '/exposure',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminFeedbackRoute =
+  AuthenticatedAdminFeedbackRouteImport.update({
+    id: '/feedback',
+    path: '/feedback',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminFlagsRoute = AuthenticatedAdminFlagsRouteImport.update({
+  id: '/flags',
+  path: '/flags',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminKetamineRoute =
+  AuthenticatedAdminKetamineRouteImport.update({
+    id: '/ketamine',
+    path: '/ketamine',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminModelsRoute =
+  AuthenticatedAdminModelsRouteImport.update({
+    id: '/models',
+    path: '/models',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminOutcomesRoute =
+  AuthenticatedAdminOutcomesRouteImport.update({
+    id: '/outcomes',
+    path: '/outcomes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPairingRoute =
+  AuthenticatedAdminPairingRouteImport.update({
+    id: '/pairing',
+    path: '/pairing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPathologyRoute =
+  AuthenticatedAdminPathologyRouteImport.update({
+    id: '/pathology',
+    path: '/pathology',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPerformanceRoute =
+  AuthenticatedAdminPerformanceRouteImport.update({
+    id: '/performance',
+    path: '/performance',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminReferenceRoute =
+  AuthenticatedAdminReferenceRouteImport.update({
+    id: '/reference',
+    path: '/reference',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminReplayRoute =
+  AuthenticatedAdminReplayRouteImport.update({
+    id: '/replay',
+    path: '/replay',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSuppressionRoute =
+  AuthenticatedAdminSuppressionRouteImport.update({
+    id: '/suppression',
+    path: '/suppression',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminTrainingRoute =
+  AuthenticatedAdminTrainingRouteImport.update({
+    id: '/training',
+    path: '/training',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminTrendsRoute =
+  AuthenticatedAdminTrendsRouteImport.update({
+    id: '/trends',
+    path: '/trends',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminValidateRoute =
+  AuthenticatedAdminValidateRouteImport.update({
+    id: '/validate',
+    path: '/validate',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedCaseCaseRefRoute =
   AuthenticatedCaseCaseRefRouteImport.update({
     id: '/case/$caseRef',
@@ -231,6 +261,12 @@ const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
   path: '/report/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminAdminPeopleRoute =
+  AuthenticatedAdminAdminPeopleRouteImport.update({
+    id: '/people',
+    path: '/people',
+    getParentRoute: () => AuthenticatedAdminAdminRoute,
+  } as any)
 const ApiPublicHooksCoebisRefitRoute =
   ApiPublicHooksCoebisRefitRouteImport.update({
     id: '/api/public/hooks/coebis-refit',
@@ -241,117 +277,124 @@ const ApiPublicHooksCoebisRefitRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
-  '/blockers': typeof AuthenticatedBlockersRoute
-  '/brainwaves': typeof AuthenticatedBrainwavesRoute
-  '/calibrate': typeof AuthenticatedCalibrateRoute
   '/cases': typeof AuthenticatedCasesRoute
-  '/coebis': typeof AuthenticatedCoebisRoute
-  '/compare': typeof AuthenticatedCompareRoute
-  '/depth': typeof AuthenticatedDepthRoute
-  '/depth-intake': typeof AuthenticatedDepthIntakeRoute
-  '/discovery': typeof AuthenticatedDiscoveryRoute
-  '/drugs': typeof AuthenticatedDrugsRoute
-  '/exposure': typeof AuthenticatedExposureRoute
-  '/feedback': typeof AuthenticatedFeedbackRoute
-  '/flags': typeof AuthenticatedFlagsRoute
-  '/ketamine': typeof AuthenticatedKetamineRoute
-  '/models': typeof AuthenticatedModelsRoute
   '/notes': typeof AuthenticatedNotesRoute
-  '/outcomes': typeof AuthenticatedOutcomesRoute
-  '/pairing': typeof AuthenticatedPairingRoute
-  '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
-  '/performance': typeof AuthenticatedPerformanceRoute
-  '/reference': typeof AuthenticatedReferenceRoute
-  '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
-  '/training': typeof AuthenticatedTrainingRoute
-  '/trends': typeof AuthenticatedTrendsRoute
-  '/validate': typeof AuthenticatedValidateRoute
+  '/admin': typeof AuthenticatedAdminAdminRouteWithChildren
+  '/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
+  '/blockers': typeof AuthenticatedAdminBlockersRoute
+  '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
+  '/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/compare': typeof AuthenticatedAdminCompareRoute
+  '/depth': typeof AuthenticatedAdminDepthRoute
+  '/depth-intake': typeof AuthenticatedAdminDepthIntakeRoute
+  '/discovery': typeof AuthenticatedAdminDiscoveryRoute
+  '/drugs': typeof AuthenticatedAdminDrugsRoute
+  '/exposure': typeof AuthenticatedAdminExposureRoute
+  '/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/flags': typeof AuthenticatedAdminFlagsRoute
+  '/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/models': typeof AuthenticatedAdminModelsRoute
+  '/outcomes': typeof AuthenticatedAdminOutcomesRoute
+  '/pairing': typeof AuthenticatedAdminPairingRoute
+  '/pathology': typeof AuthenticatedAdminPathologyRoute
+  '/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/reference': typeof AuthenticatedAdminReferenceRoute
+  '/replay': typeof AuthenticatedAdminReplayRoute
+  '/suppression': typeof AuthenticatedAdminSuppressionRoute
+  '/training': typeof AuthenticatedAdminTrainingRoute
+  '/trends': typeof AuthenticatedAdminTrendsRoute
+  '/validate': typeof AuthenticatedAdminValidateRoute
   '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
+  '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
-  '/blockers': typeof AuthenticatedBlockersRoute
-  '/brainwaves': typeof AuthenticatedBrainwavesRoute
-  '/calibrate': typeof AuthenticatedCalibrateRoute
+  '/': typeof AuthenticatedIndexRoute
   '/cases': typeof AuthenticatedCasesRoute
-  '/coebis': typeof AuthenticatedCoebisRoute
-  '/compare': typeof AuthenticatedCompareRoute
-  '/depth': typeof AuthenticatedDepthRoute
-  '/depth-intake': typeof AuthenticatedDepthIntakeRoute
-  '/discovery': typeof AuthenticatedDiscoveryRoute
-  '/drugs': typeof AuthenticatedDrugsRoute
-  '/exposure': typeof AuthenticatedExposureRoute
-  '/feedback': typeof AuthenticatedFeedbackRoute
-  '/flags': typeof AuthenticatedFlagsRoute
-  '/ketamine': typeof AuthenticatedKetamineRoute
-  '/models': typeof AuthenticatedModelsRoute
   '/notes': typeof AuthenticatedNotesRoute
-  '/outcomes': typeof AuthenticatedOutcomesRoute
-  '/pairing': typeof AuthenticatedPairingRoute
-  '/pathology': typeof AuthenticatedPathologyRoute
   '/patients': typeof AuthenticatedPatientsRoute
-  '/performance': typeof AuthenticatedPerformanceRoute
-  '/reference': typeof AuthenticatedReferenceRoute
-  '/replay': typeof AuthenticatedReplayRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/suppression': typeof AuthenticatedSuppressionRoute
   '/terms': typeof AuthenticatedTermsRoute
-  '/training': typeof AuthenticatedTrainingRoute
-  '/trends': typeof AuthenticatedTrendsRoute
-  '/validate': typeof AuthenticatedValidateRoute
-  '/': typeof AuthenticatedIndexRoute
+  '/admin': typeof AuthenticatedAdminAdminRouteWithChildren
+  '/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
+  '/blockers': typeof AuthenticatedAdminBlockersRoute
+  '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
+  '/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/compare': typeof AuthenticatedAdminCompareRoute
+  '/depth': typeof AuthenticatedAdminDepthRoute
+  '/depth-intake': typeof AuthenticatedAdminDepthIntakeRoute
+  '/discovery': typeof AuthenticatedAdminDiscoveryRoute
+  '/drugs': typeof AuthenticatedAdminDrugsRoute
+  '/exposure': typeof AuthenticatedAdminExposureRoute
+  '/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/flags': typeof AuthenticatedAdminFlagsRoute
+  '/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/models': typeof AuthenticatedAdminModelsRoute
+  '/outcomes': typeof AuthenticatedAdminOutcomesRoute
+  '/pairing': typeof AuthenticatedAdminPairingRoute
+  '/pathology': typeof AuthenticatedAdminPathologyRoute
+  '/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/reference': typeof AuthenticatedAdminReferenceRoute
+  '/replay': typeof AuthenticatedAdminReplayRoute
+  '/suppression': typeof AuthenticatedAdminSuppressionRoute
+  '/training': typeof AuthenticatedAdminTrainingRoute
+  '/trends': typeof AuthenticatedAdminTrendsRoute
+  '/validate': typeof AuthenticatedAdminValidateRoute
   '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
+  '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/bis-benchmark': typeof AuthenticatedBisBenchmarkRoute
-  '/_authenticated/blockers': typeof AuthenticatedBlockersRoute
-  '/_authenticated/brainwaves': typeof AuthenticatedBrainwavesRoute
-  '/_authenticated/calibrate': typeof AuthenticatedCalibrateRoute
+  '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
-  '/_authenticated/coebis': typeof AuthenticatedCoebisRoute
-  '/_authenticated/compare': typeof AuthenticatedCompareRoute
-  '/_authenticated/depth': typeof AuthenticatedDepthRoute
-  '/_authenticated/depth-intake': typeof AuthenticatedDepthIntakeRoute
-  '/_authenticated/discovery': typeof AuthenticatedDiscoveryRoute
-  '/_authenticated/drugs': typeof AuthenticatedDrugsRoute
-  '/_authenticated/exposure': typeof AuthenticatedExposureRoute
-  '/_authenticated/feedback': typeof AuthenticatedFeedbackRoute
-  '/_authenticated/flags': typeof AuthenticatedFlagsRoute
-  '/_authenticated/ketamine': typeof AuthenticatedKetamineRoute
-  '/_authenticated/models': typeof AuthenticatedModelsRoute
   '/_authenticated/notes': typeof AuthenticatedNotesRoute
-  '/_authenticated/outcomes': typeof AuthenticatedOutcomesRoute
-  '/_authenticated/pairing': typeof AuthenticatedPairingRoute
-  '/_authenticated/pathology': typeof AuthenticatedPathologyRoute
   '/_authenticated/patients': typeof AuthenticatedPatientsRoute
-  '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
-  '/_authenticated/reference': typeof AuthenticatedReferenceRoute
-  '/_authenticated/replay': typeof AuthenticatedReplayRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/suppression': typeof AuthenticatedSuppressionRoute
   '/_authenticated/terms': typeof AuthenticatedTermsRoute
-  '/_authenticated/training': typeof AuthenticatedTrainingRoute
-  '/_authenticated/trends': typeof AuthenticatedTrendsRoute
-  '/_authenticated/validate': typeof AuthenticatedValidateRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/_admin/admin': typeof AuthenticatedAdminAdminRouteWithChildren
+  '/_authenticated/_admin/bis-benchmark': typeof AuthenticatedAdminBisBenchmarkRoute
+  '/_authenticated/_admin/blockers': typeof AuthenticatedAdminBlockersRoute
+  '/_authenticated/_admin/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
+  '/_authenticated/_admin/calibrate': typeof AuthenticatedAdminCalibrateRoute
+  '/_authenticated/_admin/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/_authenticated/_admin/compare': typeof AuthenticatedAdminCompareRoute
+  '/_authenticated/_admin/depth': typeof AuthenticatedAdminDepthRoute
+  '/_authenticated/_admin/depth-intake': typeof AuthenticatedAdminDepthIntakeRoute
+  '/_authenticated/_admin/discovery': typeof AuthenticatedAdminDiscoveryRoute
+  '/_authenticated/_admin/drugs': typeof AuthenticatedAdminDrugsRoute
+  '/_authenticated/_admin/exposure': typeof AuthenticatedAdminExposureRoute
+  '/_authenticated/_admin/feedback': typeof AuthenticatedAdminFeedbackRoute
+  '/_authenticated/_admin/flags': typeof AuthenticatedAdminFlagsRoute
+  '/_authenticated/_admin/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/_authenticated/_admin/models': typeof AuthenticatedAdminModelsRoute
+  '/_authenticated/_admin/outcomes': typeof AuthenticatedAdminOutcomesRoute
+  '/_authenticated/_admin/pairing': typeof AuthenticatedAdminPairingRoute
+  '/_authenticated/_admin/pathology': typeof AuthenticatedAdminPathologyRoute
+  '/_authenticated/_admin/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/_authenticated/_admin/reference': typeof AuthenticatedAdminReferenceRoute
+  '/_authenticated/_admin/replay': typeof AuthenticatedAdminReplayRoute
+  '/_authenticated/_admin/suppression': typeof AuthenticatedAdminSuppressionRoute
+  '/_authenticated/_admin/training': typeof AuthenticatedAdminTrainingRoute
+  '/_authenticated/_admin/trends': typeof AuthenticatedAdminTrendsRoute
+  '/_authenticated/_admin/validate': typeof AuthenticatedAdminValidateRoute
   '/_authenticated/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
   '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
+  '/_authenticated/_admin/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
 }
 export interface FileRouteTypes {
@@ -359,11 +402,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cases'
+    | '/notes'
+    | '/patients'
+    | '/sessions'
+    | '/settings'
+    | '/terms'
+    | '/admin'
     | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
-    | '/cases'
     | '/coebis'
     | '/compare'
     | '/depth'
@@ -375,32 +424,35 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ketamine'
     | '/models'
-    | '/notes'
     | '/outcomes'
     | '/pairing'
     | '/pathology'
-    | '/patients'
     | '/performance'
     | '/reference'
     | '/replay'
-    | '/sessions'
-    | '/settings'
     | '/suppression'
-    | '/terms'
     | '/training'
     | '/trends'
     | '/validate'
     | '/case/$caseRef'
     | '/report/$id'
+    | '/admin/people'
     | '/api/public/hooks/coebis-refit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/'
+    | '/cases'
+    | '/notes'
+    | '/patients'
+    | '/sessions'
+    | '/settings'
+    | '/terms'
+    | '/admin'
     | '/bis-benchmark'
     | '/blockers'
     | '/brainwaves'
     | '/calibrate'
-    | '/cases'
     | '/coebis'
     | '/compare'
     | '/depth'
@@ -412,63 +464,61 @@ export interface FileRouteTypes {
     | '/flags'
     | '/ketamine'
     | '/models'
-    | '/notes'
     | '/outcomes'
     | '/pairing'
     | '/pathology'
-    | '/patients'
     | '/performance'
     | '/reference'
     | '/replay'
-    | '/sessions'
-    | '/settings'
     | '/suppression'
-    | '/terms'
     | '/training'
     | '/trends'
     | '/validate'
-    | '/'
     | '/case/$caseRef'
     | '/report/$id'
+    | '/admin/people'
     | '/api/public/hooks/coebis-refit'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/bis-benchmark'
-    | '/_authenticated/blockers'
-    | '/_authenticated/brainwaves'
-    | '/_authenticated/calibrate'
+    | '/_authenticated/_admin'
     | '/_authenticated/cases'
-    | '/_authenticated/coebis'
-    | '/_authenticated/compare'
-    | '/_authenticated/depth'
-    | '/_authenticated/depth-intake'
-    | '/_authenticated/discovery'
-    | '/_authenticated/drugs'
-    | '/_authenticated/exposure'
-    | '/_authenticated/feedback'
-    | '/_authenticated/flags'
-    | '/_authenticated/ketamine'
-    | '/_authenticated/models'
     | '/_authenticated/notes'
-    | '/_authenticated/outcomes'
-    | '/_authenticated/pairing'
-    | '/_authenticated/pathology'
     | '/_authenticated/patients'
-    | '/_authenticated/performance'
-    | '/_authenticated/reference'
-    | '/_authenticated/replay'
     | '/_authenticated/sessions'
     | '/_authenticated/settings'
-    | '/_authenticated/suppression'
     | '/_authenticated/terms'
-    | '/_authenticated/training'
-    | '/_authenticated/trends'
-    | '/_authenticated/validate'
     | '/_authenticated/'
+    | '/_authenticated/_admin/admin'
+    | '/_authenticated/_admin/bis-benchmark'
+    | '/_authenticated/_admin/blockers'
+    | '/_authenticated/_admin/brainwaves'
+    | '/_authenticated/_admin/calibrate'
+    | '/_authenticated/_admin/coebis'
+    | '/_authenticated/_admin/compare'
+    | '/_authenticated/_admin/depth'
+    | '/_authenticated/_admin/depth-intake'
+    | '/_authenticated/_admin/discovery'
+    | '/_authenticated/_admin/drugs'
+    | '/_authenticated/_admin/exposure'
+    | '/_authenticated/_admin/feedback'
+    | '/_authenticated/_admin/flags'
+    | '/_authenticated/_admin/ketamine'
+    | '/_authenticated/_admin/models'
+    | '/_authenticated/_admin/outcomes'
+    | '/_authenticated/_admin/pairing'
+    | '/_authenticated/_admin/pathology'
+    | '/_authenticated/_admin/performance'
+    | '/_authenticated/_admin/reference'
+    | '/_authenticated/_admin/replay'
+    | '/_authenticated/_admin/suppression'
+    | '/_authenticated/_admin/training'
+    | '/_authenticated/_admin/trends'
+    | '/_authenticated/_admin/validate'
     | '/_authenticated/case/$caseRef'
     | '/_authenticated/report/$id'
+    | '/_authenticated/_admin/admin/people'
     | '/api/public/hooks/coebis-refit'
   fileRoutesById: FileRoutesById
 }
@@ -501,32 +551,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/bis-benchmark': {
-      id: '/_authenticated/bis-benchmark'
-      path: '/bis-benchmark'
-      fullPath: '/bis-benchmark'
-      preLoaderRoute: typeof AuthenticatedBisBenchmarkRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/blockers': {
-      id: '/_authenticated/blockers'
-      path: '/blockers'
-      fullPath: '/blockers'
-      preLoaderRoute: typeof AuthenticatedBlockersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/brainwaves': {
-      id: '/_authenticated/brainwaves'
-      path: '/brainwaves'
-      fullPath: '/brainwaves'
-      preLoaderRoute: typeof AuthenticatedBrainwavesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/calibrate': {
-      id: '/_authenticated/calibrate'
-      path: '/calibrate'
-      fullPath: '/calibrate'
-      preLoaderRoute: typeof AuthenticatedCalibrateRouteImport
+    '/_authenticated/_admin': {
+      id: '/_authenticated/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cases': {
@@ -536,83 +565,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCasesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/coebis': {
-      id: '/_authenticated/coebis'
-      path: '/coebis'
-      fullPath: '/coebis'
-      preLoaderRoute: typeof AuthenticatedCoebisRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/compare': {
-      id: '/_authenticated/compare'
-      path: '/compare'
-      fullPath: '/compare'
-      preLoaderRoute: typeof AuthenticatedCompareRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/depth': {
-      id: '/_authenticated/depth'
-      path: '/depth'
-      fullPath: '/depth'
-      preLoaderRoute: typeof AuthenticatedDepthRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/depth-intake': {
-      id: '/_authenticated/depth-intake'
-      path: '/depth-intake'
-      fullPath: '/depth-intake'
-      preLoaderRoute: typeof AuthenticatedDepthIntakeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/discovery': {
-      id: '/_authenticated/discovery'
-      path: '/discovery'
-      fullPath: '/discovery'
-      preLoaderRoute: typeof AuthenticatedDiscoveryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/drugs': {
-      id: '/_authenticated/drugs'
-      path: '/drugs'
-      fullPath: '/drugs'
-      preLoaderRoute: typeof AuthenticatedDrugsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/exposure': {
-      id: '/_authenticated/exposure'
-      path: '/exposure'
-      fullPath: '/exposure'
-      preLoaderRoute: typeof AuthenticatedExposureRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/feedback': {
-      id: '/_authenticated/feedback'
-      path: '/feedback'
-      fullPath: '/feedback'
-      preLoaderRoute: typeof AuthenticatedFeedbackRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/flags': {
-      id: '/_authenticated/flags'
-      path: '/flags'
-      fullPath: '/flags'
-      preLoaderRoute: typeof AuthenticatedFlagsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ketamine': {
-      id: '/_authenticated/ketamine'
-      path: '/ketamine'
-      fullPath: '/ketamine'
-      preLoaderRoute: typeof AuthenticatedKetamineRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/models': {
-      id: '/_authenticated/models'
-      path: '/models'
-      fullPath: '/models'
-      preLoaderRoute: typeof AuthenticatedModelsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/notes': {
       id: '/_authenticated/notes'
       path: '/notes'
@@ -620,53 +572,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNotesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/outcomes': {
-      id: '/_authenticated/outcomes'
-      path: '/outcomes'
-      fullPath: '/outcomes'
-      preLoaderRoute: typeof AuthenticatedOutcomesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pairing': {
-      id: '/_authenticated/pairing'
-      path: '/pairing'
-      fullPath: '/pairing'
-      preLoaderRoute: typeof AuthenticatedPairingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pathology': {
-      id: '/_authenticated/pathology'
-      path: '/pathology'
-      fullPath: '/pathology'
-      preLoaderRoute: typeof AuthenticatedPathologyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/patients': {
       id: '/_authenticated/patients'
       path: '/patients'
       fullPath: '/patients'
       preLoaderRoute: typeof AuthenticatedPatientsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/performance': {
-      id: '/_authenticated/performance'
-      path: '/performance'
-      fullPath: '/performance'
-      preLoaderRoute: typeof AuthenticatedPerformanceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reference': {
-      id: '/_authenticated/reference'
-      path: '/reference'
-      fullPath: '/reference'
-      preLoaderRoute: typeof AuthenticatedReferenceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/replay': {
-      id: '/_authenticated/replay'
-      path: '/replay'
-      fullPath: '/replay'
-      preLoaderRoute: typeof AuthenticatedReplayRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/sessions': {
@@ -683,13 +593,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/suppression': {
-      id: '/_authenticated/suppression'
-      path: '/suppression'
-      fullPath: '/suppression'
-      preLoaderRoute: typeof AuthenticatedSuppressionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/terms': {
       id: '/_authenticated/terms'
       path: '/terms'
@@ -697,26 +600,187 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTermsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/training': {
-      id: '/_authenticated/training'
+    '/_authenticated/_admin/admin': {
+      id: '/_authenticated/_admin/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminAdminRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/bis-benchmark': {
+      id: '/_authenticated/_admin/bis-benchmark'
+      path: '/bis-benchmark'
+      fullPath: '/bis-benchmark'
+      preLoaderRoute: typeof AuthenticatedAdminBisBenchmarkRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/blockers': {
+      id: '/_authenticated/_admin/blockers'
+      path: '/blockers'
+      fullPath: '/blockers'
+      preLoaderRoute: typeof AuthenticatedAdminBlockersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/brainwaves': {
+      id: '/_authenticated/_admin/brainwaves'
+      path: '/brainwaves'
+      fullPath: '/brainwaves'
+      preLoaderRoute: typeof AuthenticatedAdminBrainwavesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/calibrate': {
+      id: '/_authenticated/_admin/calibrate'
+      path: '/calibrate'
+      fullPath: '/calibrate'
+      preLoaderRoute: typeof AuthenticatedAdminCalibrateRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/coebis': {
+      id: '/_authenticated/_admin/coebis'
+      path: '/coebis'
+      fullPath: '/coebis'
+      preLoaderRoute: typeof AuthenticatedAdminCoebisRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/compare': {
+      id: '/_authenticated/_admin/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof AuthenticatedAdminCompareRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/depth': {
+      id: '/_authenticated/_admin/depth'
+      path: '/depth'
+      fullPath: '/depth'
+      preLoaderRoute: typeof AuthenticatedAdminDepthRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/depth-intake': {
+      id: '/_authenticated/_admin/depth-intake'
+      path: '/depth-intake'
+      fullPath: '/depth-intake'
+      preLoaderRoute: typeof AuthenticatedAdminDepthIntakeRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/discovery': {
+      id: '/_authenticated/_admin/discovery'
+      path: '/discovery'
+      fullPath: '/discovery'
+      preLoaderRoute: typeof AuthenticatedAdminDiscoveryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/drugs': {
+      id: '/_authenticated/_admin/drugs'
+      path: '/drugs'
+      fullPath: '/drugs'
+      preLoaderRoute: typeof AuthenticatedAdminDrugsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/exposure': {
+      id: '/_authenticated/_admin/exposure'
+      path: '/exposure'
+      fullPath: '/exposure'
+      preLoaderRoute: typeof AuthenticatedAdminExposureRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/feedback': {
+      id: '/_authenticated/_admin/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AuthenticatedAdminFeedbackRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/flags': {
+      id: '/_authenticated/_admin/flags'
+      path: '/flags'
+      fullPath: '/flags'
+      preLoaderRoute: typeof AuthenticatedAdminFlagsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/ketamine': {
+      id: '/_authenticated/_admin/ketamine'
+      path: '/ketamine'
+      fullPath: '/ketamine'
+      preLoaderRoute: typeof AuthenticatedAdminKetamineRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/models': {
+      id: '/_authenticated/_admin/models'
+      path: '/models'
+      fullPath: '/models'
+      preLoaderRoute: typeof AuthenticatedAdminModelsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/outcomes': {
+      id: '/_authenticated/_admin/outcomes'
+      path: '/outcomes'
+      fullPath: '/outcomes'
+      preLoaderRoute: typeof AuthenticatedAdminOutcomesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/pairing': {
+      id: '/_authenticated/_admin/pairing'
+      path: '/pairing'
+      fullPath: '/pairing'
+      preLoaderRoute: typeof AuthenticatedAdminPairingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/pathology': {
+      id: '/_authenticated/_admin/pathology'
+      path: '/pathology'
+      fullPath: '/pathology'
+      preLoaderRoute: typeof AuthenticatedAdminPathologyRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/performance': {
+      id: '/_authenticated/_admin/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof AuthenticatedAdminPerformanceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/reference': {
+      id: '/_authenticated/_admin/reference'
+      path: '/reference'
+      fullPath: '/reference'
+      preLoaderRoute: typeof AuthenticatedAdminReferenceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/replay': {
+      id: '/_authenticated/_admin/replay'
+      path: '/replay'
+      fullPath: '/replay'
+      preLoaderRoute: typeof AuthenticatedAdminReplayRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/suppression': {
+      id: '/_authenticated/_admin/suppression'
+      path: '/suppression'
+      fullPath: '/suppression'
+      preLoaderRoute: typeof AuthenticatedAdminSuppressionRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/training': {
+      id: '/_authenticated/_admin/training'
       path: '/training'
       fullPath: '/training'
-      preLoaderRoute: typeof AuthenticatedTrainingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof AuthenticatedAdminTrainingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/trends': {
-      id: '/_authenticated/trends'
+    '/_authenticated/_admin/trends': {
+      id: '/_authenticated/_admin/trends'
       path: '/trends'
       fullPath: '/trends'
-      preLoaderRoute: typeof AuthenticatedTrendsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof AuthenticatedAdminTrendsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/validate': {
-      id: '/_authenticated/validate'
+    '/_authenticated/_admin/validate': {
+      id: '/_authenticated/_admin/validate'
       path: '/validate'
       fullPath: '/validate'
-      preLoaderRoute: typeof AuthenticatedValidateRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof AuthenticatedAdminValidateRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/case/$caseRef': {
       id: '/_authenticated/case/$caseRef'
@@ -732,6 +796,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_admin/admin/people': {
+      id: '/_authenticated/_admin/admin/people'
+      path: '/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof AuthenticatedAdminAdminPeopleRouteImport
+      parentRoute: typeof AuthenticatedAdminAdminRoute
+    }
     '/api/public/hooks/coebis-refit': {
       id: '/api/public/hooks/coebis-refit'
       path: '/api/public/hooks/coebis-refit'
@@ -742,75 +813,102 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminAdminRouteChildren {
+  AuthenticatedAdminAdminPeopleRoute: typeof AuthenticatedAdminAdminPeopleRoute
+}
+
+const AuthenticatedAdminAdminRouteChildren: AuthenticatedAdminAdminRouteChildren =
+  {
+    AuthenticatedAdminAdminPeopleRoute: AuthenticatedAdminAdminPeopleRoute,
+  }
+
+const AuthenticatedAdminAdminRouteWithChildren =
+  AuthenticatedAdminAdminRoute._addFileChildren(
+    AuthenticatedAdminAdminRouteChildren,
+  )
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminAdminRoute: typeof AuthenticatedAdminAdminRouteWithChildren
+  AuthenticatedAdminBisBenchmarkRoute: typeof AuthenticatedAdminBisBenchmarkRoute
+  AuthenticatedAdminBlockersRoute: typeof AuthenticatedAdminBlockersRoute
+  AuthenticatedAdminBrainwavesRoute: typeof AuthenticatedAdminBrainwavesRoute
+  AuthenticatedAdminCalibrateRoute: typeof AuthenticatedAdminCalibrateRoute
+  AuthenticatedAdminCoebisRoute: typeof AuthenticatedAdminCoebisRoute
+  AuthenticatedAdminCompareRoute: typeof AuthenticatedAdminCompareRoute
+  AuthenticatedAdminDepthRoute: typeof AuthenticatedAdminDepthRoute
+  AuthenticatedAdminDepthIntakeRoute: typeof AuthenticatedAdminDepthIntakeRoute
+  AuthenticatedAdminDiscoveryRoute: typeof AuthenticatedAdminDiscoveryRoute
+  AuthenticatedAdminDrugsRoute: typeof AuthenticatedAdminDrugsRoute
+  AuthenticatedAdminExposureRoute: typeof AuthenticatedAdminExposureRoute
+  AuthenticatedAdminFeedbackRoute: typeof AuthenticatedAdminFeedbackRoute
+  AuthenticatedAdminFlagsRoute: typeof AuthenticatedAdminFlagsRoute
+  AuthenticatedAdminKetamineRoute: typeof AuthenticatedAdminKetamineRoute
+  AuthenticatedAdminModelsRoute: typeof AuthenticatedAdminModelsRoute
+  AuthenticatedAdminOutcomesRoute: typeof AuthenticatedAdminOutcomesRoute
+  AuthenticatedAdminPairingRoute: typeof AuthenticatedAdminPairingRoute
+  AuthenticatedAdminPathologyRoute: typeof AuthenticatedAdminPathologyRoute
+  AuthenticatedAdminPerformanceRoute: typeof AuthenticatedAdminPerformanceRoute
+  AuthenticatedAdminReferenceRoute: typeof AuthenticatedAdminReferenceRoute
+  AuthenticatedAdminReplayRoute: typeof AuthenticatedAdminReplayRoute
+  AuthenticatedAdminSuppressionRoute: typeof AuthenticatedAdminSuppressionRoute
+  AuthenticatedAdminTrainingRoute: typeof AuthenticatedAdminTrainingRoute
+  AuthenticatedAdminTrendsRoute: typeof AuthenticatedAdminTrendsRoute
+  AuthenticatedAdminValidateRoute: typeof AuthenticatedAdminValidateRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminAdminRoute: AuthenticatedAdminAdminRouteWithChildren,
+  AuthenticatedAdminBisBenchmarkRoute: AuthenticatedAdminBisBenchmarkRoute,
+  AuthenticatedAdminBlockersRoute: AuthenticatedAdminBlockersRoute,
+  AuthenticatedAdminBrainwavesRoute: AuthenticatedAdminBrainwavesRoute,
+  AuthenticatedAdminCalibrateRoute: AuthenticatedAdminCalibrateRoute,
+  AuthenticatedAdminCoebisRoute: AuthenticatedAdminCoebisRoute,
+  AuthenticatedAdminCompareRoute: AuthenticatedAdminCompareRoute,
+  AuthenticatedAdminDepthRoute: AuthenticatedAdminDepthRoute,
+  AuthenticatedAdminDepthIntakeRoute: AuthenticatedAdminDepthIntakeRoute,
+  AuthenticatedAdminDiscoveryRoute: AuthenticatedAdminDiscoveryRoute,
+  AuthenticatedAdminDrugsRoute: AuthenticatedAdminDrugsRoute,
+  AuthenticatedAdminExposureRoute: AuthenticatedAdminExposureRoute,
+  AuthenticatedAdminFeedbackRoute: AuthenticatedAdminFeedbackRoute,
+  AuthenticatedAdminFlagsRoute: AuthenticatedAdminFlagsRoute,
+  AuthenticatedAdminKetamineRoute: AuthenticatedAdminKetamineRoute,
+  AuthenticatedAdminModelsRoute: AuthenticatedAdminModelsRoute,
+  AuthenticatedAdminOutcomesRoute: AuthenticatedAdminOutcomesRoute,
+  AuthenticatedAdminPairingRoute: AuthenticatedAdminPairingRoute,
+  AuthenticatedAdminPathologyRoute: AuthenticatedAdminPathologyRoute,
+  AuthenticatedAdminPerformanceRoute: AuthenticatedAdminPerformanceRoute,
+  AuthenticatedAdminReferenceRoute: AuthenticatedAdminReferenceRoute,
+  AuthenticatedAdminReplayRoute: AuthenticatedAdminReplayRoute,
+  AuthenticatedAdminSuppressionRoute: AuthenticatedAdminSuppressionRoute,
+  AuthenticatedAdminTrainingRoute: AuthenticatedAdminTrainingRoute,
+  AuthenticatedAdminTrendsRoute: AuthenticatedAdminTrendsRoute,
+  AuthenticatedAdminValidateRoute: AuthenticatedAdminValidateRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedBisBenchmarkRoute: typeof AuthenticatedBisBenchmarkRoute
-  AuthenticatedBlockersRoute: typeof AuthenticatedBlockersRoute
-  AuthenticatedBrainwavesRoute: typeof AuthenticatedBrainwavesRoute
-  AuthenticatedCalibrateRoute: typeof AuthenticatedCalibrateRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
-  AuthenticatedCoebisRoute: typeof AuthenticatedCoebisRoute
-  AuthenticatedCompareRoute: typeof AuthenticatedCompareRoute
-  AuthenticatedDepthRoute: typeof AuthenticatedDepthRoute
-  AuthenticatedDepthIntakeRoute: typeof AuthenticatedDepthIntakeRoute
-  AuthenticatedDiscoveryRoute: typeof AuthenticatedDiscoveryRoute
-  AuthenticatedDrugsRoute: typeof AuthenticatedDrugsRoute
-  AuthenticatedExposureRoute: typeof AuthenticatedExposureRoute
-  AuthenticatedFeedbackRoute: typeof AuthenticatedFeedbackRoute
-  AuthenticatedFlagsRoute: typeof AuthenticatedFlagsRoute
-  AuthenticatedKetamineRoute: typeof AuthenticatedKetamineRoute
-  AuthenticatedModelsRoute: typeof AuthenticatedModelsRoute
   AuthenticatedNotesRoute: typeof AuthenticatedNotesRoute
-  AuthenticatedOutcomesRoute: typeof AuthenticatedOutcomesRoute
-  AuthenticatedPairingRoute: typeof AuthenticatedPairingRoute
-  AuthenticatedPathologyRoute: typeof AuthenticatedPathologyRoute
   AuthenticatedPatientsRoute: typeof AuthenticatedPatientsRoute
-  AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
-  AuthenticatedReferenceRoute: typeof AuthenticatedReferenceRoute
-  AuthenticatedReplayRoute: typeof AuthenticatedReplayRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedSuppressionRoute: typeof AuthenticatedSuppressionRoute
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
-  AuthenticatedTrainingRoute: typeof AuthenticatedTrainingRoute
-  AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
-  AuthenticatedValidateRoute: typeof AuthenticatedValidateRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCaseCaseRefRoute: typeof AuthenticatedCaseCaseRefRoute
   AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedBisBenchmarkRoute: AuthenticatedBisBenchmarkRoute,
-  AuthenticatedBlockersRoute: AuthenticatedBlockersRoute,
-  AuthenticatedBrainwavesRoute: AuthenticatedBrainwavesRoute,
-  AuthenticatedCalibrateRoute: AuthenticatedCalibrateRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
-  AuthenticatedCoebisRoute: AuthenticatedCoebisRoute,
-  AuthenticatedCompareRoute: AuthenticatedCompareRoute,
-  AuthenticatedDepthRoute: AuthenticatedDepthRoute,
-  AuthenticatedDepthIntakeRoute: AuthenticatedDepthIntakeRoute,
-  AuthenticatedDiscoveryRoute: AuthenticatedDiscoveryRoute,
-  AuthenticatedDrugsRoute: AuthenticatedDrugsRoute,
-  AuthenticatedExposureRoute: AuthenticatedExposureRoute,
-  AuthenticatedFeedbackRoute: AuthenticatedFeedbackRoute,
-  AuthenticatedFlagsRoute: AuthenticatedFlagsRoute,
-  AuthenticatedKetamineRoute: AuthenticatedKetamineRoute,
-  AuthenticatedModelsRoute: AuthenticatedModelsRoute,
   AuthenticatedNotesRoute: AuthenticatedNotesRoute,
-  AuthenticatedOutcomesRoute: AuthenticatedOutcomesRoute,
-  AuthenticatedPairingRoute: AuthenticatedPairingRoute,
-  AuthenticatedPathologyRoute: AuthenticatedPathologyRoute,
   AuthenticatedPatientsRoute: AuthenticatedPatientsRoute,
-  AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
-  AuthenticatedReferenceRoute: AuthenticatedReferenceRoute,
-  AuthenticatedReplayRoute: AuthenticatedReplayRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedSuppressionRoute: AuthenticatedSuppressionRoute,
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
-  AuthenticatedTrainingRoute: AuthenticatedTrainingRoute,
-  AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
-  AuthenticatedValidateRoute: AuthenticatedValidateRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCaseCaseRefRoute: AuthenticatedCaseCaseRefRoute,
   AuthenticatedReportIdRoute: AuthenticatedReportIdRoute,

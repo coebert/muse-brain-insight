@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { OutcomeEntryPanel } from "@/components/monitor/OutcomeEntryPanel";
 import { getOutcomeReport } from "@/lib/eeg/outcomes.functions";
 
-export const Route = createFileRoute("/_authenticated/outcomes")({
+export const Route = createFileRoute("/_authenticated/_admin/outcomes")({
   head: () => ({
     meta: [
       { title: "Case outcomes — CortexTrace" },
