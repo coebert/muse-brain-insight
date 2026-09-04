@@ -21,6 +21,7 @@ const TOOLS = [
   { to: "/feedback", label: "Alert feedback" },
   { to: "/performance", label: "Alert tuning" },
   { to: "/coebis", label: "COEBIS training data" },
+  { to: "/models", label: "Model versions" },
   { to: "/pathology", label: "Pathology validation" },
   { to: "/patients", label: "Patient scoreboard" },
   { to: "/outcomes", label: "Case outcomes" },
