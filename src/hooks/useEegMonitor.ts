@@ -585,6 +585,7 @@ export function useEegMonitor() {
     ) => {
       setError(null);
       setStatus("connecting");
+      sourceKindRef.current = kind;
       try {
         let source: EegSource;
         if (kind === "ingest") {
