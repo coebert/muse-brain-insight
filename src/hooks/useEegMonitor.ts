@@ -427,6 +427,16 @@ export function useEegMonitor() {
   const captureKeyRef = useRef<string>(newCaptureKey());
   const captureSentToRef = useRef<number>(-1);
   const captureBusyRef = useRef(false);
+  /**
+   * Continuous capture is only for real recordings. A test session or the
+   * simulated demo signal must never reach the capture tables, because the
+   * harvest later turns captures into cases the models train on.
+   */
+  const captureAllowedRef = useRef(true);
+  const sourceKindRef = useRef<SourceKind | null>(null);
+  const setCaptureEnabled = useCallback((enabled: boolean) => {
+    captureAllowedRef.current = enabled;
+  }, []);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
   const manualEventsRef = useRef<DetectedEvent[]>([]);
