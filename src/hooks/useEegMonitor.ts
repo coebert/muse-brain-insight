@@ -1152,6 +1152,7 @@ export function useEegMonitor() {
     captureKey: captureKeyRef.current,
     /** Force a capture flush (used when a case is ended or filed). */
     flushCapture,
+    setCaptureEnabled,
     connect,
     reconnect,
     stop,
