@@ -21,19 +21,47 @@ export interface SpectralLineageGroup {
   harmonization: HarmonizationRecord | null;
 }
 
+/**
+ * Rows fetched per statement. One 50k-row statement over these tables runs past
+ * the database's own time limit and is cancelled, which left the analysis pages
+ * empty; smaller indexed pages return the same rows well inside it.
+ */
+const PAGE = 2000;
+
+/** Read a table in indexed pages, stopping at the first short page. */
+async function pageRows(
+  query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  limit: number,
+): Promise<Record<string, unknown>[]> {
+  const out: Record<string, unknown>[] = [];
+  for (let from = 0; from < limit; from += PAGE) {
+    const to = Math.min(from + PAGE, limit) - 1;
+    const { data, error } = await query(from, to);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as Record<string, unknown>[];
+    out.push(...page);
+    if (page.length < to - from + 1) break;
+  }
+  return out;
+}
+
 /** Monitor readings with covariates but no app index (e.g. VitalDB). */
 export async function loadReferenceLineages(
   supabase: Client,
   limit = 20000,
 ): Promise<ReferenceLineageGroup[]> {
-  const { data, error } = await supabase
-    .from("external_reference_points")
-    .select("source_lineage, case_ref, bis, ce, age_band, sex, regimen, frailty")
-    .limit(limit);
-  if (error) throw new Error(error.message);
+  const rows = await pageRows(
+    (from, to) =>
+      supabase
+        .from("external_reference_points")
+        .select("source_lineage, case_ref, bis, ce, age_band, sex, regimen, frailty")
+        .order("case_ref", { ascending: true })
+        .range(from, to),
+    limit,
+  );
 
   const groups = new Map<string, ReferenceOnlyPoint[]>();
-  for (const r of (data ?? []) as unknown as Record<string, unknown>[]) {
+  for (const r of rows) {
     const lineage = String(r["source_lineage"] ?? "external:unknown");
     const bis = Number(r["bis"]);
     if (!Number.isFinite(bis)) continue;
