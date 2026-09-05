@@ -87,16 +87,21 @@ export async function loadSpectralLineages(
   supabase: Client,
   limit = 50000,
 ): Promise<SpectralLineageGroup[]> {
-  const { data, error } = await supabase
-    .from("external_spectral_epochs")
-    .select(
-      "source_lineage, case_ref, label, label_source, suppression_ratio, is_suppressed, sef95, harmonization",
-    )
-    .limit(limit);
-  if (error) throw new Error(error.message);
+  const rows = await pageRows(
+    (from, to) =>
+      supabase
+        .from("external_spectral_epochs")
+        .select(
+          "source_lineage, case_ref, label, label_source, suppression_ratio, is_suppressed, sef95, harmonization",
+        )
+        .order("source_lineage", { ascending: true })
+        .order("case_ref", { ascending: true })
+        .range(from, to),
+    limit,
+  );
 
   const groups = new Map<string, SpectralLineageGroup>();
-  for (const r of (data ?? []) as unknown as Record<string, unknown>[]) {
+  for (const r of rows) {
     const lineage = String(r["source_lineage"] ?? "external:unknown");
     const g =
       groups.get(lineage) ??
