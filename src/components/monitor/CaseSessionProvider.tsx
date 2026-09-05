@@ -201,7 +201,7 @@ function useCaseSessionState() {
   // is switched off for as long as one is running.
   useEffect(() => {
     monitor.setCaptureEnabled(!testing);
-  }, [monitor, testing]);
+  }, [monitor.setCaptureEnabled, testing]);
   /** Whether the connect dialog was opened to start a case or a test. */
   const [startIntent, setStartIntent] = useState<"case" | "test">("case");
   /** Closing the start dialog always resets intent, so a dismissed test-mode
