@@ -56,6 +56,10 @@ export async function harvestCaptures(admin: Client): Promise<HarvestReport> {
   }
 
   for (const capture of (captures ?? []) as Record<string, any>[]) {
+    // Belt and braces for captures written before the demo signal was excluded
+    // client-side: a simulated recording must never become a case.
+    const device = String(capture["device_name"] ?? "");
+    if (/demo|simulat|test/i.test(device)) continue;
     report.considered += 1;
     try {
       const { data: epochRows, error: epochError } = await admin

@@ -427,6 +427,16 @@ export function useEegMonitor() {
   const captureKeyRef = useRef<string>(newCaptureKey());
   const captureSentToRef = useRef<number>(-1);
   const captureBusyRef = useRef(false);
+  /**
+   * Continuous capture is only for real recordings. A test session or the
+   * simulated demo signal must never reach the capture tables, because the
+   * harvest later turns captures into cases the models train on.
+   */
+  const captureAllowedRef = useRef(true);
+  const sourceKindRef = useRef<SourceKind | null>(null);
+  const setCaptureEnabled = useCallback((enabled: boolean) => {
+    captureAllowedRef.current = enabled;
+  }, []);
   const lastSampleAtRef = useRef<number>(0);
   const gapStartRef = useRef<number | null>(null);
   const manualEventsRef = useRef<DetectedEvent[]>([]);
@@ -575,6 +585,7 @@ export function useEegMonitor() {
     ) => {
       setError(null);
       setStatus("connecting");
+      sourceKindRef.current = kind;
       try {
         let source: EegSource;
         if (kind === "ingest") {
@@ -1012,6 +1023,8 @@ export function useEegMonitor() {
   epochsRef.current = epochs;
   const flushCapture = useCallback(async () => {
     if (captureBusyRef.current) return;
+    if (!captureAllowedRef.current) return;
+    if (sourceKindRef.current === "simulated") return;
     const profile = profileRef.current;
     const rows = captureRowsFrom(
       epochsRef.current,
@@ -1139,6 +1152,7 @@ export function useEegMonitor() {
     captureKey: captureKeyRef.current,
     /** Force a capture flush (used when a case is ended or filed). */
     flushCapture,
+    setCaptureEnabled,
     connect,
     reconnect,
     stop,

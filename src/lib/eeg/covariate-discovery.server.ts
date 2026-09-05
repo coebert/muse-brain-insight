@@ -147,8 +147,8 @@ export async function runCovariateDiscovery(
   options: { externalLimit?: number; appLimit?: number } = {},
 ): Promise<DiscoveryBundle> {
   const [external, app] = await Promise.all([
-    loadExternalRows(supabase, options.externalLimit ?? 20000),
-    loadAppRows(supabase, options.appLimit ?? 10000),
+    loadExternalRows(supabase, options.externalLimit ?? 12000),
+    loadAppRows(supabase, options.appLimit ?? 6000),
   ]);
   const rows = [...external, ...app];
   const result: DiscoveryResult = discoverCovariateFeatures(rows);
