@@ -1023,6 +1023,8 @@ export function useEegMonitor() {
   epochsRef.current = epochs;
   const flushCapture = useCallback(async () => {
     if (captureBusyRef.current) return;
+    if (!captureAllowedRef.current) return;
+    if (sourceKindRef.current === "simulated") return;
     const profile = profileRef.current;
     const rows = captureRowsFrom(
       epochsRef.current,
