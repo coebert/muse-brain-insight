@@ -1,6 +1,8 @@
 /** Server-only helpers for outcome linkage (Phase 6). */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { open as unseal } from "@/lib/privacy.server";
+
 import type { CaseOutcome, OutcomeCase } from "./outcomes";
 
 type Client = SupabaseClient<any, any, any>;
@@ -72,7 +74,7 @@ export async function loadOutcomeCases(supabase: Client, limit = 200): Promise<O
     const deepFraction = d && d.n ? d.deepEpochs / d.n : 0;
     return {
       sessionId: id,
-      caseCode: String(r["case_code"] ?? ""),
+      caseCode: unseal(r["case_code"] as string | null) ?? "",
       ageBand: (r["age_band"] as string | null) ?? null,
       startedAt: (r["started_at"] as string | null) ?? null,
       durationMinutes: Number((durationSeconds / 60).toFixed(1)),
