@@ -353,6 +353,13 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
                 the signal priors.
               </p>
             )}
+            <p className="text-xs text-muted-foreground">
+              {parse.labelOrigin === "embedded"
+                ? `Labels were read from the recording's own annotation track (${parse.labelledIntervals.toLocaleString()} intervals) — no separate label file was needed.`
+                : parse.labelOrigin === "file"
+                  ? `Labels came from the label file you supplied (${parse.labelledIntervals.toLocaleString()} intervals).`
+                  : "This recording carries no annotation track and no label file was supplied."}
+            </p>
           </div>
         ) : null}
 
