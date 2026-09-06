@@ -40,6 +40,7 @@ export const Route = createFileRoute("/_authenticated/_admin/blockers")({
 
 const STATUS_LABEL: Record<BlockerStatus, string> = {
   live: "Live",
+  provisional: "Provisional",
   "awaiting-refit": "Awaiting refit",
   evidence: "Blocked on evidence",
   cases: "Blocked on cases",
@@ -52,6 +53,12 @@ function StatusBadge({ status }: { status: BlockerStatus }) {
     return (
       <Badge className="gap-1 whitespace-nowrap">
         <BadgeCheck className="size-3" /> {STATUS_LABEL[status]}
+      </Badge>
+    );
+  if (status === "provisional")
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        {STATUS_LABEL[status]}
       </Badge>
     );
   if (status === "awaiting-refit")

@@ -33,6 +33,7 @@ export const MIN_COVERAGE = 0.6;
 
 export type BlockerStatus =
   | "live"
+  | "provisional"
   | "awaiting-refit"
   | "evidence"
   | "cases"
@@ -126,6 +127,10 @@ export function buildLineageBlockers(
       status = "cases";
       headline = `Needs ${plural(casesNeeded, "more case")} to cross-validate`;
       detail = `Leave-one-case-out validation needs at least ${MIN_SESSIONS} independent cases; this lineage has ${caseCount}. Readings from the cases already recorded do not count towards this — only new patients do.`;
+    } else if (readingsNeeded > 0 && activeRow) {
+      status = "provisional";
+      headline = `Provisional model v${activeRow.version} in force`;
+      detail = `Fitted on this headband's own ${n} paired readings across ${caseCount} cases and cross-validated case by case, but still ${plural(readingsNeeded, "reading")} short of the ${MIN_POINTS}-reading bar. It corrects a large, well-evidenced offset; treat the number as provisional until the gate is cleared.`;
     } else if (readingsNeeded > 0) {
       status = "readings";
       headline = `Needs ${plural(readingsNeeded, "more paired reading")}`;
@@ -172,6 +177,7 @@ export function buildLineageBlockers(
   const rank: Record<BlockerStatus, number> = {
     cases: 0,
     readings: 1,
+    provisional: 1.5,
     evidence: 2,
     "awaiting-refit": 3,
     unattributed: 4,
