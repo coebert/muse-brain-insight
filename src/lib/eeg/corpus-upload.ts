@@ -22,6 +22,7 @@ import { applyAnnotations, type PathologyAnnotation } from "./pathology-datasets
 import {
   deriveEpochsFromRaw,
   normalisePhysionetLabel,
+  type PhysionetEpoch,
   type PhysionetImportRow,
 } from "./physionet";
 
