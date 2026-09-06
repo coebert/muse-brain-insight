@@ -1931,6 +1931,15 @@ export type Database = {
           row_count: number
         }[]
       }
+      session_depth_exposure: {
+        Args: { _session_ids: string[] }
+        Returns: {
+          deep_epochs: number
+          epochs: number
+          mean_depth: number
+          session_id: string
+        }[]
+      }
       session_index_spread: {
         Args: never
         Returns: {
