@@ -265,6 +265,11 @@ function BedsidePage() {
           />
         </div>
 
+        {/* Where this case's depth and suppression sit among known outcomes. */}
+        <div className="mt-3">
+          <CohortPositionPanel epochs={monitor.epochs} />
+        </div>
+
         {/* Everything else folds away, so the number owns the screen. */}
         <Collapsible open={detailOpen} onOpenChange={setDetailOpen} className="mt-3">
           <CollapsibleTrigger asChild>
