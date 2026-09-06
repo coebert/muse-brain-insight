@@ -141,6 +141,90 @@ export type Database = {
           },
         ]
       }
+      analysis_cache: {
+        Row: {
+          computed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          input_digest: string | null
+          job_key: string
+          payload: Json
+          requested_at: string
+          rows_scanned: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          computed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_digest?: string | null
+          job_key: string
+          payload?: Json
+          requested_at?: string
+          rows_scanned?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          computed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          input_digest?: string | null
+          job_key?: string
+          payload?: Json
+          requested_at?: string
+          rows_scanned?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      analysis_job_state: {
+        Row: {
+          holder: string | null
+          job_key: string
+          jobs_processed: number
+          last_error: string | null
+          last_run_at: string | null
+          lease_until: string | null
+          paused_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          holder?: string | null
+          job_key: string
+          jobs_processed?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          paused_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          holder?: string | null
+          job_key?: string
+          jobs_processed?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          lease_until?: string | null
+          paused_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bis_model_versions: {
         Row: {
           coefficients: Json

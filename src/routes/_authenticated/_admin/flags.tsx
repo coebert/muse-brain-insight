@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
 import {
   CartesianGrid,
   ComposedChart,
@@ -25,7 +27,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSuppressionDashboard } from "@/lib/eeg/suppression-dashboard.functions";
+import type { SuppressionDashboard } from "@/lib/eeg/suppression-dashboard";
 import {
   APP_FLAG_PCT,
   type CaseTrace,
@@ -294,15 +296,10 @@ function CaseCard({ trace }: { trace: CaseTrace }) {
 }
 
 function FlagsPage() {
-  const load = useServerFn(getSuppressionDashboard);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["suppression-dashboard"],
-    // Every labelled reading, so the cohort figures cover the same patients
-    // the calibration in force was fitted and graded on.
-    queryFn: () => load({ data: { limit: 80000 } }),
-
-    staleTime: 60_000,
-  });
+  // Every labelled reading is covered, but the pass runs in the background and
+  // the page reads the stored result.
+  const { data, loading: isLoading, error, meta, refreshing, refresh } =
+    useCachedAnalysis<SuppressionDashboard>("suppression-dashboard");
 
   return (
     <main className="min-h-dvh bg-background px-4 py-4 sm:px-6">
@@ -327,13 +324,15 @@ function FlagsPage() {
         and the moments each flag was up marked along the bottom.
       </p>
 
+      <CacheStatusBar meta={meta} refreshing={refreshing} onRefresh={refresh} label="the suppression comparison" />
+
       {isLoading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Loading paired suppression readings…
         </p>
       ) : error ? (
         <p role="alert" className="text-sm text-critical">
-          {error instanceof Error ? error.message : "Could not load the suppression readings."}
+          {error ?? "Could not load the suppression readings."}
         </p>
       ) : !data ? null : (
         <div className="space-y-4">

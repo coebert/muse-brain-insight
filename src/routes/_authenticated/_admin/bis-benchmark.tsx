@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
+import type { BisBenchmark } from "@/lib/eeg/bis-benchmark";
 import { useState } from "react";
 import { Activity, BadgeCheck, ChevronDown, ChevronRight, Gauge } from "lucide-react";
 
@@ -226,12 +229,8 @@ function LineageCard({ lineage }: { lineage: LineageAgreement }) {
 }
 
 function BisBenchmarkPage() {
-  const fetchBenchmark = useServerFn(getBisBenchmark);
-  const report = useQuery({
-    queryKey: ["bis-benchmark"],
-    queryFn: () => fetchBenchmark({ data: { limit: 200000 } }),
-    staleTime: 5 * 60 * 1000,
-  });
+  // Stored result: the comparison is worked out in the background, not on view.
+  const report = useCachedAnalysis<BisBenchmark>("bis-benchmark");
   const data = report.data;
 
   return (
@@ -249,9 +248,11 @@ function BisBenchmarkPage() {
         </p>
       </div>
 
-      {report.isLoading ? (
+      <CacheStatusBar meta={report.meta} refreshing={report.refreshing} onRefresh={report.refresh} label="the monitor comparison" />
+
+        {report.loading ? (
         <p className="text-sm text-muted-foreground">Grading every paired reading…</p>
-      ) : report.isError ? (
+      ) : Boolean(report.error) ? (
         <p className="text-sm text-destructive">Could not load the comparison.</p>
       ) : null}
 
