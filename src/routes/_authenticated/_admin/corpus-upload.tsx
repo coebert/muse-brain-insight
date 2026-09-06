@@ -122,6 +122,8 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
     mutationFn: runImport,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["physionet-pool"] }),
   });
+  const runFileTimeline = useServerFn(fileCorpusTimeline);
+  const timelineMutation = useMutation({ mutationFn: runFileTimeline });
 
   async function onAnnotationFile(file: File) {
     setError(null);
