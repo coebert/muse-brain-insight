@@ -36,6 +36,7 @@ export const ADMIN_SECTIONS = [
     items: [
       { to: "/capture", label: "Data collection" },
       { to: "/depth-intake", label: "Depth corpus intake" },
+      { to: "/corpus-upload", label: "Corpus upload" },
       { to: "/reference", label: "Reference library" },
       { to: "/pairing", label: "Pair monitor readings" },
       { to: "/drugs", label: "Drug library" },
