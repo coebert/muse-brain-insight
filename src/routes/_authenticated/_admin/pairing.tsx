@@ -22,6 +22,7 @@ import type { PairingCandidate, PairingMoment } from "@/lib/eeg/pairing-worklist
 import { getPairingMoments, getPairingWorklist } from "@/lib/eeg/pairing-worklist.functions";
 import { recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { unseal } from "@/lib/privacy";
+import { HeadbandPoolPanel } from "@/components/admin/HeadbandPoolPanel";
 
 export const Route = createFileRoute("/_authenticated/_admin/pairing")({
   head: () => ({
@@ -197,6 +198,8 @@ function PairingPage() {
           monitor value is ever inferred.
         </p>
       </div>
+
+      <HeadbandPoolPanel />
 
       {worklist.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading worklist…</p>
