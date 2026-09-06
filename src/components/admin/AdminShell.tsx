@@ -26,6 +26,7 @@ export const ADMIN_SECTIONS = [
       { to: "/bis-benchmark", label: "COEBIS vs BIS" },
       { to: "/pathology", label: "Pathology validation" },
       { to: "/compare", label: "Compare metrics" },
+      { to: "/model-compare", label: "Model comparison" },
       { to: "/replay", label: "COEBIS replay" },
       { to: "/trends", label: "Session trends" },
       { to: "/brainwaves", label: "Live brainwaves" },
