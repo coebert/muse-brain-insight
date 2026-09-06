@@ -211,7 +211,7 @@ export async function runHeadbandPoolRefit(
     if (error) throw new Error(error.message);
 
     if (fit.promote) {
-      await supabase
+      await admin
         .from("coebis_model_versions")
         .update({ is_active: false })
         .eq("user_id", userId)
