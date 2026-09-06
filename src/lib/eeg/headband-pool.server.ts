@@ -172,7 +172,8 @@ export async function runHeadbandPoolRefit(
     // Model version rows are insert-protected by RLS; write them with the
     // privileged client, still scoped to this user's id.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("coebis_model_versions").upsert(
+    const admin = supabaseAdmin as unknown as Client;
+    const { error } = await admin.from("coebis_model_versions").upsert(
       {
         user_id: userId,
         lineage_key: lineageKey,
