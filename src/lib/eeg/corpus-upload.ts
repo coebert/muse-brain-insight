@@ -141,7 +141,7 @@ function normaliseSleepLabel(raw: string): string | null {
   if (/(^|_)(n1|s1|stage_?1)($|_)/.test(v)) return "sleep_n1";
   if (/(^|_)(n2|s2|stage_?2)($|_)/.test(v)) return "sleep_n2";
   if (/(^|_)(n3|n4|s3|s4|sws|deep|stage_?[34])($|_)/.test(v)) return "sleep_n3";
-  if (/rem/.test(v)) return "sleep_rem";
+  if (/rem/.test(v) || /(^|_)r($|_)/.test(v)) return "sleep_rem";
   if (/(movement|artifact|artefact|unscored|\?)/.test(v)) return null;
   return normalisePhysionetLabel(v);
 }
