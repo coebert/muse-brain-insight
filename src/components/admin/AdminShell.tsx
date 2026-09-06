@@ -43,6 +43,7 @@ export const ADMIN_SECTIONS = [
       { to: "/exposure", label: "Drug exposure" },
       { to: "/ketamine", label: "Ketamine signature" },
       { to: "/outcomes", label: "Case outcomes" },
+      { to: "/casebook", label: "Case dashboard" },
       { to: "/cohort", label: "Outcome cohort" },
       { to: "/discovery", label: "Device discovery" },
     ],
