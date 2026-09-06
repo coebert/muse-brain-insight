@@ -54,3 +54,30 @@ describe("headband-only provisional fit", () => {
     expect(fit.promote === false || (fit.maeGain ?? 0) >= 0.25).toBe(true);
   });
 });
+
+describe("deep reading bias", () => {
+  /** Mostly light readings with a handful of deep ones the index misses. */
+  function skewed(): CoebisTrainingPoint[] {
+    const out: CoebisTrainingPoint[] = [];
+    for (let c = 0; c < 4; c++) {
+      for (let i = 0; i < 8; i++) out.push(point(`case-${c}`, i * 60, 70 + i, 80 + i * 0.9 + c));
+      for (let i = 0; i < 2; i++) out.push(point(`case-${c}`, 600 + i * 60, 30 + i * 4, 62 + i * 2 + c));
+    }
+    return out;
+  }
+
+  it("catches more deep readings than an unweighted fit", () => {
+    const flat = refitHeadbandLineage("muse-2", skewed(), null, { deepWeight: 1 });
+    const biased = refitHeadbandLineage("muse-2", skewed(), null, { deepWeight: 6 });
+    expect(flat.deep).toBeDefined();
+    expect(biased.deep!.after.sensitivity ?? 0).toBeGreaterThanOrEqual(
+      flat.deep!.after.sensitivity ?? 0,
+    );
+    expect(biased.deep!.threshold).toBe(40);
+  });
+
+  it("reports deep detection before and after on the same readings", () => {
+    const fit = refitHeadbandLineage("muse-2", skewed(), null);
+    expect(fit.deep!.before.monitorDeep).toBe(fit.deep!.after.monitorDeep);
+  });
+});

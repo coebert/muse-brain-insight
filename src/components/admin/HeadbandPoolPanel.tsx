@@ -130,6 +130,25 @@ export function HeadbandPoolPanel() {
               </p>
             </div>
 
+            {report.fit.deep ? (
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="font-medium">
+                  Deep readings (monitor at or below {report.fit.deep.threshold})
+                </p>
+                <p className="text-muted-foreground">
+                  {report.fit.deep.after.monitorDeep} of {report.readings} paired readings were deep
+                  on the monitor. Before the fit the index called{" "}
+                  {report.fit.deep.before.hits} of them deep (
+                  {num(report.fit.deep.before.sensitivity, 0)}%); holding each recording out, the
+                  new fit calls {report.fit.deep.after.hits} deep (
+                  {num(report.fit.deep.after.sensitivity, 0)}%), while leaving{" "}
+                  {num(report.fit.deep.after.specificity, 0)}% of the light readings light (was{" "}
+                  {num(report.fit.deep.before.specificity, 0)}%). Deep readings carry{" "}
+                  {report.fit.deep.weight}x weight when fitting; grading is unweighted.
+                </p>
+              </div>
+            ) : null}
+
             <div>
               <p className="mb-2 text-sm font-medium">Held-out error by recovery</p>
               <Table>
