@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
+import type { DrugExposureReport } from "@/lib/eeg/drug-exposure";
 import { ArrowLeft, Loader2, Syringe } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -184,14 +187,10 @@ function CaseRow({ row }: { row: ExposureCase }) {
 }
 
 function DrugExposurePage() {
-  const fetchExposure = useServerFn(getDrugExposure);
   const [drugFilter, setDrugFilter] = useState<string>("all");
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["drug-exposure"],
-    queryFn: () => fetchExposure({ data: {} }),
-    staleTime: 5 * 60_000,
-  });
+  const { data, loading: isLoading, error, meta, refreshing, refresh } =
+    useCachedAnalysis<DrugExposureReport>("drug-exposure");
 
   const cases = useMemo(() => {
     if (!data) return [];
@@ -223,13 +222,15 @@ function DrugExposurePage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+        <CacheStatusBar meta={meta} refreshing={refreshing} onRefresh={refresh} label="the drug exposure figures" />
+
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Reading exposure and labels for every stored
             case…
           </div>
         ) : error ? (
-          <p className="text-sm text-alert">{(error as Error).message}</p>
+          <p className="text-sm text-alert">{error}</p>
         ) : !data ? null : (
           <>
             <section className="rounded-lg border border-border/60 bg-card/40 p-4">

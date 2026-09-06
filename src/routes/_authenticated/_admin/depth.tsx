@@ -1,6 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
 import { useState } from "react";
 import {
   CartesianGrid,
@@ -34,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getSuppressionDashboard } from "@/lib/eeg/suppression-dashboard.functions";
+import type { SuppressionDashboard } from "@/lib/eeg/suppression-dashboard";
 import {
   APP_FLAG_PCT,
   type BisAgreement,
@@ -309,13 +311,11 @@ function EngineCard() {
 }
 
 function DepthPage() {
-  const load = useServerFn(getSuppressionDashboard);
   const [sort, setSort] = useState<"gap" | "readings">("gap");
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["depth-dashboard"],
-    queryFn: () => load({ data: { limit: 80000 } }),
-    staleTime: 60_000,
-  });
+  // Read the stored result rather than recomputing over every reading on each
+  // page view; the heavy pass runs in the background.
+  const { data, loading: isLoading, error, meta, refreshing, refresh } =
+    useCachedAnalysis<SuppressionDashboard>("suppression-dashboard");
 
   const cases = [...(data?.cases ?? [])].sort((a, b) =>
     sort === "readings"
@@ -341,13 +341,15 @@ function DepthPage() {
         looking at the patient.
       </p>
 
+      <CacheStatusBar meta={meta} refreshing={refreshing} onRefresh={refresh} label="the depth dashboard" />
+
       {isLoading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Loading paired readings…
         </p>
       ) : error ? (
         <p role="alert" className="text-sm text-critical">
-          {error instanceof Error ? error.message : "Could not load the readings."}
+          {error ?? "Could not load the readings."}
         </p>
       ) : !data ? null : (
         <div className="space-y-4">

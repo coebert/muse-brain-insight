@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
+import type { KetamineCaseReport } from "@/lib/eeg/ketamine-cases";
 import { AlertTriangle, Eye, FlaskConical, Loader2, Minus } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
@@ -247,12 +250,8 @@ function ArmCard({ grade }: { grade: ArmGrade }) {
 }
 
 function KetaminePage() {
-  const fetchCases = useServerFn(getKetamineCases);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["ketamine-cases"],
-    queryFn: () => fetchCases({ data: {} }),
-    staleTime: 5 * 60_000,
-  });
+  const { data, loading: isLoading, error, meta, refreshing, refresh } =
+    useCachedAnalysis<KetamineCaseReport>("ketamine-cases");
   const [onlyAffected, setOnlyAffected] = useState(false);
 
   const rows = useMemo(() => {
@@ -283,6 +282,8 @@ function KetaminePage() {
           </p>
         </div>
 
+        <CacheStatusBar meta={meta} refreshing={refreshing} onRefresh={refresh} label="the ketamine signatures" />
+
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Measuring the spectrum across every stored
@@ -290,7 +291,7 @@ function KetaminePage() {
           </div>
         ) : error ? (
           <div role="alert" className="text-sm text-critical">
-            {(error as Error).message}
+            {error}
           </div>
         ) : data ? (
           <>

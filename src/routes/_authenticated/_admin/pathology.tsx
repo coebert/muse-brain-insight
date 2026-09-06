@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useCachedAnalysis } from "@/hooks/useCachedAnalysis";
+import { CacheStatusBar } from "@/components/analysis/CacheStatusBar";
+import type { PathologyLabelEvaluation } from "@/lib/eeg/pathology-labels";
 import { ArrowLeft, Brain, Loader2 } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
@@ -406,12 +409,8 @@ function AxisCard({
 }
 
 function PathologyPage() {
-  const fetchLabels = useServerFn(getPathologyLabels);
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["pathology-labels"],
-    queryFn: () => fetchLabels({ data: {} }),
-    staleTime: 60_000,
-  });
+  const { data, loading: isLoading, error, meta, refreshing, refresh } =
+    useCachedAnalysis<PathologyLabelEvaluation>("pathology-labels");
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -444,6 +443,8 @@ function PathologyPage() {
           </p>
         </section>
 
+        <CacheStatusBar meta={meta} refreshing={refreshing} onRefresh={refresh} label="the label comparison" />
+
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Collecting labelled epochs…
@@ -452,7 +453,7 @@ function PathologyPage() {
 
         {error ? (
           <p role="alert" className="text-sm text-critical">
-            {(error as Error).message}
+            {error}
           </p>
         ) : null}
 
