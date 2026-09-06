@@ -80,7 +80,7 @@ export async function loadOutcomeCases(supabase: Client, limit = 200): Promise<O
       ageBand: (r["age_band"] as string | null) ?? null,
       startedAt: (r["started_at"] as string | null) ?? null,
       durationMinutes: Number((durationSeconds / 60).toFixed(1)),
-      meanDepth: d && d.n ? Number((d.sum / d.n).toFixed(1)) : null,
+      meanDepth: d && d.n ? Number(d.mean.toFixed(1)) : null,
       minutesDeep: Number(((deepFraction * durationSeconds) / 60).toFixed(1)),
       meanSr: Number((num(r["mean_suppression_ratio"]) ?? 0).toFixed(1)),
       minutesSuppressed: Number(((num(r["suppression_seconds"]) ?? 0) / 60).toFixed(1)),
