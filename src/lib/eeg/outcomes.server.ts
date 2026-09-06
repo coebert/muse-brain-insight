@@ -74,6 +74,7 @@ export async function loadOutcomeCases(supabase: Client, limit = 200): Promise<O
       sessionId: id,
       caseCode: String(r["case_code"] ?? ""),
       ageBand: (r["age_band"] as string | null) ?? null,
+      startedAt: (r["started_at"] as string | null) ?? null,
       durationMinutes: Number((durationSeconds / 60).toFixed(1)),
       meanDepth: d && d.n ? Number((d.sum / d.n).toFixed(1)) : null,
       minutesDeep: Number(((deepFraction * durationSeconds) / 60).toFixed(1)),
