@@ -169,7 +169,11 @@ export async function runHeadbandPoolRefit(
   let version: number | null = null;
   if (fit.model) {
     version = incumbent.maxVersion + 1;
-    const { error } = await supabase.from("coebis_model_versions").upsert(
+    // Model version rows are insert-protected by RLS; write them with the
+    // privileged client, still scoped to this user's id.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as unknown as Client;
+    const { error } = await admin.from("coebis_model_versions").upsert(
       {
         user_id: userId,
         lineage_key: lineageKey,
@@ -207,7 +211,7 @@ export async function runHeadbandPoolRefit(
     if (error) throw new Error(error.message);
 
     if (fit.promote) {
-      await supabase
+      await admin
         .from("coebis_model_versions")
         .update({ is_active: false })
         .eq("user_id", userId)
