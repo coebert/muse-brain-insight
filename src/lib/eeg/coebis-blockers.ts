@@ -33,6 +33,7 @@ export const MIN_COVERAGE = 0.6;
 
 export type BlockerStatus =
   | "live"
+  | "provisional"
   | "awaiting-refit"
   | "evidence"
   | "cases"
