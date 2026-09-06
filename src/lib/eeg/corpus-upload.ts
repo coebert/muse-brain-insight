@@ -348,15 +348,28 @@ export function parseUploadedRecording(
 ): UploadParseResult {
   const { preset } = options;
   const caseRef = options.caseRef?.trim() || uploadCaseRef(options.fileName);
-  const decoded = readEdfChannel(bytes, preset.preferredChannels);
+  const header = parseEdfHeader(bytes);
+  const decoded = readEdfChannel(bytes, preset.preferredChannels, header);
+  const epochSeconds = options.epochSeconds ?? 4;
   const raw = deriveEpochsFromRaw(decoded.signal, decoded.sampleRate, {
     caseRef,
     channel: decoded.channel,
-    ...(options.epochSeconds ? { epochSeconds: options.epochSeconds, hopSeconds: options.epochSeconds } : {}),
+    epochSeconds,
+    hopSeconds: epochSeconds,
   });
   if (!raw.length) throw new Error("No usable epochs could be derived from this file.");
 
-  const annotations = options.annotations ?? [];
+  // Labels come from the uploaded file when one is supplied; otherwise from the
+  // recording's own EDF+ annotation track, which is where the OpenNeuro sleep
+  // records publish their stages. Never from the model being graded.
+  const supplied = options.annotations ?? [];
+  const embedded = supplied.length ? [] : annotationsFromEdf(bytes, preset.labelStyle).annotations;
+  const annotations = supplied.length ? supplied : embedded;
+  const labelOrigin: UploadParseResult["labelOrigin"] = supplied.length
+    ? "file"
+    : embedded.length
+      ? "embedded"
+      : "none";
   const labelled = annotations.length
     ? applyAnnotations(raw, annotations, { channel: decoded.channel })
     : raw;
