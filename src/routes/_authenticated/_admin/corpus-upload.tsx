@@ -25,6 +25,7 @@ import {
   type UploadParseResult,
   type UploadPreset,
 } from "@/lib/eeg/corpus-upload";
+import { fileCorpusTimeline } from "@/lib/eeg/corpus-timeline.functions";
 import type { PathologyAnnotation } from "@/lib/eeg/pathology-datasets";
 import { getPhysionetPool, importPhysionet } from "@/lib/eeg/physionet.functions";
 
@@ -122,6 +123,8 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
     mutationFn: runImport,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["physionet-pool"] }),
   });
+  const runFileTimeline = useServerFn(fileCorpusTimeline);
+  const timelineMutation = useMutation({ mutationFn: runFileTimeline });
 
   async function onAnnotationFile(file: File) {
     setError(null);
@@ -279,6 +282,25 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
           >
             {importMutation.isPending ? "Adding…" : "Add to the training pool"}
           </Button>
+          <Button
+            variant="outline"
+            disabled={!parse || timelineMutation.isPending}
+            onClick={() => {
+              if (!parse) return;
+              timelineMutation.mutate({
+                data: {
+                  caseRef: caseRef || uploadCaseRef(fileName ?? "recording"),
+                  corpusId: preset.id,
+                  corpusLabel: preset.label,
+                  channel: parse.channel,
+                  sampleRate: parse.sampleRate,
+                  readings: parse.timeline,
+                },
+              });
+            }}
+          >
+            {timelineMutation.isPending ? "Filing…" : "Add to the case timeline"}
+          </Button>
         </div>
 
         {error ? (
@@ -289,6 +311,18 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
         {importMutation.isError ? (
           <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
             {(importMutation.error as Error).message}
+          </p>
+        ) : null}
+        {timelineMutation.isError ? (
+          <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            {(timelineMutation.error as Error).message}
+          </p>
+        ) : null}
+        {timelineMutation.data ? (
+          <p className="rounded-md border bg-muted/40 p-3 text-sm">
+            Filed as case <strong>{timelineMutation.data.caseCode}</strong> with{" "}
+            {timelineMutation.data.epochs.toLocaleString()} readings — open it from Cases to see the
+            trace.
           </p>
         ) : null}
 
@@ -319,6 +353,13 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
                 the signal priors.
               </p>
             )}
+            <p className="text-xs text-muted-foreground">
+              {parse.labelOrigin === "embedded"
+                ? `Labels were read from the recording's own annotation track (${parse.labelledIntervals.toLocaleString()} intervals) — no separate label file was needed.`
+                : parse.labelOrigin === "file"
+                  ? `Labels came from the label file you supplied (${parse.labelledIntervals.toLocaleString()} intervals).`
+                  : "This recording carries no annotation track and no label file was supplied."}
+            </p>
           </div>
         ) : null}
 

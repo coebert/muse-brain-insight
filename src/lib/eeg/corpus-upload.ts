@@ -14,13 +14,15 @@
  *      transform applied to each epoch stays auditable.
  */
 
-import { readEdfChannel } from "./edf";
+import { DepthIndexEstimator } from "./depth";
+import { parseEdfHeader, readEdfAnnotations, readEdfChannel } from "./edf";
 import { harmonizeEpochs } from "./harmonization";
 import type { SourceMontage } from "./harmonization";
 import { applyAnnotations, type PathologyAnnotation } from "./pathology-datasets";
 import {
   deriveEpochsFromRaw,
   normalisePhysionetLabel,
+  type PhysionetEpoch,
   type PhysionetImportRow,
 } from "./physionet";
 
@@ -244,6 +246,19 @@ export function parseUploadAnnotations(
 
 /* ---------------------------------------------------------------- parsing --- */
 
+/** One reading on the case timeline, derived from the uploaded recording. */
+export interface UploadTimelineReading {
+  atSeconds: number;
+  depthIndex: number | null;
+  suppressionRatio: number;
+  isSuppressed: boolean;
+  sef95: number;
+  totalPower: number;
+  bands: Record<string, number>;
+  spectrumDb: number[];
+  label: string | null;
+}
+
 export interface UploadParseResult {
   rows: PhysionetImportRow[];
   channel: string;
@@ -252,6 +267,62 @@ export interface UploadParseResult {
   labelledEpochs: number;
   suppressedEpochs: number;
   labels: { label: string; count: number }[];
+  /** Where the interval labels came from. */
+  labelOrigin: "file" | "embedded" | "none";
+  /** How many intervals were applied. */
+  labelledIntervals: number;
+  /** Depth readings on the same grid, ready to file into the case timeline. */
+  timeline: UploadTimelineReading[];
+}
+
+/**
+ * Read the scored intervals an EDF+ file carries inside itself. OpenNeuro
+ * sleep records usually publish the stages in the recording's own annotation
+ * track rather than a separate events file.
+ */
+export function annotationsFromEdf(
+  bytes: Uint8Array,
+  style: LabelStyle,
+): UploadAnnotationParse {
+  const header = parseEdfHeader(bytes);
+  const raw = readEdfAnnotations(bytes, header);
+  const annotations: PathologyAnnotation[] = [];
+  const counts = new Map<string, number>();
+  let skipped = 0;
+
+  // A stage annotation with no stated duration runs until the next one starts.
+  const sorted = raw.slice().sort((a, b) => a.onsetSeconds - b.onsetSeconds);
+  sorted.forEach((a, i) => {
+    const label = normaliseUploadLabel(a.text, style);
+    if (!label) {
+      skipped++;
+      return;
+    }
+    const next = sorted[i + 1]?.onsetSeconds;
+    const stop =
+      a.durationSeconds > 0
+        ? a.onsetSeconds + a.durationSeconds
+        : next != null && next > a.onsetSeconds
+          ? next
+          : a.onsetSeconds + 30;
+    annotations.push({
+      channel: null,
+      startSeconds: a.onsetSeconds,
+      stopSeconds: stop,
+      label,
+      confidence: null,
+    });
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  });
+
+  return {
+    annotations,
+    rows: raw.length,
+    skipped,
+    labels: [...counts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count),
+  };
 }
 
 /** Turn a case reference out of the uploaded file name. */
@@ -278,15 +349,28 @@ export function parseUploadedRecording(
 ): UploadParseResult {
   const { preset } = options;
   const caseRef = options.caseRef?.trim() || uploadCaseRef(options.fileName);
-  const decoded = readEdfChannel(bytes, preset.preferredChannels);
+  const header = parseEdfHeader(bytes);
+  const decoded = readEdfChannel(bytes, preset.preferredChannels, header);
+  const epochSeconds = options.epochSeconds ?? 4;
   const raw = deriveEpochsFromRaw(decoded.signal, decoded.sampleRate, {
     caseRef,
     channel: decoded.channel,
-    ...(options.epochSeconds ? { epochSeconds: options.epochSeconds, hopSeconds: options.epochSeconds } : {}),
+    epochSeconds,
+    hopSeconds: epochSeconds,
   });
   if (!raw.length) throw new Error("No usable epochs could be derived from this file.");
 
-  const annotations = options.annotations ?? [];
+  // Labels come from the uploaded file when one is supplied; otherwise from the
+  // recording's own EDF+ annotation track, which is where the OpenNeuro sleep
+  // records publish their stages. Never from the model being graded.
+  const supplied = options.annotations ?? [];
+  const embedded = supplied.length ? [] : annotationsFromEdf(bytes, preset.labelStyle).annotations;
+  const annotations = supplied.length ? supplied : embedded;
+  const labelOrigin: UploadParseResult["labelOrigin"] = supplied.length
+    ? "file"
+    : embedded.length
+      ? "embedded"
+      : "none";
   const labelled = annotations.length
     ? applyAnnotations(raw, annotations, { channel: decoded.channel })
     : raw;
@@ -328,5 +412,43 @@ export function parseUploadedRecording(
     labels: [...counts.entries()]
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count),
+    labelOrigin,
+    labelledIntervals: annotations.length,
+    timeline: uploadTimeline(decoded.signal, decoded.sampleRate, harmonised, epochSeconds),
   };
+}
+
+/**
+ * Run the app's own estimator over the uploaded signal on the epoch grid, so
+ * an uploaded recording produces the same readings a bedside case would and
+ * can be shown on the case timeline. The index is the app's estimate only —
+ * these corpora publish no depth score of their own.
+ */
+export function uploadTimeline(
+  signal: Float64Array,
+  sampleRate: number,
+  epochs: PhysionetEpoch[],
+  epochSeconds: number,
+): UploadTimelineReading[] {
+  const est = new DepthIndexEstimator();
+  const win = Math.max(8, Math.round(epochSeconds * sampleRate));
+  return epochs.map((e) => {
+    const end = Math.min(signal.length, Math.round(e.atSeconds * sampleRate) + win);
+    const start = Math.max(0, end - win);
+    const reading =
+      end - start >= win
+        ? est.update(Float64Array.from(signal.subarray(start, end)), sampleRate, { usable: true }, epochSeconds)
+        : null;
+    return {
+      atSeconds: e.atSeconds,
+      depthIndex: reading?.index ?? null,
+      suppressionRatio: e.suppressionRatio,
+      isSuppressed: e.isSuppressed,
+      sef95: e.sef95,
+      totalPower: e.totalPower,
+      bands: e.bands as unknown as Record<string, number>,
+      spectrumDb: e.spectrumDb,
+      label: e.label,
+    };
+  });
 }
