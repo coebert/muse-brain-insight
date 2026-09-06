@@ -411,5 +411,8 @@ export function parseUploadedRecording(
     labels: [...counts.entries()]
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count),
+    labelOrigin,
+    labelledIntervals: annotations.length,
+    timeline: uploadTimeline(decoded.signal, decoded.sampleRate, harmonised, epochSeconds),
   };
 }
