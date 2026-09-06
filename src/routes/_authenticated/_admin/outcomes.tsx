@@ -7,6 +7,7 @@ import { useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { Button } from "@/components/ui/button";
 import { OutcomeEntryPanel } from "@/components/monitor/OutcomeEntryPanel";
+import { OutcomeImportPanel } from "@/components/monitor/OutcomeImportPanel";
 import { getOutcomeReport } from "@/lib/eeg/outcomes.functions";
 
 export const Route = createFileRoute("/_authenticated/_admin/outcomes")({
@@ -77,6 +78,8 @@ function OutcomesPage() {
         </p>
       ) : !data ? null : (
         <div className="space-y-4">
+          <OutcomeImportPanel />
+
           <p className="panel p-3 text-sm">
             {data.recorded} of {data.cases.length} case{data.cases.length === 1 ? "" : "s"} have an
             outcome recorded.
