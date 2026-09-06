@@ -279,6 +279,25 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
           >
             {importMutation.isPending ? "Adding…" : "Add to the training pool"}
           </Button>
+          <Button
+            variant="outline"
+            disabled={!parse || timelineMutation.isPending}
+            onClick={() => {
+              if (!parse) return;
+              timelineMutation.mutate({
+                data: {
+                  caseRef: caseRef || uploadCaseRef(fileName ?? "recording"),
+                  corpusId: preset.id,
+                  corpusLabel: preset.label,
+                  channel: parse.channel,
+                  sampleRate: parse.sampleRate,
+                  readings: parse.timeline,
+                },
+              });
+            }}
+          >
+            {timelineMutation.isPending ? "Filing…" : "Add to the case timeline"}
+          </Button>
         </div>
 
         {error ? (
@@ -289,6 +308,18 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
         {importMutation.isError ? (
           <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
             {(importMutation.error as Error).message}
+          </p>
+        ) : null}
+        {timelineMutation.isError ? (
+          <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            {(timelineMutation.error as Error).message}
+          </p>
+        ) : null}
+        {timelineMutation.data ? (
+          <p className="rounded-md border bg-muted/40 p-3 text-sm">
+            Filed as case <strong>{timelineMutation.data.caseCode}</strong> with{" "}
+            {timelineMutation.data.epochs.toLocaleString()} readings — open it from Cases to see the
+            trace.
           </p>
         ) : null}
 
