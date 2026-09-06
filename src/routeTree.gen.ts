@@ -37,6 +37,7 @@ import { Route as AuthenticatedAdminDrugsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminExposureRouteImport } from './routes/_authenticated/_admin/exposure'
 import { Route as AuthenticatedAdminFeedbackRouteImport } from './routes/_authenticated/_admin/feedback'
 import { Route as AuthenticatedAdminFlagsRouteImport } from './routes/_authenticated/_admin/flags'
+import { Route as AuthenticatedAdminHeadbandScoresRouteImport } from './routes/_authenticated/_admin/headband-scores'
 import { Route as AuthenticatedAdminKetamineRouteImport } from './routes/_authenticated/_admin/ketamine'
 import { Route as AuthenticatedAdminModelCompareRouteImport } from './routes/_authenticated/_admin/model-compare'
 import { Route as AuthenticatedAdminModelsRouteImport } from './routes/_authenticated/_admin/models'
@@ -209,6 +210,12 @@ const AuthenticatedAdminFlagsRoute = AuthenticatedAdminFlagsRouteImport.update({
   path: '/flags',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminHeadbandScoresRoute =
+  AuthenticatedAdminHeadbandScoresRouteImport.update({
+    id: '/headband-scores',
+    path: '/headband-scores',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminKetamineRoute =
   AuthenticatedAdminKetamineRouteImport.update({
     id: '/ketamine',
@@ -349,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/exposure': typeof AuthenticatedAdminExposureRoute
   '/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/flags': typeof AuthenticatedAdminFlagsRoute
+  '/headband-scores': typeof AuthenticatedAdminHeadbandScoresRoute
   '/ketamine': typeof AuthenticatedAdminKetamineRoute
   '/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/models': typeof AuthenticatedAdminModelsRoute
@@ -396,6 +404,7 @@ export interface FileRoutesByTo {
   '/exposure': typeof AuthenticatedAdminExposureRoute
   '/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/flags': typeof AuthenticatedAdminFlagsRoute
+  '/headband-scores': typeof AuthenticatedAdminHeadbandScoresRoute
   '/ketamine': typeof AuthenticatedAdminKetamineRoute
   '/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/models': typeof AuthenticatedAdminModelsRoute
@@ -446,6 +455,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/exposure': typeof AuthenticatedAdminExposureRoute
   '/_authenticated/_admin/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/_authenticated/_admin/flags': typeof AuthenticatedAdminFlagsRoute
+  '/_authenticated/_admin/headband-scores': typeof AuthenticatedAdminHeadbandScoresRoute
   '/_authenticated/_admin/ketamine': typeof AuthenticatedAdminKetamineRoute
   '/_authenticated/_admin/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/_authenticated/_admin/models': typeof AuthenticatedAdminModelsRoute
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/exposure'
     | '/feedback'
     | '/flags'
+    | '/headband-scores'
     | '/ketamine'
     | '/model-compare'
     | '/models'
@@ -542,6 +553,7 @@ export interface FileRouteTypes {
     | '/exposure'
     | '/feedback'
     | '/flags'
+    | '/headband-scores'
     | '/ketamine'
     | '/model-compare'
     | '/models'
@@ -591,6 +603,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/exposure'
     | '/_authenticated/_admin/feedback'
     | '/_authenticated/_admin/flags'
+    | '/_authenticated/_admin/headband-scores'
     | '/_authenticated/_admin/ketamine'
     | '/_authenticated/_admin/model-compare'
     | '/_authenticated/_admin/models'
@@ -816,6 +829,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFlagsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/headband-scores': {
+      id: '/_authenticated/_admin/headband-scores'
+      path: '/headband-scores'
+      fullPath: '/headband-scores'
+      preLoaderRoute: typeof AuthenticatedAdminHeadbandScoresRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/ketamine': {
       id: '/_authenticated/_admin/ketamine'
       path: '/ketamine'
@@ -970,6 +990,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminExposureRoute: typeof AuthenticatedAdminExposureRoute
   AuthenticatedAdminFeedbackRoute: typeof AuthenticatedAdminFeedbackRoute
   AuthenticatedAdminFlagsRoute: typeof AuthenticatedAdminFlagsRoute
+  AuthenticatedAdminHeadbandScoresRoute: typeof AuthenticatedAdminHeadbandScoresRoute
   AuthenticatedAdminKetamineRoute: typeof AuthenticatedAdminKetamineRoute
   AuthenticatedAdminModelCompareRoute: typeof AuthenticatedAdminModelCompareRoute
   AuthenticatedAdminModelsRoute: typeof AuthenticatedAdminModelsRoute
@@ -1006,6 +1027,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminExposureRoute: AuthenticatedAdminExposureRoute,
   AuthenticatedAdminFeedbackRoute: AuthenticatedAdminFeedbackRoute,
   AuthenticatedAdminFlagsRoute: AuthenticatedAdminFlagsRoute,
+  AuthenticatedAdminHeadbandScoresRoute: AuthenticatedAdminHeadbandScoresRoute,
   AuthenticatedAdminKetamineRoute: AuthenticatedAdminKetamineRoute,
   AuthenticatedAdminModelCompareRoute: AuthenticatedAdminModelCompareRoute,
   AuthenticatedAdminModelsRoute: AuthenticatedAdminModelsRoute,
