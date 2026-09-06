@@ -15,6 +15,7 @@ export const ADMIN_SECTIONS = [
       { to: "/calibrate", label: "Depth calibration" },
       { to: "/blockers", label: "Blocked lineages" },
       { to: "/suppression", label: "Suppression model" },
+      { to: "/headband-scores", label: "Headband depth score" },
     ],
   },
   {
