@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react";
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { TrendLine } from "@/components/monitor/TrendLine";
@@ -262,6 +263,11 @@ function BedsidePage() {
               profile.channels.some((c) => c === "TP10" || c === "AF8")
             }
           />
+        </div>
+
+        {/* Where this case's depth and suppression sit among known outcomes. */}
+        <div className="mt-3">
+          <CohortPositionPanel epochs={monitor.epochs} />
         </div>
 
         {/* Everything else folds away, so the number owns the screen. */}
