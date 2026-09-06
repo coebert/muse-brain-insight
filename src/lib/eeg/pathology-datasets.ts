@@ -31,9 +31,9 @@ import {
   type PhysionetImportRow,
 } from "./physionet";
 
-export type PathologyDataset = "tusz" | "chbmit" | "tuab" | "neonatal";
+export type PathologyDataset = "tusz" | "chbmit" | "tuab" | "neonatal" | "bdsp-dhypothermia";
 
-export type PathologyCategory = "seizure" | "cns-disease";
+export type PathologyCategory = "seizure" | "cns-disease" | "suppression";
 
 export interface PathologyDatasetInfo {
   id: PathologyDataset;
