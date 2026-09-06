@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Brain, FileText, Loader2, Upload, Zap } from "lucide-react";
+import { Activity, Brain, FileText, Loader2, Upload, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,9 +18,11 @@ import {
   summarisePathologyLabels,
   toPathologyRows,
   type PathologyAnnotation,
+  type PathologyCategory,
   type PathologyDataset,
   type PathologyDatasetInfo,
 } from "@/lib/eeg/pathology-datasets";
+import { cn } from "@/lib/utils";
 import type { PhysionetEpoch } from "@/lib/eeg/physionet";
 import { getPhysionetPool, importPhysionet } from "@/lib/eeg/physionet.functions";
 import { parseSedationIcuCsv } from "@/lib/eeg/sedation-icu";
@@ -159,17 +161,26 @@ function DatasetCard({ info }: { info: PathologyDatasetInfo }) {
     (g: PoolGroup) => g.lineage === info.lineage,
   );
 
+  const CATEGORY_META: Record<PathologyCategory, { label: string; Icon: typeof Zap }> = {
+    seizure: { label: "Seizure", Icon: Zap },
+    "cns-disease": { label: "CNS disease", Icon: Brain },
+    suppression: { label: "Suppression", Icon: Activity },
+  };
+  const { label: categoryLabel, Icon } = CATEGORY_META[info.category];
+
   return (
     <article className="rounded-md border border-border/60 p-3">
       <header className="mb-1 flex flex-wrap items-center gap-2">
-        {info.category === "seizure" ? (
-          <Zap className="h-3.5 w-3.5 text-destructive" aria-hidden />
-        ) : (
-          <Brain className="h-3.5 w-3.5 text-primary" aria-hidden />
-        )}
+        <Icon
+          className={cn(
+            "h-3.5 w-3.5",
+            info.category === "seizure" ? "text-destructive" : "text-primary",
+          )}
+          aria-hidden
+        />
         <h4 className="text-xs font-semibold">{info.label}</h4>
         <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-          {info.category === "seizure" ? "Seizure" : "CNS disease"}
+          {categoryLabel}
         </span>
       </header>
       <p className="text-xs text-muted-foreground">{info.description}</p>

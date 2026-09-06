@@ -31,9 +31,9 @@ import {
   type PhysionetImportRow,
 } from "./physionet";
 
-export type PathologyDataset = "tusz" | "chbmit" | "tuab" | "neonatal";
+export type PathologyDataset = "tusz" | "chbmit" | "tuab" | "neonatal" | "bdsp-dhypothermia";
 
-export type PathologyCategory = "seizure" | "cns-disease";
+export type PathologyCategory = "seizure" | "cns-disease" | "suppression";
 
 export interface PathologyDatasetInfo {
   id: PathologyDataset;
@@ -132,6 +132,27 @@ export const PATHOLOGY_DATASETS: PathologyDatasetInfo[] = [
     description:
       "Neonatal seizures marked by three independent experts — a hard negative set, since neonatal background differs sharply from adults.",
   },
+  {
+    id: "bdsp-dhypothermia",
+    label: "BDSP deep-hypothermia burst suppression",
+    category: "suppression",
+    source: "bdsp-dhypothermia",
+    lineage: "external:bdsp:dhypothermia",
+    sampleRate: 250,
+    montage: {
+      channel: "FP1",
+      reference: "average",
+      lowHz: 0.5,
+      highHz: 45,
+      sampleRateHz: 250,
+      note: "Clinical scalp 10-20 EEG recorded through cardiac-surgery cooling; convert to CSV samples before upload.",
+    },
+    licence: "BDSP open-access tier (free BDSP account required; no redistribution)",
+    annotations:
+      "Expert-reviewed burst/suppression intervals — start,stop,label rows (burst_suppression / suppression / burst / continuous).",
+    description:
+      "Real burst suppression from deep-hypothermic circulatory arrest — a non-anaesthetic ground truth that keeps the suppression model honest beyond propofol-shaped suppression.",
+  },
 ];
 
 export function pathologyDataset(id: PathologyDataset): PathologyDatasetInfo {
@@ -167,7 +188,10 @@ export function normalisePathologyLabel(raw: string): string | null {
   if (/(artf|artifact|artefact|musc|elec|eyem|chew|shiv)/.test(v)) return "artifact";
   if (/^(abnorm)/.test(v)) return "abnormal";
   if (/^(norm)/.test(v)) return "normal";
-  if (/(burst.*suppress|^bs$)/.test(v)) return "burst_suppression";
+  if (/(burst.*suppress|^bs$|^bsr$)/.test(v)) return "burst_suppression";
+  if (/^suppress(ed|ion|ive)/.test(v)) return "suppression";
+  if (/^burst/.test(v)) return "burst";
+  if (/^(continuous|cont_?eeg)$/.test(v)) return "continuous";
   return v;
 }
 
