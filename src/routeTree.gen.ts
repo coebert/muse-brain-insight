@@ -25,6 +25,7 @@ import { Route as AuthenticatedAdminBlockersRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminBrainwavesRouteImport } from './routes/_authenticated/_admin/brainwaves'
 import { Route as AuthenticatedAdminCalibrateRouteImport } from './routes/_authenticated/_admin/calibrate'
 import { Route as AuthenticatedAdminCaptureRouteImport } from './routes/_authenticated/_admin/capture'
+import { Route as AuthenticatedAdminCasebookRouteImport } from './routes/_authenticated/_admin/casebook'
 import { Route as AuthenticatedAdminCoebisRouteImport } from './routes/_authenticated/_admin/coebis'
 import { Route as AuthenticatedAdminCohortRouteImport } from './routes/_authenticated/_admin/cohort'
 import { Route as AuthenticatedAdminCompareRouteImport } from './routes/_authenticated/_admin/compare'
@@ -135,6 +136,12 @@ const AuthenticatedAdminCaptureRoute =
   AuthenticatedAdminCaptureRouteImport.update({
     id: '/capture',
     path: '/capture',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCasebookRoute =
+  AuthenticatedAdminCasebookRouteImport.update({
+    id: '/casebook',
+    path: '/casebook',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCoebisRoute =
@@ -317,6 +324,7 @@ export interface FileRoutesByFullPath {
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/capture': typeof AuthenticatedAdminCaptureRoute
+  '/casebook': typeof AuthenticatedAdminCasebookRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
   '/cohort': typeof AuthenticatedAdminCohortRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
@@ -361,6 +369,7 @@ export interface FileRoutesByTo {
   '/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/capture': typeof AuthenticatedAdminCaptureRoute
+  '/casebook': typeof AuthenticatedAdminCasebookRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
   '/cohort': typeof AuthenticatedAdminCohortRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
@@ -408,6 +417,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/brainwaves': typeof AuthenticatedAdminBrainwavesRoute
   '/_authenticated/_admin/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/_authenticated/_admin/capture': typeof AuthenticatedAdminCaptureRoute
+  '/_authenticated/_admin/casebook': typeof AuthenticatedAdminCasebookRoute
   '/_authenticated/_admin/coebis': typeof AuthenticatedAdminCoebisRoute
   '/_authenticated/_admin/cohort': typeof AuthenticatedAdminCohortRoute
   '/_authenticated/_admin/compare': typeof AuthenticatedAdminCompareRoute
@@ -454,6 +464,7 @@ export interface FileRouteTypes {
     | '/brainwaves'
     | '/calibrate'
     | '/capture'
+    | '/casebook'
     | '/coebis'
     | '/cohort'
     | '/compare'
@@ -498,6 +509,7 @@ export interface FileRouteTypes {
     | '/brainwaves'
     | '/calibrate'
     | '/capture'
+    | '/casebook'
     | '/coebis'
     | '/cohort'
     | '/compare'
@@ -544,6 +556,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/brainwaves'
     | '/_authenticated/_admin/calibrate'
     | '/_authenticated/_admin/capture'
+    | '/_authenticated/_admin/casebook'
     | '/_authenticated/_admin/coebis'
     | '/_authenticated/_admin/cohort'
     | '/_authenticated/_admin/compare'
@@ -692,6 +705,13 @@ declare module '@tanstack/react-router' {
       path: '/capture'
       fullPath: '/capture'
       preLoaderRoute: typeof AuthenticatedAdminCaptureRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/casebook': {
+      id: '/_authenticated/_admin/casebook'
+      path: '/casebook'
+      fullPath: '/casebook'
+      preLoaderRoute: typeof AuthenticatedAdminCasebookRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/coebis': {
@@ -899,6 +919,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBrainwavesRoute: typeof AuthenticatedAdminBrainwavesRoute
   AuthenticatedAdminCalibrateRoute: typeof AuthenticatedAdminCalibrateRoute
   AuthenticatedAdminCaptureRoute: typeof AuthenticatedAdminCaptureRoute
+  AuthenticatedAdminCasebookRoute: typeof AuthenticatedAdminCasebookRoute
   AuthenticatedAdminCoebisRoute: typeof AuthenticatedAdminCoebisRoute
   AuthenticatedAdminCohortRoute: typeof AuthenticatedAdminCohortRoute
   AuthenticatedAdminCompareRoute: typeof AuthenticatedAdminCompareRoute
@@ -932,6 +953,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBrainwavesRoute: AuthenticatedAdminBrainwavesRoute,
   AuthenticatedAdminCalibrateRoute: AuthenticatedAdminCalibrateRoute,
   AuthenticatedAdminCaptureRoute: AuthenticatedAdminCaptureRoute,
+  AuthenticatedAdminCasebookRoute: AuthenticatedAdminCasebookRoute,
   AuthenticatedAdminCoebisRoute: AuthenticatedAdminCoebisRoute,
   AuthenticatedAdminCohortRoute: AuthenticatedAdminCohortRoute,
   AuthenticatedAdminCompareRoute: AuthenticatedAdminCompareRoute,

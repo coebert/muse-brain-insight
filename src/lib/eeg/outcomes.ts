@@ -52,6 +52,8 @@ export interface OutcomeCase {
   sessionId: string;
   caseCode: string;
   ageBand: string | null;
+  /** When the case was recorded, ISO stamp; null for imported rows. */
+  startedAt: string | null;
   durationMinutes: number;
   /** Mean depth index across the case. */
   meanDepth: number | null;

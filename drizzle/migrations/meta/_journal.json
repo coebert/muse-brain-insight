@@ -148,6 +148,13 @@
       "when": 1788722399621,
       "tag": "0020_create_analysis_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788724678014,
+      "tag": "0021_session_depth_exposure_fn",
+      "breakpoints": true
     }
   ]
 }

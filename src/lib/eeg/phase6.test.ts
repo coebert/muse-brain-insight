@@ -109,6 +109,7 @@ describe("outcome signals", () => {
     sessionId: "a",
     caseCode: "GA-1",
     ageBand: "70-79",
+    startedAt: "2026-01-05T08:00:00Z",
     durationMinutes: 100,
     meanDepth: 45,
     minutesDeep: 10,

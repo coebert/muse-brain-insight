@@ -15,6 +15,7 @@ function caseOf(caseCode: string, withOutcome = false): OutcomeCase {
     sessionId: `id-${caseCode}`,
     caseCode,
     ageBand: null,
+    startedAt: null,
     durationMinutes: 60,
     meanDepth: 45,
     minutesDeep: 10,
