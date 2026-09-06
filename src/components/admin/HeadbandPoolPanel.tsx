@@ -154,7 +154,7 @@ export function HeadbandPoolPanel() {
                       <TableCell className="text-right tabular-nums">
                         {s.agreement.within10 == null
                           ? "—"
-                          : `${Math.round(s.agreement.within10 * 100)}%`}
+                          : `${Math.round(s.agreement.within10)}%`}
                       </TableCell>
                     </TableRow>
                   ))}
