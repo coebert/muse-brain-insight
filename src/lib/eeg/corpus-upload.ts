@@ -245,6 +245,19 @@ export function parseUploadAnnotations(
 
 /* ---------------------------------------------------------------- parsing --- */
 
+/** One reading on the case timeline, derived from the uploaded recording. */
+export interface UploadTimelineReading {
+  atSeconds: number;
+  depthIndex: number | null;
+  suppressionRatio: number;
+  isSuppressed: boolean;
+  sef95: number;
+  totalPower: number;
+  bands: Record<string, number>;
+  spectrumDb: number[];
+  label: string | null;
+}
+
 export interface UploadParseResult {
   rows: PhysionetImportRow[];
   channel: string;
@@ -253,6 +266,62 @@ export interface UploadParseResult {
   labelledEpochs: number;
   suppressedEpochs: number;
   labels: { label: string; count: number }[];
+  /** Where the interval labels came from. */
+  labelOrigin: "file" | "embedded" | "none";
+  /** How many intervals were applied. */
+  labelledIntervals: number;
+  /** Depth readings on the same grid, ready to file into the case timeline. */
+  timeline: UploadTimelineReading[];
+}
+
+/**
+ * Read the scored intervals an EDF+ file carries inside itself. OpenNeuro
+ * sleep records usually publish the stages in the recording's own annotation
+ * track rather than a separate events file.
+ */
+export function annotationsFromEdf(
+  bytes: Uint8Array,
+  style: LabelStyle,
+): UploadAnnotationParse {
+  const header = parseEdfHeader(bytes);
+  const raw = readEdfAnnotations(bytes, header);
+  const annotations: PathologyAnnotation[] = [];
+  const counts = new Map<string, number>();
+  let skipped = 0;
+
+  // A stage annotation with no stated duration runs until the next one starts.
+  const sorted = raw.slice().sort((a, b) => a.onsetSeconds - b.onsetSeconds);
+  sorted.forEach((a, i) => {
+    const label = normaliseUploadLabel(a.text, style);
+    if (!label) {
+      skipped++;
+      return;
+    }
+    const next = sorted[i + 1]?.onsetSeconds;
+    const stop =
+      a.durationSeconds > 0
+        ? a.onsetSeconds + a.durationSeconds
+        : next != null && next > a.onsetSeconds
+          ? next
+          : a.onsetSeconds + 30;
+    annotations.push({
+      channel: null,
+      startSeconds: a.onsetSeconds,
+      stopSeconds: stop,
+      label,
+      confidence: null,
+    });
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  });
+
+  return {
+    annotations,
+    rows: raw.length,
+    skipped,
+    labels: [...counts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count),
+  };
 }
 
 /** Turn a case reference out of the uploaded file name. */
