@@ -155,7 +155,7 @@ function UploadPanel({ preset }: { preset: UploadPreset }) {
           parseUploadedRecording(bytes, {
             preset,
             fileName,
-            caseRef: caseRef || undefined,
+            ...(caseRef ? { caseRef } : {}),
             annotations: annotation?.annotations ?? [],
           }),
         );
