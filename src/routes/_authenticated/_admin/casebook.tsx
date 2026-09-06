@@ -156,22 +156,22 @@ function CasebookPage() {
             <div className="mt-3 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={trend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis yAxisId="left" domain={[0, 100]} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, currentColor)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="currentColor" />
+                  <YAxis yAxisId="left" domain={[0, 100]} tick={{ fontSize: 11 }} stroke="currentColor" />
+                  <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} stroke="currentColor" />
                   <Tooltip
                     contentStyle={{
-                      background: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border, currentColor)",
                       borderRadius: 8,
                       fontSize: 12,
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar yAxisId="right" dataKey="adverse" name="Cases with a problem" fill="hsl(var(--critical))" barSize={18} />
-                  <Line yAxisId="left" type="monotone" dataKey="meanDepth" name="Depth index" stroke="hsl(var(--signal))" strokeWidth={2} dot />
-                  <Line yAxisId="left" type="monotone" dataKey="meanSuppressedPercent" name="Time suppressed (%)" stroke="hsl(var(--warning))" strokeWidth={2} dot />
+                  <Bar yAxisId="right" dataKey="adverse" name="Cases with a problem" fill="var(--color-critical, currentColor)" barSize={18} />
+                  <Line yAxisId="left" type="monotone" dataKey="meanDepth" name="Depth index" stroke="var(--color-signal, currentColor)" strokeWidth={2} dot />
+                  <Line yAxisId="left" type="monotone" dataKey="meanSuppressedPercent" name="Time suppressed (%)" stroke="var(--color-warning, currentColor)" strokeWidth={2} dot />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
