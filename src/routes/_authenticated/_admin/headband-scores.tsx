@@ -59,7 +59,14 @@ function HeadbandScoresPage() {
   const fetchScores = useServerFn(getHeadbandScores);
   const report = useQuery({
     queryKey: ["headband-scores"],
-    queryFn: () => fetchScores({ data: {} }),
+    queryFn: async () => {
+      const out = await fetchScores({ data: {} });
+      const cases_ = (await unseal(
+        out.cases_ as unknown as Record<string, unknown>[],
+        ["caseCode"],
+      )) as unknown as typeof out.cases_;
+      return { ...out, cases_ };
+    },
     staleTime: 60_000,
   });
 
