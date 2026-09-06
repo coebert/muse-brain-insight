@@ -416,3 +416,38 @@ export function parseUploadedRecording(
     timeline: uploadTimeline(decoded.signal, decoded.sampleRate, harmonised, epochSeconds),
   };
 }
+
+/**
+ * Run the app's own estimator over the uploaded signal on the epoch grid, so
+ * an uploaded recording produces the same readings a bedside case would and
+ * can be shown on the case timeline. The index is the app's estimate only —
+ * these corpora publish no depth score of their own.
+ */
+export function uploadTimeline(
+  signal: Float64Array,
+  sampleRate: number,
+  epochs: PhysionetEpoch[],
+  epochSeconds: number,
+): UploadTimelineReading[] {
+  const est = new DepthIndexEstimator();
+  const win = Math.max(8, Math.round(epochSeconds * sampleRate));
+  return epochs.map((e) => {
+    const end = Math.min(signal.length, Math.round(e.atSeconds * sampleRate) + win);
+    const start = Math.max(0, end - win);
+    const reading =
+      end - start >= win
+        ? est.update(Float64Array.from(signal.subarray(start, end)), sampleRate, { usable: true }, epochSeconds)
+        : null;
+    return {
+      atSeconds: e.atSeconds,
+      depthIndex: reading?.index ?? null,
+      suppressionRatio: e.suppressionRatio,
+      isSuppressed: e.isSuppressed,
+      sef95: e.sef95,
+      totalPower: e.totalPower,
+      bands: e.bands as unknown as Record<string, number>,
+      spectrumDb: e.spectrumDb,
+      label: e.label,
+    };
+  });
+}
