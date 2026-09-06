@@ -48,23 +48,25 @@ export async function loadOutcomeCases(supabase: Client, limit = 200): Promise<O
     outcomes.set(String(r["session_id"]), rowToOutcome(r));
   }
 
-  // Depth exposure comes from the stored epochs: mean index and time below 40.
-  const depth = new Map<string, { sum: number; n: number; deepEpochs: number }>();
-  const { data: epochRows } = await supabase
-    .from("eeg_epochs")
-    .select("session_id, depth_index")
-    .in("session_id", ids)
-    .limit(20000);
-  for (const r of (epochRows ?? []) as unknown as Record<string, unknown>[]) {
-    const idx = num(r["depth_index"]);
-    if (idx == null) continue;
-    const key = String(r["session_id"]);
-    const acc = depth.get(key) ?? { sum: 0, n: 0, deepEpochs: 0 };
-    acc.sum += idx;
-    acc.n += 1;
-    if (idx < 40) acc.deepEpochs += 1;
-    depth.set(key, acc);
+  // Depth exposure is aggregated in the database: paging every epoch row
+  // through the API silently truncated long cases at the API's row cap.
+  const depth = new Map<string, { mean: number; n: number; deepEpochs: number }>();
+  const { data: exposureRows, error: exposureError } = await supabase.rpc(
+    "session_depth_exposure",
+    { _session_ids: ids },
+  );
+  if (exposureError) throw new Error(exposureError.message);
+  for (const r of (exposureRows ?? []) as unknown as Record<string, unknown>[]) {
+    const n = num(r["epochs"]) ?? 0;
+    const mean = num(r["mean_depth"]);
+    if (!n || mean == null) continue;
+    depth.set(String(r["session_id"]), {
+      mean,
+      n,
+      deepEpochs: num(r["deep_epochs"]) ?? 0,
+    });
   }
+
 
   return rows.map((r) => {
     const id = String(r["id"]);
