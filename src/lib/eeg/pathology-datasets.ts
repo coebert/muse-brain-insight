@@ -188,7 +188,10 @@ export function normalisePathologyLabel(raw: string): string | null {
   if (/(artf|artifact|artefact|musc|elec|eyem|chew|shiv)/.test(v)) return "artifact";
   if (/^(abnorm)/.test(v)) return "abnormal";
   if (/^(norm)/.test(v)) return "normal";
-  if (/(burst.*suppress|^bs$)/.test(v)) return "burst_suppression";
+  if (/(burst.*suppress|^bs$|^bsr$)/.test(v)) return "burst_suppression";
+  if (/^suppress(ed|ion|ive)/.test(v)) return "suppression";
+  if (/^burst/.test(v)) return "burst";
+  if (/^(continuous|cont_?eeg)$/.test(v)) return "continuous";
   return v;
 }
 
