@@ -113,7 +113,7 @@ export const UPLOAD_PRESETS: UploadPreset[] = [
     preferredChannels: ["AF7", "AF8", "Fp1", "Fp2", "Fpz", "AF3", "AF4", "F7", "F8"],
     montage: {
       channel: "Fp1",
-      reference: "linked_ears",
+      reference: "linked-ears",
       lowHz: 0.3,
       highHz: 45,
       sampleRateHz: 250,
