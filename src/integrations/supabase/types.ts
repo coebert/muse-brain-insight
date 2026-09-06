@@ -1236,6 +1236,72 @@ export type Database = {
           },
         ]
       }
+      external_case_outcomes: {
+        Row: {
+          age_years: number | null
+          approach: string | null
+          asa: string | null
+          case_ref: string
+          comorbidities: string[]
+          created_at: string
+          department: string | null
+          emergency: boolean | null
+          hospital_days: number | null
+          icu_days: number | null
+          id: string
+          in_hospital_death: boolean | null
+          optype: string | null
+          raw: Json
+          sex: string | null
+          source: string
+          source_lineage: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_years?: number | null
+          approach?: string | null
+          asa?: string | null
+          case_ref: string
+          comorbidities?: string[]
+          created_at?: string
+          department?: string | null
+          emergency?: boolean | null
+          hospital_days?: number | null
+          icu_days?: number | null
+          id?: string
+          in_hospital_death?: boolean | null
+          optype?: string | null
+          raw?: Json
+          sex?: string | null
+          source: string
+          source_lineage: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_years?: number | null
+          approach?: string | null
+          asa?: string | null
+          case_ref?: string
+          comorbidities?: string[]
+          created_at?: string
+          department?: string | null
+          emergency?: boolean | null
+          hospital_days?: number | null
+          icu_days?: number | null
+          id?: string
+          in_hospital_death?: boolean | null
+          optype?: string | null
+          raw?: Json
+          sex?: string | null
+          source?: string
+          source_lineage?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       external_reference_points: {
         Row: {
           age_band: string | null
@@ -1759,6 +1825,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      external_depth_exposure: {
+        Args: { _lineage: string }
+        Returns: {
+          case_ref: string
+          mean_index: number
+          min_index: number
+          readings: number
+          seconds: number
+          seconds_above_60: number
+          seconds_below_30: number
+          seconds_below_40: number
+          seconds_suppressed: number
+        }[]
+      }
       reference_coverage: {
         Args: never
         Returns: {

@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminBrainwavesRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminCalibrateRouteImport } from './routes/_authenticated/_admin/calibrate'
 import { Route as AuthenticatedAdminCaptureRouteImport } from './routes/_authenticated/_admin/capture'
 import { Route as AuthenticatedAdminCoebisRouteImport } from './routes/_authenticated/_admin/coebis'
+import { Route as AuthenticatedAdminCohortRouteImport } from './routes/_authenticated/_admin/cohort'
 import { Route as AuthenticatedAdminCompareRouteImport } from './routes/_authenticated/_admin/compare'
 import { Route as AuthenticatedAdminCorpusUploadRouteImport } from './routes/_authenticated/_admin/corpus-upload'
 import { Route as AuthenticatedAdminDepthRouteImport } from './routes/_authenticated/_admin/depth'
@@ -140,6 +141,12 @@ const AuthenticatedAdminCoebisRoute =
   AuthenticatedAdminCoebisRouteImport.update({
     id: '/coebis',
     path: '/coebis',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCohortRoute =
+  AuthenticatedAdminCohortRouteImport.update({
+    id: '/cohort',
+    path: '/cohort',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminCompareRoute =
@@ -311,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/capture': typeof AuthenticatedAdminCaptureRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/cohort': typeof AuthenticatedAdminCohortRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
   '/corpus-upload': typeof AuthenticatedAdminCorpusUploadRoute
   '/depth': typeof AuthenticatedAdminDepthRoute
@@ -354,6 +362,7 @@ export interface FileRoutesByTo {
   '/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/capture': typeof AuthenticatedAdminCaptureRoute
   '/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/cohort': typeof AuthenticatedAdminCohortRoute
   '/compare': typeof AuthenticatedAdminCompareRoute
   '/corpus-upload': typeof AuthenticatedAdminCorpusUploadRoute
   '/depth': typeof AuthenticatedAdminDepthRoute
@@ -400,6 +409,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/calibrate': typeof AuthenticatedAdminCalibrateRoute
   '/_authenticated/_admin/capture': typeof AuthenticatedAdminCaptureRoute
   '/_authenticated/_admin/coebis': typeof AuthenticatedAdminCoebisRoute
+  '/_authenticated/_admin/cohort': typeof AuthenticatedAdminCohortRoute
   '/_authenticated/_admin/compare': typeof AuthenticatedAdminCompareRoute
   '/_authenticated/_admin/corpus-upload': typeof AuthenticatedAdminCorpusUploadRoute
   '/_authenticated/_admin/depth': typeof AuthenticatedAdminDepthRoute
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/calibrate'
     | '/capture'
     | '/coebis'
+    | '/cohort'
     | '/compare'
     | '/corpus-upload'
     | '/depth'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/calibrate'
     | '/capture'
     | '/coebis'
+    | '/cohort'
     | '/compare'
     | '/corpus-upload'
     | '/depth'
@@ -533,6 +545,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/calibrate'
     | '/_authenticated/_admin/capture'
     | '/_authenticated/_admin/coebis'
+    | '/_authenticated/_admin/cohort'
     | '/_authenticated/_admin/compare'
     | '/_authenticated/_admin/corpus-upload'
     | '/_authenticated/_admin/depth'
@@ -686,6 +699,13 @@ declare module '@tanstack/react-router' {
       path: '/coebis'
       fullPath: '/coebis'
       preLoaderRoute: typeof AuthenticatedAdminCoebisRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/cohort': {
+      id: '/_authenticated/_admin/cohort'
+      path: '/cohort'
+      fullPath: '/cohort'
+      preLoaderRoute: typeof AuthenticatedAdminCohortRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/_admin/compare': {
@@ -880,6 +900,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCalibrateRoute: typeof AuthenticatedAdminCalibrateRoute
   AuthenticatedAdminCaptureRoute: typeof AuthenticatedAdminCaptureRoute
   AuthenticatedAdminCoebisRoute: typeof AuthenticatedAdminCoebisRoute
+  AuthenticatedAdminCohortRoute: typeof AuthenticatedAdminCohortRoute
   AuthenticatedAdminCompareRoute: typeof AuthenticatedAdminCompareRoute
   AuthenticatedAdminCorpusUploadRoute: typeof AuthenticatedAdminCorpusUploadRoute
   AuthenticatedAdminDepthRoute: typeof AuthenticatedAdminDepthRoute
@@ -912,6 +933,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCalibrateRoute: AuthenticatedAdminCalibrateRoute,
   AuthenticatedAdminCaptureRoute: AuthenticatedAdminCaptureRoute,
   AuthenticatedAdminCoebisRoute: AuthenticatedAdminCoebisRoute,
+  AuthenticatedAdminCohortRoute: AuthenticatedAdminCohortRoute,
   AuthenticatedAdminCompareRoute: AuthenticatedAdminCompareRoute,
   AuthenticatedAdminCorpusUploadRoute: AuthenticatedAdminCorpusUploadRoute,
   AuthenticatedAdminDepthRoute: AuthenticatedAdminDepthRoute,

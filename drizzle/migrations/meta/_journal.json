@@ -127,6 +127,20 @@
       "when": 1788556794362,
       "tag": "0017_move_has_role_out_of_api_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788721659544,
+      "tag": "0018_create_external_case_outcomes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788721779594,
+      "tag": "0019_external_depth_exposure_function",
+      "breakpoints": true
     }
   ]
 }
