@@ -66,6 +66,7 @@ export const Route = createFileRoute("/_authenticated/_admin/model-compare")({
 });
 
 const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+const pctRaw = (v: number | null) => (v == null ? "—" : `${Math.round(v)}%`);
 const pts = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}`);
 const mins = (v: number | null) => (v == null ? "—" : `${Math.round(v)} min`);
 
@@ -106,9 +107,9 @@ function ArmCard({ arm }: { arm: DepthArm }) {
         </div>
         <div className="rounded-md bg-muted/40 p-2">
           <p className="text-xs text-muted-foreground">Within 5 points</p>
-          <p className="text-2xl font-semibold tabular-nums">{pct(arm.within5)}</p>
+          <p className="text-2xl font-semibold tabular-nums">{pctRaw(arm.within5)}</p>
           <p className="text-xs text-muted-foreground">
-            within 10 {pct(arm.within10)} · reads{" "}
+            within 10 {pctRaw(arm.within10)} · reads{" "}
             {arm.bias == null
               ? "at an unknown offset"
               : `${Math.abs(arm.bias).toFixed(1)} points ${arm.bias > 0 ? "lighter" : "deeper"}`}
@@ -157,8 +158,8 @@ function ModelComparePage() {
   }));
   const withinChart = arms.map((a) => ({
     name: a.key === "shared" ? "Shared" : "Headband",
-    within5: a.within5 == null ? 0 : Math.round(a.within5 * 100),
-    within10: a.within10 == null ? 0 : Math.round(a.within10 * 100),
+    within5: a.within5 == null ? 0 : Math.round(a.within5),
+    within10: a.within10 == null ? 0 : Math.round(a.within10),
   }));
   const flagChart = [
     { name: "Caught", value: supp.caught },
