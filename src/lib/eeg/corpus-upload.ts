@@ -14,7 +14,8 @@
  *      transform applied to each epoch stays auditable.
  */
 
-import { readEdfChannel } from "./edf";
+import { DepthIndexEstimator } from "./depth";
+import { parseEdfHeader, readEdfAnnotations, readEdfChannel } from "./edf";
 import { harmonizeEpochs } from "./harmonization";
 import type { SourceMontage } from "./harmonization";
 import { applyAnnotations, type PathologyAnnotation } from "./pathology-datasets";
