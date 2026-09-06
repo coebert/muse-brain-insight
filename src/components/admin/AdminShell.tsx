@@ -45,6 +45,7 @@ export const ADMIN_SECTIONS = [
       { to: "/outcomes", label: "Case outcomes" },
       { to: "/casebook", label: "Case dashboard" },
       { to: "/cohort", label: "Outcome cohort" },
+      { to: "/risk", label: "Outcome risk" },
       { to: "/discovery", label: "Device discovery" },
     ],
   },

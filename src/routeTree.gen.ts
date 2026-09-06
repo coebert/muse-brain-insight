@@ -45,6 +45,7 @@ import { Route as AuthenticatedAdminPathologyRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminPerformanceRouteImport } from './routes/_authenticated/_admin/performance'
 import { Route as AuthenticatedAdminReferenceRouteImport } from './routes/_authenticated/_admin/reference'
 import { Route as AuthenticatedAdminReplayRouteImport } from './routes/_authenticated/_admin/replay'
+import { Route as AuthenticatedAdminRiskRouteImport } from './routes/_authenticated/_admin/risk'
 import { Route as AuthenticatedAdminSuppressionRouteImport } from './routes/_authenticated/_admin/suppression'
 import { Route as AuthenticatedAdminTrainingRouteImport } from './routes/_authenticated/_admin/training'
 import { Route as AuthenticatedAdminTrendsRouteImport } from './routes/_authenticated/_admin/trends'
@@ -255,6 +256,11 @@ const AuthenticatedAdminReplayRoute =
     path: '/replay',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminRiskRoute = AuthenticatedAdminRiskRouteImport.update({
+  id: '/risk',
+  path: '/risk',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminSuppressionRoute =
   AuthenticatedAdminSuppressionRouteImport.update({
     id: '/suppression',
@@ -344,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/performance': typeof AuthenticatedAdminPerformanceRoute
   '/reference': typeof AuthenticatedAdminReferenceRoute
   '/replay': typeof AuthenticatedAdminReplayRoute
+  '/risk': typeof AuthenticatedAdminRiskRoute
   '/suppression': typeof AuthenticatedAdminSuppressionRoute
   '/training': typeof AuthenticatedAdminTrainingRoute
   '/trends': typeof AuthenticatedAdminTrendsRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/performance': typeof AuthenticatedAdminPerformanceRoute
   '/reference': typeof AuthenticatedAdminReferenceRoute
   '/replay': typeof AuthenticatedAdminReplayRoute
+  '/risk': typeof AuthenticatedAdminRiskRoute
   '/suppression': typeof AuthenticatedAdminSuppressionRoute
   '/training': typeof AuthenticatedAdminTrainingRoute
   '/trends': typeof AuthenticatedAdminTrendsRoute
@@ -437,6 +445,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/performance': typeof AuthenticatedAdminPerformanceRoute
   '/_authenticated/_admin/reference': typeof AuthenticatedAdminReferenceRoute
   '/_authenticated/_admin/replay': typeof AuthenticatedAdminReplayRoute
+  '/_authenticated/_admin/risk': typeof AuthenticatedAdminRiskRoute
   '/_authenticated/_admin/suppression': typeof AuthenticatedAdminSuppressionRoute
   '/_authenticated/_admin/training': typeof AuthenticatedAdminTrainingRoute
   '/_authenticated/_admin/trends': typeof AuthenticatedAdminTrendsRoute
@@ -484,6 +493,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/reference'
     | '/replay'
+    | '/risk'
     | '/suppression'
     | '/training'
     | '/trends'
@@ -529,6 +539,7 @@ export interface FileRouteTypes {
     | '/performance'
     | '/reference'
     | '/replay'
+    | '/risk'
     | '/suppression'
     | '/training'
     | '/trends'
@@ -576,6 +587,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/performance'
     | '/_authenticated/_admin/reference'
     | '/_authenticated/_admin/replay'
+    | '/_authenticated/_admin/risk'
     | '/_authenticated/_admin/suppression'
     | '/_authenticated/_admin/training'
     | '/_authenticated/_admin/trends'
@@ -847,6 +859,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminReplayRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/risk': {
+      id: '/_authenticated/_admin/risk'
+      path: '/risk'
+      fullPath: '/risk'
+      preLoaderRoute: typeof AuthenticatedAdminRiskRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/suppression': {
       id: '/_authenticated/_admin/suppression'
       path: '/suppression'
@@ -939,6 +958,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPerformanceRoute: typeof AuthenticatedAdminPerformanceRoute
   AuthenticatedAdminReferenceRoute: typeof AuthenticatedAdminReferenceRoute
   AuthenticatedAdminReplayRoute: typeof AuthenticatedAdminReplayRoute
+  AuthenticatedAdminRiskRoute: typeof AuthenticatedAdminRiskRoute
   AuthenticatedAdminSuppressionRoute: typeof AuthenticatedAdminSuppressionRoute
   AuthenticatedAdminTrainingRoute: typeof AuthenticatedAdminTrainingRoute
   AuthenticatedAdminTrendsRoute: typeof AuthenticatedAdminTrendsRoute
@@ -973,6 +993,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPerformanceRoute: AuthenticatedAdminPerformanceRoute,
   AuthenticatedAdminReferenceRoute: AuthenticatedAdminReferenceRoute,
   AuthenticatedAdminReplayRoute: AuthenticatedAdminReplayRoute,
+  AuthenticatedAdminRiskRoute: AuthenticatedAdminRiskRoute,
   AuthenticatedAdminSuppressionRoute: AuthenticatedAdminSuppressionRoute,
   AuthenticatedAdminTrainingRoute: AuthenticatedAdminTrainingRoute,
   AuthenticatedAdminTrendsRoute: AuthenticatedAdminTrendsRoute,
