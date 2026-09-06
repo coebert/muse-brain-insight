@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { DEEP_INDEX, LIGHT_INDEX, MIN_GROUP_EPOCHS } from "@/lib/eeg/headband-depth-scores";
 import { getHeadbandScores } from "@/lib/eeg/headband-depth-scores.functions";
+import { unseal } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/_admin/headband-scores")({
   head: () => ({
