@@ -148,7 +148,7 @@ function CasebookPage() {
               read as a trend.
             </p>
             {thin ? (
-              <p className="mt-2 text-xs text-warning">
+              <p className="mt-2 text-xs text-caution">
                 Every month so far holds fewer than {MIN_TREND_CASES} cases — treat the shape of
                 this chart as a tally, not a trend.
               </p>
@@ -171,7 +171,7 @@ function CasebookPage() {
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Bar yAxisId="right" dataKey="adverse" name="Cases with a problem" fill="var(--color-critical, currentColor)" barSize={18} />
                   <Line yAxisId="left" type="monotone" dataKey="meanDepth" name="Depth index" stroke="var(--color-signal, currentColor)" strokeWidth={2} dot />
-                  <Line yAxisId="left" type="monotone" dataKey="meanSuppressedPercent" name="Time suppressed (%)" stroke="var(--color-warning, currentColor)" strokeWidth={2} dot />
+                  <Line yAxisId="left" type="monotone" dataKey="meanSuppressedPercent" name="Time suppressed (%)" stroke="var(--color-caution, currentColor)" strokeWidth={2} dot />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
