@@ -38,6 +38,7 @@ import { Route as AuthenticatedAdminExposureRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminFeedbackRouteImport } from './routes/_authenticated/_admin/feedback'
 import { Route as AuthenticatedAdminFlagsRouteImport } from './routes/_authenticated/_admin/flags'
 import { Route as AuthenticatedAdminKetamineRouteImport } from './routes/_authenticated/_admin/ketamine'
+import { Route as AuthenticatedAdminModelCompareRouteImport } from './routes/_authenticated/_admin/model-compare'
 import { Route as AuthenticatedAdminModelsRouteImport } from './routes/_authenticated/_admin/models'
 import { Route as AuthenticatedAdminOutcomesRouteImport } from './routes/_authenticated/_admin/outcomes'
 import { Route as AuthenticatedAdminPairingRouteImport } from './routes/_authenticated/_admin/pairing'
@@ -214,6 +215,12 @@ const AuthenticatedAdminKetamineRoute =
     path: '/ketamine',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminModelCompareRoute =
+  AuthenticatedAdminModelCompareRouteImport.update({
+    id: '/model-compare',
+    path: '/model-compare',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminModelsRoute =
   AuthenticatedAdminModelsRouteImport.update({
     id: '/models',
@@ -343,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/flags': typeof AuthenticatedAdminFlagsRoute
   '/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/models': typeof AuthenticatedAdminModelsRoute
   '/outcomes': typeof AuthenticatedAdminOutcomesRoute
   '/pairing': typeof AuthenticatedAdminPairingRoute
@@ -389,6 +397,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/flags': typeof AuthenticatedAdminFlagsRoute
   '/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/models': typeof AuthenticatedAdminModelsRoute
   '/outcomes': typeof AuthenticatedAdminOutcomesRoute
   '/pairing': typeof AuthenticatedAdminPairingRoute
@@ -438,6 +447,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/feedback': typeof AuthenticatedAdminFeedbackRoute
   '/_authenticated/_admin/flags': typeof AuthenticatedAdminFlagsRoute
   '/_authenticated/_admin/ketamine': typeof AuthenticatedAdminKetamineRoute
+  '/_authenticated/_admin/model-compare': typeof AuthenticatedAdminModelCompareRoute
   '/_authenticated/_admin/models': typeof AuthenticatedAdminModelsRoute
   '/_authenticated/_admin/outcomes': typeof AuthenticatedAdminOutcomesRoute
   '/_authenticated/_admin/pairing': typeof AuthenticatedAdminPairingRoute
@@ -486,6 +496,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/flags'
     | '/ketamine'
+    | '/model-compare'
     | '/models'
     | '/outcomes'
     | '/pairing'
@@ -532,6 +543,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/flags'
     | '/ketamine'
+    | '/model-compare'
     | '/models'
     | '/outcomes'
     | '/pairing'
@@ -580,6 +592,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/feedback'
     | '/_authenticated/_admin/flags'
     | '/_authenticated/_admin/ketamine'
+    | '/_authenticated/_admin/model-compare'
     | '/_authenticated/_admin/models'
     | '/_authenticated/_admin/outcomes'
     | '/_authenticated/_admin/pairing'
@@ -810,6 +823,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminKetamineRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/model-compare': {
+      id: '/_authenticated/_admin/model-compare'
+      path: '/model-compare'
+      fullPath: '/model-compare'
+      preLoaderRoute: typeof AuthenticatedAdminModelCompareRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/models': {
       id: '/_authenticated/_admin/models'
       path: '/models'
@@ -951,6 +971,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminFeedbackRoute: typeof AuthenticatedAdminFeedbackRoute
   AuthenticatedAdminFlagsRoute: typeof AuthenticatedAdminFlagsRoute
   AuthenticatedAdminKetamineRoute: typeof AuthenticatedAdminKetamineRoute
+  AuthenticatedAdminModelCompareRoute: typeof AuthenticatedAdminModelCompareRoute
   AuthenticatedAdminModelsRoute: typeof AuthenticatedAdminModelsRoute
   AuthenticatedAdminOutcomesRoute: typeof AuthenticatedAdminOutcomesRoute
   AuthenticatedAdminPairingRoute: typeof AuthenticatedAdminPairingRoute
@@ -986,6 +1007,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminFeedbackRoute: AuthenticatedAdminFeedbackRoute,
   AuthenticatedAdminFlagsRoute: AuthenticatedAdminFlagsRoute,
   AuthenticatedAdminKetamineRoute: AuthenticatedAdminKetamineRoute,
+  AuthenticatedAdminModelCompareRoute: AuthenticatedAdminModelCompareRoute,
   AuthenticatedAdminModelsRoute: AuthenticatedAdminModelsRoute,
   AuthenticatedAdminOutcomesRoute: AuthenticatedAdminOutcomesRoute,
   AuthenticatedAdminPairingRoute: AuthenticatedAdminPairingRoute,

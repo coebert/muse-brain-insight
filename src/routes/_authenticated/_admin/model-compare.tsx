@@ -161,11 +161,8 @@ function ModelComparePage() {
     within10: a.within10 == null ? 0 : Math.round(a.within10 * 100),
   }));
   const flagChart = [
-    { name: "Caught", value: supp.n ? supp.monitorEvents - (supp.monitorEvents - Math.round((supp.sensitivity ?? 0) * supp.monitorEvents)) : 0 },
-    {
-      name: "Missed",
-      value: supp.monitorEvents - Math.round((supp.sensitivity ?? 0) * supp.monitorEvents),
-    },
+    { name: "Caught", value: supp.caught },
+    { name: "Missed", value: supp.missed },
   ];
 
   const loading =

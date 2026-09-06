@@ -123,6 +123,9 @@ export interface SuppressionScore {
   n: number;
   /** Moments the monitor called suppressed. */
   monitorEvents: number;
+  /** Of those, the ones the app also flagged, and the ones it missed. */
+  caught: number;
+  missed: number;
   /** Of those, how many the app also flagged, 0–1. */
   sensitivity: number | null;
   /** App flags with no monitor suppression, as a share of app flags, 0–1. */
@@ -144,6 +147,8 @@ export function suppressionScore(dashboard: SuppressionDashboard | null): Suppre
   return {
     n,
     monitorEvents,
+    caught: totals.agreed,
+    missed: totals.missed,
     sensitivity: monitorEvents > 0 ? r2(totals.agreed / monitorEvents) : null,
     falseAlarmRate: appFlags > 0 ? r2(totals.falseAlarms / appFlags) : null,
     agreement: n > 0 ? r2((totals.agreed + totals.clear) / n) : null,
