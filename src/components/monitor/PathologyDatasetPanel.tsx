@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Brain, FileText, Loader2, Upload, Zap } from "lucide-react";
+import { Activity, Brain, FileText, Loader2, Upload, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,9 +18,11 @@ import {
   summarisePathologyLabels,
   toPathologyRows,
   type PathologyAnnotation,
+  type PathologyCategory,
   type PathologyDataset,
   type PathologyDatasetInfo,
 } from "@/lib/eeg/pathology-datasets";
+import { cn } from "@/lib/utils";
 import type { PhysionetEpoch } from "@/lib/eeg/physionet";
 import { getPhysionetPool, importPhysionet } from "@/lib/eeg/physionet.functions";
 import { parseSedationIcuCsv } from "@/lib/eeg/sedation-icu";
