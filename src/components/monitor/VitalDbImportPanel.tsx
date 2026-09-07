@@ -185,7 +185,9 @@ export function VitalDbImportPanel() {
         const counts = await runPairedCounts({});
         coverage = assessGateCoverage(counts, result.lineages);
         if (coverage.ready) {
-          refit = await runRefit({});
+          // Bounded passes: each request refits one setup, repeated until
+          // nothing is left, so a big pool never times the server out.
+          refit = await runRefitToCompletion(() => runRefit({}));
         }
       }
       return { ...result, unusable, unmatched, refit, validation, coverage };
