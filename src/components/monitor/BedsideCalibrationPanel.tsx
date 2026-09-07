@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, RefreshCw, Scale } from "lucide-react";
@@ -9,6 +10,7 @@ import {
   runRefitNow,
   type RefitRunRow,
 } from "@/lib/eeg/coebis-refit.functions";
+import { runRefitToCompletion } from "@/lib/eeg/refit-passes";
 import type { LineageRefitRecord } from "@/lib/eeg/coebis-refit.server";
 import { describeLineage, parseLineageKey } from "@/lib/eeg/model-lineage";
 import { cn } from "@/lib/utils";
@@ -46,14 +48,31 @@ export function BedsideCalibrationPanel() {
     staleTime: 30_000,
   });
 
+  const [progress, setProgress] = useState<string | null>(null);
+
   const refit = useMutation({
-    mutationFn: () => runNow(),
+    // The work is done in small passes, each one a short request, so a large
+    // pool can never run the server out of processing time.
+    mutationFn: () =>
+      runRefitToCompletion(
+        () => runNow(),
+        (p) =>
+          setProgress(
+            p.remaining > 0
+              ? `Working through the setups — ${p.remaining} left`
+              : `Finished ${p.lineagesRefitted} setup${p.lineagesRefitted === 1 ? "" : "s"}`,
+          ),
+      ),
     onSuccess: (result) => {
       if (result.status === "failed") toast.error(result.error ?? "Calibration run failed");
       else toast.success(result.summary || "Calibration run complete");
+      setProgress(null);
       void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      setProgress(null);
+      toast.error(err.message);
+    },
   });
 
   // A scheduled run that is still in flight carries no detail yet, so fall
@@ -89,6 +108,8 @@ export function BedsideCalibrationPanel() {
           Refit and promote
         </Button>
       </div>
+
+      {progress ? <p className="text-sm text-muted-foreground">{progress}</p> : null}
 
       {error ? (
         <p className="text-sm text-critical">{(error as Error).message}</p>

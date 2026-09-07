@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, RefreshCw, GitBranch } from "lucide-react";
@@ -5,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { getRefitOverview, runRefitNow } from "@/lib/eeg/coebis-refit.functions";
+import { runRefitToCompletion } from "@/lib/eeg/refit-passes";
 import { explainVersionMetricGaps } from "@/lib/eeg/metric-blockers";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +31,31 @@ export function RefitPipelinePanel() {
     staleTime: 30_000,
   });
 
+  const [progress, setProgress] = useState<string | null>(null);
+
   const refit = useMutation({
-    mutationFn: () => runNow(),
+    // The work is done in small passes, each one a short request, so a large
+    // pool can never run the server out of processing time.
+    mutationFn: () =>
+      runRefitToCompletion(
+        () => runNow(),
+        (p) =>
+          setProgress(
+            p.remaining > 0
+              ? `Working through the setups — ${p.remaining} left`
+              : `Finished ${p.lineagesRefitted} setup${p.lineagesRefitted === 1 ? "" : "s"}`,
+          ),
+      ),
     onSuccess: (result) => {
       if (result.status === "failed") toast.error(result.error ?? "Refit failed");
       else toast.success(result.summary || "Refit complete");
+      setProgress(null);
       void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });
     },
-    onError: (err: Error) => toast.error(err.message),
+    onError: (err: Error) => {
+      setProgress(null);
+      toast.error(err.message);
+    },
   });
 
   return (
@@ -74,6 +93,7 @@ export function RefitPipelinePanel() {
       </p>
 
 
+      {progress ? <p className="mt-3 text-xs text-muted-foreground">{progress}</p> : null}
       {error ? <p className="mt-3 text-xs text-critical">{(error as Error).message}</p> : null}
 
       {data ? (

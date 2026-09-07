@@ -145,21 +145,36 @@ export const getRefitOverview = createServerFn({ method: "GET" })
     return { runs, lineages, lastRunAt: runs[0]?.startedAt ?? null };
   });
 
-/** Run the pipeline immediately for the signed-in user's own data. */
+/**
+ * Work out one bounded slice of the refit for the signed-in user's own data.
+ *
+ * A pass takes one acquisition setup and a capped slice of readings, so it
+ * always finishes inside the time a single request is allowed. Anything left
+ * over is reported back as `remaining`; calling again continues from there,
+ * because a setup whose data has already been refitted is skipped by its
+ * fingerprint.
+ */
 export const runRefitNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { runRefitForUser } = await import("@/lib/eeg/coebis-refit.server");
+    const { runRefitForUser, REQUEST_BUDGET } = await import("@/lib/eeg/coebis-refit.server");
     // Scoped to the caller's own user id, so the privileged client can only
     // ever refit the data the caller already owns.
-    const report = await runRefitForUser(supabaseAdmin as never, context.userId, "manual");
+    const report = await runRefitForUser(
+      supabaseAdmin as never,
+      context.userId,
+      "manual",
+      REQUEST_BUDGET,
+    );
     return {
       status: report.status,
       summary: report.summary,
       lineagesRefitted: report.lineagesRefitted,
       modelsPromoted: report.modelsPromoted,
       validatedPoints: report.validatedPoints,
+      remaining: report.remainingLineages,
+      done: report.done,
       error: report.error ?? null,
     };
   });

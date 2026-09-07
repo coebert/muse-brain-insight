@@ -29,6 +29,44 @@ export const MAX_USERS_PER_RUN = 3;
 /** How long a run may hold the lease before another run may take it over. */
 export const LEASE_SECONDS = 600;
 
+/**
+ * How much work one pass may do. The server is only allowed a short slice of
+ * processing time per request, so a pass takes a bounded number of readings
+ * and setups and stops cleanly when its time budget is spent. Nothing is lost:
+ * a setup whose data has already been refitted is skipped by its digest, so
+ * the next pass picks up exactly where this one stopped.
+ */
+export interface RefitBudget {
+  maxLineages?: number;
+  maxPoints?: number;
+  maxCases?: number;
+  /** Wall-clock budget for the refit loop, in milliseconds. */
+  deadlineMs?: number;
+}
+
+export const DEFAULT_BUDGET: Required<RefitBudget> = {
+  maxLineages: MAX_LINEAGES_PER_RUN,
+  maxPoints: 200000,
+  maxCases: 100000,
+  deadlineMs: 20000,
+};
+
+/** One pass of the scheduled run: bounded, resumed on the next tick. */
+export const SCHEDULED_BUDGET: Required<RefitBudget> = {
+  maxLineages: 2,
+  maxPoints: 100000,
+  maxCases: 50000,
+  deadlineMs: 20000,
+};
+
+/** One pass of a manual refit: small enough to always finish in one request. */
+export const REQUEST_BUDGET: Required<RefitBudget> = {
+  maxLineages: 1,
+  maxPoints: 60000,
+  maxCases: 30000,
+  deadlineMs: 8000,
+};
+
 export interface RefitRunReport {
   runId: string | null;
   userId: string;
@@ -41,6 +79,10 @@ export interface RefitRunReport {
   modelsPromoted: number;
   summary: string;
   detail: LineageRefitRecord[];
+  /** Setups still waiting for a pass after this one. */
+  remainingLineages: number;
+  /** True when nothing is left to work out. */
+  done: boolean;
   error?: string;
 }
 
@@ -213,7 +255,9 @@ export async function runRefitForUser(
   client: Client,
   userId: string,
   trigger: string,
+  budget: RefitBudget = {},
 ): Promise<RefitRunReport> {
+  const limits = { ...DEFAULT_BUDGET, ...budget };
   const base: RefitRunReport = {
     runId: null,
     userId,
@@ -226,6 +270,8 @@ export async function runRefitForUser(
     modelsPromoted: 0,
     summary: "",
     detail: [],
+    remainingLineages: 0,
+    done: true,
   };
 
   const { data: runRow, error: runError } = await client
@@ -241,7 +287,7 @@ export async function runRefitForUser(
     const t0 = Date.now();
     // A small global cap keeps only the oldest slice of the pool, which starves
     // newer lineages of the readings they need to clear the gate.
-    const matrix = await loadTrainingMatrix(client, 200000, userId, 100000);
+    const matrix = await loadTrainingMatrix(client, limits.maxPoints, userId, limits.maxCases);
     console.info(`[refit] loaded ${matrix.points.length} points in ${Date.now() - t0}ms`);
 
     const validated = selectValidatedPoints(matrix.points);
@@ -266,10 +312,19 @@ export async function runRefitForUser(
       if (row["is_active"] && !incumbents.has(key)) incumbents.set(key, modelFromRow(row));
     }
 
-    const plan = planRefit(validated.used, lastDigests, MAX_LINEAGES_PER_RUN);
+    const plan = planRefit(validated.used, lastDigests, limits.maxLineages);
     base.lineagesConsidered = plan.entries.length + plan.deferred.length + plan.skippedUnchanged.length;
 
+    // Setups this pass will not reach: whatever the plan deferred, plus
+    // anything the time budget cuts short below.
+    let outOfTime = 0;
+
     for (const entry of plan.entries) {
+      if (Date.now() - t0 > limits.deadlineMs) {
+        // Stop cleanly rather than run past the time this request is allowed.
+        outOfTime++;
+        continue;
+      }
       const tLineage = Date.now();
       const result = refitLineage(
         entry.lineageKey,
@@ -348,11 +403,14 @@ export async function runRefitForUser(
       });
     }
 
+    base.remainingLineages = plan.deferred.length + outOfTime;
+    base.done = base.remainingLineages === 0;
+
     base.summary = summariseRun(
       base.detail.map((d) => ({ ...d, promote: d.promoted }) as unknown as LineageRefit),
     );
-    if (plan.deferred.length) {
-      base.summary += ` ${plan.deferred.length} lineage(s) deferred to the next run.`;
+    if (base.remainingLineages) {
+      base.summary += ` ${base.remainingLineages} lineage(s) left for the next pass.`;
     }
     if (plan.skippedUnchanged.length) {
       base.summary += ` ${plan.skippedUnchanged.length} unchanged since the last refit.`;
@@ -420,7 +478,7 @@ export async function runScheduledRefit(admin: Client): Promise<ScheduledRefitRe
     const users = await selectDueUsers(admin);
     const reports: RefitRunReport[] = [];
     for (const userId of users) {
-      reports.push(await runRefitForUser(admin, userId, "scheduled"));
+      reports.push(await runRefitForUser(admin, userId, "scheduled", SCHEDULED_BUDGET));
     }
     const failed = reports.find((r) => r.status === "failed");
     await releaseLease(admin, { lastError: failed?.error ?? null });

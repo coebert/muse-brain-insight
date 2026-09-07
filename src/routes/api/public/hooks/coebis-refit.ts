@@ -51,6 +51,8 @@ export const Route = createFileRoute("/api/public/hooks/coebis-refit")({
               lineagesRefitted: r.lineagesRefitted,
               modelsPromoted: r.modelsPromoted,
               summary: r.summary,
+              remainingLineages: r.remainingLineages,
+              done: r.done,
             })),
           });
         } catch (err) {
