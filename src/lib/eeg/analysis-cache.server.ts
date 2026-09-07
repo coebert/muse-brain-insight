@@ -49,7 +49,9 @@ export const ANALYSIS_JOB_REGISTRY: Record<AnalysisJobKey, JobDefinition> = {
     label: "Suppression and depth dashboard",
     compute: async (supabase, userId) => {
       const { loadSuppressionDashboard } = await import("@/lib/eeg/suppression-dashboard.server");
-      const payload = await loadSuppressionDashboard(supabase as never, userId);
+      // Keep the reading pool at the size the screens used before this job
+      // existed, so no recording silently drops out of the case list.
+      const payload = await loadSuppressionDashboard(supabase as never, userId, { limit: 80000 });
       return { payload, rows: countRows(payload, ["casesWithBis", "cases"]) };
     },
   },
