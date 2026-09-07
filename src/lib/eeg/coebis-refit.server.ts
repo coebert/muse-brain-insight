@@ -247,7 +247,9 @@ export async function runRefitForUser(
   client: Client,
   userId: string,
   trigger: string,
+  budget: RefitBudget = {},
 ): Promise<RefitRunReport> {
+  const limits = { ...DEFAULT_BUDGET, ...budget };
   const base: RefitRunReport = {
     runId: null,
     userId,
@@ -260,6 +262,8 @@ export async function runRefitForUser(
     modelsPromoted: 0,
     summary: "",
     detail: [],
+    remainingLineages: 0,
+    done: true,
   };
 
   const { data: runRow, error: runError } = await client
