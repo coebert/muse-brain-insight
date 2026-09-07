@@ -13,6 +13,7 @@ import {
 } from "@/lib/eeg/vitaldb";
 import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
 import { runRefitNow } from "@/lib/eeg/coebis-refit.functions";
+import { runRefitToCompletion } from "@/lib/eeg/refit-passes";
 import { getExternalPriors, importVitalDb } from "@/lib/eeg/vitaldb.functions";
 import type { VitalDbCasePayload } from "@/lib/eeg/vitaldb.server";
 import {
