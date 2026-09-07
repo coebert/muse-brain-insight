@@ -15,7 +15,7 @@ export interface RefitPassResult {
   validatedPoints: number;
   remaining: number;
   done: boolean;
-  error?: string | null;
+  error: string | null;
 }
 
 /** Hard ceiling on passes per button press, so nothing can loop forever. */
