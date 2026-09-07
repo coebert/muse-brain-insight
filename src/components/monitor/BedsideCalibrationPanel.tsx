@@ -109,6 +109,8 @@ export function BedsideCalibrationPanel() {
         </Button>
       </div>
 
+      {progress ? <p className="text-sm text-muted-foreground">{progress}</p> : null}
+
       {error ? (
         <p className="text-sm text-critical">{(error as Error).message}</p>
       ) : isLoading ? (
