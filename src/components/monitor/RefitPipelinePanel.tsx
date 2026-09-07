@@ -94,6 +94,7 @@ export function RefitPipelinePanel() {
       </p>
 
 
+      {progress ? <p className="mt-3 text-xs text-muted-foreground">{progress}</p> : null}
       {error ? <p className="mt-3 text-xs text-critical">{(error as Error).message}</p> : null}
 
       {data ? (
