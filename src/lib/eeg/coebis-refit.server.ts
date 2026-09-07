@@ -279,7 +279,7 @@ export async function runRefitForUser(
     const t0 = Date.now();
     // A small global cap keeps only the oldest slice of the pool, which starves
     // newer lineages of the readings they need to clear the gate.
-    const matrix = await loadTrainingMatrix(client, 200000, userId, 100000);
+    const matrix = await loadTrainingMatrix(client, limits.maxPoints, userId, limits.maxCases);
     console.info(`[refit] loaded ${matrix.points.length} points in ${Date.now() - t0}ms`);
 
     const validated = selectValidatedPoints(matrix.points);
