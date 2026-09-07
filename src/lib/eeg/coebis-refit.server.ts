@@ -51,6 +51,14 @@ export const DEFAULT_BUDGET: Required<RefitBudget> = {
   deadlineMs: 20000,
 };
 
+/** One pass of the scheduled run: bounded, resumed on the next tick. */
+export const SCHEDULED_BUDGET: Required<RefitBudget> = {
+  maxLineages: 2,
+  maxPoints: 100000,
+  maxCases: 50000,
+  deadlineMs: 20000,
+};
+
 /** One pass of a manual refit: small enough to always finish in one request. */
 export const REQUEST_BUDGET: Required<RefitBudget> = {
   maxLineages: 1,
@@ -470,7 +478,7 @@ export async function runScheduledRefit(admin: Client): Promise<ScheduledRefitRe
     const users = await selectDueUsers(admin);
     const reports: RefitRunReport[] = [];
     for (const userId of users) {
-      reports.push(await runRefitForUser(admin, userId, "scheduled"));
+      reports.push(await runRefitForUser(admin, userId, "scheduled", SCHEDULED_BUDGET));
     }
     const failed = reports.find((r) => r.status === "failed");
     await releaseLease(admin, { lastError: failed?.error ?? null });
