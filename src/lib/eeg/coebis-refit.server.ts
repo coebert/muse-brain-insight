@@ -304,10 +304,19 @@ export async function runRefitForUser(
       if (row["is_active"] && !incumbents.has(key)) incumbents.set(key, modelFromRow(row));
     }
 
-    const plan = planRefit(validated.used, lastDigests, MAX_LINEAGES_PER_RUN);
+    const plan = planRefit(validated.used, lastDigests, limits.maxLineages);
     base.lineagesConsidered = plan.entries.length + plan.deferred.length + plan.skippedUnchanged.length;
 
+    // Setups this pass will not reach: whatever the plan deferred, plus
+    // anything the time budget cuts short below.
+    let outOfTime = 0;
+
     for (const entry of plan.entries) {
+      if (Date.now() - t0 > limits.deadlineMs) {
+        // Stop cleanly rather than run past the time this request is allowed.
+        outOfTime++;
+        continue;
+      }
       const tLineage = Date.now();
       const result = refitLineage(
         entry.lineageKey,
