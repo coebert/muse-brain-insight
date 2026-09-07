@@ -71,7 +71,12 @@ export function useCachedAnalysis<T>(job: AnalysisJobKey): UseCachedAnalysis<T> 
     meta,
     loading: query.isLoading || (!meta?.payload && (meta?.refreshing || mutation.isPending)),
     refreshing: Boolean(meta?.refreshing) || mutation.isPending,
-    error: meta?.error ?? (query.error instanceof Error ? query.error.message : null),
+    // A failed refresh must never hide the last good result: while a stored
+    // payload exists the screen keeps showing it, and the failure is reported
+    // on the status bar instead (CacheStatusBar reads meta.error).
+    error: meta?.payload
+      ? null
+      : (meta?.error ?? (query.error instanceof Error ? query.error.message : null)),
     refresh,
   };
 }
