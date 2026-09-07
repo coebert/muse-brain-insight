@@ -155,6 +155,13 @@
       "when": 1788724678014,
       "tag": "0021_session_depth_exposure_fn",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788790319382,
+      "tag": "0022_lock_job_state_tables_to_service_role",
+      "breakpoints": true
     }
   ]
 }
