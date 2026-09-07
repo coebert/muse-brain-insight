@@ -395,11 +395,14 @@ export async function runRefitForUser(
       });
     }
 
+    base.remainingLineages = plan.deferred.length + outOfTime;
+    base.done = base.remainingLineages === 0;
+
     base.summary = summariseRun(
       base.detail.map((d) => ({ ...d, promote: d.promoted }) as unknown as LineageRefit),
     );
-    if (plan.deferred.length) {
-      base.summary += ` ${plan.deferred.length} lineage(s) deferred to the next run.`;
+    if (base.remainingLineages) {
+      base.summary += ` ${base.remainingLineages} lineage(s) left for the next pass.`;
     }
     if (plan.skippedUnchanged.length) {
       base.summary += ` ${plan.skippedUnchanged.length} unchanged since the last refit.`;
