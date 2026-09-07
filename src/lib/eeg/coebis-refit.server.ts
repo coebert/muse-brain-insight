@@ -29,6 +29,36 @@ export const MAX_USERS_PER_RUN = 3;
 /** How long a run may hold the lease before another run may take it over. */
 export const LEASE_SECONDS = 600;
 
+/**
+ * How much work one pass may do. The server is only allowed a short slice of
+ * processing time per request, so a pass takes a bounded number of readings
+ * and setups and stops cleanly when its time budget is spent. Nothing is lost:
+ * a setup whose data has already been refitted is skipped by its digest, so
+ * the next pass picks up exactly where this one stopped.
+ */
+export interface RefitBudget {
+  maxLineages?: number;
+  maxPoints?: number;
+  maxCases?: number;
+  /** Wall-clock budget for the refit loop, in milliseconds. */
+  deadlineMs?: number;
+}
+
+export const DEFAULT_BUDGET: Required<RefitBudget> = {
+  maxLineages: MAX_LINEAGES_PER_RUN,
+  maxPoints: 200000,
+  maxCases: 100000,
+  deadlineMs: 20000,
+};
+
+/** One pass of a manual refit: small enough to always finish in one request. */
+export const REQUEST_BUDGET: Required<RefitBudget> = {
+  maxLineages: 1,
+  maxPoints: 60000,
+  maxCases: 30000,
+  deadlineMs: 8000,
+};
+
 export interface RefitRunReport {
   runId: string | null;
   userId: string;
@@ -41,6 +71,10 @@ export interface RefitRunReport {
   modelsPromoted: number;
   summary: string;
   detail: LineageRefitRecord[];
+  /** Setups still waiting for a pass after this one. */
+  remainingLineages: number;
+  /** True when nothing is left to work out. */
+  done: boolean;
   error?: string;
 }
 
