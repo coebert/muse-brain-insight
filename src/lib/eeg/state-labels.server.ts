@@ -103,7 +103,9 @@ export async function loadStatePool(
       .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
       .eq("user_id", userId)
       .not("label", "is", null);
-    if (lineage) query = query.eq("source_lineage", lineage);
+    const keys = scopeLineages(lineage);
+    if (keys.length === 1) query = query.eq("source_lineage", keys[0]!);
+    else if (keys.length > 1) query = query.in("source_lineage", keys);
     const { data, error } = await query
       .order("source_lineage", { ascending: true })
       .order("case_ref", { ascending: true })
