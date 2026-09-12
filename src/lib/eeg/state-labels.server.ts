@@ -144,6 +144,13 @@ export async function loadStateSummary(
   const { points, unusable, labels } = await loadStatePool(supabase, userId);
   const incumbent = await loadIncumbent(supabase, userId);
   const model = incumbent.model ?? BASELINE_STATE_MODEL;
+  const byLineage = new Map<string, StateEpoch[]>();
+  for (const p of points) {
+    const lineage = p.caseRef.split("/")[0] ?? "?";
+    const list = byLineage.get(lineage);
+    if (list) list.push(p);
+    else byLineage.set(lineage, [p]);
+  }
   return {
     epochs: points.length,
     cases: new Set(points.map((p) => p.caseRef)).size,
@@ -153,9 +160,19 @@ export async function loadStateSummary(
     labels: [...labels.entries()]
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count),
+    lineages: [...byLineage.entries()]
+      .map(([lineage, list]) => ({
+        lineage,
+        epochs: list.length,
+        cases: new Set(list.map((p) => p.caseRef)).size,
+        responsive: list.filter((p) => p.state === "responsive").length,
+        unresponsive: list.filter((p) => p.state === "unresponsive").length,
+      }))
+      .sort((a, b) => b.epochs - a.epochs),
     current: separationOf(points, (f) => scoreState(model, f)),
     activeVersion: incumbent.version,
   };
+
 }
 
 export interface StateFitResult extends StateFitReport {
