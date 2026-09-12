@@ -16,6 +16,9 @@ import { formatClock } from "@/lib/eeg/format";
 import {
   COMMON_DRUGS,
   DOSE_UNITS,
+  EVENT_DETAIL,
+  EVENT_LABEL,
+  EVENT_TYPES,
   MOAAS_SCALE,
   ROUTES,
   ROUTE_LABEL,
@@ -24,6 +27,7 @@ import {
   sortObservations,
   transitionsOf,
   type CaseObservation,
+  type EventType,
   type ObservationDraft,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
@@ -32,6 +36,7 @@ import {
   listCaseObservations,
   recordCaseObservation,
 } from "@/lib/eeg/case-observations.functions";
+
 import { cn } from "@/lib/utils";
 
 /**
