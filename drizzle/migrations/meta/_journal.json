@@ -176,6 +176,13 @@
       "when": 1789220818193,
       "tag": "0024_case_observation_events",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789221414472,
+      "tag": "0025_case_timeline_notes",
+      "breakpoints": true
     }
   ]
 }
