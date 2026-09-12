@@ -16,6 +16,9 @@ import { formatClock } from "@/lib/eeg/format";
 import {
   COMMON_DRUGS,
   DOSE_UNITS,
+  EVENT_DETAIL,
+  EVENT_LABEL,
+  EVENT_TYPES,
   MOAAS_SCALE,
   ROUTES,
   ROUTE_LABEL,
@@ -24,6 +27,7 @@ import {
   sortObservations,
   transitionsOf,
   type CaseObservation,
+  type EventType,
   type ObservationDraft,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
@@ -32,6 +36,7 @@ import {
   listCaseObservations,
   recordCaseObservation,
 } from "@/lib/eeg/case-observations.functions";
+
 import { cn } from "@/lib/utils";
 
 /**
@@ -67,11 +72,14 @@ export function ClinicalCapturePanel({
   elapsed,
   running,
   testing,
+  onRowsChange,
 }: {
   caseCode: string;
   elapsed: number;
   running: boolean;
   testing: boolean;
+  /** Lets the reactivity panel read the same entries without a second fetch. */
+  onRowsChange?: (rows: CaseObservation[]) => void;
 }) {
   const record = useServerFn(recordCaseObservation);
   const list = useServerFn(listCaseObservations);
@@ -85,6 +93,11 @@ export function ClinicalCapturePanel({
   const [route, setRoute] = useState<string>("iv-bolus");
 
   const active = running && !testing && Boolean(caseCode.trim());
+
+  useEffect(() => {
+    onRowsChange?.(rows);
+  }, [rows, onRowsChange]);
+
 
   // Reload whenever the case identity changes, so a second case never shows
   // the first one's entries.
@@ -152,6 +165,18 @@ export function ClinicalCapturePanel({
       toast.success(`${drugName} recorded at ${formatClock(elapsed)}`);
     }
   }
+
+  async function eventMarked(eventType: EventType) {
+    const saved = await file({
+      kind: "event",
+      atSeconds: Math.round(elapsed),
+      eventType,
+    });
+    if (saved) {
+      toast.success(`${EVENT_LABEL[eventType]} marked at ${formatClock(elapsed)}`);
+    }
+  }
+
 
   async function removeRow(id: string) {
     const before = rows;
@@ -268,7 +293,34 @@ export function ClinicalCapturePanel({
             </Button>
           </div>
         </div>
+
+        {/* One tap to stamp the moment, so the trace around it can be read later. */}
+        <div>
+          <p className="instrument-label">Mark event now</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {EVENT_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                disabled={!active || busy}
+                onClick={() => void eventMarked(type)}
+                title={EVENT_DETAIL[type]}
+                className={cn(
+                  "min-h-11 rounded-lg border bg-background/40 px-3 text-xs transition-colors hover:bg-background disabled:opacity-40",
+                  type === "seizure"
+                    ? "border-critical/60 text-critical"
+                    : type === "arousal"
+                      ? "border-caution/50 text-caution"
+                      : "border-border text-foreground",
+                )}
+              >
+                {EVENT_LABEL[type]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
 
       {/* What has been captured, and what is still missing while there is time. */}
       {rows.length ? (

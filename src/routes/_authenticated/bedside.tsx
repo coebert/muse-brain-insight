@@ -4,6 +4,9 @@ import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { ClinicalCapturePanel } from "@/components/monitor/ClinicalCapturePanel";
+import { ReactivityPanel } from "@/components/monitor/ReactivityPanel";
+import type { CaseObservation } from "@/lib/eeg/case-observations";
+
 import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
 
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
@@ -117,6 +120,8 @@ function BedsidePage() {
     setDim,
   } = session;
   const [detailOpen, setDetailOpen] = useState(false);
+  const [observations, setObservations] = useState<CaseObservation[]>([]);
+
 
   const profile = monitor.deviceProfile;
   const calibrated = profile.calibratedAmplitude !== false;
@@ -274,8 +279,15 @@ function BedsidePage() {
             elapsed={monitor.elapsed}
             running={caseState === "running"}
             testing={testing}
+            onRowsChange={setObservations}
           />
         </div>
+
+        {/* Did the EEG actually move when the patient was stimulated? */}
+        <div className="mt-3">
+          <ReactivityPanel observations={observations} epochs={monitor.epochs} />
+        </div>
+
 
         {/* Where this case's depth and suppression sit among known outcomes. */}
         <div className="mt-3">

@@ -21,6 +21,7 @@ function score(atSeconds: number, moaas: number): CaseObservation {
     dose: null,
     doseUnit: null,
     route: null,
+    eventType: null,
     note: null,
   };
 }
@@ -38,6 +39,7 @@ function drug(atSeconds: number, drugName: string): CaseObservation {
     dose: 100,
     doseUnit: "mg",
     route: "iv-bolus",
+    eventType: null,
     note: null,
   };
 }

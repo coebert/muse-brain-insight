@@ -554,6 +554,7 @@ export type Database = {
           dose: number | null
           dose_unit: string | null
           drug_name: string | null
+          event_type: string | null
           id: string
           kind: string
           moaas: number | null
@@ -571,6 +572,7 @@ export type Database = {
           dose?: number | null
           dose_unit?: string | null
           drug_name?: string | null
+          event_type?: string | null
           id?: string
           kind: string
           moaas?: number | null
@@ -588,6 +590,7 @@ export type Database = {
           dose?: number | null
           dose_unit?: string | null
           drug_name?: string | null
+          event_type?: string | null
           id?: string
           kind?: string
           moaas?: number | null

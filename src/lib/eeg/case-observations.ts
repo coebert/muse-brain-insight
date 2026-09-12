@@ -75,11 +75,40 @@ export const COMMON_DRUGS = [
   "Clonidine",
 ] as const;
 
+/** Clinical events worth stamping at the bedside while they happen. */
+export const EVENT_TYPES = [
+  "seizure",
+  "stimulus",
+  "movement",
+  "arousal",
+  "artefact",
+  "other",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
+export const EVENT_LABEL: Record<EventType, string> = {
+  seizure: "Seizure-like",
+  stimulus: "Stimulus applied",
+  movement: "Movement",
+  arousal: "Arousal",
+  artefact: "Artefact",
+  other: "Other event",
+};
+
+export const EVENT_DETAIL: Record<EventType, string> = {
+  seizure: "Rhythmic or convulsive activity seen or suspected",
+  stimulus: "Intubation, incision, voice or other deliberate stimulus",
+  movement: "Patient moved, coughed or grimaced",
+  arousal: "Patient appeared to lighten",
+  artefact: "Diathermy, handling or other contamination",
+  other: "Anything else worth revisiting on the trace",
+};
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug";
+  kind: "responsiveness" | "drug" | "event";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -88,6 +117,7 @@ export interface CaseObservation {
   dose: number | null;
   doseUnit: string | null;
   route: string | null;
+  eventType: EventType | null;
   note: string | null;
 }
 
@@ -109,7 +139,15 @@ export interface DrugDraft {
   note?: string | null;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft;
+export interface EventDraft {
+  kind: "event";
+  atSeconds: number;
+  eventType: EventType;
+  note?: string | null;
+}
+
+export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft;
+
 
 export interface ValidationResult {
   ok: boolean;
@@ -130,7 +168,7 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       errors.push("The responsiveness score must be a whole number from 0 to 5.");
     }
     if (!STIMULI.includes(draft.stimulus)) errors.push("Choose how the score was elicited.");
-  } else {
+  } else if (draft.kind === "drug") {
     if (!draft.drugName.trim()) errors.push("Name the drug given.");
     if (draft.dose != null) {
       if (!Number.isFinite(draft.dose) || draft.dose <= 0) {
@@ -138,7 +176,10 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       }
       if (!draft.doseUnit) errors.push("Give the dose a unit.");
     }
+  } else {
+    if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -232,7 +273,12 @@ export function describeObservation(row: CaseObservation): string {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
     return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""}`;
   }
+  if (row.kind === "event") {
+    const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
+    return `${label}${row.note ? ` · ${row.note}` : ""}`;
+  }
   const dose = row.dose != null ? ` ${row.dose}${row.doseUnit ? ` ${row.doseUnit}` : ""}` : "";
   const route = row.route ? ` · ${ROUTE_LABEL[row.route as Route] ?? row.route}` : "";
   return `${row.drugName}${dose}${route}`;
+
 }
