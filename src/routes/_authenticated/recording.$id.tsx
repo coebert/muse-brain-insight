@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, FileText } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
+import { CoebisArcPanel } from "@/components/sessions/CoebisArcPanel";
+import { listSessionObservations } from "@/lib/eeg/case-observations.functions";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { RawChannelViewer } from "@/components/monitor/RawChannelViewer";
@@ -96,6 +99,24 @@ function RecordingReview() {
     [epochs.data],
   );
 
+  const fetchObservations = useServerFn(listSessionObservations);
+  const observations = useQuery({
+    queryKey: ["case_observations", "session", id],
+    queryFn: () => fetchObservations({ data: { sessionId: id } }),
+    staleTime: 60_000,
+  });
+
+  const arcSamples = useMemo(
+    () =>
+      (epochs.data ?? []).map((e) => ({
+        t: Number(e.t_offset_seconds) || 0,
+        index: e.depth_index == null ? null : Number(e.depth_index),
+        suppression: e.suppression_ratio == null ? null : Number(e.suppression_ratio),
+        sef: e.spectral_edge_95 == null ? null : Number(e.spectral_edge_95),
+      })),
+    [epochs.data],
+  );
+
   const detected: DetectedEvent[] = useMemo(
     () =>
       (events.data ?? []).map((e) => ({
@@ -155,6 +176,11 @@ function RecordingReview() {
                 {s.device_name ?? "Headband"}
               </p>
             </section>
+
+            <CoebisArcPanel
+              samples={arcSamples}
+              observations={observations.data ?? []}
+            />
 
             <section className="panel px-3 py-3 sm:px-4">
               <h2 className="text-sm font-semibold">Whole-case DSA</h2>
