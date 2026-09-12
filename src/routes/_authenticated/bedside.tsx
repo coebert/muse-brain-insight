@@ -4,6 +4,7 @@ import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { ClinicalCapturePanel } from "@/components/monitor/ClinicalCapturePanel";
+import { StateMarkerPanel } from "@/components/monitor/StateMarkerPanel";
 import { ReactivityPanel } from "@/components/monitor/ReactivityPanel";
 import type { CaseObservation } from "@/lib/eeg/case-observations";
 
