@@ -108,7 +108,7 @@ export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event";
+  kind: "responsiveness" | "drug" | "event" | "note";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -146,7 +146,17 @@ export interface EventDraft {
   note?: string | null;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft;
+/**
+ * A free-text note pinned to a point on the case timeline. Written at the
+ * bedside or added afterwards, when there was no time to type during the case.
+ */
+export interface TimelineNoteDraft {
+  kind: "note";
+  atSeconds: number;
+  note: string;
+}
+
+export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft | TimelineNoteDraft;
 
 
 export interface ValidationResult {
