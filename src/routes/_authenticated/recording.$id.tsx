@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, FileText } from "lucide-react";
 
 import { AppNav } from "@/components/AppNav";
+import { CoebisArcPanel } from "@/components/sessions/CoebisArcPanel";
+import { listSessionObservations } from "@/lib/eeg/case-observations.functions";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { RawChannelViewer } from "@/components/monitor/RawChannelViewer";
