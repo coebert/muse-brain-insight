@@ -315,11 +315,43 @@ export function ClinicalCapturePanel({
           </div>
         </div>
 
+        {/* Paired stimulus/response: only meaningful when the patient is not paralysed. */}
+        <div>
+          <p className="instrument-label">Response to noxious stimulus</p>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              disabled={!active || busy}
+              onClick={() => void stimulusResponseMarked(true)}
+              title="A noxious stimulus was applied and the patient moved — the moment and the movement are stamped together"
+              className="min-h-14 rounded-lg border border-caution/60 bg-background/40 px-3 text-sm font-medium text-caution transition-colors hover:bg-background disabled:opacity-40"
+            >
+              Moved to stimulus
+            </button>
+            <button
+              type="button"
+              disabled={!active || busy}
+              onClick={() => void stimulusResponseMarked(false)}
+              title="A noxious stimulus was applied and the patient did not move — the moment and the absence of movement are stamped together"
+              className="min-h-14 rounded-lg border border-signal/50 bg-background/40 px-3 text-sm font-medium text-signal transition-colors hover:bg-background disabled:opacity-40"
+            >
+              No movement to stimulus
+            </button>
+          </div>
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            Only mark these when the patient is not paralysed (no rocuronium or other muscle
+            relaxant on board) — a paralysed patient cannot move, so the mark would be
+            meaningless.
+          </p>
+        </div>
+
         {/* One tap to stamp the moment, so the trace around it can be read later. */}
         <div>
           <p className="instrument-label">Mark event now</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {EVENT_TYPES.map((type) => (
+            {EVENT_TYPES.filter(
+              (t) => t !== "noxious_stimulus" && t !== "movement_response" && t !== "still_response",
+            ).map((type) => (
               <button
                 key={type}
                 type="button"
