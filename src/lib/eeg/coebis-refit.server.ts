@@ -280,6 +280,7 @@ export async function runRefitForUser(
     summary: "",
     detail: [],
     remainingLineages: 0,
+    processedLineages: [],
     done: true,
   };
 
