@@ -227,8 +227,14 @@ export function separationOf(
   points: StateEpoch[],
   score: (f: StateFeatures) => number,
 ): Separation {
+  return separationFromScores(points, points.map((p) => score(p.features)));
+}
+
+/** Same grading, when each epoch already carries its own held-out score. */
+export function separationFromScores(points: StateEpoch[], scores: number[]): Separation {
   if (!points.length) return EMPTY_SEPARATION;
-  const scored: Scored[] = points.map((p) => ({ score: score(p.features), state: p.state }));
+  const scored: Scored[] = points.map((p, i) => ({ score: scores[i] ?? 50, state: p.state }));
+
   const pos = scored.filter((s) => s.state === "responsive");
   const neg = scored.filter((s) => s.state === "unresponsive");
   const mean = (xs: Scored[]) =>
