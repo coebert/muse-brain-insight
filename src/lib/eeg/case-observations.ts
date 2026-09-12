@@ -168,7 +168,7 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       errors.push("The responsiveness score must be a whole number from 0 to 5.");
     }
     if (!STIMULI.includes(draft.stimulus)) errors.push("Choose how the score was elicited.");
-  } else {
+  } else if (draft.kind === "drug") {
     if (!draft.drugName.trim()) errors.push("Name the drug given.");
     if (draft.dose != null) {
       if (!Number.isFinite(draft.dose) || draft.dose <= 0) {
@@ -176,7 +176,10 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       }
       if (!draft.doseUnit) errors.push("Give the dose a unit.");
     }
+  } else {
+    if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
+
   return { ok: errors.length === 0, errors };
 }
 
