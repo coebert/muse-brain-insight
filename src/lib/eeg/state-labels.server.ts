@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
 import { PHYSIONET_POWER_LINEAGE } from "./physionet";
+import { DOSE1_LINEAGE } from "./sedation-icu";
 import {
   BASELINE_STATE_MODEL,
   STATE_LINEAGE_KEY,
@@ -35,6 +36,21 @@ const PAGE = 1000;
  * collapses cleanly to responsive or unresponsive is graded.
  */
 export const STATE_LINEAGES = [PHYSIONET_POWER_LINEAGE, CHENNU_LINEAGE];
+
+/**
+ * The two collections that carry genuine sedation-state labels in volume:
+ * the Cambridge propofol volunteers and DOSE-I. Fitting on the pair alone
+ * keeps the target behavioural rather than monitor-derived.
+ */
+export const SEDATION_SCOPE = `${CHENNU_LINEAGE},${DOSE1_LINEAGE}`;
+
+/** A scope is one collection key, or several separated by commas. */
+export function scopeLineages(scope?: string | null): string[] {
+  return (scope ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export interface StateLineageCount {
   lineage: string;
@@ -87,7 +103,9 @@ export async function loadStatePool(
       .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
       .eq("user_id", userId)
       .not("label", "is", null);
-    if (lineage) query = query.eq("source_lineage", lineage);
+    const keys = scopeLineages(lineage);
+    if (keys.length === 1) query = query.eq("source_lineage", keys[0]!);
+    else if (keys.length > 1) query = query.in("source_lineage", keys);
     const { data, error } = await query
       .order("source_lineage", { ascending: true })
       .order("case_ref", { ascending: true })
