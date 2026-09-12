@@ -286,6 +286,9 @@ export function describeObservation(row: CaseObservation): string {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
     return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""}`;
   }
+  if (row.kind === "note") {
+    return row.note ?? "Note";
+  }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
     return `${label}${row.note ? ` · ${row.note}` : ""}`;
