@@ -72,11 +72,14 @@ export function ClinicalCapturePanel({
   elapsed,
   running,
   testing,
+  onRowsChange,
 }: {
   caseCode: string;
   elapsed: number;
   running: boolean;
   testing: boolean;
+  /** Lets the reactivity panel read the same entries without a second fetch. */
+  onRowsChange?: (rows: CaseObservation[]) => void;
 }) {
   const record = useServerFn(recordCaseObservation);
   const list = useServerFn(listCaseObservations);
@@ -90,6 +93,11 @@ export function ClinicalCapturePanel({
   const [route, setRoute] = useState<string>("iv-bolus");
 
   const active = running && !testing && Boolean(caseCode.trim());
+
+  useEffect(() => {
+    onRowsChange?.(rows);
+  }, [rows, onRowsChange]);
+
 
   // Reload whenever the case identity changes, so a second case never shows
   // the first one's entries.
