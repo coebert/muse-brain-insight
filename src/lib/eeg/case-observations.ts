@@ -245,6 +245,8 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
   } else if (draft.kind === "note") {
     if (!draft.note.trim()) errors.push("Write something in the note before saving it.");
     if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
+  } else if (draft.kind === "state") {
+    if (!STATE_LABELS.includes(draft.stateLabel)) errors.push("Choose the state to tag.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
