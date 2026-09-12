@@ -272,6 +272,16 @@ function BedsidePage() {
           />
         </div>
 
+        {/* Awake / unresponsive, tagged as periods against the case clock. */}
+        <div className="mt-3">
+          <StateMarkerPanel
+            caseCode={meta.caseCode}
+            elapsed={monitor.elapsed}
+            running={caseState === "running"}
+            testing={testing}
+          />
+        </div>
+
         {/* Observed responsiveness and drugs: ground truth the index is graded on. */}
         <div className="mt-3">
           <ClinicalCapturePanel
