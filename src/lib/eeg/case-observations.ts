@@ -75,11 +75,40 @@ export const COMMON_DRUGS = [
   "Clonidine",
 ] as const;
 
+/** Clinical events worth stamping at the bedside while they happen. */
+export const EVENT_TYPES = [
+  "seizure",
+  "stimulus",
+  "movement",
+  "arousal",
+  "artefact",
+  "other",
+] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+
+export const EVENT_LABEL: Record<EventType, string> = {
+  seizure: "Seizure-like",
+  stimulus: "Stimulus applied",
+  movement: "Movement",
+  arousal: "Arousal",
+  artefact: "Artefact",
+  other: "Other event",
+};
+
+export const EVENT_DETAIL: Record<EventType, string> = {
+  seizure: "Rhythmic or convulsive activity seen or suspected",
+  stimulus: "Intubation, incision, voice or other deliberate stimulus",
+  movement: "Patient moved, coughed or grimaced",
+  arousal: "Patient appeared to lighten",
+  artefact: "Diathermy, handling or other contamination",
+  other: "Anything else worth revisiting on the trace",
+};
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug";
+  kind: "responsiveness" | "drug" | "event";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -88,6 +117,7 @@ export interface CaseObservation {
   dose: number | null;
   doseUnit: string | null;
   route: string | null;
+  eventType: EventType | null;
   note: string | null;
 }
 
@@ -109,7 +139,15 @@ export interface DrugDraft {
   note?: string | null;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft;
+export interface EventDraft {
+  kind: "event";
+  atSeconds: number;
+  eventType: EventType;
+  note?: string | null;
+}
+
+export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft;
+
 
 export interface ValidationResult {
   ok: boolean;
