@@ -3,7 +3,9 @@ import { useState, useSyncExternalStore } from "react";
 import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react";
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { ClinicalCapturePanel } from "@/components/monitor/ClinicalCapturePanel";
 import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
+
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { TrendLine } from "@/components/monitor/TrendLine";
