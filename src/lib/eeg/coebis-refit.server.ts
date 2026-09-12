@@ -322,15 +322,23 @@ export async function runRefitForUser(
       if (row["is_active"] && !incumbents.has(key)) incumbents.set(key, modelFromRow(row));
     }
 
-    const plan = planRefit(validated.used, lastDigests, limits.maxLineages);
+    const pool = skip.size
+      ? validated.used.filter((p) => !skip.has(p.lineageKey?.trim() || "unlabelled"))
+      : validated.used;
+    const plan = planRefit(pool, lastDigests, limits.maxLineages);
     base.lineagesConsidered = plan.entries.length + plan.deferred.length + plan.skippedUnchanged.length;
 
     // Setups this pass will not reach: whatever the plan deferred, plus
     // anything the time budget cuts short below.
     let outOfTime = 0;
+    // The fitting clock only starts once the pool is loaded and validated:
+    // reading the pool is unavoidable work, and charging it against the budget
+    // could skip every setup and leave the pass doing nothing at all.
+    const tFit = Date.now();
 
     for (const entry of plan.entries) {
-      if (Date.now() - t0 > limits.deadlineMs) {
+      // At least one setup is always attempted, so a pass can never be a no-op.
+      if (base.lineagesRefitted > 0 && Date.now() - tFit > limits.deadlineMs) {
         // Stop cleanly rather than run past the time this request is allowed.
         outOfTime++;
         continue;
