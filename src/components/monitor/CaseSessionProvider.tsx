@@ -72,6 +72,8 @@ import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
+import { saveSessionRawTraces } from "@/lib/eeg/raw-trace-store";
+import { getActiveDeviceProfile } from "@/lib/eeg/device-profile";
 import { linkCaptureToSession } from "@/lib/eeg/auto-capture.functions";
 import { linkCaseObservations } from "@/lib/eeg/case-observations.functions";
 
@@ -808,6 +810,23 @@ function useCaseSessionState() {
       } catch {
         // Best effort: the observations are already filed under the case code.
       }
+
+      // Keep the EEG waveform itself, so the case can be reopened later and
+      // the traces read alongside the DSA rather than only the numbers.
+      if (user?.id) {
+        try {
+          await saveSessionRawTraces(
+            sessionId,
+            user.id,
+            monitor.rawArchive,
+            getActiveDeviceProfile().channels,
+          );
+        } catch {
+          toast.warning("Case saved, but the raw EEG traces could not be stored.");
+        }
+      }
+
+
 
       // Keep the contemporaneous dosing record with the case.
       if (user?.id && infusions.length) {

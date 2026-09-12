@@ -53,6 +53,7 @@ import { Route as AuthenticatedAdminTrainingRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminTrendsRouteImport } from './routes/_authenticated/_admin/trends'
 import { Route as AuthenticatedAdminValidateRouteImport } from './routes/_authenticated/_admin/validate'
 import { Route as AuthenticatedCaseCaseRefRouteImport } from './routes/_authenticated/case.$caseRef'
+import { Route as AuthenticatedRecordingIdRouteImport } from './routes/_authenticated/recording.$id'
 import { Route as AuthenticatedReportIdRouteImport } from './routes/_authenticated/report.$id'
 import { Route as AuthenticatedAdminAdminIndexRouteImport } from './routes/_authenticated/_admin/admin.index'
 import { Route as AuthenticatedAdminAdminPeopleRouteImport } from './routes/_authenticated/_admin/admin.people'
@@ -305,6 +306,12 @@ const AuthenticatedCaseCaseRefRoute =
     path: '/case/$caseRef',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedRecordingIdRoute =
+  AuthenticatedRecordingIdRouteImport.update({
+    id: '/recording/$id',
+    path: '/recording/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportIdRoute = AuthenticatedReportIdRouteImport.update({
   id: '/report/$id',
   path: '/report/$id',
@@ -372,6 +379,7 @@ export interface FileRoutesByFullPath {
   '/trends': typeof AuthenticatedAdminTrendsRoute
   '/validate': typeof AuthenticatedAdminValidateRoute
   '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
+  '/recording/$id': typeof AuthenticatedRecordingIdRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
@@ -420,6 +428,7 @@ export interface FileRoutesByTo {
   '/trends': typeof AuthenticatedAdminTrendsRoute
   '/validate': typeof AuthenticatedAdminValidateRoute
   '/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
+  '/recording/$id': typeof AuthenticatedRecordingIdRoute
   '/report/$id': typeof AuthenticatedReportIdRoute
   '/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
@@ -471,6 +480,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/trends': typeof AuthenticatedAdminTrendsRoute
   '/_authenticated/_admin/validate': typeof AuthenticatedAdminValidateRoute
   '/_authenticated/case/$caseRef': typeof AuthenticatedCaseCaseRefRoute
+  '/_authenticated/recording/$id': typeof AuthenticatedRecordingIdRoute
   '/_authenticated/report/$id': typeof AuthenticatedReportIdRoute
   '/_authenticated/_admin/admin/people': typeof AuthenticatedAdminAdminPeopleRoute
   '/api/public/hooks/coebis-refit': typeof ApiPublicHooksCoebisRefitRoute
@@ -521,6 +531,7 @@ export interface FileRouteTypes {
     | '/trends'
     | '/validate'
     | '/case/$caseRef'
+    | '/recording/$id'
     | '/report/$id'
     | '/admin/people'
     | '/api/public/hooks/coebis-refit'
@@ -569,6 +580,7 @@ export interface FileRouteTypes {
     | '/trends'
     | '/validate'
     | '/case/$caseRef'
+    | '/recording/$id'
     | '/report/$id'
     | '/admin/people'
     | '/api/public/hooks/coebis-refit'
@@ -619,6 +631,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/trends'
     | '/_authenticated/_admin/validate'
     | '/_authenticated/case/$caseRef'
+    | '/_authenticated/recording/$id'
     | '/_authenticated/report/$id'
     | '/_authenticated/_admin/admin/people'
     | '/api/public/hooks/coebis-refit'
@@ -941,6 +954,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCaseCaseRefRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/recording/$id': {
+      id: '/_authenticated/recording/$id'
+      path: '/recording/$id'
+      fullPath: '/recording/$id'
+      preLoaderRoute: typeof AuthenticatedRecordingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/report/$id': {
       id: '/_authenticated/report/$id'
       path: '/report/$id'
@@ -1060,6 +1080,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTermsRoute: typeof AuthenticatedTermsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCaseCaseRefRoute: typeof AuthenticatedCaseCaseRefRoute
+  AuthenticatedRecordingIdRoute: typeof AuthenticatedRecordingIdRoute
   AuthenticatedReportIdRoute: typeof AuthenticatedReportIdRoute
 }
 
@@ -1074,6 +1095,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTermsRoute: AuthenticatedTermsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCaseCaseRefRoute: AuthenticatedCaseCaseRefRoute,
+  AuthenticatedRecordingIdRoute: AuthenticatedRecordingIdRoute,
   AuthenticatedReportIdRoute: AuthenticatedReportIdRoute,
 }
 

@@ -167,6 +167,11 @@ function Sessions() {
                 durationSeconds={Number(s.duration_seconds ?? 0)}
               />
               <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="sm" className="min-h-11 sm:min-h-9">
+                  <Link to="/recording/$id" params={{ id: s.id }}>
+                    Reopen recording
+                  </Link>
+                </Button>
                 <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-9">
                   <Link to="/report/$id" params={{ id: s.id }}>
                     End-of-case report
