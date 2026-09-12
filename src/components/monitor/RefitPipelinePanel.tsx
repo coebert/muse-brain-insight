@@ -38,7 +38,7 @@ export function RefitPipelinePanel() {
     // pool can never run the server out of processing time.
     mutationFn: () =>
       runRefitToCompletion(
-        () => runNow(),
+        (skipLineages) => runNow({ data: { skipLineages } }),
         (p) =>
           setProgress(
             p.remaining > 0
