@@ -293,7 +293,34 @@ export function ClinicalCapturePanel({
             </Button>
           </div>
         </div>
+
+        {/* One tap to stamp the moment, so the trace around it can be read later. */}
+        <div>
+          <p className="instrument-label">Mark event now</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {EVENT_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                disabled={!active || busy}
+                onClick={() => void eventMarked(type)}
+                title={EVENT_DETAIL[type]}
+                className={cn(
+                  "min-h-11 rounded-lg border bg-background/40 px-3 text-xs transition-colors hover:bg-background disabled:opacity-40",
+                  type === "seizure"
+                    ? "border-critical/60 text-critical"
+                    : type === "arousal"
+                      ? "border-caution/50 text-caution"
+                      : "border-border text-foreground",
+                )}
+              >
+                {EVENT_LABEL[type]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
 
       {/* What has been captured, and what is still missing while there is time. */}
       {rows.length ? (
