@@ -224,10 +224,12 @@ export function StateLabelPanel() {
                   </p>
                 ))}
               </div>
-              <SeparationRow
-                title={`${selected.lineage} — index in force today`}
-                s={selected.separation}
-              />
+              {selected.separation ? (
+                <SeparationRow
+                  title={`${selected.lineage} — index in force today`}
+                  s={selected.separation}
+                />
+              ) : null}
             </div>
           ) : null}
 
