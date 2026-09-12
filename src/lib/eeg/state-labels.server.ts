@@ -81,7 +81,6 @@ export async function loadStatePool(
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
 
-    const rows = (data ?? []) as unknown as Record<string, unknown>[];
 
     for (const row of rows) {
       const label = String(row["label"] ?? "");
