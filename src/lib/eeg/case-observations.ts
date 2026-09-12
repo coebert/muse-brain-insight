@@ -157,6 +157,7 @@ export interface CaseObservation {
   doseUnit: string | null;
   route: string | null;
   eventType: EventType | null;
+  stateLabel: StateLabel | null;
   note: string | null;
 }
 
