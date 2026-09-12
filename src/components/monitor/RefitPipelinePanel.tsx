@@ -38,7 +38,7 @@ export function RefitPipelinePanel() {
     // pool can never run the server out of processing time.
     mutationFn: () =>
       runRefitToCompletion(
-        () => runNow(),
+        (skipLineages) => runNow({ data: { skipLineages } }),
         (p) =>
           setProgress(
             p.remaining > 0
@@ -48,6 +48,8 @@ export function RefitPipelinePanel() {
       ),
     onSuccess: (result) => {
       if (result.status === "failed") toast.error(result.error ?? "Refit failed");
+      else if (result.status === "stalled" || result.lineagesRefitted === 0)
+        toast.warning(result.summary || "Nothing could be worked through; no model changed.");
       else toast.success(result.summary || "Refit complete");
       setProgress(null);
       void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });

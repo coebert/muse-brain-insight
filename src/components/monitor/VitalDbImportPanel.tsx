@@ -188,7 +188,9 @@ export function VitalDbImportPanel() {
         if (coverage.ready) {
           // Bounded passes: each request refits one setup, repeated until
           // nothing is left, so a big pool never times the server out.
-          refit = await runRefitToCompletion(() => runRefit({}));
+          refit = await runRefitToCompletion((skipLineages) =>
+            runRefit({ data: { skipLineages } }),
+          );
         }
       }
       return { ...result, unusable, unmatched, refit, validation, coverage };

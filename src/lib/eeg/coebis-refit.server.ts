@@ -81,6 +81,8 @@ export interface RefitRunReport {
   detail: LineageRefitRecord[];
   /** Setups still waiting for a pass after this one. */
   remainingLineages: number;
+  /** Setups this pass actually worked through, so the next pass can move on. */
+  processedLineages: string[];
   /** True when nothing is left to work out. */
   done: boolean;
   error?: string;
@@ -256,8 +258,15 @@ export async function runRefitForUser(
   userId: string,
   trigger: string,
   budget: RefitBudget = {},
+  /**
+   * Setups an earlier pass already worked through. They are left out of this
+   * pass entirely, so a setup that produces no model (too little data to fit)
+   * cannot be picked again and again while the rest are never reached.
+   */
+  skipLineages: string[] = [],
 ): Promise<RefitRunReport> {
   const limits = { ...DEFAULT_BUDGET, ...budget };
+  const skip = new Set(skipLineages);
   const base: RefitRunReport = {
     runId: null,
     userId,
@@ -271,6 +280,7 @@ export async function runRefitForUser(
     summary: "",
     detail: [],
     remainingLineages: 0,
+    processedLineages: [],
     done: true,
   };
 
@@ -312,15 +322,23 @@ export async function runRefitForUser(
       if (row["is_active"] && !incumbents.has(key)) incumbents.set(key, modelFromRow(row));
     }
 
-    const plan = planRefit(validated.used, lastDigests, limits.maxLineages);
+    const pool = skip.size
+      ? validated.used.filter((p) => !skip.has(p.lineageKey?.trim() || "unlabelled"))
+      : validated.used;
+    const plan = planRefit(pool, lastDigests, limits.maxLineages);
     base.lineagesConsidered = plan.entries.length + plan.deferred.length + plan.skippedUnchanged.length;
 
     // Setups this pass will not reach: whatever the plan deferred, plus
     // anything the time budget cuts short below.
     let outOfTime = 0;
+    // The fitting clock only starts once the pool is loaded and validated:
+    // reading the pool is unavoidable work, and charging it against the budget
+    // could skip every setup and leave the pass doing nothing at all.
+    const tFit = Date.now();
 
     for (const entry of plan.entries) {
-      if (Date.now() - t0 > limits.deadlineMs) {
+      // At least one setup is always attempted, so a pass can never be a no-op.
+      if (base.lineagesRefitted > 0 && Date.now() - tFit > limits.deadlineMs) {
         // Stop cleanly rather than run past the time this request is allowed.
         outOfTime++;
         continue;
@@ -388,6 +406,7 @@ export async function runRefitForUser(
       }
 
       base.lineagesRefitted++;
+      base.processedLineages.push(entry.lineageKey);
       base.detail.push({
         lineageKey: entry.lineageKey,
         version,
