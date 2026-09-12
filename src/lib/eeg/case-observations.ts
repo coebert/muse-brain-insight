@@ -347,6 +347,10 @@ export function describeObservation(row: CaseObservation): string {
   if (row.kind === "note") {
     return row.note ?? "Note";
   }
+  if (row.kind === "state") {
+    const label = row.stateLabel ? STATE_LABEL_TEXT[row.stateLabel] : "State";
+    return `State: ${label}${row.note ? ` · ${row.note}` : ""}`;
+  }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
     return `${label}${row.note ? ` · ${row.note}` : ""}`;
