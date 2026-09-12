@@ -26,11 +26,23 @@ import {
 type Client = SupabaseClient<any, any, any>;
 
 /** Ceiling on one pool read, so a request always finishes in its time slice. */
-export const MAX_POOL_EPOCHS = 40_000;
+export const MAX_POOL_EPOCHS = 80_000;
 const PAGE = 1000;
 
-/** Collections whose stored label is a person responding, or not. */
+/**
+ * Collections whose intake is written specifically for responsiveness labels.
+ * The pool is not limited to them: any stored epoch whose published label
+ * collapses cleanly to responsive or unresponsive is graded.
+ */
 export const STATE_LINEAGES = [PHYSIONET_POWER_LINEAGE, CHENNU_LINEAGE];
+
+export interface StateLineageCount {
+  lineage: string;
+  epochs: number;
+  cases: number;
+  responsive: number;
+  unresponsive: number;
+}
 
 export interface StatePoolSummary {
   epochs: number;
@@ -40,12 +52,13 @@ export interface StatePoolSummary {
   /** Stored labels that were dropped as neither clearly responsive nor not. */
   unusable: number;
   labels: { label: string; count: number }[];
+  lineages: StateLineageCount[];
   /** How the current reference mapping separates the two states. */
   current: Separation;
   activeVersion: number | null;
 }
 
-/** Load every stored epoch of the PhysioNet power lineage that carries a label. */
+/** Load every stored epoch carrying a label that means responsive or not. */
 export async function loadStatePool(
   supabase: Client,
   userId: string,
@@ -60,12 +73,14 @@ export async function loadStatePool(
       .from("external_spectral_epochs")
       .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
       .eq("user_id", userId)
-      .in("source_lineage", STATE_LINEAGES)
       .not("label", "is", null)
+      .order("source_lineage", { ascending: true })
+      .order("case_ref", { ascending: true })
       .order("at_seconds", { ascending: true })
       .range(from, Math.min(from + PAGE, limit) - 1);
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
+
 
     for (const row of rows) {
       const label = String(row["label"] ?? "");
@@ -129,6 +144,13 @@ export async function loadStateSummary(
   const { points, unusable, labels } = await loadStatePool(supabase, userId);
   const incumbent = await loadIncumbent(supabase, userId);
   const model = incumbent.model ?? BASELINE_STATE_MODEL;
+  const byLineage = new Map<string, StateEpoch[]>();
+  for (const p of points) {
+    const lineage = p.caseRef.split("/")[0] ?? "?";
+    const list = byLineage.get(lineage);
+    if (list) list.push(p);
+    else byLineage.set(lineage, [p]);
+  }
   return {
     epochs: points.length,
     cases: new Set(points.map((p) => p.caseRef)).size,
@@ -138,9 +160,19 @@ export async function loadStateSummary(
     labels: [...labels.entries()]
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count),
+    lineages: [...byLineage.entries()]
+      .map(([lineage, list]) => ({
+        lineage,
+        epochs: list.length,
+        cases: new Set(list.map((p) => p.caseRef)).size,
+        responsive: list.filter((p) => p.state === "responsive").length,
+        unresponsive: list.filter((p) => p.state === "unresponsive").length,
+      }))
+      .sort((a, b) => b.epochs - a.epochs),
     current: separationOf(points, (f) => scoreState(model, f)),
     activeVersion: incumbent.version,
   };
+
 }
 
 export interface StateFitResult extends StateFitReport {

@@ -122,9 +122,11 @@ export function StateLabelPanel() {
         <p className="text-xs text-critical">{(pool.error as Error).message}</p>
       ) : !data || data.epochs === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No labelled epochs yet. Upload PhysioNet <code>eeg-power-anesthesia</code> files on the
-          Data exchange tab and their published state words will appear here.
+          No labelled epochs yet. Any collection whose published labels name an awake or an
+          anaesthetised patient — PhysioNet <code>eeg-power-anesthesia</code>, Chennu, DOSE-I,
+          ds004541 — appears here once uploaded on the Data exchange tab.
         </p>
+
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
@@ -142,12 +144,27 @@ export function StateLabelPanel() {
             </p>
           </div>
 
+          {data.lineages.length > 0 ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Where the labels come from</p>
+              {data.lineages.map((l) => (
+                <p key={l.lineage} className="text-xs text-muted-foreground">
+                  <span className="font-mono">{l.lineage}</span> —{" "}
+                  {l.epochs.toLocaleString()} epochs, {l.cases} cases,{" "}
+                  {l.responsive.toLocaleString()} responsive /{" "}
+                  {l.unresponsive.toLocaleString()} unresponsive
+                </p>
+              ))}
+            </div>
+          ) : null}
+
           {data.unusable > 0 ? (
             <p className="text-xs text-muted-foreground">
               {data.unusable.toLocaleString()} epochs were set aside: their label sits between the
               two states (for example “sedated”), where patients both do and do not respond.
             </p>
           ) : null}
+
 
           <SeparationRow
             title={
