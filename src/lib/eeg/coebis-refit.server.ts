@@ -81,6 +81,8 @@ export interface RefitRunReport {
   detail: LineageRefitRecord[];
   /** Setups still waiting for a pass after this one. */
   remainingLineages: number;
+  /** Setups this pass actually worked through, so the next pass can move on. */
+  processedLineages: string[];
   /** True when nothing is left to work out. */
   done: boolean;
   error?: string;
