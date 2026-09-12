@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,14 +67,16 @@ export function StateLabelPanel() {
   const runFit = useServerFn(runStateLabelFit);
   const queryClient = useQueryClient();
 
+  const [scope, setScope] = useState<string>("");
+
   const pool = useQuery({
     queryKey: ["state-label-pool"],
-    queryFn: () => fetchPool({}),
+    queryFn: () => fetchPool({ data: { lineage: null } }),
     staleTime: 30_000,
   });
 
   const fit = useMutation({
-    mutationFn: () => runFit({}),
+    mutationFn: () => runFit({ data: { lineage: scope || null } }),
     onSuccess: (r) => {
       if (r.promoted) toast.success(`Promoted version ${r.version}. ${r.reason}`);
       else toast.warning(r.reason || "Nothing was promoted; the model in force is unchanged.");
@@ -83,12 +86,14 @@ export function StateLabelPanel() {
   });
 
   const data = pool.data;
+  const selected = scope ? (data?.lineages.find((l) => l.lineage === scope) ?? null) : null;
+  const counts = selected ?? data;
   const enough =
-    !!data &&
-    data.epochs >= MIN_EPOCHS &&
-    data.cases >= MIN_CASES &&
-    data.responsive >= MIN_PER_STATE &&
-    data.unresponsive >= MIN_PER_STATE;
+    !!counts &&
+    counts.epochs >= MIN_EPOCHS &&
+    counts.cases >= MIN_CASES &&
+    counts.responsive >= MIN_PER_STATE &&
+    counts.unresponsive >= MIN_PER_STATE;
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
@@ -105,6 +110,23 @@ export function StateLabelPanel() {
             Data exchange tab; every figure below is held out by case.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Which collection to fit on"
+            className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              fit.reset();
+            }}
+          >
+            <option value="">All labelled collections</option>
+            {(data?.lineages ?? []).map((l) => (
+              <option key={l.lineage} value={l.lineage}>
+                {l.lineage}
+              </option>
+            ))}
+          </select>
         <Button
           size="sm"
           onClick={() => fit.mutate()}
@@ -114,6 +136,7 @@ export function StateLabelPanel() {
           {fit.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
           Run fit
         </Button>
+        </div>
       </header>
 
       {pool.isLoading ? (
@@ -152,7 +175,8 @@ export function StateLabelPanel() {
                   <span className="font-mono">{l.lineage}</span> —{" "}
                   {l.epochs.toLocaleString()} epochs, {l.cases} cases,{" "}
                   {l.responsive.toLocaleString()} responsive /{" "}
-                  {l.unresponsive.toLocaleString()} unresponsive
+                  {l.unresponsive.toLocaleString()} unresponsive, separation{" "}
+                  <span className="font-mono">{dp(l.separation.auc, 3)}</span>
                 </p>
               ))}
             </div>
@@ -165,6 +189,26 @@ export function StateLabelPanel() {
             </p>
           ) : null}
 
+
+          {selected ? (
+            <div className="space-y-2 rounded-md border border-signal/40 bg-signal/5 p-3">
+              <p className="text-xs font-medium">
+                Scored against this collection&rsquo;s own labels
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+                {selected.labels.map((l) => (
+                  <p key={l.label}>
+                    <span className="font-mono">{l.label}</span>{" "}
+                    {l.count.toLocaleString()}
+                  </p>
+                ))}
+              </div>
+              <SeparationRow
+                title={`${selected.lineage} — index in force today`}
+                s={selected.separation}
+              />
+            </div>
+          ) : null}
 
           <SeparationRow
             title={
