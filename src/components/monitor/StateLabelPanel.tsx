@@ -86,7 +86,28 @@ export function StateLabelPanel() {
   });
 
   const data = pool.data;
-  const selected = scope ? (data?.lineages.find((l) => l.lineage === scope) ?? null) : null;
+  const scopeKeys = scope.split(",").map((s) => s.trim()).filter(Boolean);
+  const parts = (data?.lineages ?? []).filter((l) => scopeKeys.includes(l.lineage));
+  const combined = scopeKeys.length > 1;
+  const selected =
+    parts.length === 0
+      ? null
+      : combined
+        ? {
+            lineage: parts.map((p) => p.lineage).join(" + "),
+            epochs: parts.reduce((n, p) => n + p.epochs, 0),
+            cases: parts.reduce((n, p) => n + p.cases, 0),
+            responsive: parts.reduce((n, p) => n + p.responsive, 0),
+            unresponsive: parts.reduce((n, p) => n + p.unresponsive, 0),
+            labels: [...parts.flatMap((p) => p.labels).reduce((m, l) => {
+              m.set(l.label, (m.get(l.label) ?? 0) + l.count);
+              return m;
+            }, new Map<string, number>())]
+              .map(([label, count]) => ({ label, count }))
+              .sort((a, b) => b.count - a.count),
+            separation: null,
+          }
+        : { ...parts[0]!, separation: parts[0]!.separation as Separation | null };
   const counts = selected ?? data;
   const enough =
     !!counts &&
