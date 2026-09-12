@@ -11,6 +11,7 @@ import { VitalDbImportPanel } from "@/components/monitor/VitalDbImportPanel";
 import { OpenNeuroBisImportPanel } from "@/components/monitor/OpenNeuroBisImportPanel";
 import { DatasetIntakePanel } from "@/components/monitor/DatasetIntakePanel";
 import { PhysionetImportPanel } from "@/components/monitor/PhysionetImportPanel";
+import { ChennuImportPanel } from "@/components/monitor/ChennuImportPanel";
 import { PathologyDatasetPanel } from "@/components/monitor/PathologyDatasetPanel";
 import { SedationIcuImportPanel } from "@/components/monitor/SedationIcuImportPanel";
 import { ExternalValidationPanel } from "@/components/monitor/ExternalValidationPanel";
@@ -135,6 +136,7 @@ export function DataExchangePanel() {
       <VitalDbImportPanel />
       <OpenNeuroBisImportPanel />
       <PhysionetImportPanel />
+      <ChennuImportPanel />
       <SedationIcuImportPanel />
       <PathologyDatasetPanel />
       <ExternalValidationPanel />
