@@ -799,6 +799,15 @@ function useCaseSessionState() {
       } catch {
         // Best effort: the case itself is already saved.
       }
+      // Attach the bedside responsiveness scores and drug doses to the
+      // recording, so a later fit can grade the index against what the
+      // patient actually did rather than against another monitor's number.
+      try {
+        await linkCaseObservations({ data: { caseCode: meta.caseCode, sessionId } });
+      } catch {
+        // Best effort: the observations are already filed under the case code.
+      }
+
       // Keep the contemporaneous dosing record with the case.
       if (user?.id && infusions.length) {
         try {
