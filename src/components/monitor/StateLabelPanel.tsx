@@ -142,12 +142,27 @@ export function StateLabelPanel() {
             </p>
           </div>
 
+          {data.lineages.length > 0 ? (
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Where the labels come from</p>
+              {data.lineages.map((l) => (
+                <p key={l.lineage} className="text-xs text-muted-foreground">
+                  <span className="font-mono">{l.lineage}</span> —{" "}
+                  {l.epochs.toLocaleString()} epochs, {l.cases} cases,{" "}
+                  {l.responsive.toLocaleString()} responsive /{" "}
+                  {l.unresponsive.toLocaleString()} unresponsive
+                </p>
+              ))}
+            </div>
+          ) : null}
+
           {data.unusable > 0 ? (
             <p className="text-xs text-muted-foreground">
               {data.unusable.toLocaleString()} epochs were set aside: their label sits between the
               two states (for example “sedated”), where patients both do and do not respond.
             </p>
           ) : null}
+
 
           <SeparationRow
             title={
