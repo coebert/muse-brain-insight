@@ -398,12 +398,9 @@ export function gradeStateFit(points: StateEpoch[]): StateFitReport {
   }
   if (!heldOut.length) return { ...base, reason: "No fold produced a usable fit." };
 
-  const scores = new Map(heldOut.map((h) => [h.point, h.score]));
   const graded = heldOut.map((h) => h.point);
-  const after = separationOf(graded, (f) => {
-    const hit = graded.find((p) => p.features === f);
-    return hit ? (scores.get(hit) ?? 50) : 50;
-  });
+  const after = separationFromScores(graded, heldOut.map((h) => h.score));
+
   const before = separationOf(graded, (f) => scoreState(BASELINE_STATE_MODEL, f));
   const aucGain = after.auc - before.auc;
 
