@@ -87,6 +87,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
       dose: drug ? (drug.dose ?? null) : null,
       dose_unit: drug && drug.dose != null ? (drug.doseUnit ?? null) : null,
       route: drug ? (drug.route ?? null) : null,
+      event_type: draft.kind === "event" ? draft.eventType : null,
       state_label: state ? state.stateLabel : null,
     };
 
