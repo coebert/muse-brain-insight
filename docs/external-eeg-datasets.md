@@ -107,3 +107,20 @@ the **BIS↔covariate/regimen prior** layer, not the raw-signal front end.
   model version as externally-derived.
 - Any model fitted on external data must remain visible in the lineage/versioning
   UI so a clinician can see the estimate is not purely their own case history.
+
+## Cambridge propofol sedation (Chennu et al.)
+
+Healthy volunteers recorded at baseline, mild and moderate target-controlled
+propofol, and again in recovery, with a behavioural task recording whether they
+still responded at each level. High-density 91-channel EGI, average reference,
+250 Hz.
+
+Value here: the label is a person responding or not, not another monitor's
+number, so it grades the depth index against what depth is meant to mean.
+
+Intake: Data exchange → "Cambridge propofol sedation (Chennu)". One file per
+volunteer per level, either signal samples or published power spectra; the
+level and behavioural verdict for the block are set at import. Stored under
+lineage `external:cambridge:chennu-propofol-sedation`, outside headband
+alignment, and read by the responsiveness fit on COEBIS → Calibration.
+Sedated-but-responsive blocks are stored as responsive, never as awake.
