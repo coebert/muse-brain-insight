@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { CHENNU_LINEAGE } from "./chennu";
 import { PHYSIONET_POWER_LINEAGE } from "./physionet";
 import {
   BASELINE_STATE_MODEL,
@@ -27,6 +28,9 @@ type Client = SupabaseClient<any, any, any>;
 /** Ceiling on one pool read, so a request always finishes in its time slice. */
 export const MAX_POOL_EPOCHS = 40_000;
 const PAGE = 1000;
+
+/** Collections whose stored label is a person responding, or not. */
+export const STATE_LINEAGES = [PHYSIONET_POWER_LINEAGE, CHENNU_LINEAGE];
 
 export interface StatePoolSummary {
   epochs: number;
@@ -54,9 +58,9 @@ export async function loadStatePool(
   for (let from = 0; from < limit; from += PAGE) {
     const { data, error } = await supabase
       .from("external_spectral_epochs")
-      .select("case_ref, at_seconds, label, bands, sef95, suppression_ratio")
+      .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
       .eq("user_id", userId)
-      .eq("source_lineage", PHYSIONET_POWER_LINEAGE)
+      .in("source_lineage", STATE_LINEAGES)
       .not("label", "is", null)
       .order("at_seconds", { ascending: true })
       .range(from, Math.min(from + PAGE, limit) - 1);
@@ -74,7 +78,7 @@ export async function loadStatePool(
       const bandsRow = (row["bands"] ?? {}) as Record<string, unknown>;
       const numberOf = (k: string) => Number(bandsRow[k] ?? 0) || 0;
       points.push({
-        caseRef: String(row["case_ref"] ?? "?"),
+        caseRef: `${String(row["source_lineage"] ?? "?")}/${String(row["case_ref"] ?? "?")}`,
         atSeconds: Number(row["at_seconds"] ?? 0),
         label,
         state,
