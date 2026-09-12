@@ -6,6 +6,7 @@ import {
   type CaseObservation,
   type EventType,
   type ObservationDraft,
+  type StateLabel,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
 
@@ -22,6 +23,7 @@ interface Row {
   dose_unit: string | null;
   route: string | null;
   event_type: string | null;
+  state_label: string | null;
   note: string | null;
 }
 
@@ -37,7 +39,9 @@ function toObservation(row: Row): CaseObservation {
           ? "event"
           : row.kind === "note"
             ? "note"
-            : "responsiveness",
+            : row.kind === "state"
+              ? "state"
+              : "responsiveness",
     atSeconds: Number(row.at_seconds),
     moaas: row.moaas == null ? null : Number(row.moaas),
     stimulus: (row.stimulus as Stimulus | null) ?? null,
@@ -46,12 +50,13 @@ function toObservation(row: Row): CaseObservation {
     doseUnit: row.dose_unit,
     route: row.route,
     eventType: (row.event_type as EventType | null) ?? null,
+    stateLabel: (row.state_label as StateLabel | null) ?? null,
     note: row.note,
   };
 }
 
 const SELECT =
-  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, note";
+  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, state_label, note";
 
 
 /** File one bedside observation immediately, so a closed app cannot lose it. */
@@ -68,6 +73,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
     const { caseCode, draft } = data;
     const responsiveness = draft.kind === "responsiveness" ? draft : null;
     const drug = draft.kind === "drug" ? draft : null;
+    const state = draft.kind === "state" ? draft : null;
     const payload = {
       user_id: context.userId,
       case_code: caseCode,
@@ -81,6 +87,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
       dose: drug ? (drug.dose ?? null) : null,
       dose_unit: drug && drug.dose != null ? (drug.doseUnit ?? null) : null,
       route: drug ? (drug.route ?? null) : null,
+      state_label: state ? state.stateLabel : null,
     };
 
 
