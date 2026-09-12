@@ -65,6 +65,8 @@ export function BedsideCalibrationPanel() {
       ),
     onSuccess: (result) => {
       if (result.status === "failed") toast.error(result.error ?? "Calibration run failed");
+      else if (result.status === "stalled" || result.lineagesRefitted === 0)
+        toast.warning(result.summary || "Nothing could be worked through; no model changed.");
       else toast.success(result.summary || "Calibration run complete");
       setProgress(null);
       void queryClient.invalidateQueries({ queryKey: ["coebis-refit-overview"] });
