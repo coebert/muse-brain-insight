@@ -5,6 +5,8 @@ import { Brain, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { CHENNU_LINEAGE } from "@/lib/eeg/chennu";
+import { DOSE1_LINEAGE } from "@/lib/eeg/sedation-icu";
 import { getStatePool, runStateLabelFit } from "@/lib/eeg/state-labels.functions";
 import {
   MIN_AUC,
@@ -142,6 +144,7 @@ export function StateLabelPanel() {
             }}
           >
             <option value="">All labelled collections</option>
+            <option value={SEDATION_SCOPE}>Chennu + DOSE-I (sedation labels)</option>
             {(data?.lineages ?? []).map((l) => (
               <option key={l.lineage} value={l.lineage}>
                 {l.lineage}
