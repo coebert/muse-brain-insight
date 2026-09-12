@@ -406,6 +406,7 @@ export async function runRefitForUser(
       }
 
       base.lineagesRefitted++;
+      base.processedLineages.push(entry.lineageKey);
       base.detail.push({
         lineageKey: entry.lineageKey,
         version,
