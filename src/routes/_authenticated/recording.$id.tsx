@@ -177,6 +177,11 @@ function RecordingReview() {
               </p>
             </section>
 
+            <CoebisArcPanel
+              samples={arcSamples}
+              observations={observations.data ?? []}
+            />
+
             <section className="panel px-3 py-3 sm:px-4">
               <h2 className="text-sm font-semibold">Whole-case DSA</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
