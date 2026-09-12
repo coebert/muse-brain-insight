@@ -242,7 +242,12 @@ function CoebisDataPage() {
 
           {tab === "engine" ? <CoebisEnginePanel /> : null}
           {tab === "bis-model" ? <BisModelPanel /> : null}
-          {tab === "calibration" ? <BedsideCalibrationPanel /> : null}
+          {tab === "calibration" ? (
+            <div className="space-y-4">
+              <BedsideCalibrationPanel />
+              <StateLabelPanel />
+            </div>
+          ) : null}
 
           {tab === "validation" ? <CoebisValidationPanel /> : null}
 
