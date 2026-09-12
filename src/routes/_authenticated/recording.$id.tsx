@@ -99,6 +99,24 @@ function RecordingReview() {
     [epochs.data],
   );
 
+  const fetchObservations = useServerFn(listSessionObservations);
+  const observations = useQuery({
+    queryKey: ["case_observations", "session", id],
+    queryFn: () => fetchObservations({ data: { sessionId: id } }),
+    staleTime: 60_000,
+  });
+
+  const arcSamples = useMemo(
+    () =>
+      (epochs.data ?? []).map((e) => ({
+        t: Number(e.t_offset_seconds) || 0,
+        index: e.depth_index == null ? null : Number(e.depth_index),
+        suppression: e.suppression_ratio == null ? null : Number(e.suppression_ratio),
+        sef: e.spectral_edge_95 == null ? null : Number(e.spectral_edge_95),
+      })),
+    [epochs.data],
+  );
+
   const detected: DetectedEvent[] = useMemo(
     () =>
       (events.data ?? []).map((e) => ({
