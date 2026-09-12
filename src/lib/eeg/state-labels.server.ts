@@ -42,6 +42,18 @@ export interface StateLineageCount {
   cases: number;
   responsive: number;
   unresponsive: number;
+  /** How the model in force separates the two states within this collection. */
+  separation: Separation;
+  /** The collection's own published label words, commonest first. */
+  labels: { label: string; count: number }[];
+}
+
+/**
+ * A fit can be scoped to one collection, so a dataset with its own sedation
+ * labels (Chennu) can be graded on its own terms rather than only pooled.
+ */
+export function stateLineageKey(lineage?: string | null): string {
+  return lineage ? `${STATE_LINEAGE_KEY}:${lineage}` : STATE_LINEAGE_KEY;
 }
 
 export interface StatePoolSummary {
@@ -63,17 +75,20 @@ export async function loadStatePool(
   supabase: Client,
   userId: string,
   limit = MAX_POOL_EPOCHS,
+  lineage?: string | null,
 ): Promise<{ points: StateEpoch[]; unusable: number; labels: Map<string, number> }> {
   const points: StateEpoch[] = [];
   const labels = new Map<string, number>();
   let unusable = 0;
 
   for (let from = 0; from < limit; from += PAGE) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("external_spectral_epochs")
       .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
       .eq("user_id", userId)
-      .not("label", "is", null)
+      .not("label", "is", null);
+    if (lineage) query = query.eq("source_lineage", lineage);
+    const { data, error } = await query
       .order("source_lineage", { ascending: true })
       .order("case_ref", { ascending: true })
       .order("at_seconds", { ascending: true })
@@ -116,12 +131,12 @@ export async function loadStatePool(
   return { points, unusable, labels };
 }
 
-async function loadIncumbent(supabase: Client, userId: string) {
+async function loadIncumbent(supabase: Client, userId: string, lineage?: string | null) {
   const { data } = await supabase
     .from("coebis_model_versions")
     .select("version, coefficients, is_active")
     .eq("user_id", userId)
-    .eq("lineage_key", STATE_LINEAGE_KEY)
+    .eq("lineage_key", stateLineageKey(lineage))
     .order("version", { ascending: false })
     .limit(20);
   const rows = (data ?? []) as unknown as Record<string, unknown>[];
@@ -140,16 +155,22 @@ async function loadIncumbent(supabase: Client, userId: string) {
 export async function loadStateSummary(
   supabase: Client,
   userId: string,
+  lineage?: string | null,
 ): Promise<StatePoolSummary> {
-  const { points, unusable, labels } = await loadStatePool(supabase, userId);
-  const incumbent = await loadIncumbent(supabase, userId);
+  const { points, unusable, labels } = await loadStatePool(
+    supabase,
+    userId,
+    MAX_POOL_EPOCHS,
+    lineage,
+  );
+  const incumbent = await loadIncumbent(supabase, userId, lineage);
   const model = incumbent.model ?? BASELINE_STATE_MODEL;
   const byLineage = new Map<string, StateEpoch[]>();
   for (const p of points) {
-    const lineage = p.caseRef.split("/")[0] ?? "?";
-    const list = byLineage.get(lineage);
+    const key = p.caseRef.split("/")[0] ?? "?";
+    const list = byLineage.get(key);
     if (list) list.push(p);
-    else byLineage.set(lineage, [p]);
+    else byLineage.set(key, [p]);
   }
   return {
     epochs: points.length,
@@ -161,13 +182,21 @@ export async function loadStateSummary(
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count),
     lineages: [...byLineage.entries()]
-      .map(([lineage, list]) => ({
-        lineage,
-        epochs: list.length,
-        cases: new Set(list.map((p) => p.caseRef)).size,
-        responsive: list.filter((p) => p.state === "responsive").length,
-        unresponsive: list.filter((p) => p.state === "unresponsive").length,
-      }))
+      .map(([key, list]) => {
+        const counts = new Map<string, number>();
+        for (const p of list) counts.set(p.label, (counts.get(p.label) ?? 0) + 1);
+        return {
+          lineage: key,
+          epochs: list.length,
+          cases: new Set(list.map((p) => p.caseRef)).size,
+          responsive: list.filter((p) => p.state === "responsive").length,
+          unresponsive: list.filter((p) => p.state === "unresponsive").length,
+          separation: separationOf(list, (f) => scoreState(model, f)),
+          labels: [...counts.entries()]
+            .map(([label, count]) => ({ label, count }))
+            .sort((a, b) => b.count - a.count),
+        };
+      })
       .sort((a, b) => b.epochs - a.epochs),
     current: separationOf(points, (f) => scoreState(model, f)),
     activeVersion: incumbent.version,
@@ -178,19 +207,23 @@ export async function loadStateSummary(
 export interface StateFitResult extends StateFitReport {
   version: number | null;
   promoted: boolean;
+  /** The collection the fit was scoped to, or null when the whole pool was used. */
+  lineage: string | null;
 }
 
 /** Fit, grade and (only on a clear gain) promote the state-separation model. */
 export async function runStateFit(
   supabase: Client,
   userId: string,
+  lineage?: string | null,
 ): Promise<StateFitResult> {
-  const { points } = await loadStatePool(supabase, userId);
-  const incumbent = await loadIncumbent(supabase, userId);
+  const scope = lineage ?? null;
+  const { points } = await loadStatePool(supabase, userId, MAX_POOL_EPOCHS, scope);
+  const incumbent = await loadIncumbent(supabase, userId, scope);
   const report = gradeStateFit(points);
 
   if (!report.model) {
-    return { ...report, version: null, promoted: false };
+    return { ...report, version: null, promoted: false, lineage: scope };
   }
 
   const version = incumbent.maxVersion + 1;
@@ -202,7 +235,7 @@ export async function runStateFit(
   const { error } = await admin.from("coebis_model_versions").upsert(
     {
       user_id: userId,
-      lineage_key: STATE_LINEAGE_KEY,
+      lineage_key: stateLineageKey(scope),
       version,
       model_family: STATE_MODEL_FAMILY,
       coefficients: report.model as unknown as never,
@@ -212,6 +245,7 @@ export async function runStateFit(
         responsive: report.responsive,
         unresponsive: report.unresponsive,
         folds: report.folds,
+        scope: scope ?? "all labelled collections",
         target: "responsiveness separation",
       } as unknown as never,
       metrics_before: report.before as unknown as never,
@@ -231,10 +265,10 @@ export async function runStateFit(
       .from("coebis_model_versions")
       .update({ is_active: false })
       .eq("user_id", userId)
-      .eq("lineage_key", STATE_LINEAGE_KEY)
+      .eq("lineage_key", stateLineageKey(scope))
       .eq("is_active", true)
       .neq("version", version);
   }
 
-  return { ...report, version, promoted: report.promote };
+  return { ...report, version, promoted: report.promote, lineage: scope };
 }
