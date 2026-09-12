@@ -809,6 +809,23 @@ function useCaseSessionState() {
         // Best effort: the observations are already filed under the case code.
       }
 
+      // Keep the EEG waveform itself, so the case can be reopened later and
+      // the traces read alongside the DSA rather than only the numbers.
+      if (user?.id) {
+        try {
+          await saveSessionRawTraces(
+            sessionId,
+            user.id,
+            monitor.rawArchive,
+            getActiveDeviceProfile().channels,
+          );
+        } catch {
+          toast.warning("Case saved, but the raw EEG traces could not be stored.");
+        }
+      }
+
+
+
       // Keep the contemporaneous dosing record with the case.
       if (user?.id && infusions.length) {
         try {
