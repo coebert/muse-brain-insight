@@ -24,6 +24,7 @@ import {
   sortObservations,
   transitionsOf,
   type CaseObservation,
+  type ObservationDraft,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
 import {
@@ -106,7 +107,7 @@ export function ClinicalCapturePanel({
   }, [caseCode, testing, list]);
 
   const file = useCallback(
-    async (draft: Parameters<typeof recordCaseObservation>[0] extends never ? never : any) => {
+    async (draft: ObservationDraft) => {
       setBusy(true);
       try {
         const saved = await record({ data: { caseCode, draft } });
