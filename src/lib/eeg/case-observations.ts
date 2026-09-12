@@ -82,6 +82,9 @@ export const EVENT_TYPES = [
   "movement",
   "arousal",
   "artefact",
+  "noxious_stimulus",
+  "movement_response",
+  "still_response",
   "other",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -92,6 +95,9 @@ export const EVENT_LABEL: Record<EventType, string> = {
   movement: "Movement",
   arousal: "Arousal",
   artefact: "Artefact",
+  noxious_stimulus: "Noxious stimulus",
+  movement_response: "Moved to stimulus",
+  still_response: "No movement to stimulus",
   other: "Other event",
 };
 
@@ -101,6 +107,9 @@ export const EVENT_DETAIL: Record<EventType, string> = {
   movement: "Patient moved, coughed or grimaced",
   arousal: "Patient appeared to lighten",
   artefact: "Diathermy, handling or other contamination",
+  noxious_stimulus: "A painful stimulus was applied (incision, trapezius squeeze, tetanic)",
+  movement_response: "Patient moved purposefully in response to a noxious stimulus",
+  still_response: "No movement in response to a noxious stimulus — depth adequate",
   other: "Anything else worth revisiting on the trace",
 };
 
