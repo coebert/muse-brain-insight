@@ -16,10 +16,20 @@
 export const STATE_LINEAGE_KEY = "external:physionet:eeg-power-anesthesia:state";
 export const STATE_MODEL_FAMILY = "state-separation";
 
-/** Published labels that mean the patient was responsive. */
-const RESPONSIVE = new Set(["awake", "emergence"]);
+/**
+ * Published labels that mean the patient was responsive.
+ *
+ * `sedated_responsive` is a volunteer under propofol who still answered — drug
+ * on board, but behaviourally responsive, which is what is being graded.
+ */
+const RESPONSIVE = new Set(["awake", "emergence", "sedated_responsive"]);
 /** Published labels that mean the patient was not responsive. */
-const UNRESPONSIVE = new Set(["anaesthetised", "burst_suppression", "isoelectric"]);
+const UNRESPONSIVE = new Set([
+  "anaesthetised",
+  "burst_suppression",
+  "isoelectric",
+  "sedated_unresponsive",
+]);
 
 export type ResponseState = "responsive" | "unresponsive";
 
