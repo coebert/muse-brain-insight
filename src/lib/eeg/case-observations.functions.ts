@@ -57,12 +57,12 @@ const SELECT =
 /** File one bedside observation immediately, so a closed app cannot lose it. */
 export const recordCaseObservation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { caseCode: string; draft: ObservationDraft }) => {
+  .inputValidator((input: { caseCode: string; draft: ObservationDraft; sessionId?: string | null }) => {
     const caseCode = input.caseCode?.trim();
     if (!caseCode) throw new Error("A case code is needed before observations can be filed.");
     const check = validateDraft(input.draft);
     if (!check.ok) throw new Error(check.errors.join(" "));
-    return { caseCode, draft: input.draft };
+    return { caseCode, draft: input.draft, sessionId: input.sessionId ?? null };
   })
   .handler(async ({ data, context }): Promise<CaseObservation> => {
     const { caseCode, draft } = data;
@@ -71,6 +71,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
     const payload = {
       user_id: context.userId,
       case_code: caseCode,
+      session_id: data.sessionId,
       kind: draft.kind,
       at_seconds: Math.round(draft.atSeconds),
       note: draft.note?.trim() || null,
