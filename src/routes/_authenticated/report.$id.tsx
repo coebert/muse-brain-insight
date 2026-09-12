@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { ArrowLeft, Printer } from "lucide-react";
 
+import { CaseTimelineNotes } from "@/components/sessions/CaseTimelineNotes";
 import { SessionDsa } from "@/components/monitor/SessionDsa";
 import { DsaLegend } from "@/components/monitor/DsaChart";
 import { Button } from "@/components/ui/button";
@@ -452,6 +453,14 @@ function CaseReport() {
                 Suppression ratio in percent; seizure score plotted on the same axis (0–1 scale, low
                 values expected).
               </p>
+            </section>
+
+            <section className="print-block mt-5 print:hidden">
+              <CaseTimelineNotes
+                sessionId={id}
+                caseCode={s.case_code}
+                durationSeconds={Number(s.duration_seconds ?? summary.duration ?? 0)}
+              />
             </section>
 
             <section className="print-block print-page-break mt-5">
