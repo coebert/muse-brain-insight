@@ -30,7 +30,14 @@ function toObservation(row: Row): CaseObservation {
     id: row.id,
     caseCode: row.case_code,
     sessionId: row.session_id,
-    kind: row.kind === "drug" ? "drug" : row.kind === "event" ? "event" : "responsiveness",
+    kind:
+      row.kind === "drug"
+        ? "drug"
+        : row.kind === "event"
+          ? "event"
+          : row.kind === "note"
+            ? "note"
+            : "responsiveness",
     atSeconds: Number(row.at_seconds),
     moaas: row.moaas == null ? null : Number(row.moaas),
     stimulus: (row.stimulus as Stimulus | null) ?? null,
@@ -50,12 +57,12 @@ const SELECT =
 /** File one bedside observation immediately, so a closed app cannot lose it. */
 export const recordCaseObservation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { caseCode: string; draft: ObservationDraft }) => {
+  .inputValidator((input: { caseCode: string; draft: ObservationDraft; sessionId?: string | null }) => {
     const caseCode = input.caseCode?.trim();
     if (!caseCode) throw new Error("A case code is needed before observations can be filed.");
     const check = validateDraft(input.draft);
     if (!check.ok) throw new Error(check.errors.join(" "));
-    return { caseCode, draft: input.draft };
+    return { caseCode, draft: input.draft, sessionId: input.sessionId ?? null };
   })
   .handler(async ({ data, context }): Promise<CaseObservation> => {
     const { caseCode, draft } = data;
@@ -64,6 +71,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
     const payload = {
       user_id: context.userId,
       case_code: caseCode,
+      session_id: data.sessionId,
       kind: draft.kind,
       at_seconds: Math.round(draft.atSeconds),
       note: draft.note?.trim() || null,
@@ -96,6 +104,23 @@ export const listCaseObservations = createServerFn({ method: "POST" })
       .select(SELECT)
       .eq("user_id", context.userId)
       .eq("case_code", data.caseCode)
+      .order("at_seconds", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as unknown as Row[]).map(toObservation);
+  });
+
+/** Everything attached to one filed recording, oldest first. */
+export const listSessionObservations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { sessionId: string }) => ({ sessionId: input.sessionId ?? "" }))
+  .handler(async ({ data, context }): Promise<CaseObservation[]> => {
+    if (!data.sessionId) return [];
+    const { data: rows, error } = await context.supabase
+      .from("case_observations")
+      .select(SELECT)
+      .eq("user_id", context.userId)
+      .eq("session_id", data.sessionId)
       .order("at_seconds", { ascending: true })
       .limit(500);
     if (error) throw new Error(error.message);

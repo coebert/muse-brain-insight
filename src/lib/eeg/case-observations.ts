@@ -108,7 +108,7 @@ export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event";
+  kind: "responsiveness" | "drug" | "event" | "note";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -146,7 +146,17 @@ export interface EventDraft {
   note?: string | null;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft;
+/**
+ * A free-text note pinned to a point on the case timeline. Written at the
+ * bedside or added afterwards, when there was no time to type during the case.
+ */
+export interface TimelineNoteDraft {
+  kind: "note";
+  atSeconds: number;
+  note: string;
+}
+
+export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft | TimelineNoteDraft;
 
 
 export interface ValidationResult {
@@ -176,6 +186,9 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       }
       if (!draft.doseUnit) errors.push("Give the dose a unit.");
     }
+  } else if (draft.kind === "note") {
+    if (!draft.note.trim()) errors.push("Write something in the note before saving it.");
+    if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
@@ -272,6 +285,9 @@ export function describeObservation(row: CaseObservation): string {
   if (row.kind === "responsiveness") {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
     return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""}`;
+  }
+  if (row.kind === "note") {
+    return row.note ?? "Note";
   }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";

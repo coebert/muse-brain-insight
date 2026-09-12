@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppNav } from "@/components/AppNav";
 import { TimeZoneControl } from "@/components/TimeZoneControl";
 import { CaseNotes } from "@/components/sessions/CaseNotes";
+import { CaseTimelineNotes } from "@/components/sessions/CaseTimelineNotes";
 
 import { Button } from "@/components/ui/button";
 import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
@@ -51,7 +52,13 @@ function Sessions() {
         .select("*")
         .order("started_at", { ascending: false });
       if (error) throw error;
-      return unseal(data, ["case_code", "location", "notes", "admission_diagnosis"]);
+      return unseal(data, [
+        "case_code",
+        "location",
+        "notes",
+        "case_summary",
+        "admission_diagnosis",
+      ]);
     },
   });
 
@@ -148,10 +155,16 @@ function Sessions() {
               <CaseNotes
                 sessionId={s.id}
                 notes={s.notes ?? null}
+                caseSummary={s.case_summary ?? null}
                 startedAt={s.started_at ?? s.created_at}
                 endedAt={s.ended_at ?? null}
                 zone={zone}
                 onSaved={() => void refetch()}
+              />
+              <CaseTimelineNotes
+                sessionId={s.id}
+                caseCode={s.case_code}
+                durationSeconds={Number(s.duration_seconds ?? 0)}
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild variant="outline" size="sm" className="min-h-11 sm:min-h-9">
