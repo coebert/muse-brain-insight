@@ -73,6 +73,7 @@ import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
 import { linkCaptureToSession } from "@/lib/eeg/auto-capture.functions";
+import { linkCaseObservations } from "@/lib/eeg/case-observations.functions";
 
 /**
  * Everything a running case owns. Held above the router outlet so a case keeps
