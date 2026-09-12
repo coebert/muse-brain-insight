@@ -55,23 +55,22 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<CaseObservation> => {
     const { caseCode, draft } = data;
-    const base = {
+    const responsiveness = draft.kind === "responsiveness" ? draft : null;
+    const drug = draft.kind === "drug" ? draft : null;
+    const payload = {
       user_id: context.userId,
       case_code: caseCode,
       kind: draft.kind,
       at_seconds: Math.round(draft.atSeconds),
       note: draft.note?.trim() || null,
+      moaas: responsiveness ? responsiveness.moaas : null,
+      stimulus: responsiveness ? responsiveness.stimulus : null,
+      drug_name: drug ? drug.drugName.trim() : null,
+      dose: drug ? (drug.dose ?? null) : null,
+      dose_unit: drug && drug.dose != null ? (drug.doseUnit ?? null) : null,
+      route: drug ? (drug.route ?? null) : null,
     };
-    const payload =
-      draft.kind === "responsiveness"
-        ? { ...base, moaas: draft.moaas, stimulus: draft.stimulus }
-        : {
-            ...base,
-            drug_name: draft.drugName.trim(),
-            dose: draft.dose ?? null,
-            dose_unit: draft.dose == null ? null : (draft.doseUnit ?? null),
-            route: draft.route ?? null,
-          };
+
 
     const { data: row, error } = await context.supabase
       .from("case_observations")
