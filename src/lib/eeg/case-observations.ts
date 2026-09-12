@@ -104,11 +104,50 @@ export const EVENT_DETAIL: Record<EventType, string> = {
   other: "Anything else worth revisiting on the trace",
 };
 
+/**
+ * Clinical states a patient can be tagged as being in from this moment on.
+ *
+ * The words are deliberately the same as the published corpora use, so a case
+ * captured at the bedside can be graded alongside them without translation.
+ */
+export const STATE_LABELS = [
+  "awake",
+  "sedated_responsive",
+  "sedated_unresponsive",
+  "anaesthetised",
+  "burst_suppression",
+  "emergence",
+] as const;
+export type StateLabel = (typeof STATE_LABELS)[number];
+
+export const STATE_LABEL_TEXT: Record<StateLabel, string> = {
+  awake: "Awake",
+  sedated_responsive: "Sedated, responding",
+  sedated_unresponsive: "Sedated, not responding",
+  anaesthetised: "Anaesthetised",
+  burst_suppression: "Burst suppression",
+  emergence: "Emerging",
+};
+
+export const STATE_LABEL_DETAIL: Record<StateLabel, string> = {
+  awake: "Awake and answering normally",
+  sedated_responsive: "Sedated but still responds to voice or prodding",
+  sedated_unresponsive: "Sedated and no longer responds to voice",
+  anaesthetised: "Surgical anaesthesia, unresponsive",
+  burst_suppression: "Bursts alternating with flat periods",
+  emergence: "Waking up at the end of the case",
+};
+
+/** True when the tagged state means the patient was behaviourally responsive. */
+export function stateIsResponsive(label: StateLabel): boolean {
+  return label === "awake" || label === "sedated_responsive" || label === "emergence";
+}
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event" | "note";
+  kind: "responsiveness" | "drug" | "event" | "note" | "state";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
