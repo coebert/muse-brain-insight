@@ -162,6 +162,13 @@
       "when": 1788790319382,
       "tag": "0022_lock_job_state_tables_to_service_role",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789220273422,
+      "tag": "0023_create_case_observations",
+      "breakpoints": true
     }
   ]
 }

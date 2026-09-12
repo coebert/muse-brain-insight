@@ -73,6 +73,7 @@ import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
 import { linkCaptureToSession } from "@/lib/eeg/auto-capture.functions";
+import { linkCaseObservations } from "@/lib/eeg/case-observations.functions";
 
 /**
  * Everything a running case owns. Held above the router outlet so a case keeps
@@ -799,6 +800,15 @@ function useCaseSessionState() {
       } catch {
         // Best effort: the case itself is already saved.
       }
+      // Attach the bedside responsiveness scores and drug doses to the
+      // recording, so a later fit can grade the index against what the
+      // patient actually did rather than against another monitor's number.
+      try {
+        await linkCaseObservations({ data: { caseCode: meta.caseCode, sessionId } });
+      } catch {
+        // Best effort: the observations are already filed under the case code.
+      }
+
       // Keep the contemporaneous dosing record with the case.
       if (user?.id && infusions.length) {
         try {

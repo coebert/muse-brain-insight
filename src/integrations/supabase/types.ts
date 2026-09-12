@@ -546,6 +546,68 @@ export type Database = {
           },
         ]
       }
+      case_observations: {
+        Row: {
+          at_seconds: number
+          case_code: string
+          created_at: string
+          dose: number | null
+          dose_unit: string | null
+          drug_name: string | null
+          id: string
+          kind: string
+          moaas: number | null
+          note: string | null
+          observed_at: string
+          route: string | null
+          session_id: string | null
+          stimulus: string | null
+          user_id: string
+        }
+        Insert: {
+          at_seconds: number
+          case_code: string
+          created_at?: string
+          dose?: number | null
+          dose_unit?: string | null
+          drug_name?: string | null
+          id?: string
+          kind: string
+          moaas?: number | null
+          note?: string | null
+          observed_at?: string
+          route?: string | null
+          session_id?: string | null
+          stimulus?: string | null
+          user_id: string
+        }
+        Update: {
+          at_seconds?: number
+          case_code?: string
+          created_at?: string
+          dose?: number | null
+          dose_unit?: string | null
+          drug_name?: string | null
+          id?: string
+          kind?: string
+          moaas?: number | null
+          note?: string | null
+          observed_at?: string
+          route?: string | null
+          session_id?: string | null
+          stimulus?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_observations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_outcomes: {
         Row: {
           awareness: boolean

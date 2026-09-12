@@ -3,7 +3,9 @@ import { useState, useSyncExternalStore } from "react";
 import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react";
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
+import { ClinicalCapturePanel } from "@/components/monitor/ClinicalCapturePanel";
 import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
+
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { TrendLine } from "@/components/monitor/TrendLine";
@@ -265,10 +267,21 @@ function BedsidePage() {
           />
         </div>
 
+        {/* Observed responsiveness and drugs: ground truth the index is graded on. */}
+        <div className="mt-3">
+          <ClinicalCapturePanel
+            caseCode={meta.caseCode}
+            elapsed={monitor.elapsed}
+            running={caseState === "running"}
+            testing={testing}
+          />
+        </div>
+
         {/* Where this case's depth and suppression sit among known outcomes. */}
         <div className="mt-3">
           <CohortPositionPanel epochs={monitor.epochs} />
         </div>
+
 
         {/* Everything else folds away, so the number owns the screen. */}
         <Collapsible open={detailOpen} onOpenChange={setDetailOpen} className="mt-3">
