@@ -273,7 +273,12 @@ export function describeObservation(row: CaseObservation): string {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
     return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""}`;
   }
+  if (row.kind === "event") {
+    const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
+    return `${label}${row.note ? ` · ${row.note}` : ""}`;
+  }
   const dose = row.dose != null ? ` ${row.dose}${row.doseUnit ? ` ${row.doseUnit}` : ""}` : "";
   const route = row.route ? ` · ${ROUTE_LABEL[row.route as Route] ?? row.route}` : "";
   return `${row.drugName}${dose}${route}`;
+
 }
