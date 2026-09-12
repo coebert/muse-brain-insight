@@ -274,8 +274,15 @@ function BedsidePage() {
             elapsed={monitor.elapsed}
             running={caseState === "running"}
             testing={testing}
+            onRowsChange={setObservations}
           />
         </div>
+
+        {/* Did the EEG actually move when the patient was stimulated? */}
+        <div className="mt-3">
+          <ReactivityPanel observations={observations} epochs={monitor.epochs} />
+        </div>
+
 
         {/* Where this case's depth and suppression sit among known outcomes. */}
         <div className="mt-3">
