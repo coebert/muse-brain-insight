@@ -177,6 +177,27 @@ export function ClinicalCapturePanel({
     }
   }
 
+  /**
+   * One tap stamps the stimulus and the observed response at the same second,
+   * so the trace around a purposeful movement (or its absence) is filed as a
+   * pair and a later fit can read both sides of the moment.
+   */
+  async function stimulusResponseMarked(moved: boolean) {
+    const at = Math.round(elapsed);
+    const stimulus = await file({ kind: "event", atSeconds: at, eventType: "noxious_stimulus" });
+    if (!stimulus) return;
+    const response = await file({
+      kind: "event",
+      atSeconds: at,
+      eventType: moved ? "movement_response" : "still_response",
+    });
+    if (response) {
+      toast.success(
+        `${moved ? "Patient moved" : "No movement"} to stimulus at ${formatClock(elapsed)}`,
+      );
+    }
+  }
+
 
   async function removeRow(id: string) {
     const before = rows;
