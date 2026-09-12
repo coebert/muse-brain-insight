@@ -110,6 +110,23 @@ export const listCaseObservations = createServerFn({ method: "POST" })
     return ((rows ?? []) as unknown as Row[]).map(toObservation);
   });
 
+/** Everything attached to one filed recording, oldest first. */
+export const listSessionObservations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { sessionId: string }) => ({ sessionId: input.sessionId ?? "" }))
+  .handler(async ({ data, context }): Promise<CaseObservation[]> => {
+    if (!data.sessionId) return [];
+    const { data: rows, error } = await context.supabase
+      .from("case_observations")
+      .select(SELECT)
+      .eq("user_id", context.userId)
+      .eq("session_id", data.sessionId)
+      .order("at_seconds", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as unknown as Row[]).map(toObservation);
+  });
+
 /** Remove one mistyped entry, rather than leaving it to be learned from. */
 export const deleteCaseObservation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
