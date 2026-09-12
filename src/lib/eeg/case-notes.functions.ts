@@ -225,8 +225,33 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
       }
     }
 
+    // Notes pinned to points on the case timeline, including ones added after
+    // the case when there was no time to type during it.
+    const pinnedNotes = new Map<string, { atSeconds: number; note: string }[]>();
+    if (sessions.length) {
+      const { data: noteRows } = await context.supabase
+        .from("case_observations")
+        .select("session_id, at_seconds, note")
+        .eq("user_id", context.userId)
+        .eq("kind", "note")
+        .in(
+          "session_id",
+          sessions.map((s) => s.id),
+        )
+        .order("at_seconds", { ascending: true })
+        .limit(400);
+      for (const row of noteRows ?? []) {
+        if (!row.session_id || !row.note) continue;
+        const list = pinnedNotes.get(row.session_id) ?? [];
+        if (list.length >= 40) continue;
+        list.push({ atSeconds: Math.round(Number(row.at_seconds) || 0), note: row.note });
+        pinnedNotes.set(row.session_id, list);
+      }
+    }
+
     const cases = sessions
       .map((s) => ({
+        timelineNotes: pinnedNotes.get(s.id) ?? [],
         sessionId: s.id,
         caseCode: open(s.case_code) ?? "unlabelled",
         recordedAt: s.created_at,
