@@ -272,7 +272,11 @@ export const mineCaseNotes = createServerFn({ method: "POST" })
           seizureAlerts: s.seizure_alerts ?? 0,
         },
       }))
-      .filter((c) => (c.caseSummaryFreeText ?? c.notesFreeText ?? "").trim().length > 0);
+      .filter(
+        (c) =>
+          `${c.caseSummaryFreeText ?? ""} ${c.notesFreeText ?? ""}`.trim().length > 0 ||
+          c.timelineNotes.length > 0,
+      );
 
     if (cases.length < 2) {
       return {
