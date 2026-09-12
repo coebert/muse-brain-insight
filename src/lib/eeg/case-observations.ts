@@ -186,6 +186,9 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       }
       if (!draft.doseUnit) errors.push("Give the dose a unit.");
     }
+  } else if (draft.kind === "note") {
+    if (!draft.note.trim()) errors.push("Write something in the note before saving it.");
+    if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
