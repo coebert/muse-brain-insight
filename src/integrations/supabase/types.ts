@@ -1742,6 +1742,56 @@ export type Database = {
         }
         Relationships: []
       }
+      session_raw_chunks: {
+        Row: {
+          channel: string
+          chunk_index: number
+          created_at: string
+          id: string
+          sample_count: number
+          sample_rate: number
+          samples_base64: string
+          scale_uv: number
+          session_id: string
+          start_seconds: number
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          chunk_index: number
+          created_at?: string
+          id?: string
+          sample_count: number
+          sample_rate: number
+          samples_base64: string
+          scale_uv: number
+          session_id: string
+          start_seconds: number
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          chunk_index?: number
+          created_at?: string
+          id?: string
+          sample_count?: number
+          sample_rate?: number
+          samples_base64?: string
+          scale_uv?: number
+          session_id?: string
+          start_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_raw_chunks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "eeg_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppression_model_versions: {
         Row: {
           coefficients: Json
