@@ -156,7 +156,10 @@ export const getRefitOverview = createServerFn({ method: "GET" })
  */
 export const runRefitNow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: { skipLineages?: string[] } | undefined) => ({
+    skipLineages: Array.isArray(input?.skipLineages) ? input.skipLineages.map(String) : [],
+  }))
+  .handler(async ({ context, data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { runRefitForUser, REQUEST_BUDGET } = await import("@/lib/eeg/coebis-refit.server");
     // Scoped to the caller's own user id, so the privileged client can only
@@ -166,6 +169,7 @@ export const runRefitNow = createServerFn({ method: "POST" })
       context.userId,
       "manual",
       REQUEST_BUDGET,
+      data.skipLineages,
     );
     return {
       status: report.status,
@@ -174,6 +178,7 @@ export const runRefitNow = createServerFn({ method: "POST" })
       modelsPromoted: report.modelsPromoted,
       validatedPoints: report.validatedPoints,
       remaining: report.remainingLineages,
+      processed: report.processedLineages,
       done: report.done,
       error: report.error ?? null,
     };
