@@ -360,3 +360,31 @@ export function describeObservation(row: CaseObservation): string {
   return `${row.drugName}${dose}${route}`;
 
 }
+
+export interface StateSpan {
+  label: StateLabel;
+  startSeconds: number;
+  /** Null while the state is still the current one. */
+  endSeconds: number | null;
+  responsive: boolean;
+}
+
+/**
+ * The tagged states read as periods: each tag holds until the next one, so a
+ * case becomes a sequence of labelled stretches a later fit can grade against.
+ */
+export function stateSpans(rows: CaseObservation[]): StateSpan[] {
+  const tags = sortObservations(rows).filter((r) => r.kind === "state" && r.stateLabel);
+  return tags.map((row, i) => ({
+    label: row.stateLabel as StateLabel,
+    startSeconds: row.atSeconds,
+    endSeconds: i + 1 < tags.length ? tags[i + 1]!.atSeconds : null,
+    responsive: stateIsResponsive(row.stateLabel as StateLabel),
+  }));
+}
+
+/** The state the patient is currently tagged as being in, if any. */
+export function currentState(rows: CaseObservation[]): StateLabel | null {
+  const spans = stateSpans(rows);
+  return spans.length ? spans[spans.length - 1]!.label : null;
+}
