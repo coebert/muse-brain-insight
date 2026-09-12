@@ -166,6 +166,18 @@ export function ClinicalCapturePanel({
     }
   }
 
+  async function eventMarked(eventType: EventType) {
+    const saved = await file({
+      kind: "event",
+      atSeconds: Math.round(elapsed),
+      eventType,
+    });
+    if (saved) {
+      toast.success(`${EVENT_LABEL[eventType]} marked at ${formatClock(elapsed)}`);
+    }
+  }
+
+
   async function removeRow(id: string) {
     const before = rows;
     setRows((prev) => prev.filter((r) => r.id !== id));
