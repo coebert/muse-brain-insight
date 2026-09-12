@@ -265,10 +265,21 @@ function BedsidePage() {
           />
         </div>
 
+        {/* Observed responsiveness and drugs: ground truth the index is graded on. */}
+        <div className="mt-3">
+          <ClinicalCapturePanel
+            caseCode={meta.caseCode}
+            elapsed={monitor.elapsed}
+            running={caseState === "running"}
+            testing={testing}
+          />
+        </div>
+
         {/* Where this case's depth and suppression sit among known outcomes. */}
         <div className="mt-3">
           <CohortPositionPanel epochs={monitor.epochs} />
         </div>
+
 
         {/* Everything else folds away, so the number owns the screen. */}
         <Collapsible open={detailOpen} onOpenChange={setDetailOpen} className="mt-3">
