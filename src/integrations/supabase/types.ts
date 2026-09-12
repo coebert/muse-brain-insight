@@ -562,6 +562,7 @@ export type Database = {
           observed_at: string
           route: string | null
           session_id: string | null
+          state_label: string | null
           stimulus: string | null
           user_id: string
         }
@@ -580,6 +581,7 @@ export type Database = {
           observed_at?: string
           route?: string | null
           session_id?: string | null
+          state_label?: string | null
           stimulus?: string | null
           user_id: string
         }
@@ -598,6 +600,7 @@ export type Database = {
           observed_at?: string
           route?: string | null
           session_id?: string | null
+          state_label?: string | null
           stimulus?: string | null
           user_id?: string
         }

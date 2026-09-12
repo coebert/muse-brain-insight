@@ -104,11 +104,50 @@ export const EVENT_DETAIL: Record<EventType, string> = {
   other: "Anything else worth revisiting on the trace",
 };
 
+/**
+ * Clinical states a patient can be tagged as being in from this moment on.
+ *
+ * The words are deliberately the same as the published corpora use, so a case
+ * captured at the bedside can be graded alongside them without translation.
+ */
+export const STATE_LABELS = [
+  "awake",
+  "sedated_responsive",
+  "sedated_unresponsive",
+  "anaesthetised",
+  "burst_suppression",
+  "emergence",
+] as const;
+export type StateLabel = (typeof STATE_LABELS)[number];
+
+export const STATE_LABEL_TEXT: Record<StateLabel, string> = {
+  awake: "Awake",
+  sedated_responsive: "Sedated, responding",
+  sedated_unresponsive: "Sedated, not responding",
+  anaesthetised: "Anaesthetised",
+  burst_suppression: "Burst suppression",
+  emergence: "Emerging",
+};
+
+export const STATE_LABEL_DETAIL: Record<StateLabel, string> = {
+  awake: "Awake and answering normally",
+  sedated_responsive: "Sedated but still responds to voice or prodding",
+  sedated_unresponsive: "Sedated and no longer responds to voice",
+  anaesthetised: "Surgical anaesthesia, unresponsive",
+  burst_suppression: "Bursts alternating with flat periods",
+  emergence: "Waking up at the end of the case",
+};
+
+/** True when the tagged state means the patient was behaviourally responsive. */
+export function stateIsResponsive(label: StateLabel): boolean {
+  return label === "awake" || label === "sedated_responsive" || label === "emergence";
+}
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event" | "note";
+  kind: "responsiveness" | "drug" | "event" | "note" | "state";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -118,6 +157,7 @@ export interface CaseObservation {
   doseUnit: string | null;
   route: string | null;
   eventType: EventType | null;
+  stateLabel?: StateLabel | null;
   note: string | null;
 }
 
@@ -156,7 +196,23 @@ export interface TimelineNoteDraft {
   note: string;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft | TimelineNoteDraft;
+/**
+ * The patient entered this state at this point on the case clock. The tag
+ * holds until the next state tag, so a case reads as a sequence of periods.
+ */
+export interface StateDraft {
+  kind: "state";
+  atSeconds: number;
+  stateLabel: StateLabel;
+  note?: string | null;
+}
+
+export type ObservationDraft =
+  | ResponsivenessDraft
+  | DrugDraft
+  | EventDraft
+  | TimelineNoteDraft
+  | StateDraft;
 
 
 export interface ValidationResult {
@@ -189,6 +245,8 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
   } else if (draft.kind === "note") {
     if (!draft.note.trim()) errors.push("Write something in the note before saving it.");
     if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
+  } else if (draft.kind === "state") {
+    if (!STATE_LABELS.includes(draft.stateLabel)) errors.push("Choose the state to tag.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
@@ -289,6 +347,10 @@ export function describeObservation(row: CaseObservation): string {
   if (row.kind === "note") {
     return row.note ?? "Note";
   }
+  if (row.kind === "state") {
+    const label = row.stateLabel ? STATE_LABEL_TEXT[row.stateLabel] : "State";
+    return `State: ${label}${row.note ? ` · ${row.note}` : ""}`;
+  }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
     return `${label}${row.note ? ` · ${row.note}` : ""}`;
@@ -297,4 +359,32 @@ export function describeObservation(row: CaseObservation): string {
   const route = row.route ? ` · ${ROUTE_LABEL[row.route as Route] ?? row.route}` : "";
   return `${row.drugName}${dose}${route}`;
 
+}
+
+export interface StateSpan {
+  label: StateLabel;
+  startSeconds: number;
+  /** Null while the state is still the current one. */
+  endSeconds: number | null;
+  responsive: boolean;
+}
+
+/**
+ * The tagged states read as periods: each tag holds until the next one, so a
+ * case becomes a sequence of labelled stretches a later fit can grade against.
+ */
+export function stateSpans(rows: CaseObservation[]): StateSpan[] {
+  const tags = sortObservations(rows).filter((r) => r.kind === "state" && r.stateLabel);
+  return tags.map((row, i) => ({
+    label: row.stateLabel as StateLabel,
+    startSeconds: row.atSeconds,
+    endSeconds: i + 1 < tags.length ? tags[i + 1]!.atSeconds : null,
+    responsive: stateIsResponsive(row.stateLabel as StateLabel),
+  }));
+}
+
+/** The state the patient is currently tagged as being in, if any. */
+export function currentState(rows: CaseObservation[]): StateLabel | null {
+  const spans = stateSpans(rows);
+  return spans.length ? spans[spans.length - 1]!.label : null;
 }
