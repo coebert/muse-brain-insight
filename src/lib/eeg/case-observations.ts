@@ -196,7 +196,23 @@ export interface TimelineNoteDraft {
   note: string;
 }
 
-export type ObservationDraft = ResponsivenessDraft | DrugDraft | EventDraft | TimelineNoteDraft;
+/**
+ * The patient entered this state at this point on the case clock. The tag
+ * holds until the next state tag, so a case reads as a sequence of periods.
+ */
+export interface StateDraft {
+  kind: "state";
+  atSeconds: number;
+  stateLabel: StateLabel;
+  note?: string | null;
+}
+
+export type ObservationDraft =
+  | ResponsivenessDraft
+  | DrugDraft
+  | EventDraft
+  | TimelineNoteDraft
+  | StateDraft;
 
 
 export interface ValidationResult {
