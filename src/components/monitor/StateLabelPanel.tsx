@@ -17,6 +17,9 @@ import {
   type Separation,
 } from "@/lib/eeg/state-labels";
 
+/** Chennu and DOSE-I are the two collections with real sedation-state labels. */
+const SEDATION_SCOPE = `${CHENNU_LINEAGE},${DOSE1_LINEAGE}`;
+
 const dp = (v: number | null | undefined, places = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(places);
 const pct = (v: number | null | undefined) =>
