@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   validateDraft,
   type CaseObservation,
+  type EventType,
   type ObservationDraft,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
@@ -20,6 +21,7 @@ interface Row {
   dose: number | string | null;
   dose_unit: string | null;
   route: string | null;
+  event_type: string | null;
   note: string | null;
 }
 
@@ -28,7 +30,7 @@ function toObservation(row: Row): CaseObservation {
     id: row.id,
     caseCode: row.case_code,
     sessionId: row.session_id,
-    kind: row.kind === "drug" ? "drug" : "responsiveness",
+    kind: row.kind === "drug" ? "drug" : row.kind === "event" ? "event" : "responsiveness",
     atSeconds: Number(row.at_seconds),
     moaas: row.moaas == null ? null : Number(row.moaas),
     stimulus: (row.stimulus as Stimulus | null) ?? null,
@@ -36,12 +38,14 @@ function toObservation(row: Row): CaseObservation {
     dose: row.dose == null ? null : Number(row.dose),
     doseUnit: row.dose_unit,
     route: row.route,
+    eventType: (row.event_type as EventType | null) ?? null,
     note: row.note,
   };
 }
 
 const SELECT =
-  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, note";
+  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, note";
+
 
 /** File one bedside observation immediately, so a closed app cannot lose it. */
 export const recordCaseObservation = createServerFn({ method: "POST" })
