@@ -258,8 +258,15 @@ export async function runRefitForUser(
   userId: string,
   trigger: string,
   budget: RefitBudget = {},
+  /**
+   * Setups an earlier pass already worked through. They are left out of this
+   * pass entirely, so a setup that produces no model (too little data to fit)
+   * cannot be picked again and again while the rest are never reached.
+   */
+  skipLineages: string[] = [],
 ): Promise<RefitRunReport> {
   const limits = { ...DEFAULT_BUDGET, ...budget };
+  const skip = new Set(skipLineages);
   const base: RefitRunReport = {
     runId: null,
     userId,
