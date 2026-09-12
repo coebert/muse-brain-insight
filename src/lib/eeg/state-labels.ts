@@ -299,8 +299,9 @@ export function fitStateModel(points: StateEpoch[]): StateModel | null {
       for (let j = 0; j < d; j++) z += w[j + 1]! * x[i]![j]!;
       const p = 1 / (1 + Math.exp(-z));
       const err = p - y[i]!;
-      grad[0] += err;
-      for (let j = 0; j < d; j++) grad[j + 1] += err * x[i]![j]!;
+      grad[0] = grad[0]! + err;
+      for (let j = 0; j < d; j++) grad[j + 1] = grad[j + 1]! + err * x[i]![j]!;
+
     }
     for (let j = 0; j <= d; j++) {
       const g = grad[j]! / x.length + (j === 0 ? 0 : l2 * w[j]!);
