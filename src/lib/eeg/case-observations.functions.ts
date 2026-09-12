@@ -30,7 +30,14 @@ function toObservation(row: Row): CaseObservation {
     id: row.id,
     caseCode: row.case_code,
     sessionId: row.session_id,
-    kind: row.kind === "drug" ? "drug" : row.kind === "event" ? "event" : "responsiveness",
+    kind:
+      row.kind === "drug"
+        ? "drug"
+        : row.kind === "event"
+          ? "event"
+          : row.kind === "note"
+            ? "note"
+            : "responsiveness",
     atSeconds: Number(row.at_seconds),
     moaas: row.moaas == null ? null : Number(row.moaas),
     stimulus: (row.stimulus as Stimulus | null) ?? null,
