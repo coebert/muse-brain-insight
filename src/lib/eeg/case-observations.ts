@@ -442,3 +442,26 @@ export function currentState(rows: CaseObservation[]): StateLabel | null {
   const spans = stateSpans(rows);
   return spans.length ? spans[spans.length - 1]!.label : null;
 }
+
+export interface PhaseSpan {
+  phase: CasePhase;
+  startSeconds: number;
+  /** Null while the case is still in this phase. */
+  endSeconds: number | null;
+}
+
+/** The tagged phases read as periods, on the same rule as the state tags. */
+export function phaseSpans(rows: CaseObservation[]): PhaseSpan[] {
+  const tags = sortObservations(rows).filter((r) => r.kind === "phase" && r.phase);
+  return tags.map((row, i) => ({
+    phase: row.phase as CasePhase,
+    startSeconds: row.atSeconds,
+    endSeconds: i + 1 < tags.length ? tags[i + 1]!.atSeconds : null,
+  }));
+}
+
+/** The phase the case is currently tagged as being in, if any. */
+export function currentPhase(rows: CaseObservation[]): CasePhase | null {
+  const spans = phaseSpans(rows);
+  return spans.length ? spans[spans.length - 1]!.phase : null;
+}
