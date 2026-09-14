@@ -39,6 +39,8 @@ import {
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
 import { LiveCoebisV2, type LiveCoebisV2Reading } from "@/lib/eeg/coebis-v2-device";
+import type { SedationTune } from "@/lib/eeg/coebis-sedation-bands";
+import { getSedationBandTune } from "@/lib/eeg/coebis-sedation-bands.functions";
 import {
   StreamIntegrityMonitor,
   suppressionClock,
