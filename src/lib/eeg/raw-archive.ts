@@ -33,6 +33,12 @@ export interface RawArchive {
   push: (channel: string, samples: ArrayLike<number>, sourceHz: number) => void;
   /** Seconds of signal held for a channel (0 when the channel is silent). */
   duration: (channel: string) => number;
+  /**
+   * Time in seconds, on the same clock as {@link RawArchive.read}, of the
+   * oldest sample still held for a channel. Anything before this has fallen
+   * out of the ring and reads back as silence.
+   */
+  retainedFrom: (channel: string) => number;
   /** Longest duration across all channels — the review timeline length. */
   span: () => number;
   /**
