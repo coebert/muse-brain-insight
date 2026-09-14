@@ -39,6 +39,8 @@ import {
   type DeviceProfile,
 } from "@/lib/eeg/device-profile";
 import { LiveCoebisV2, type LiveCoebisV2Reading } from "@/lib/eeg/coebis-v2-device";
+import type { SedationTune } from "@/lib/eeg/coebis-sedation-bands";
+import { getSedationBandTune } from "@/lib/eeg/coebis-sedation-bands.functions";
 import {
   StreamIntegrityMonitor,
   suppressionClock,
@@ -399,6 +401,27 @@ export function useEegMonitor() {
    */
   const coebisV2Ref = useRef<LiveCoebisV2>(new LiveCoebisV2(MUSE_2_PROFILE));
   const [coebisV2, setCoebisV2] = useState<LiveCoebisV2Reading | null>(null);
+  /**
+   * The adopted sedation band curve, if one has been tuned. It is monotone,
+   * so it only moves the reading onto the scale clinicians read; it is held
+   * here so a montage change rebuilds the estimator with it still in force.
+   */
+  const bandTuneRef = useRef<SedationTune | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getSedationBandTune({ data: undefined })
+      .then((tune) => {
+        if (cancelled || !tune) return;
+        bandTuneRef.current = tune;
+        coebisV2Ref.current.setTune(tune);
+      })
+      .catch(() => {
+        // No tuned scale is a normal state, not an error worth surfacing.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const sourceRef = useRef<EegSource | null>(null);
   /** Last successful connection request, so a manual retry can repeat it. */
   const lastConnectRef = useRef<{
@@ -610,7 +633,7 @@ export function useEegMonitor() {
           allocateBuffers(p);
           channelTalliesRef.current = emptyChannelTallies(p.channels);
           // Rate handling and amplitude normalisation are device-specific.
-          coebisV2Ref.current = new LiveCoebisV2(p);
+          coebisV2Ref.current = new LiveCoebisV2(p, {}, { tune: bandTuneRef.current });
           setCoebisV2(null);
           if (channelRef.current !== "average" && !p.channels.includes(channelRef.current)) {
             setChannel("average");

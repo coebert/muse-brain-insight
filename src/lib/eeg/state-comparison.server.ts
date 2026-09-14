@@ -70,7 +70,7 @@ export interface StateComparisonReport {
   truncated: boolean;
 }
 
-interface Row {
+export interface SedationRow {
   lineage: string;
   caseRef: string;
   channel: string | null;
@@ -84,12 +84,13 @@ interface Row {
   freqStep: number;
 }
 
-async function loadRows(
+/** Every labelled epoch of the sedation collections, oldest first per track. */
+export async function loadSedationRows(
   supabase: Client,
   userId: string,
   limit: number,
-): Promise<{ rows: Row[]; truncated: boolean }> {
-  const rows: Row[] = [];
+): Promise<{ rows: SedationRow[]; truncated: boolean }> {
+  const rows: SedationRow[] = [];
   for (let from = 0; from < limit; from += PAGE) {
     const { data, error } = await supabase
       .from("external_spectral_epochs")
@@ -131,10 +132,10 @@ export async function compareStateModels(
   userId: string,
   limit = MAX_COMPARISON_EPOCHS,
 ): Promise<StateComparisonReport> {
-  const { rows, truncated } = await loadRows(supabase, userId, limit);
+  const { rows, truncated } = await loadSedationRows(supabase, userId, limit);
 
   // COEBIS is stateful along a recording, so score each track in time order.
-  const tracks = new Map<string, Row[]>();
+  const tracks = new Map<string, SedationRow[]>();
   for (const r of rows) {
     const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}`;
     const list = tracks.get(key);
