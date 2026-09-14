@@ -23,14 +23,34 @@ interface ChannelRing {
   total: number;
   /** Decimation phase counter. */
   phase: number;
+  /** Wall-clock time the channel's first archived sample represents. */
+  startedAt: number | null;
 }
+
+/**
+ * A dropout writes nothing, so without correction the archive would simply
+ * carry on where it left off and every later sample would replay early — the
+ * waveform sliding out of step with the index trace, markers and notes by the
+ * whole length of the outage. Silence is written across the gap instead, so
+ * the archive stays on the case clock.
+ *
+ * Below this much drift nothing is written: sample rates are never exact and
+ * padding small jitter would add noise where there was none.
+ */
+export const GAP_TOLERANCE_SECONDS = 0.5;
 
 export interface RawArchive {
   subscribe: (listener: () => void) => () => void;
   /** Bumped whenever new samples land; use as a `useSyncExternalStore` snapshot. */
   getVersion: () => number;
   /** Append filtered samples for one electrode, at the acquisition rate. */
-  push: (channel: string, samples: ArrayLike<number>, sourceHz: number) => void;
+  push: (
+    channel: string,
+    samples: ArrayLike<number>,
+    sourceHz: number,
+    /** Wall-clock arrival time; injectable for tests. Defaults to now. */
+    nowMs?: number,
+  ) => void;
   /** Seconds of signal held for a channel (0 when the channel is silent). */
   duration: (channel: string) => number;
   /**
@@ -59,10 +79,22 @@ export function createRawArchive(): RawArchive {
   const ringFor = (channel: string): ChannelRing => {
     let ring = rings.get(channel);
     if (!ring) {
-      ring = { data: new Float32Array(CAPACITY), write: 0, total: 0, phase: 0 };
+      ring = {
+        data: new Float32Array(CAPACITY),
+        write: 0,
+        total: 0,
+        phase: 0,
+        startedAt: null,
+      };
       rings.set(channel, ring);
     }
     return ring;
+  };
+
+  const writeSample = (ring: ChannelRing, value: number) => {
+    ring.data[ring.write] = value;
+    ring.write = (ring.write + 1) % CAPACITY;
+    ring.total++;
   };
 
   return {
@@ -71,15 +103,33 @@ export function createRawArchive(): RawArchive {
       return () => listeners.delete(listener);
     },
     getVersion: () => version,
-    push(channel, samples, sourceHz) {
+    push(channel, samples, sourceHz, nowMs = Date.now()) {
       const ring = ringFor(channel);
+      const chunkMs = sourceHz > 0 ? (samples.length / sourceHz) * 1000 : 0;
+      const chunkStart = nowMs - chunkMs;
+
+      if (ring.startedAt == null) {
+        ring.startedAt = chunkStart;
+      } else {
+        // Where this chunk should land on the case clock, versus where the
+        // archive actually is. Any shortfall is time the headband was away.
+        const expected = Math.round(((chunkStart - ring.startedAt) / 1000) * RAW_ARCHIVE_HZ);
+        const missing = expected - ring.total;
+        if (missing > GAP_TOLERANCE_SECONDS * RAW_ARCHIVE_HZ) {
+          // A gap longer than the ring means nothing earlier survives anyway.
+          if (missing >= CAPACITY) ring.data.fill(0);
+          const pad = missing >= CAPACITY ? missing % CAPACITY : missing;
+          for (let i = 0; i < pad; i++) writeSample(ring, 0);
+          // The remainder is a whole number of ring lengths, so advancing the
+          // clock by it leaves the write position exactly where it is.
+          ring.total += missing - pad;
+          ring.phase = 0;
+        }
+      }
+
       const step = Math.max(1, Math.round(sourceHz / RAW_ARCHIVE_HZ));
       for (let i = 0; i < samples.length; i++) {
-        if (ring.phase % step === 0) {
-          ring.data[ring.write] = samples[i] as number;
-          ring.write = (ring.write + 1) % CAPACITY;
-          ring.total++;
-        }
+        if (ring.phase % step === 0) writeSample(ring, samples[i] as number);
         ring.phase++;
       }
       version++;
