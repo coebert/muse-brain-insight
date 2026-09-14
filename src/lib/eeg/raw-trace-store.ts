@@ -101,7 +101,9 @@ export async function saveSessionRawTraces(
         user_id: userId,
         channel,
         chunk_index: index++,
-        start_seconds: Number((from - begin).toFixed(3)),
+        // Absolute case-clock time, so markers, notes and the depth trace
+        // still line up when only the tail of a long case survives in memory.
+        start_seconds: Number(from.toFixed(3)),
         sample_rate: RAW_ARCHIVE_HZ,
         sample_count: samples.length,
         scale_uv: scaleUv,
