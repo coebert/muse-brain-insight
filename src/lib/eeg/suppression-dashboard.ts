@@ -428,21 +428,7 @@ export function buildSuppressionDashboard(
     totals.clear += t.flags.clear;
     if (t.bis.n) {
       casesWithBis++;
-      mergeBis(bisAcc, {
-        n: t.bis.n,
-        sumBis: (t.bis.meanBis ?? 0) * t.bis.n,
-        sumIndex: (t.bis.meanIndex ?? 0) * t.bis.n,
-        sumCapped: (t.bis.meanCappedIndex ?? 0) * t.bis.n,
-        sumAbsRaw: (t.bis.maeRaw ?? 0) * t.bis.n,
-        sumAbsCapped: (t.bis.maeCapped ?? 0) * t.bis.n,
-        sumSignedRaw: (t.bis.biasRaw ?? 0) * t.bis.n,
-        sumSignedCapped: (t.bis.biasCapped ?? 0) * t.bis.n,
-        capImproved: t.bis.capImproved,
-        capWorsened: t.bis.capWorsened,
-        within5: t.bis.within5,
-        within10: t.bis.within10,
-
-      });
+      mergeBis(bisAcc, t.bisAcc);
     }
   }
 
