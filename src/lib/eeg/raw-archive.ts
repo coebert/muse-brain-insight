@@ -89,6 +89,11 @@ export function createRawArchive(): RawArchive {
       const ring = rings.get(channel);
       return ring ? ring.total / RAW_ARCHIVE_HZ : 0;
     },
+    retainedFrom(channel) {
+      const ring = rings.get(channel);
+      if (!ring) return 0;
+      return Math.max(0, ring.total - CAPACITY) / RAW_ARCHIVE_HZ;
+    },
     span() {
       let max = 0;
       for (const ring of rings.values()) max = Math.max(max, ring.total / RAW_ARCHIVE_HZ);
