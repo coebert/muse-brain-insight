@@ -69,7 +69,11 @@ export async function saveSessionRawTraces(
   let stored = 0;
   let longest = 0;
   for (const channel of channels) {
-    const duration = archive.duration(channel);
+    const end = archive.duration(channel);
+    // Only the tail of a long case is still in memory; everything older has
+    // fallen out of the ring and would be filed as hours of silence.
+    const begin = archive.retainedFrom(channel);
+    const duration = end - begin;
     if (duration < 1) continue;
     longest = Math.max(longest, duration);
     const rows: {
