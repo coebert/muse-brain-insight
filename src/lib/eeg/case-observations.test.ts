@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   captureGaps,
+  currentPhase,
   drugTally,
+  phaseSpans,
+  stateSpans,
   transitionsOf,
   validateDraft,
   type CaseObservation,
+  type CasePhase,
 } from "@/lib/eeg/case-observations";
 
 function score(atSeconds: number, moaas: number): CaseObservation {
