@@ -101,7 +101,7 @@ export async function saveSessionRawTraces(
         user_id: userId,
         channel,
         chunk_index: index++,
-        start_seconds: Number(from.toFixed(3)),
+        start_seconds: Number((from - begin).toFixed(3)),
         sample_rate: RAW_ARCHIVE_HZ,
         sample_count: samples.length,
         scale_uv: scaleUv,
