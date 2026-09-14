@@ -150,14 +150,26 @@ export async function loadSessionRawTraces(sessionId: string): Promise<StoredRaw
   const channels: string[] = [];
   let span = 0;
   let sampleRate = RAW_ARCHIVE_HZ;
+  /** Case-clock time each channel has been filled up to, in seconds. */
+  const filled = new Map<string, number>();
   for (const row of data) {
     const rate = Number(row.sample_rate) || RAW_ARCHIVE_HZ;
     sampleRate = rate;
     const samples = decodeChunk(row.samples_base64, Number(row.scale_uv));
     if (!channels.includes(row.channel)) channels.push(row.channel);
+    const start = Number(row.start_seconds) || 0;
+    const at = filled.get(row.channel) ?? 0;
+    // Trimmed head of a long case, or a dropout: keep the hole as silence so
+    // the trace stays on the same clock as the markers drawn over it.
+    if (start > at) {
+      const pad = Math.round((start - at) * rate);
+      if (pad > 0) archive.push(row.channel, new Float32Array(pad), rate, 0);
+    }
     // Push at the stored rate so the archive keeps it 1:1 (no decimation).
-    archive.push(row.channel, samples, rate);
-    span = Math.max(span, Number(row.start_seconds) + samples.length / rate);
+    archive.push(row.channel, samples, rate, 0);
+    const endAt = Math.max(at, start) + samples.length / rate;
+    filled.set(row.channel, endAt);
+    span = Math.max(span, endAt);
   }
   return { archive, channels, span, sampleRate };
 }
