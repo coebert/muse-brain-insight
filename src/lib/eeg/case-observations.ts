@@ -152,11 +152,37 @@ export function stateIsResponsive(label: StateLabel): boolean {
   return label === "awake" || label === "sedated_responsive" || label === "emergence";
 }
 
+/**
+ * Where the case is up to, as the anaesthetist runs it.
+ *
+ * Deliberately separate from the patient-state tags. A state says what the
+ * patient is doing; a phase says what is being done to them. They usually move
+ * together but not always — a patient can be unresponsive throughout
+ * maintenance and still unresponsive well into recovery — and conflating the
+ * two would teach a later fit a transition that never happened.
+ */
+export const CASE_PHASES = ["induction", "maintenance", "emergence", "recovery"] as const;
+export type CasePhase = (typeof CASE_PHASES)[number];
+
+export const PHASE_TEXT: Record<CasePhase, string> = {
+  induction: "Induction",
+  maintenance: "Maintenance",
+  emergence: "Emergence",
+  recovery: "Recovery",
+};
+
+export const PHASE_DETAIL: Record<CasePhase, string> = {
+  induction: "Induction drugs given, airway being secured",
+  maintenance: "Steady-state anaesthesia for the surgery",
+  emergence: "Agent off, waking the patient up",
+  recovery: "Handed over, in recovery",
+};
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event" | "note" | "state";
+  kind: "responsiveness" | "drug" | "event" | "note" | "state" | "phase";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -167,6 +193,7 @@ export interface CaseObservation {
   route: string | null;
   eventType: EventType | null;
   stateLabel?: StateLabel | null;
+  phase?: CasePhase | null;
   note: string | null;
 }
 
