@@ -44,7 +44,13 @@ export interface RawArchive {
   /** Bumped whenever new samples land; use as a `useSyncExternalStore` snapshot. */
   getVersion: () => number;
   /** Append filtered samples for one electrode, at the acquisition rate. */
-  push: (channel: string, samples: ArrayLike<number>, sourceHz: number) => void;
+  push: (
+    channel: string,
+    samples: ArrayLike<number>,
+    sourceHz: number,
+    /** Wall-clock arrival time; injectable for tests. Defaults to now. */
+    nowMs?: number,
+  ) => void;
   /** Seconds of signal held for a channel (0 when the channel is silent). */
   duration: (channel: string) => number;
   /**
@@ -110,10 +116,12 @@ export function createRawArchive(): RawArchive {
         const expected = Math.round(((chunkStart - ring.startedAt) / 1000) * RAW_ARCHIVE_HZ);
         const missing = expected - ring.total;
         if (missing > GAP_TOLERANCE_SECONDS * RAW_ARCHIVE_HZ) {
-          const pad = Math.min(missing, CAPACITY);
+          // A gap longer than the ring means nothing earlier survives anyway.
+          if (missing >= CAPACITY) ring.data.fill(0);
+          const pad = missing >= CAPACITY ? missing % CAPACITY : missing;
           for (let i = 0; i < pad; i++) writeSample(ring, 0);
-          // Everything older than the pad has been pushed out of the ring
-          // anyway, so the clock stays consistent with what is retained.
+          // The remainder is a whole number of ring lengths, so advancing the
+          // clock by it leaves the write position exactly where it is.
           ring.total += missing - pad;
           ring.phase = 0;
         }
