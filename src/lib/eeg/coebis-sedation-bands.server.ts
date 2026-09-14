@@ -96,16 +96,27 @@ async function bisGuard(
   userId: string,
   tune: SedationTune,
 ): Promise<BisGuard | null> {
-  const { data, error } = await supabase
-    .from("bis_paired_points")
-    .select("bis, app_index")
-    .eq("user_id", userId)
-    .eq("reliable", true)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  const pairs = (data ?? [])
-    .map((r: any) => ({ bis: Number(r.bis), index: Number(r.app_index) }))
-    .filter((p) => Number.isFinite(p.bis) && Number.isFinite(p.index));
+  // Paged: the data API caps a single read, and a short read would flatter
+  // the guard by judging the curve on a fraction of the bedside evidence.
+  const pairs: { bis: number; index: number }[] = [];
+  const PAGE = 1000;
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data, error } = await supabase
+      .from("bis_paired_points")
+      .select("bis, app_index")
+      .eq("user_id", userId)
+      .eq("reliable", true)
+      .order("recorded_at", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as any[];
+    for (const r of page) {
+      const bis = Number(r.bis);
+      const index = Number(r.app_index);
+      if (Number.isFinite(bis) && Number.isFinite(index)) pairs.push({ bis, index });
+    }
+    if (page.length < PAGE) break;
+  }
   if (pairs.length < 20) return null;
 
   const mae = (f: (x: number) => number) =>
