@@ -341,6 +341,7 @@ export function caseTrace(
     durationSeconds: Math.max(0, last - first),
     flags,
     bis: summariseBis(bisAcc),
+    bisAcc,
     meanIndex: mean(indices),
     meanCappedIndex: mean(capped),
     meanMonitorSr: mean(monitorSrs) ?? 0,
