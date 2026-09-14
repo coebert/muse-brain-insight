@@ -560,6 +560,7 @@ export type Database = {
           moaas: number | null
           note: string | null
           observed_at: string
+          phase: string | null
           route: string | null
           session_id: string | null
           state_label: string | null
@@ -579,6 +580,7 @@ export type Database = {
           moaas?: number | null
           note?: string | null
           observed_at?: string
+          phase?: string | null
           route?: string | null
           session_id?: string | null
           state_label?: string | null
@@ -598,6 +600,7 @@ export type Database = {
           moaas?: number | null
           note?: string | null
           observed_at?: string
+          phase?: string | null
           route?: string | null
           session_id?: string | null
           state_label?: string | null

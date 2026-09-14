@@ -5,6 +5,7 @@ import {
   validateDraft,
   type CaseObservation,
   type EventType,
+  type CasePhase,
   type ObservationDraft,
   type StateLabel,
   type Stimulus,
@@ -24,6 +25,7 @@ interface Row {
   route: string | null;
   event_type: string | null;
   state_label: string | null;
+  phase: string | null;
   note: string | null;
 }
 
@@ -41,7 +43,9 @@ function toObservation(row: Row): CaseObservation {
             ? "note"
             : row.kind === "state"
               ? "state"
-              : "responsiveness",
+              : row.kind === "phase"
+                ? "phase"
+                : "responsiveness",
     atSeconds: Number(row.at_seconds),
     moaas: row.moaas == null ? null : Number(row.moaas),
     stimulus: (row.stimulus as Stimulus | null) ?? null,
@@ -51,12 +55,13 @@ function toObservation(row: Row): CaseObservation {
     route: row.route,
     eventType: (row.event_type as EventType | null) ?? null,
     stateLabel: (row.state_label as StateLabel | null) ?? null,
+    phase: (row.phase as CasePhase | null) ?? null,
     note: row.note,
   };
 }
 
 const SELECT =
-  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, state_label, note";
+  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, state_label, phase, note";
 
 
 /** File one bedside observation immediately, so a closed app cannot lose it. */
@@ -74,6 +79,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
     const responsiveness = draft.kind === "responsiveness" ? draft : null;
     const drug = draft.kind === "drug" ? draft : null;
     const state = draft.kind === "state" ? draft : null;
+    const phase = draft.kind === "phase" ? draft : null;
     const payload = {
       user_id: context.userId,
       case_code: caseCode,
@@ -89,6 +95,7 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
       route: drug ? (drug.route ?? null) : null,
       event_type: draft.kind === "event" ? draft.eventType : null,
       state_label: state ? state.stateLabel : null,
+      phase: phase ? phase.phase : null,
     };
 
 

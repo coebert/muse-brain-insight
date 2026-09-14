@@ -152,11 +152,37 @@ export function stateIsResponsive(label: StateLabel): boolean {
   return label === "awake" || label === "sedated_responsive" || label === "emergence";
 }
 
+/**
+ * Where the case is up to, as the anaesthetist runs it.
+ *
+ * Deliberately separate from the patient-state tags. A state says what the
+ * patient is doing; a phase says what is being done to them. They usually move
+ * together but not always — a patient can be unresponsive throughout
+ * maintenance and still unresponsive well into recovery — and conflating the
+ * two would teach a later fit a transition that never happened.
+ */
+export const CASE_PHASES = ["induction", "maintenance", "emergence", "recovery"] as const;
+export type CasePhase = (typeof CASE_PHASES)[number];
+
+export const PHASE_TEXT: Record<CasePhase, string> = {
+  induction: "Induction",
+  maintenance: "Maintenance",
+  emergence: "Emergence",
+  recovery: "Recovery",
+};
+
+export const PHASE_DETAIL: Record<CasePhase, string> = {
+  induction: "Induction drugs given, airway being secured",
+  maintenance: "Steady-state anaesthesia for the surgery",
+  emergence: "Agent off, waking the patient up",
+  recovery: "Handed over, in recovery",
+};
+
 export interface CaseObservation {
   id: string;
   caseCode: string;
   sessionId: string | null;
-  kind: "responsiveness" | "drug" | "event" | "note" | "state";
+  kind: "responsiveness" | "drug" | "event" | "note" | "state" | "phase";
   /** Seconds from the start of the recording. */
   atSeconds: number;
   moaas: number | null;
@@ -167,6 +193,7 @@ export interface CaseObservation {
   route: string | null;
   eventType: EventType | null;
   stateLabel?: StateLabel | null;
+  phase?: CasePhase | null;
   note: string | null;
 }
 
@@ -216,12 +243,24 @@ export interface StateDraft {
   note?: string | null;
 }
 
+/**
+ * The case entered this phase at this point on the case clock. Like a state
+ * tag, it holds until the next phase tag.
+ */
+export interface PhaseDraft {
+  kind: "phase";
+  atSeconds: number;
+  phase: CasePhase;
+  note?: string | null;
+}
+
 export type ObservationDraft =
   | ResponsivenessDraft
   | DrugDraft
   | EventDraft
   | TimelineNoteDraft
-  | StateDraft;
+  | StateDraft
+  | PhaseDraft;
 
 
 export interface ValidationResult {
@@ -256,6 +295,8 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
     if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
   } else if (draft.kind === "state") {
     if (!STATE_LABELS.includes(draft.stateLabel)) errors.push("Choose the state to tag.");
+  } else if (draft.kind === "phase") {
+    if (!CASE_PHASES.includes(draft.phase)) errors.push("Choose the phase to tag.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
@@ -360,6 +401,10 @@ export function describeObservation(row: CaseObservation): string {
     const label = row.stateLabel ? STATE_LABEL_TEXT[row.stateLabel] : "State";
     return `State: ${label}${row.note ? ` · ${row.note}` : ""}`;
   }
+  if (row.kind === "phase") {
+    const label = row.phase ? PHASE_TEXT[row.phase] : "Phase";
+    return `Phase: ${label}${row.note ? ` · ${row.note}` : ""}`;
+  }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
     return `${label}${row.note ? ` · ${row.note}` : ""}`;
@@ -396,4 +441,27 @@ export function stateSpans(rows: CaseObservation[]): StateSpan[] {
 export function currentState(rows: CaseObservation[]): StateLabel | null {
   const spans = stateSpans(rows);
   return spans.length ? spans[spans.length - 1]!.label : null;
+}
+
+export interface PhaseSpan {
+  phase: CasePhase;
+  startSeconds: number;
+  /** Null while the case is still in this phase. */
+  endSeconds: number | null;
+}
+
+/** The tagged phases read as periods, on the same rule as the state tags. */
+export function phaseSpans(rows: CaseObservation[]): PhaseSpan[] {
+  const tags = sortObservations(rows).filter((r) => r.kind === "phase" && r.phase);
+  return tags.map((row, i) => ({
+    phase: row.phase as CasePhase,
+    startSeconds: row.atSeconds,
+    endSeconds: i + 1 < tags.length ? tags[i + 1]!.atSeconds : null,
+  }));
+}
+
+/** The phase the case is currently tagged as being in, if any. */
+export function currentPhase(rows: CaseObservation[]): CasePhase | null {
+  const spans = phaseSpans(rows);
+  return spans.length ? spans[spans.length - 1]!.phase : null;
 }
