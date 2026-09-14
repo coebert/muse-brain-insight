@@ -88,8 +88,8 @@ export async function saveSessionRawTraces(
       samples_base64: string;
     }[] = [];
     let index = 0;
-    for (let from = 0; from < duration; from += RAW_CHUNK_SECONDS) {
-      const to = Math.min(duration, from + RAW_CHUNK_SECONDS);
+    for (let from = begin; from < end; from += RAW_CHUNK_SECONDS) {
+      const to = Math.min(end, from + RAW_CHUNK_SECONDS);
       const samples = archive.read(channel, from, to);
       if (!samples.length) {
         index++;
