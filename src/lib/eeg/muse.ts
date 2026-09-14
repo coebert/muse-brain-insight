@@ -878,6 +878,11 @@ export class MuseClient implements EegSource {
         // Always start from a cleanly closed link, never a half-open one.
         await this.resetLink();
         if (this.stopping) break;
+        // A run of identical failures usually means the handle itself has
+        // gone stale, not that the headband is out of range: swap it for the
+        // browser's current one before trying again.
+        if (i >= 2 && i % 3 === 2) await this.refreshHandle();
+        if (this.stopping) break;
         // `gatt.connect()` never rejects while the headband is simply out of
         // range — it waits for an advertisement that may never come, which
         // parks the retry ladder on a single attempt forever. Bound it so the
