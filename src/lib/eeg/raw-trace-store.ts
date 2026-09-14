@@ -69,7 +69,11 @@ export async function saveSessionRawTraces(
   let stored = 0;
   let longest = 0;
   for (const channel of channels) {
-    const duration = archive.duration(channel);
+    const end = archive.duration(channel);
+    // Only the tail of a long case is still in memory; everything older has
+    // fallen out of the ring and would be filed as hours of silence.
+    const begin = archive.retainedFrom(channel);
+    const duration = end - begin;
     if (duration < 1) continue;
     longest = Math.max(longest, duration);
     const rows: {
@@ -84,8 +88,8 @@ export async function saveSessionRawTraces(
       samples_base64: string;
     }[] = [];
     let index = 0;
-    for (let from = 0; from < duration; from += RAW_CHUNK_SECONDS) {
-      const to = Math.min(duration, from + RAW_CHUNK_SECONDS);
+    for (let from = begin; from < end; from += RAW_CHUNK_SECONDS) {
+      const to = Math.min(end, from + RAW_CHUNK_SECONDS);
       const samples = archive.read(channel, from, to);
       if (!samples.length) {
         index++;
@@ -97,7 +101,7 @@ export async function saveSessionRawTraces(
         user_id: userId,
         channel,
         chunk_index: index++,
-        start_seconds: Number(from.toFixed(3)),
+        start_seconds: Number((from - begin).toFixed(3)),
         sample_rate: RAW_ARCHIVE_HZ,
         sample_count: samples.length,
         scale_uv: scaleUv,
@@ -105,11 +109,16 @@ export async function saveSessionRawTraces(
       });
     }
     if (!rows.length) continue;
-    // One block at a time: each row is ~100 kB, so a single large insert can
-    // be rejected on a poor theatre connection.
-    for (const row of rows) {
-      const { error } = await supabase.from("session_raw_chunks").insert(row);
-      if (error) throw error;
+    // Small groups: each row is ~100 kB, so one giant insert can be rejected
+    // on a poor theatre connection, but one row at a time keeps the clinician
+    // waiting far longer than necessary at the end of a case.
+    const CONCURRENCY = 4;
+    for (let i = 0; i < rows.length; i += CONCURRENCY) {
+      const batch = rows.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map((row) => supabase.from("session_raw_chunks").insert(row)),
+      );
+      for (const { error } of results) if (error) throw error;
     }
     stored++;
   }
