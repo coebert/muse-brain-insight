@@ -73,10 +73,22 @@ export function createRawArchive(): RawArchive {
   const ringFor = (channel: string): ChannelRing => {
     let ring = rings.get(channel);
     if (!ring) {
-      ring = { data: new Float32Array(CAPACITY), write: 0, total: 0, phase: 0 };
+      ring = {
+        data: new Float32Array(CAPACITY),
+        write: 0,
+        total: 0,
+        phase: 0,
+        startedAt: null,
+      };
       rings.set(channel, ring);
     }
     return ring;
+  };
+
+  const writeSample = (ring: ChannelRing, value: number) => {
+    ring.data[ring.write] = value;
+    ring.write = (ring.write + 1) % CAPACITY;
+    ring.total++;
   };
 
   return {
