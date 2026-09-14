@@ -74,7 +74,7 @@ function HeadbandScoresPage() {
   const data = report.data;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <AppNav />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <div className="flex items-center gap-3">

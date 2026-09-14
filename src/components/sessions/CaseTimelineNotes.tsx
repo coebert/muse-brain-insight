@@ -159,8 +159,8 @@ export function CaseTimelineNotes({
             style={{ left: `${Math.min(100, (atSeconds / total) * 100)}%` }}
           />
         ) : null}
-        <span className="absolute bottom-0.5 left-1 text-[10px] text-muted-foreground">0:00</span>
-        <span className="absolute right-1 bottom-0.5 text-[10px] text-muted-foreground">
+        <span className="absolute bottom-0.5 left-1 text-[11px] text-muted-foreground">0:00</span>
+        <span className="absolute right-1 bottom-0.5 text-[11px] text-muted-foreground">
           {formatClock(total)}
         </span>
       </div>
