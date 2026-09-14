@@ -126,3 +126,43 @@ describe("validateDraft", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("case phases", () => {
+  const row = (atSeconds: number, phase: CasePhase): CaseObservation => ({
+    id: `p${atSeconds}`,
+    caseCode: "C1",
+    sessionId: null,
+    kind: "phase",
+    atSeconds,
+    moaas: null,
+    stimulus: null,
+    drugName: null,
+    dose: null,
+    doseUnit: null,
+    route: null,
+    eventType: null,
+    phase,
+    note: null,
+  });
+
+  it("accepts a known phase and rejects an invented one", () => {
+    expect(validateDraft({ kind: "phase", atSeconds: 0, phase: "induction" }).ok).toBe(true);
+    expect(
+      validateDraft({ kind: "phase", atSeconds: 0, phase: "coffee" as CasePhase }).ok,
+    ).toBe(false);
+  });
+
+  it("reads the tags as periods, the last one still open", () => {
+    const spans = phaseSpans([row(600, "maintenance"), row(0, "induction")]);
+    expect(spans.map((s) => s.phase)).toEqual(["induction", "maintenance"]);
+    expect(spans[0]!.endSeconds).toBe(600);
+    expect(spans[1]!.endSeconds).toBeNull();
+    expect(currentPhase([row(0, "induction"), row(600, "maintenance")])).toBe("maintenance");
+  });
+
+  it("keeps phase and patient state apart", () => {
+    const rows = [row(0, "recovery")];
+    expect(stateSpans(rows)).toHaveLength(0);
+    expect(currentPhase(rows)).toBe("recovery");
+  });
+});
