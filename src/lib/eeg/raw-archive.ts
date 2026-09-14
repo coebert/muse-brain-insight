@@ -97,15 +97,31 @@ export function createRawArchive(): RawArchive {
       return () => listeners.delete(listener);
     },
     getVersion: () => version,
-    push(channel, samples, sourceHz) {
+    push(channel, samples, sourceHz, nowMs = Date.now()) {
       const ring = ringFor(channel);
+      const chunkMs = sourceHz > 0 ? (samples.length / sourceHz) * 1000 : 0;
+      const chunkStart = nowMs - chunkMs;
+
+      if (ring.startedAt == null) {
+        ring.startedAt = chunkStart;
+      } else {
+        // Where this chunk should land on the case clock, versus where the
+        // archive actually is. Any shortfall is time the headband was away.
+        const expected = Math.round(((chunkStart - ring.startedAt) / 1000) * RAW_ARCHIVE_HZ);
+        const missing = expected - ring.total;
+        if (missing > GAP_TOLERANCE_SECONDS * RAW_ARCHIVE_HZ) {
+          const pad = Math.min(missing, CAPACITY);
+          for (let i = 0; i < pad; i++) writeSample(ring, 0);
+          // Everything older than the pad has been pushed out of the ring
+          // anyway, so the clock stays consistent with what is retained.
+          ring.total += missing - pad;
+          ring.phase = 0;
+        }
+      }
+
       const step = Math.max(1, Math.round(sourceHz / RAW_ARCHIVE_HZ));
       for (let i = 0; i < samples.length; i++) {
-        if (ring.phase % step === 0) {
-          ring.data[ring.write] = samples[i] as number;
-          ring.write = (ring.write + 1) % CAPACITY;
-          ring.total++;
-        }
+        if (ring.phase % step === 0) writeSample(ring, samples[i] as number);
         ring.phase++;
       }
       version++;
