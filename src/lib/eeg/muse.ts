@@ -195,6 +195,32 @@ export async function requestMuseDevice(): Promise<BluetoothDevice> {
 }
 
 /**
+ * Re-resolve an already-permitted headband from the browser's own list.
+ *
+ * A `BluetoothDevice` handle can go stale mid-case — the OS drops the bond,
+ * or (on iOS/Bluefy especially) the handle survives the page but no longer
+ * maps to anything the stack will connect to. Every `gatt.connect()` on that
+ * handle then fails identically, so the retry ladder runs forever and never
+ * comes back. Asking the browser for the current handle costs nothing, needs
+ * no chooser and no clinician tap, and recovers exactly that case.
+ */
+export async function refreshMuseDevice(previous: BluetoothDevice): Promise<BluetoothDevice | null> {
+  try {
+    const bluetooth = navigator.bluetooth as Navigator["bluetooth"] & {
+      getDevices?: () => Promise<BluetoothDevice[]>;
+    };
+    if (typeof bluetooth?.getDevices !== "function") return null;
+    const known = await bluetooth.getDevices();
+    const match =
+      known.find((d) => d.id === previous.id) ??
+      (previous.name ? known.find((d) => d.name === previous.name) : undefined);
+    return match && match !== previous ? match : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The control characteristic answers in fragments: each notification is a
  * length-prefixed ASCII chunk, and a reply is complete once the accumulated
  * text parses as JSON.
@@ -835,6 +861,25 @@ export class MuseClient implements EegSource {
    * Headbands slip and Bluetooth drops mid-case. Retry with backoff and keep
    * the case running; only give up — and tell the clinician — after five tries.
    */
+  /**
+   * Swap in the browser's current handle for the same headband, if it differs
+   * from the one this case started with, and move the disconnect listener
+   * across. Silent and best effort: a failure just leaves the old handle.
+   */
+  private async refreshHandle() {
+    const previous = this.device;
+    if (!previous) return;
+    const fresh = await refreshMuseDevice(previous);
+    if (!fresh) return;
+    if (this.disconnectListener) {
+      previous.removeEventListener("gattserverdisconnected", this.disconnectListener);
+      fresh.addEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.device = fresh;
+    this.control = null;
+    this.subscriptions = [];
+  }
+
   private async attemptReconnect() {
     if (this.reconnecting) return;
     this.reconnecting = true;
@@ -851,6 +896,11 @@ export class MuseClient implements EegSource {
       try {
         // Always start from a cleanly closed link, never a half-open one.
         await this.resetLink();
+        if (this.stopping) break;
+        // A run of identical failures usually means the handle itself has
+        // gone stale, not that the headband is out of range: swap it for the
+        // browser's current one before trying again.
+        if (i >= 2 && i % 3 === 2) await this.refreshHandle();
         if (this.stopping) break;
         // `gatt.connect()` never rejects while the headband is simply out of
         // range — it waits for an advertisement that may never come, which
