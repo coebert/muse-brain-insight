@@ -100,6 +100,11 @@ export interface CaseTrace {
   flags: FlagAgreement;
   /** COEBIS against the real monitor index over this case. */
   bis: BisAgreement;
+  /**
+   * The same comparison as unrounded running sums, so cohort figures add up
+   * true per-reading totals instead of re-multiplying rounded case means.
+   */
+  bisAcc: BisAccumulator;
   /** Mean COEBIS across the case, before and after the cap. */
   meanIndex: number | null;
   meanCappedIndex: number | null;
