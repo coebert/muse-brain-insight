@@ -146,16 +146,31 @@ export interface LiveCoebisV2Reading extends CoebisV2Reading {
 export class LiveCoebisV2 {
   private readonly estimator: CoebisV2Estimator;
   private readonly setup: CoebisV2DeviceSetup;
+  /** Output curve tuned to sedation labels; null means the raw model scale. */
+  private tune: SedationTune | null = null;
   private logRmsEma: number | null = null;
   private gain = 1;
 
   constructor(
     profile: DeviceProfile,
     covariates: CoebisV2Covariates = {},
-    options: { useAllChannels?: boolean; model?: CoebisV2Model } = {},
+    options: { useAllChannels?: boolean; model?: CoebisV2Model; tune?: SedationTune | null } = {},
   ) {
     this.setup = coebisV2DeviceSetup(profile, options);
+    this.tune = options.tune ?? null;
     this.estimator = new CoebisV2Estimator(covariates, options.model ?? COEBIS_V2_MODEL);
+  }
+
+  /**
+   * Adopt (or clear) the sedation band curve. It is monotone, so it moves
+   * where a reading sits on the scale without changing the order of readings.
+   */
+  setTune(tune: SedationTune | null): void {
+    this.tune = tune;
+  }
+
+  get bandTuned(): boolean {
+    return this.tune != null;
   }
 
   get deviceSetup(): CoebisV2DeviceSetup {
@@ -185,11 +200,19 @@ export class LiveCoebisV2 {
     const scaled = this.setup.amplitudeNormalised ? this.normalise(fitted) : fitted;
     const reading = this.estimator.update(scaled, COEBIS_V2_FIT_RATE, stepSeconds);
     if (!reading) return null;
+    const tuned = this.tune
+      ? {
+          ...reading,
+          index: Math.round(applyTune(this.tune, reading.index)),
+          instant: applyTune(this.tune, reading.instant),
+        }
+      : reading;
     return {
-      ...reading,
+      ...tuned,
       applicability: this.setup.applicability,
       amplitudeNormalised: this.setup.amplitudeNormalised,
       gain: this.gain,
+      bandTuned: this.tune != null,
     };
   }
 
