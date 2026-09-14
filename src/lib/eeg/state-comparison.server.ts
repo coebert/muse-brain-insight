@@ -135,7 +135,7 @@ export async function compareStateModels(
   const { rows, truncated } = await loadSedationRows(supabase, userId, limit);
 
   // COEBIS is stateful along a recording, so score each track in time order.
-  const tracks = new Map<string, Row[]>();
+  const tracks = new Map<string, SedationRow[]>();
   for (const r of rows) {
     const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}`;
     const list = tracks.get(key);
