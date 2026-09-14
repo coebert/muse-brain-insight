@@ -62,7 +62,7 @@ export function bandOfLabel(label: string): SedationBand | null {
 }
 
 /** Deep (below 40) is reserved for burst suppression, which no label here marks. */
-export const KNOTS = [0, 20, 40, 60, 80, 100];
+export const KNOTS = [0, 20, 40, 50, 60, 70, 80, 100];
 
 export interface SedationTune {
   /** Output value at each entry of {@link KNOTS}; non-decreasing. */
@@ -114,9 +114,9 @@ export function fitSedationTune(points: BandPoint[], pullToIdentity = 0.02): Sed
 
   let base = 0;
   const inc = KNOTS.slice(1).map((k, i) => k - KNOTS[i]!); // identity start
-  const lr = 0.02;
+  const lr = 0.15;
 
-  for (let iter = 0; iter < 600; iter++) {
+  for (let iter = 0; iter < 4000; iter++) {
     const gBase = { v: 0 };
     const gInc = new Array(inc.length).fill(0) as number[];
 
