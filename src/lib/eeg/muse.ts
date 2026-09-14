@@ -861,6 +861,25 @@ export class MuseClient implements EegSource {
    * Headbands slip and Bluetooth drops mid-case. Retry with backoff and keep
    * the case running; only give up — and tell the clinician — after five tries.
    */
+  /**
+   * Swap in the browser's current handle for the same headband, if it differs
+   * from the one this case started with, and move the disconnect listener
+   * across. Silent and best effort: a failure just leaves the old handle.
+   */
+  private async refreshHandle() {
+    const previous = this.device;
+    if (!previous) return;
+    const fresh = await refreshMuseDevice(previous);
+    if (!fresh) return;
+    if (this.disconnectListener) {
+      previous.removeEventListener("gattserverdisconnected", this.disconnectListener);
+      fresh.addEventListener("gattserverdisconnected", this.disconnectListener);
+    }
+    this.device = fresh;
+    this.control = null;
+    this.subscriptions = [];
+  }
+
   private async attemptReconnect() {
     if (this.reconnecting) return;
     this.reconnecting = true;
