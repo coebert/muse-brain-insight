@@ -23,7 +23,21 @@ interface ChannelRing {
   total: number;
   /** Decimation phase counter. */
   phase: number;
+  /** Wall-clock time the channel's first archived sample represents. */
+  startedAt: number | null;
 }
+
+/**
+ * A dropout writes nothing, so without correction the archive would simply
+ * carry on where it left off and every later sample would replay early — the
+ * waveform sliding out of step with the index trace, markers and notes by the
+ * whole length of the outage. Silence is written across the gap instead, so
+ * the archive stays on the case clock.
+ *
+ * Below this much drift nothing is written: sample rates are never exact and
+ * padding small jitter would add noise where there was none.
+ */
+export const GAP_TOLERANCE_SECONDS = 0.5;
 
 export interface RawArchive {
   subscribe: (listener: () => void) => () => void;
