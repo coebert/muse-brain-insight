@@ -47,14 +47,22 @@ async function loadPool(
 
   // Every recording taken with this headband, paired or not: an unpaired
   // recording contributes no training row but still belongs in the picture.
-  const { data: sessionRows, error } = await supabase
-    .from("eeg_sessions")
-    .select("id, case_code, started_at")
-    .eq("user_id", userId)
-    .order("started_at", { ascending: false })
-    .limit(400);
-  if (error) throw new Error(error.message);
-  const sessions = (sessionRows ?? []) as unknown as Record<string, unknown>[];
+  // Paged, not a plain limit: a flat limit silently drops the oldest
+  // recordings from the pool once a clinician passes a few hundred cases.
+  const sessions: Record<string, unknown>[] = [];
+  const PAGE = 1000;
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data: sessionRows, error } = await supabase
+      .from("eeg_sessions")
+      .select("id, case_code, started_at")
+      .eq("user_id", userId)
+      .order("started_at", { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const page = (sessionRows ?? []) as unknown as Record<string, unknown>[];
+    sessions.push(...page);
+    if (page.length < PAGE) break;
+  }
   const ids = sessions.map((s) => String(s["id"]));
 
   const exposure = new Map<string, { epochs: number; meanDepth: number | null; deepEpochs: number }>();

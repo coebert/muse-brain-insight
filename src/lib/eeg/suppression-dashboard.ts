@@ -100,6 +100,11 @@ export interface CaseTrace {
   flags: FlagAgreement;
   /** COEBIS against the real monitor index over this case. */
   bis: BisAgreement;
+  /**
+   * The same comparison as unrounded running sums, so cohort figures add up
+   * true per-reading totals instead of re-multiplying rounded case means.
+   */
+  bisAcc: BisAccumulator;
   /** Mean COEBIS across the case, before and after the cap. */
   meanIndex: number | null;
   meanCappedIndex: number | null;
@@ -336,6 +341,7 @@ export function caseTrace(
     durationSeconds: Math.max(0, last - first),
     flags,
     bis: summariseBis(bisAcc),
+    bisAcc,
     meanIndex: mean(indices),
     meanCappedIndex: mean(capped),
     meanMonitorSr: mean(monitorSrs) ?? 0,
@@ -422,21 +428,7 @@ export function buildSuppressionDashboard(
     totals.clear += t.flags.clear;
     if (t.bis.n) {
       casesWithBis++;
-      mergeBis(bisAcc, {
-        n: t.bis.n,
-        sumBis: (t.bis.meanBis ?? 0) * t.bis.n,
-        sumIndex: (t.bis.meanIndex ?? 0) * t.bis.n,
-        sumCapped: (t.bis.meanCappedIndex ?? 0) * t.bis.n,
-        sumAbsRaw: (t.bis.maeRaw ?? 0) * t.bis.n,
-        sumAbsCapped: (t.bis.maeCapped ?? 0) * t.bis.n,
-        sumSignedRaw: (t.bis.biasRaw ?? 0) * t.bis.n,
-        sumSignedCapped: (t.bis.biasCapped ?? 0) * t.bis.n,
-        capImproved: t.bis.capImproved,
-        capWorsened: t.bis.capWorsened,
-        within5: t.bis.within5,
-        within10: t.bis.within10,
-
-      });
+      mergeBis(bisAcc, t.bisAcc);
     }
   }
 

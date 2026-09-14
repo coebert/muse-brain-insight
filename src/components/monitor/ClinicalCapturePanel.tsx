@@ -248,7 +248,7 @@ export function ClinicalCapturePanel({
                 )}
               >
                 <span className="metric-value text-xl tabular-nums">{step.score}</span>
-                <span className="text-[10px] leading-tight text-muted-foreground">
+                <span className="text-[11px] leading-tight text-muted-foreground">
                   {step.short}
                 </span>
               </button>
