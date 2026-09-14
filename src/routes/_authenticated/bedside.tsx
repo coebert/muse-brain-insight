@@ -4,6 +4,7 @@ import { Bluetooth, ChevronDown, Moon, Save, Square, Sun, X } from "lucide-react
 
 import { AlarmBanner } from "@/components/monitor/AlarmBanner";
 import { ClinicalCapturePanel } from "@/components/monitor/ClinicalCapturePanel";
+import { PhaseTrackerPanel } from "@/components/monitor/PhaseTrackerPanel";
 import { StateMarkerPanel } from "@/components/monitor/StateMarkerPanel";
 import { ReactivityPanel } from "@/components/monitor/ReactivityPanel";
 import type { CaseObservation } from "@/lib/eeg/case-observations";
@@ -276,6 +277,16 @@ function BedsidePage() {
         {/* Awake / unresponsive, tagged as periods against the case clock. */}
         <div className="mt-3">
           <StateMarkerPanel
+            caseCode={meta.caseCode}
+            elapsed={monitor.elapsed}
+            running={caseState === "running"}
+            testing={testing}
+          />
+        </div>
+
+        {/* Where the case is up to, tracked alongside the patient's state. */}
+        <div className="mt-3">
+          <PhaseTrackerPanel
             caseCode={meta.caseCode}
             elapsed={monitor.elapsed}
             running={caseState === "running"}
