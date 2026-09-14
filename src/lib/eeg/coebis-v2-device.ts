@@ -26,6 +26,7 @@
  * headband the number is a research reading and is labelled as one.
  */
 
+import { applyTune, type SedationTune } from "./coebis-sedation-bands";
 import { resample } from "./ingest";
 import {
   ANALYSIS_SAMPLE_RATE,
@@ -136,6 +137,8 @@ export interface LiveCoebisV2Reading extends CoebisV2Reading {
   amplitudeNormalised: boolean;
   /** Gain applied to the stream, 1 when the device is calibrated. */
   gain: number;
+  /** True when the sedation band curve is in force on this reading. */
+  bandTuned: boolean;
 }
 
 /**
