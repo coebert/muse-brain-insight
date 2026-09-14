@@ -30,14 +30,14 @@ describe("raw archive", () => {
     expect(after.some((v) => v !== 0)).toBe(true);
   });
 
-  it("ignores ordinary sample-rate jitter", () => {
+  it("does not pad for jitter inside the tolerance", () => {
     const archive = createRawArchive();
     const hz = RAW_ARCHIVE_HZ;
     let t = 1_000_000;
-    for (let i = 0; i < 20; i++) {
-      t += 1050; // 5% slow, well inside the tolerance
+    for (let i = 0; i < 5; i++) {
+      t += 1050; // slightly slow, drift stays under half a second
       archive.push("AF7", chunk(hz), hz, t);
     }
-    expect(archive.duration("AF7")).toBeCloseTo(20, 0);
+    expect(archive.duration("AF7")).toBeCloseTo(5, 2);
   });
 });
