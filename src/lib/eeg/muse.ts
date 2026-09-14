@@ -195,6 +195,32 @@ export async function requestMuseDevice(): Promise<BluetoothDevice> {
 }
 
 /**
+ * Re-resolve an already-permitted headband from the browser's own list.
+ *
+ * A `BluetoothDevice` handle can go stale mid-case — the OS drops the bond,
+ * or (on iOS/Bluefy especially) the handle survives the page but no longer
+ * maps to anything the stack will connect to. Every `gatt.connect()` on that
+ * handle then fails identically, so the retry ladder runs forever and never
+ * comes back. Asking the browser for the current handle costs nothing, needs
+ * no chooser and no clinician tap, and recovers exactly that case.
+ */
+export async function refreshMuseDevice(previous: BluetoothDevice): Promise<BluetoothDevice | null> {
+  try {
+    const bluetooth = navigator.bluetooth as Navigator["bluetooth"] & {
+      getDevices?: () => Promise<BluetoothDevice[]>;
+    };
+    if (typeof bluetooth?.getDevices !== "function") return null;
+    const known = await bluetooth.getDevices();
+    const match =
+      known.find((d) => d.id === previous.id) ??
+      (previous.name ? known.find((d) => d.name === previous.name) : undefined);
+    return match && match !== previous ? match : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The control characteristic answers in fragments: each notification is a
  * length-prefixed ASCII chunk, and a reply is complete once the accumulated
  * text parses as JSON.
