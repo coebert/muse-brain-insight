@@ -24,40 +24,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
+import { PHASE_ORDER, PHASE_TEXT, phaseOfLevel, type CasePhase } from "./chennu-phases";
 import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+export { PHASE_ORDER, PHASE_TEXT, phaseOfLevel, type CasePhase };
+
 import { COEBIS_V2_MODEL, coebisV2Applicability } from "./coebis-v2";
 
 type Client = SupabaseClient<any, any, any>;
 
 export const MAX_PHASE_EPOCHS = 40_000;
 const PAGE = 1000;
-
-export type CasePhase = "baseline" | "induction" | "maintenance" | "emergence";
-
-export const PHASE_ORDER: CasePhase[] = ["baseline", "induction", "maintenance", "emergence"];
-
-export const PHASE_TEXT: Record<CasePhase, { label: string; detail: string }> = {
-  baseline: { label: "Baseline", detail: "No drug, volunteer awake" },
-  induction: { label: "Induction", detail: "Propofol rising to 0.6 µg/ml" },
-  maintenance: { label: "Maintenance", detail: "Peak target 1.2 µg/ml held" },
-  emergence: { label: "Emergence", detail: "Drug withdrawn, recovering" },
-};
-
-/** The recorded block a phase is read from. */
-export function phaseOfLevel(level: string | null): CasePhase | null {
-  switch (level) {
-    case "baseline":
-      return "baseline";
-    case "mild":
-      return "induction";
-    case "moderate":
-      return "maintenance";
-    case "recovery":
-      return "emergence";
-    default:
-      return null;
-  }
-}
 
 export interface PhaseScore {
   phase: CasePhase;

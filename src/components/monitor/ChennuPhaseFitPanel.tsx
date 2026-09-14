@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { runChennuPhases } from "@/lib/eeg/coebis-chennu-phases.functions";
-import { PHASE_ORDER, PHASE_TEXT } from "@/lib/eeg/coebis-chennu-phases.server";
+import { PHASE_ORDER, PHASE_TEXT } from "@/lib/eeg/chennu-phases";
 
 const dp = (v: number | null | undefined, places = 1) =>
   v == null || !Number.isFinite(v) ? "—" : v.toFixed(places);
