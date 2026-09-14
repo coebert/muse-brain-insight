@@ -164,16 +164,14 @@ export async function runSedationTune(
     ...point,
     index: after,
   }));
+  const beforeGrade = gradeBands(
+    heldOutPairs.map(({ point }) => point),
+    IDENTITY_TUNE,
+  );
   const heldOutGrade = gradeBands(heldOutPoints, IDENTITY_TUNE).map((g, i) => ({
     ...g,
-    meanBefore: gradeBands(
-      heldOutPairs.map(({ point }) => point),
-      IDENTITY_TUNE,
-    )[i]!.meanBefore,
-    inBandBefore: gradeBands(
-      heldOutPairs.map(({ point }) => point),
-      IDENTITY_TUNE,
-    )[i]!.inBandBefore,
+    meanBefore: beforeGrade[i]!.meanBefore,
+    inBandBefore: beforeGrade[i]!.inBandBefore,
   }));
 
   const share = (list: BandGrade[], key: "inBandBefore" | "inBandAfter") => {
