@@ -29,6 +29,7 @@ const KIND_LABEL: Record<CaseObservation["kind"], string> = {
   drug: "Drug",
   event: "Event",
   state: "State",
+  phase: "Phase",
 };
 
 /**
