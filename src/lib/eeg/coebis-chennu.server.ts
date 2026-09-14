@@ -68,12 +68,20 @@ export interface ChennuCoebisReport {
 interface Row {
   caseRef: string;
   channel: string | null;
+  /** Drug-level block; each one restarts its own clock at zero. */
+  level: string | null;
   atSeconds: number;
   label: string;
   spectrumDb: number[] | null;
   freqStart: number;
   freqStep: number;
   suppressionPct: number | null;
+}
+
+/** The block this row was recorded in, from the stored covariates. */
+export function levelOf(r: Record<string, unknown>): string | null {
+  const level = (r["covariates"] as Record<string, unknown> | null)?.["level"];
+  return typeof level === "string" && level ? level : null;
 }
 
 async function loadChennuEpochs(
@@ -87,7 +95,7 @@ async function loadChennuEpochs(
     const { data, error } = await supabase
       .from("external_spectral_epochs")
       .select(
-        "case_ref, channel, at_seconds, label, spectrum_db, freq_start_hz, freq_step_hz, suppression_ratio",
+        "case_ref, channel, at_seconds, label, spectrum_db, freq_start_hz, freq_step_hz, suppression_ratio, covariates",
       )
       .eq("user_id", userId)
       .eq("source_lineage", CHENNU_LINEAGE)
@@ -101,6 +109,7 @@ async function loadChennuEpochs(
       rows.push({
         caseRef: String(r["case_ref"] ?? "?"),
         channel: r["channel"] == null ? null : String(r["channel"]),
+        level: levelOf(r),
         atSeconds: Number(r["at_seconds"] ?? 0),
         label: String(r["label"] ?? ""),
         spectrumDb: Array.isArray(r["spectrum_db"]) ? (r["spectrum_db"] as number[]) : null,
@@ -125,11 +134,12 @@ export async function runChennuCoebis(
 ): Promise<ChennuCoebisReport> {
   const { rows, truncated } = await loadChennuEpochs(supabase, userId, limit);
 
-  // One estimator run per case and channel: the trend memory and smoothing are
-  // only meaningful along a single continuous recording.
+  // One estimator run per case, channel *and block*: the trend memory and
+  // smoothing are only meaningful along a single continuous recording, and a
+  // Cambridge case is four separate blocks that each restart at zero.
   const tracks = new Map<string, Row[]>();
   for (const r of rows) {
-    const key = `${r.caseRef}::${r.channel ?? "eeg"}`;
+    const key = `${r.caseRef}::${r.channel ?? "eeg"}::${r.level ?? "-"}`;
     const list = tracks.get(key);
     if (list) list.push(r);
     else tracks.set(key, [r]);
