@@ -295,6 +295,8 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
     if (draft.note.length > 4000) errors.push("Keep the note under 4000 characters.");
   } else if (draft.kind === "state") {
     if (!STATE_LABELS.includes(draft.stateLabel)) errors.push("Choose the state to tag.");
+  } else if (draft.kind === "phase") {
+    if (!CASE_PHASES.includes(draft.phase)) errors.push("Choose the phase to tag.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
   }
