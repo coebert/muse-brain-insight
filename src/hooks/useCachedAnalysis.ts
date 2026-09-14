@@ -30,7 +30,9 @@ export function useCachedAnalysis<T>(job: AnalysisJobKey): UseCachedAnalysis<T> 
   const compute = useServerFn(refreshCachedAnalysis);
   const queryClient = useQueryClient();
   const queryKey = ["analysis-cache", job];
-  const kicked = useRef(false);
+  // Scoped to the job: switching job on a live component must be allowed to
+  // kick its own first background pass.
+  const kicked = useRef<string | null>(null);
 
   const query = useQuery({
     queryKey,
@@ -53,13 +55,13 @@ export function useCachedAnalysis<T>(job: AnalysisJobKey): UseCachedAnalysis<T> 
   // Kick one background pass per mount when there is nothing stored, or the
   // stored result has aged out. Never on every render, and never in a loop.
   useEffect(() => {
-    if (!meta || kicked.current) return;
+    if (!meta || kicked.current === job) return;
     if (meta.refreshing) return;
     if (meta.payload && !meta.stale) return;
-    kicked.current = true;
+    kicked.current = job;
     mutation.mutate(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meta?.status, meta?.stale, meta?.payload == null]);
+  }, [job, meta?.status, meta?.stale, meta?.payload == null]);
 
   const refresh = useCallback(() => {
     if (mutation.isPending) return;
