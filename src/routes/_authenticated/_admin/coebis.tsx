@@ -13,6 +13,7 @@ import { CoebisVersionComparison } from "@/components/monitor/CoebisVersionCompa
 import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
 import { BedsideCalibrationPanel } from "@/components/monitor/BedsideCalibrationPanel";
+import { ChennuCoebisPanel } from "@/components/monitor/ChennuCoebisPanel";
 import { StateLabelPanel } from "@/components/monitor/StateLabelPanel";
 import { CoebisEnginePanel } from "@/components/monitor/CoebisEnginePanel";
 import { BisModelPanel } from "@/components/monitor/BisModelPanel";
@@ -246,6 +247,7 @@ function CoebisDataPage() {
             <div className="space-y-4">
               <BedsideCalibrationPanel />
               <StateLabelPanel />
+              <ChennuCoebisPanel />
             </div>
           ) : null}
 
