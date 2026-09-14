@@ -243,12 +243,24 @@ export interface StateDraft {
   note?: string | null;
 }
 
+/**
+ * The case entered this phase at this point on the case clock. Like a state
+ * tag, it holds until the next phase tag.
+ */
+export interface PhaseDraft {
+  kind: "phase";
+  atSeconds: number;
+  phase: CasePhase;
+  note?: string | null;
+}
+
 export type ObservationDraft =
   | ResponsivenessDraft
   | DrugDraft
   | EventDraft
   | TimelineNoteDraft
-  | StateDraft;
+  | StateDraft
+  | PhaseDraft;
 
 
 export interface ValidationResult {
