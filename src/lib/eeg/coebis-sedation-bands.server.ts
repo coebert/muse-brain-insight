@@ -64,7 +64,9 @@ export interface SedationTuneReport {
 function pointsFrom(rows: SedationRow[]): BandPoint[] {
   const tracks = new Map<string, SedationRow[]>();
   for (const r of rows) {
-    const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}`;
+    // Block included: the Cambridge blocks each restart at zero, so keying on
+    // the case alone interleaves four drug levels into one nonsense track.
+    const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}::${r.block ?? "-"}`;
     const list = tracks.get(key);
     if (list) list.push(r);
     else tracks.set(key, [r]);

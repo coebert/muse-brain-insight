@@ -74,6 +74,14 @@ export interface SedationRow {
   lineage: string;
   caseRef: string;
   channel: string | null;
+  /**
+   * Recording block within the case, when the collection is block-structured.
+   *
+   * The Cambridge blocks each restart their clock at zero, so a case is four
+   * separate recordings, not one. Scoring them as one track interleaves four
+   * drug levels and collides their timestamps; the block keeps them apart.
+   */
+  block: string | null;
   atSeconds: number;
   label: string;
   bands: Record<string, unknown>;
@@ -82,6 +90,18 @@ export interface SedationRow {
   spectrumDb: number[] | null;
   freqStart: number;
   freqStep: number;
+}
+
+/** The block a row belongs to, from the recorded drug level or the reference. */
+function blockOf(r: Record<string, unknown>): string | null {
+  const level = (r["covariates"] as Record<string, unknown> | null)?.["level"];
+  if (typeof level === "string" && level) return level;
+  const ref = r["external_ref"];
+  if (typeof ref === "string") {
+    const parts = ref.split(":");
+    if (parts.length >= 3) return parts[2] ?? null;
+  }
+  return null;
 }
 
 /** Every labelled epoch of the sedation collections, oldest first per track. */
@@ -95,7 +115,7 @@ export async function loadSedationRows(
     const { data, error } = await supabase
       .from("external_spectral_epochs")
       .select(
-        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz",
+        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz, covariates, external_ref",
       )
       .eq("user_id", userId)
       .in("source_lineage", SEDATION_LINEAGES)
@@ -111,6 +131,7 @@ export async function loadSedationRows(
         lineage: String(r["source_lineage"] ?? "?"),
         caseRef: String(r["case_ref"] ?? "?"),
         channel: r["channel"] == null ? null : String(r["channel"]),
+        block: blockOf(r),
         atSeconds: Number(r["at_seconds"] ?? 0),
         label: String(r["label"] ?? ""),
         bands: (r["bands"] ?? {}) as Record<string, unknown>,
@@ -137,7 +158,7 @@ export async function compareStateModels(
   // COEBIS is stateful along a recording, so score each track in time order.
   const tracks = new Map<string, SedationRow[]>();
   for (const r of rows) {
-    const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}`;
+    const key = `${r.lineage}::${r.caseRef}::${r.channel ?? "eeg"}::${r.block ?? "-"}`;
     const list = tracks.get(key);
     if (list) list.push(r);
     else tracks.set(key, [r]);

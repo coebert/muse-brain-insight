@@ -14,6 +14,7 @@ import { CoebisRefitHistory } from "@/components/monitor/CoebisRefitHistory";
 import { CoebisValidationPanel } from "@/components/monitor/CoebisValidationPanel";
 import { BedsideCalibrationPanel } from "@/components/monitor/BedsideCalibrationPanel";
 import { ChennuCoebisPanel } from "@/components/monitor/ChennuCoebisPanel";
+import { ChennuPhaseFitPanel } from "@/components/monitor/ChennuPhaseFitPanel";
 import { SedationBandTunePanel } from "@/components/monitor/SedationBandTunePanel";
 import { SimpleStateModelPanel } from "@/components/monitor/SimpleStateModelPanel";
 import { StateLabelPanel } from "@/components/monitor/StateLabelPanel";
@@ -249,6 +250,7 @@ function CoebisDataPage() {
             <div className="space-y-4">
               <BedsideCalibrationPanel />
               <StateLabelPanel />
+              <ChennuPhaseFitPanel />
               <SedationBandTunePanel />
               <ChennuCoebisPanel />
               <SimpleStateModelPanel />
