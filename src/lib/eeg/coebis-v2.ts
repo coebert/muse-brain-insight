@@ -110,12 +110,15 @@ const L = (x: number) => Math.log10(Math.max(x, 1e-9));
 
 export type CoebisV2Features = Record<string, number>;
 
-/** Every descriptor a single analysis window supports. */
-export function coebisV2WindowFeatures(
-  window: Float64Array,
-  sampleRate: number,
-): { features: CoebisV2Features; suppressionFraction: number } {
-  const psd = computePsd(window, sampleRate);
+/**
+ * The purely spectral descriptors, from a power spectrum alone.
+ *
+ * Split out so a stored spectrum — an imported collection that kept its
+ * spectra but not its waveform — can be scored with the same terms the fit
+ * uses. The amplitude and suppression terms are not derivable from a spectrum
+ * and are supplied separately by the caller.
+ */
+export function coebisV2SpectralFeatures(psd: Psd): CoebisV2Features {
   const total = bandPower(psd, 0.5, 45);
   const slow = bandPower(psd, 0.5, 1);
   const delta = bandPower(psd, 1, 4);
@@ -127,6 +130,45 @@ export function coebisV2WindowFeatures(
   const sef95 = edgeFreq(psd, 0.95);
   const ent = spectralEntropies(psd, sef95);
   const peak = alphaPeak(psd);
+
+  return {
+    logTotal: L(total),
+    logSlow: L(slow),
+    logDelta: L(delta),
+    logTheta: L(theta),
+    logAlpha: L(alpha),
+    logBeta: L(beta),
+    logGamma: L(gamma),
+    relSlow: rel(slow),
+    relDelta: rel(delta),
+    relTheta: rel(theta),
+    relAlpha: rel(alpha),
+    relBeta: rel(beta),
+    relGamma: rel(gamma),
+    betaRatio: L(beta / Math.max(alpha, 1e-12)),
+    syncFastSlow: L((beta + gamma) / Math.max(delta + theta, 1e-12)),
+    alphaDelta: L(alpha / Math.max(delta, 1e-12)),
+    thetaAlpha: L(theta / Math.max(alpha, 1e-12)),
+    sef50: edgeFreq(psd, 0.5),
+    sef75: edgeFreq(psd, 0.75),
+    sef90: edgeFreq(psd, 0.9),
+    sef95,
+    entShannon: ent.shannon,
+    entSe95: ent.se95,
+    entState: ent.state,
+    entResponse: ent.response,
+    peakFreq: peak.freq,
+    peakProminence: peak.prominence,
+  };
+}
+
+/** Every descriptor a single analysis window supports. */
+export function coebisV2WindowFeatures(
+  window: Float64Array,
+  sampleRate: number,
+): { features: CoebisV2Features; suppressionFraction: number } {
+  const psd = computePsd(window, sampleRate);
+  const spectral = coebisV2SpectralFeatures(psd);
 
   const seg = Math.max(1, Math.round(0.5 * sampleRate));
   let suppressed = 0;
@@ -153,33 +195,7 @@ export function coebisV2WindowFeatures(
   return {
     suppressionFraction,
     features: {
-      logTotal: L(total),
-      logSlow: L(slow),
-      logDelta: L(delta),
-      logTheta: L(theta),
-      logAlpha: L(alpha),
-      logBeta: L(beta),
-      logGamma: L(gamma),
-      relSlow: rel(slow),
-      relDelta: rel(delta),
-      relTheta: rel(theta),
-      relAlpha: rel(alpha),
-      relBeta: rel(beta),
-      relGamma: rel(gamma),
-      betaRatio: L(beta / Math.max(alpha, 1e-12)),
-      syncFastSlow: L((beta + gamma) / Math.max(delta + theta, 1e-12)),
-      alphaDelta: L(alpha / Math.max(delta, 1e-12)),
-      thetaAlpha: L(theta / Math.max(alpha, 1e-12)),
-      sef50: edgeFreq(psd, 0.5),
-      sef75: edgeFreq(psd, 0.75),
-      sef90: edgeFreq(psd, 0.9),
-      sef95,
-      entShannon: ent.shannon,
-      entSe95: ent.se95,
-      entState: ent.state,
-      entResponse: ent.response,
-      peakFreq: peak.freq,
-      peakProminence: peak.prominence,
+      ...spectral,
       logRms: L(rms),
       logPtp: L(ptpMax),
       suppFraction: suppressionFraction,
