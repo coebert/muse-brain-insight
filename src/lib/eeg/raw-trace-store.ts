@@ -109,11 +109,16 @@ export async function saveSessionRawTraces(
       });
     }
     if (!rows.length) continue;
-    // One block at a time: each row is ~100 kB, so a single large insert can
-    // be rejected on a poor theatre connection.
-    for (const row of rows) {
-      const { error } = await supabase.from("session_raw_chunks").insert(row);
-      if (error) throw error;
+    // Small groups: each row is ~100 kB, so one giant insert can be rejected
+    // on a poor theatre connection, but one row at a time keeps the clinician
+    // waiting far longer than necessary at the end of a case.
+    const CONCURRENCY = 4;
+    for (let i = 0; i < rows.length; i += CONCURRENCY) {
+      const batch = rows.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map((row) => supabase.from("session_raw_chunks").insert(row)),
+      );
+      for (const { error } of results) if (error) throw error;
     }
     stored++;
   }
