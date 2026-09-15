@@ -277,6 +277,7 @@ function Monitor() {
     caseEnded: caseState === "ended",
     dataGapSeconds: monitor.dataGapSeconds,
     reconnectAttempt: monitor.reconnectAttempt,
+    autoRetrying: monitor.autoRetrying,
   });
 
   // A stored bilateral preference cannot be honoured on a one-channel band.
