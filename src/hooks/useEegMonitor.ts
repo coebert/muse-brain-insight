@@ -1087,6 +1087,31 @@ export function useEegMonitor() {
     };
   }, [status, flushCapture]);
 
+  /**
+   * Keep a copy of the waveform on this machine as the case runs, so a
+   * headband that drops and never returns — or a tab that is closed or
+   * reloaded — cannot take the recording with it.
+   */
+  useEffect(() => {
+    if (status !== "streaming" && status !== "reconnecting") return;
+    const spool = localSpoolRef.current;
+    spool.open({
+      id: captureKeyRef.current,
+      device: sourceName || deviceProfile.label,
+      channels: [...deviceProfile.channels],
+    });
+    const id = setInterval(() => void spool.flush(), SPOOL_FLUSH_MS);
+    const onHide = () => void spool.flush();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+      void spool.flush();
+    };
+  }, [status, sourceName, deviceProfile]);
+
   // Waveform refresh.
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting") return;
