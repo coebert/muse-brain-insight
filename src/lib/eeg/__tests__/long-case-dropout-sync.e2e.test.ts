@@ -91,8 +91,8 @@ function replay(): Replay {
     streamedSeconds += CHUNK / FS;
 
     // One epoch per second, stamped on the case clock as the monitor does.
-    const second = Math.floor((start + CHUNK) / FS) - 1;
-    if (second >= 0 && !depth.has(second) && (start + CHUNK) % FS === 0) {
+    const second = Math.floor((start + CHUNK - 1) / FS);
+    if (second >= 0 && !depth.has(second)) {
       depth.set(second, 40 + 20 * Math.sin(second / 600));
     }
   }
@@ -120,10 +120,14 @@ describe("four-hour case with dropouts", () => {
 
     const probes = [
       Math.round(retainedFrom) + 60, // just inside the retained window
+    ].filter((t) => !inDropout(t));
+    probes.push(
+      ...[
       DROPOUTS[1]![0] - 30, // immediately before the long dropout
       DROPOUTS[1]![0] + DROPOUTS[1]![1] + 30, // immediately after it
       CASE_SECONDS - 120, // near the end
-    ];
+      ].filter((t) => !inDropout(t)),
+    );
     for (const t of probes) {
       const seg = run.archive.read(channel, t, t + 1);
       expect(seg.length).toBe(RAW_ARCHIVE_HZ);
