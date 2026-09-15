@@ -154,6 +154,27 @@ export function CoebisTrend({
         </span>
       </div>
       <div className={compact ? "h-[64px]" : "h-[90px] min-h-[70px]"}>
+        {depthFlat ? (
+          <div className="flex h-full flex-col justify-center gap-1 px-2 py-1">
+            <span className="text-[11px] tracking-[0.14em] text-caution uppercase">
+              No valid depth — showing the headband's raw signal
+            </span>
+            {archive && profile ? (
+              <RawFallback archive={archive} profile={profile} />
+            ) : null}
+            <span className="text-[11px] text-muted-foreground">
+              {latestQuality
+                ? latestQuality.flat
+                  ? "Signal quality: electrode off the skin — no measurable EEG"
+                  : `Signal quality: ${latestQuality.grade} · ${Math.round(latestQuality.amplitudeUv)} µV peak-to-peak${
+                      latestQuality.reasons.length
+                        ? ` · ${latestQuality.reasons.slice(0, 2).join(", ")}`
+                        : ""
+                    }`
+                : "No readings in this window yet"}
+            </span>
+          </div>
+        ) : (
         <div className="relative h-full">
           <TrendLine
             values={coebisTrend}
