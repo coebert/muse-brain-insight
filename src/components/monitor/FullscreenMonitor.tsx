@@ -79,6 +79,8 @@ export function FullscreenMonitor({
   dsaView,
   onDsaViewChange,
   controls,
+  archive = null,
+  profile = null,
   onExit,
 }: Props) {
   // Latest COEBIS fit, so the bedside tile names the model it is showing.
