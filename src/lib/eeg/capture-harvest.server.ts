@@ -51,16 +51,25 @@ export async function harvestOneCapture(
   capture: Record<string, any>,
   maxEpochs: number = HARVEST_MAX_EPOCHS,
 ): Promise<{ sessionId: string; epochsCopied: number } | null> {
-  const { data: epochRows, error: epochError } = await admin
-    .from("capture_epochs")
-    .select(
-      "at_seconds, depth_index, sef95, suppression_ratio, epoch_suppression, total_power, bands, ratios, spectrum",
-    )
-    .eq("capture_id", capture["id"])
-    .order("epoch_index", { ascending: true })
-    .limit(20000);
-  if (epochError) throw new Error(epochError.message);
-  const all = (epochRows ?? []) as Record<string, any>[];
+  // The database caps a single read at 1,000 rows, so a case longer than about
+  // sixteen minutes has to be read a page at a time — otherwise everything past
+  // the first thousand seconds is silently dropped from the recovered case.
+  const PAGE = 1000;
+  const all: Record<string, any>[] = [];
+  for (let from = 0; from < 20000; from += PAGE) {
+    const { data: page, error: epochError } = await admin
+      .from("capture_epochs")
+      .select(
+        "at_seconds, depth_index, sef95, suppression_ratio, epoch_suppression, total_power, bands, ratios, spectrum",
+      )
+      .eq("capture_id", capture["id"])
+      .order("epoch_index", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (epochError) throw new Error(epochError.message);
+    const rows = (page ?? []) as Record<string, any>[];
+    all.push(...rows);
+    if (rows.length < PAGE) break;
+  }
   if (!all.length) return null;
 
   const srs = all.map((r) => Number(r["suppression_ratio"] ?? 0));
