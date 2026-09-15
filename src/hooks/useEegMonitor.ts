@@ -389,6 +389,12 @@ export function useEegMonitor() {
     attempt: number;
     attempts: number;
   } | null>(null);
+  /**
+   * True while the source's own retry loop is still working on a dropped link.
+   * It keeps running after the "lost" warning, so the badge must not read as a
+   * dead end when recovery is still in progress.
+   */
+  const [autoRetrying, setAutoRetrying] = useState(false);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   /**
