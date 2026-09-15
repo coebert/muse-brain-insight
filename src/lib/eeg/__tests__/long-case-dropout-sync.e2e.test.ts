@@ -123,7 +123,8 @@ describe("four-hour case with dropouts", () => {
       DROPOUTS[1]![0] - 30, // immediately before the long dropout
       DROPOUTS[1]![0] + DROPOUTS[1]![1] + 30, // immediately after it
       CASE_SECONDS - 120, // near the end
-    ].filter((t) => !inDropout(t));
+      // Anything older than the retained hour reads back as silence by design.
+    ].filter((t) => !inDropout(t) && t > retainedFrom);
     expect(probes.length).toBeGreaterThanOrEqual(3);
     for (const t of probes) {
       const seg = run.archive.read(channel, t, t + 1);
