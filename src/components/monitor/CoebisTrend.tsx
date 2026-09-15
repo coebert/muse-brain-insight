@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
+import { Trace } from "@/components/monitor/HeadbandTracePanel";
 import type { Epoch } from "@/lib/eeg/analysis";
+import type { DeviceProfile } from "@/lib/eeg/device-profile";
+import type { RawArchive } from "@/lib/eeg/raw-archive";
 import { BASELINE_SAMPLES, coebisBaseline, coebisDriftSeries } from "@/lib/eeg/coebis-baseline";
 import { alignSeries } from "@/lib/eeg/gaps";
 import { formatClock } from "@/lib/eeg/format";
@@ -18,7 +21,16 @@ interface Props {
   /** Bedside variant: darker plate, tighter chrome. */
   compact?: boolean;
   className?: string;
+  /**
+   * Live headband signal. When the depth trend has nothing valid to draw
+   * (dropout, gating, no usable epochs) the panel shows the raw EEG and the
+   * latest signal-quality reading instead of a blank trace.
+   */
+  archive?: RawArchive | null;
+  profile?: DeviceProfile | null;
 }
+
+const RAW_FALLBACK_SECONDS = 4;
 
 const TICKS = 4;
 /** Vertical span of the drift strip, in COEBIS points either side of baseline. */
@@ -34,6 +46,38 @@ function tickLabel(tSeconds: number, startedAtMs: number | null | undefined): st
 }
 
 /**
+ * The headband's live waveform, drawn when the depth trend has nothing valid
+ * to plot — a dropout or gate should never leave the clinician staring at an
+ * empty chart when signal is still arriving.
+ */
+function RawFallback({ archive, profile }: { archive: RawArchive; profile: DeviceProfile }) {
+  // Redraws whenever fresh samples land.
+  useSyncExternalStore(archive.subscribe, archive.getVersion, archive.getVersion);
+  const calibrated = profile.calibratedAmplitude !== false;
+  return (
+    <div className="flex flex-col gap-0.5">
+      {profile.channels.map((channel) => {
+        const to = archive.duration(channel);
+        const from = Math.max(0, to - RAW_FALLBACK_SECONDS);
+        const samples = to > from ? archive.read(channel, from, to) : new Float32Array(0);
+        return (
+          <div key={channel} className="flex items-center gap-2">
+            <span className="metric-value w-9 shrink-0 text-[10px] text-muted-foreground">
+              {channel}
+            </span>
+            <div className="h-[14px] min-w-0 flex-1">
+              {samples.length ? (
+                <Trace samples={samples} calibrated={calibrated} fallbackGainUv={80} />
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Live COEBIS trend with a timestamped x-axis. The learned COEBIS index is
  * drawn solid; the uncorrected OpenIBIS index sits behind it so divergence
  * between the two models is visible at a glance.
@@ -45,6 +89,8 @@ export function CoebisTrend({
   startedAtMs,
   compact = false,
   className,
+  archive = null,
+  profile = null,
 }: Props) {
   const windowSeconds = windowMinutes * 60;
   const visible = useMemo(() => epochs.slice(-windowSeconds), [epochs, windowSeconds]);
@@ -99,6 +145,21 @@ export function CoebisTrend({
           ? "text-caution"
           : "text-muted-foreground";
 
+  // The depth trace is "flat" when nothing in the window produced a value —
+  // dropout, artefact gating or no usable epochs. In that case the raw EEG
+  // and the signal-quality reading are shown instead of an empty plot.
+  const depthFlat = useMemo(
+    () => !coebisTrend.some((v) => v != null) && !openTrend.some((v) => v != null),
+    [coebisTrend, openTrend],
+  );
+  const latestQuality = useMemo(() => {
+    for (let i = visible.length - 1; i >= 0; i -= 1) {
+      const q = visible[i]?.quality;
+      if (q) return q;
+    }
+    return null;
+  }, [visible]);
+
   // Ticks span the plotted window, from the first visible epoch to "now".
   const ticks = useMemo(() => {
     const end = visible.length > 0 ? (visible[visible.length - 1]?.t ?? elapsed) : elapsed;
@@ -125,6 +186,27 @@ export function CoebisTrend({
         </span>
       </div>
       <div className={compact ? "h-[64px]" : "h-[90px] min-h-[70px]"}>
+        {depthFlat ? (
+          <div className="flex h-full flex-col justify-center gap-1 px-2 py-1">
+            <span className="text-[11px] tracking-[0.14em] text-caution uppercase">
+              No valid depth — showing the headband's raw signal
+            </span>
+            {archive && profile ? (
+              <RawFallback archive={archive} profile={profile} />
+            ) : null}
+            <span className="text-[11px] text-muted-foreground">
+              {latestQuality
+                ? latestQuality.flat
+                  ? "Signal quality: electrode off the skin — no measurable EEG"
+                  : `Signal quality: ${latestQuality.grade} · ${Math.round(latestQuality.amplitudeUv)} µV peak-to-peak${
+                      latestQuality.reasons.length
+                        ? ` · ${latestQuality.reasons.slice(0, 2).join(", ")}`
+                        : ""
+                    }`
+                : "No readings in this window yet"}
+            </span>
+          </div>
+        ) : (
         <div className="relative h-full">
           <TrendLine
             values={coebisTrend}
@@ -145,6 +227,7 @@ export function CoebisTrend({
             />
           </div>
         </div>
+        )}
       </div>
       <div className="flex items-center justify-between px-2 pb-1 text-[11px] text-muted-foreground tabular-nums">
         {ticks.map((label, i) => (

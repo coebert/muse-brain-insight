@@ -310,6 +310,8 @@ function Monitor() {
           suppressionThresholdUv={monitor.settings.suppressionThresholdUv}
           startedAtMs={sessionStartedAtMs}
           controls={caseState !== "idle" ? caseControls : undefined}
+          archive={monitor.rawArchive}
+          profile={monitor.deviceProfile}
           onExit={() => setFullscreen(false)}
         />
       ) : null}
@@ -991,6 +993,8 @@ function Monitor() {
                 elapsed={monitor.elapsed}
                 windowMinutes={windowMinutes}
                 startedAtMs={sessionStartedAtMs}
+                archive={monitor.rawArchive}
+                profile={monitor.deviceProfile}
               />
             ) : null}
 

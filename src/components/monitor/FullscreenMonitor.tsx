@@ -53,6 +53,9 @@ interface Props {
   onDsaViewChange: (view: DsaView) => void;
   /** Live-case controls; when supplied the bedside action bar is rendered. */
   controls?: CaseControls | undefined;
+  /** Raw headband signal, shown in the depth trend when no valid depth is available. */
+  archive?: import("@/lib/eeg/raw-archive").RawArchive | null;
+  profile?: import("@/lib/eeg/device-profile").DeviceProfile | null;
   onExit: () => void;
 }
 
@@ -76,6 +79,8 @@ export function FullscreenMonitor({
   dsaView,
   onDsaViewChange,
   controls,
+  archive = null,
+  profile = null,
   onExit,
 }: Props) {
   // Latest COEBIS fit, so the bedside tile names the model it is showing.
@@ -330,6 +335,8 @@ export function FullscreenMonitor({
               windowMinutes={windowMinutes}
               startedAtMs={startedAtMs ?? null}
               compact
+              archive={archive}
+              profile={profile}
             />
           </div>
         </div>
