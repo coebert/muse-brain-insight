@@ -378,6 +378,8 @@ export function useEegMonitor() {
   const waveformStoreRef = useRef(createWaveformStore());
   // Per-electrode rolling archive powering the raw-channel viewer.
   const rawArchiveRef = useRef(createRawArchive());
+  /** On-disk copy of the same archive, so a dropped case is never lost. */
+  const localSpoolRef = useRef(createLocalRawSpool(rawArchiveRef.current));
   /** Live packet-loss / NaN / spike accounting for the incoming stream. */
   const integrityRef = useRef(new StreamIntegrityMonitor(MUSE_SAMPLE_RATE));
   const [integrity, setIntegrity] = useState<IntegritySnapshot | null>(null);
