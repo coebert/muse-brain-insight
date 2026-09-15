@@ -10,6 +10,8 @@ import { ReactivityPanel } from "@/components/monitor/ReactivityPanel";
 import type { CaseObservation } from "@/lib/eeg/case-observations";
 
 import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
+import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
+import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
