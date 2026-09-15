@@ -58,8 +58,8 @@ export function LocalSpoolPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("eeg_sessions")
-        .select("id, case_code, recorded_at, duration_seconds")
-        .order("recorded_at", { ascending: false })
+        .select("id, case_code, started_at, duration_seconds")
+        .order("started_at", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data ?? [];
@@ -105,7 +105,7 @@ export function LocalSpoolPanel() {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="font-medium">
-                  {spool.caseCode ?? spool.device || "Recording"}
+                  {spool.caseCode ?? (spool.device || "Recording")}
                   {spool.attachedSessionId && (
                     <span className="ml-2 text-xs text-muted-foreground">already saved</span>
                   )}
@@ -128,7 +128,7 @@ export function LocalSpoolPanel() {
                   {(sessions.data ?? []).map((session) => (
                     <SelectItem key={session.id} value={session.id}>
                       {session.case_code ?? session.id.slice(0, 8)} ·{" "}
-                      {new Date(session.recorded_at as string).toLocaleDateString()}
+                      {new Date(session.started_at as string).toLocaleDateString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
