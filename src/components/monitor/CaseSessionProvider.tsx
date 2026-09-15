@@ -73,6 +73,7 @@ import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
 import { saveSessionRawTraces } from "@/lib/eeg/raw-trace-store";
+import { markSpoolAttached } from "@/lib/eeg/local-raw-spool";
 import { getActiveDeviceProfile } from "@/lib/eeg/device-profile";
 import { linkCaptureToSession } from "@/lib/eeg/auto-capture.functions";
 import { linkCaseObservations } from "@/lib/eeg/case-observations.functions";
