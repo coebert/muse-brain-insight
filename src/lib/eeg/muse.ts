@@ -678,7 +678,11 @@ export class MuseClient implements EegSource {
     try {
       await this.withAttachTimeout();
     } catch (error) {
-      await this.resetLink();
+      // A failed opening attach must leave nothing behind: a bare resetLink()
+      // disconnects GATT while the disconnect listener is still attached and
+      // `stopping` is false, so the listener would start an endless background
+      // reconnect on a client the caller never gets to hold or stop.
+      await this.stop();
       throw error;
     }
   }
