@@ -127,6 +127,15 @@ function BedsidePage() {
   const [observations, setObservations] = useState<CaseObservation[]>([]);
 
 
+  const connection = deriveConnectionStatus({
+    status: monitor.status,
+    sourceName: monitor.sourceName,
+    caseEnded: caseState === "ended",
+    dataGapSeconds: monitor.dataGapSeconds,
+    reconnectAttempt: monitor.reconnectAttempt,
+    autoRetrying: monitor.autoRetrying,
+  });
+
   const profile = monitor.deviceProfile;
   const calibrated = profile.calibratedAmplitude !== false;
   const unit = calibrated ? "µV" : "a.u.";
