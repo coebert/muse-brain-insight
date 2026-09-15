@@ -302,6 +302,7 @@ function Monitor() {
           elapsed={monitor.elapsed}
           sourceName={monitor.sourceName}
           streaming={streaming}
+          connection={connection}
           modeLabel={activeMode.label}
           windowMinutes={windowMinutes}
           markers={markers}
