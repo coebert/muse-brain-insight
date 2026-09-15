@@ -991,6 +991,8 @@ function Monitor() {
                 elapsed={monitor.elapsed}
                 windowMinutes={windowMinutes}
                 startedAtMs={sessionStartedAtMs}
+                archive={monitor.rawArchive}
+                profile={monitor.deviceProfile}
               />
             ) : null}
 
