@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Database, HardDrive, Hourglass, Radio } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getCaptureStats } from "@/lib/eeg/auto-capture.functions";
+import { getCaptureStats, recoverCapture } from "@/lib/eeg/auto-capture.functions";
 import { HARVEST_QUIET_HOURS } from "@/lib/eeg/capture-harvest.constants";
 
 export const Route = createFileRoute("/_authenticated/_admin/capture")({
