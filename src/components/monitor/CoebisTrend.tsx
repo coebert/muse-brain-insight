@@ -1,8 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { TrendLine } from "@/components/monitor/TrendLine";
 import { ParameterInfo } from "@/components/monitor/ParameterInfo";
+import { Trace } from "@/components/monitor/HeadbandTracePanel";
 import type { Epoch } from "@/lib/eeg/analysis";
+import type { DeviceProfile } from "@/lib/eeg/device-profile";
+import type { RawArchive } from "@/lib/eeg/raw-archive";
 import { BASELINE_SAMPLES, coebisBaseline, coebisDriftSeries } from "@/lib/eeg/coebis-baseline";
 import { alignSeries } from "@/lib/eeg/gaps";
 import { formatClock } from "@/lib/eeg/format";
