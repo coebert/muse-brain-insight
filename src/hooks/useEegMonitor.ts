@@ -561,6 +561,7 @@ export function useEegMonitor() {
     sourceRef.current = null;
     lastConnectRef.current = null;
     setReconnectAttempt(null);
+    setAutoRetrying(false);
     setBatteryPercent(null);
     setStatus("idle");
   }, []);
