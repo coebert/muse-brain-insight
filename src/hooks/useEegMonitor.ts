@@ -49,6 +49,7 @@ import {
 } from "@/lib/eeg/stream-integrity";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
+import { createLocalRawSpool, SPOOL_FLUSH_MS } from "@/lib/eeg/local-raw-spool";
 import {
   CAPTURE_FLUSH_SECONDS,
   captureRowsFrom,
