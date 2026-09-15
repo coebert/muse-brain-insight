@@ -120,14 +120,11 @@ describe("four-hour case with dropouts", () => {
 
     const probes = [
       Math.round(retainedFrom) + 60, // just inside the retained window
-    ].filter((t) => !inDropout(t));
-    probes.push(
-      ...[
       DROPOUTS[1]![0] - 30, // immediately before the long dropout
       DROPOUTS[1]![0] + DROPOUTS[1]![1] + 30, // immediately after it
       CASE_SECONDS - 120, // near the end
-      ].filter((t) => !inDropout(t)),
-    );
+    ].filter((t) => !inDropout(t));
+    expect(probes.length).toBeGreaterThanOrEqual(3);
     for (const t of probes) {
       const seg = run.archive.read(channel, t, t + 1);
       expect(seg.length).toBe(RAW_ARCHIVE_HZ);
