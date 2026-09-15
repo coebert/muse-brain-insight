@@ -715,6 +715,13 @@ export function useEegMonitor() {
         setAutoRetrying(false);
         return true;
       } catch (e) {
+        // Close and release whatever half-open link this attempt created.
+        try {
+          await sourceRef.current?.stop();
+        } catch {
+          /* already gone */
+        }
+        sourceRef.current = null;
         options?.onConnectionError?.(e);
         setStatus("error");
         setError(e instanceof Error ? e.message : "Could not connect to the headband.");
