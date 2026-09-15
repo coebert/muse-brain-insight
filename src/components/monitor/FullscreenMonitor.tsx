@@ -75,6 +75,7 @@ export function FullscreenMonitor({
   sourceName,
   startedAtMs,
   streaming,
+  connection,
   modeLabel,
   windowMinutes,
   markers,
