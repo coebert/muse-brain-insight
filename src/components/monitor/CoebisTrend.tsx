@@ -57,6 +57,8 @@ export function CoebisTrend({
   startedAtMs,
   compact = false,
   className,
+  archive = null,
+  profile = null,
 }: Props) {
   const windowSeconds = windowMinutes * 60;
   const visible = useMemo(() => epochs.slice(-windowSeconds), [epochs, windowSeconds]);
