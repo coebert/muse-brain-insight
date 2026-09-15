@@ -1208,6 +1208,8 @@ export function useEegMonitor() {
     /** How COEBIS-2 is being read on this montage. */
     coebisV2Setup: coebisV2Ref.current.deviceSetup,
     reconnectAttempt,
+    /** The source's own retry loop is still working on a dropped link. */
+    autoRetrying,
     analysisSource,
     dataGapSeconds,
     /** Live packet dropout / NaN / spike rates for the incoming stream. */
