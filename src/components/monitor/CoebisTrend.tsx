@@ -113,6 +113,21 @@ export function CoebisTrend({
           ? "text-caution"
           : "text-muted-foreground";
 
+  // The depth trace is "flat" when nothing in the window produced a value —
+  // dropout, artefact gating or no usable epochs. In that case the raw EEG
+  // and the signal-quality reading are shown instead of an empty plot.
+  const depthFlat = useMemo(
+    () => !coebisTrend.some((v) => v != null) && !openTrend.some((v) => v != null),
+    [coebisTrend, openTrend],
+  );
+  const latestQuality = useMemo(() => {
+    for (let i = visible.length - 1; i >= 0; i -= 1) {
+      const q = visible[i]?.quality;
+      if (q) return q;
+    }
+    return null;
+  }, [visible]);
+
   // Ticks span the plotted window, from the first visible epoch to "now".
   const ticks = useMemo(() => {
     const end = visible.length > 0 ? (visible[visible.length - 1]?.t ?? elapsed) : elapsed;
