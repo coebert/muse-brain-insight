@@ -15,7 +15,7 @@ interface Props {
 }
 
 /** One electrode's own shape, drawn straight from the band's samples. */
-const Trace = memo(function Trace({
+export const Trace = memo(function Trace({
   samples,
   calibrated,
   fallbackGainUv,
