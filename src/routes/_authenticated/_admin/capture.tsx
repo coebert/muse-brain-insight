@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Database, HardDrive, Hourglass, Radio } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getCaptureStats } from "@/lib/eeg/auto-capture.functions";
+import { getCaptureStats, recoverCapture } from "@/lib/eeg/auto-capture.functions";
 import { HARVEST_QUIET_HOURS } from "@/lib/eeg/capture-harvest.constants";
 
 export const Route = createFileRoute("/_authenticated/_admin/capture")({
@@ -66,10 +69,28 @@ function Stat({
 
 function CapturePage() {
   const fetchStats = useServerFn(getCaptureStats);
+  const runRecover = useServerFn(recoverCapture);
+  const queryClient = useQueryClient();
+  const [recovering, setRecovering] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ["capture-stats"],
     queryFn: () => fetchStats(),
     refetchInterval: 30_000,
+  });
+
+  // Brings a recording that was never filed — a case lost to a headband
+  // dropout — onto the timeline straight away.
+  const recover = useMutation({
+    mutationFn: async (captureKey: string) => {
+      setRecovering(captureKey);
+      return await runRecover({ data: { captureKey } });
+    },
+    onSuccess: (result) => {
+      toast.success(`Recovered ${result.epochs.toLocaleString()} readings as a case.`);
+      void queryClient.invalidateQueries({ queryKey: ["capture-stats"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+    onSettled: () => setRecovering(null),
   });
 
   return (
@@ -160,7 +181,21 @@ function CapturePage() {
                           ) : row.harvested ? (
                             <Badge variant="secondary">Picked up automatically</Badge>
                           ) : (
-                            <Badge variant="outline">Waiting</Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">Waiting</Badge>
+                              {row.epochs > 0 ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={recover.isPending}
+                                  onClick={() => recover.mutate(row.captureKey)}
+                                >
+                                  {recover.isPending && recovering === row.captureKey
+                                    ? "Recovering…"
+                                    : "Recover as a case"}
+                                </Button>
+                              ) : null}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
