@@ -27,6 +27,7 @@ import {
 import {
   MuseClient,
   SimulatedSource,
+  requestMuseDevice,
   type EegSource,
   type MuseChannel,
 } from "@/lib/eeg/muse";
@@ -760,6 +761,39 @@ export function useEegMonitor() {
     return true;
   }, [connect]);
 
+  /**
+   * Re-pair after the clinician has switched the headband off and on again.
+   *
+   * A power-cycled Muse comes back as a new Bluetooth handle, and Chrome only
+   * lets the app open the chooser from a real tap — so automatic reconnection
+   * can never recover this case on its own. This runs from the button press,
+   * swaps the fresh headband into the case that is already running, and keeps
+   * the trend, markers, notes and recorded signal exactly as they are.
+   */
+  const repairHeadband = useCallback(async (): Promise<boolean> => {
+    setError(null);
+    setStatus("connecting");
+    try {
+      const device = await requestMuseDevice();
+      await sourceRef.current?.stop();
+      sourceRef.current = null;
+      const preset = lastConnectRef.current?.preset;
+      return await connect("muse", {
+        preserveTimeline: true,
+        device,
+        ...(preset ? { preset } : {}),
+      });
+    } catch (e) {
+      setStatus("error");
+      setError(
+        e instanceof Error
+          ? `Could not re-pair the headband: ${e.message}`
+          : "Could not re-pair the headband.",
+      );
+      return false;
+    }
+  }, [connect]);
+
   // Epoch analysis loop. It also runs while the link is down so the missing
   // time is recorded as a gap rather than vanishing from the timeline.
   useEffect(() => {
@@ -1224,6 +1258,8 @@ export function useEegMonitor() {
     setCaptureEnabled,
     connect,
     reconnect,
+    /** Re-pair a power-cycled headband into the running case. */
+    repairHeadband,
     stop,
     reset,
   };

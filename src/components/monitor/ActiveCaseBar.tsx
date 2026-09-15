@@ -167,6 +167,16 @@ export function ActiveCaseBar() {
           {retrying ? "Reconnecting…" : "Reconnect"}
         </Button>
       ) : null}
+      {canReconnect ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="min-h-8"
+          onClick={() => void monitor.repairHeadband()}
+        >
+          Re-pair
+        </Button>
+      ) : null}
       {caseState === "ended" ? (
         <Button size="sm" variant="secondary" className="min-h-8" onClick={() => requestNewCase()}>
           <Plus className="size-4" /> New case
