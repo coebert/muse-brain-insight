@@ -520,6 +520,16 @@ function useCaseSessionState() {
       setDiscardOpen(true);
       return false;
     }
+    // A case already running must never be restarted from here: connecting
+    // afresh clears the timeline, so a clinician re-pairing after a dropout
+    // would wipe the recording. Re-opening the link is what they want.
+    if (caseState === "running" && !testing) {
+      toast.error(
+        "This case is still running — use Reconnect to re-open the headband. Starting again would clear the recording.",
+      );
+      setCaseOpen(false);
+      return false;
+    }
     const connected = await monitor.connect(kind, {
       ...(options?.device ? { device: options.device } : {}),
       ...(options?.preset ? { preset: options.preset } : {}),
