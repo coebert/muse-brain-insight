@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Minimize2, Moon, Sun, TriangleAlert } from "lucide-react";
 
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
+import type { ConnectionStatusView } from "@/lib/eeg/connection-status";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
 import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
 import { useDeviceTuning } from "@/hooks/useDeviceTuning";
