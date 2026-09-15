@@ -708,6 +708,7 @@ export function useEegMonitor() {
         if (!options?.preserveTimeline) reset();
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
+        setAutoRetrying(false);
         return true;
       } catch (e) {
         options?.onConnectionError?.(e);
