@@ -46,6 +46,38 @@ function tickLabel(tSeconds: number, startedAtMs: number | null | undefined): st
 }
 
 /**
+ * The headband's live waveform, drawn when the depth trend has nothing valid
+ * to plot — a dropout or gate should never leave the clinician staring at an
+ * empty chart when signal is still arriving.
+ */
+function RawFallback({ archive, profile }: { archive: RawArchive; profile: DeviceProfile }) {
+  // Redraws whenever fresh samples land.
+  useSyncExternalStore(archive.subscribe, archive.getVersion, archive.getVersion);
+  const calibrated = profile.calibratedAmplitude !== false;
+  return (
+    <div className="flex flex-col gap-0.5">
+      {profile.channels.map((channel) => {
+        const to = archive.duration(channel);
+        const from = Math.max(0, to - RAW_FALLBACK_SECONDS);
+        const samples = to > from ? archive.read(channel, from, to) : new Float32Array(0);
+        return (
+          <div key={channel} className="flex items-center gap-2">
+            <span className="metric-value w-9 shrink-0 text-[10px] text-muted-foreground">
+              {channel}
+            </span>
+            <div className="h-[14px] min-w-0 flex-1">
+              {samples.length ? (
+                <Trace samples={samples} calibrated={calibrated} fallbackGainUv={80} />
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Live COEBIS trend with a timestamped x-axis. The learned COEBIS index is
  * drawn solid; the uncorrected OpenIBIS index sits behind it so divergence
  * between the two models is visible at a glance.
