@@ -835,6 +835,13 @@ function useCaseSessionState() {
           toast.warning("Case saved, but the raw EEG traces could not be stored.");
         }
       }
+      // The local copy on this machine has now made it to the case record.
+      try {
+        await monitor.localSpool.flush();
+        await markSpoolAttached(monitor.captureKey, sessionId);
+      } catch {
+        // Local bookkeeping only.
+      }
 
 
 
