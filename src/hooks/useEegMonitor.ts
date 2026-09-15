@@ -389,6 +389,12 @@ export function useEegMonitor() {
     attempt: number;
     attempts: number;
   } | null>(null);
+  /**
+   * True while the source's own retry loop is still working on a dropped link.
+   * It keeps running after the "lost" warning, so the badge must not read as a
+   * dead end when recovery is still in progress.
+   */
+  const [autoRetrying, setAutoRetrying] = useState(false);
 
   const buffersRef = useRef<Record<string, ChannelBuffer>>({});
   /**
@@ -555,6 +561,7 @@ export function useEegMonitor() {
     sourceRef.current = null;
     lastConnectRef.current = null;
     setReconnectAttempt(null);
+    setAutoRetrying(false);
     setBatteryPercent(null);
     setStatus("idle");
   }, []);
@@ -652,18 +659,23 @@ export function useEegMonitor() {
           // re-open the same headband without losing anything recorded.
           setStatus("error");
           setReconnectAttempt(null);
+          // The source keeps retrying on its own for as long as the case runs.
+          if (source.reconnect) setAutoRetrying(true);
         });
         source.onBattery?.((percent) => setBatteryPercent(percent));
         source.onState?.((state) => {
           if (state.kind === "reconnecting") {
             setStatus("reconnecting");
             setReconnectAttempt({ attempt: state.attempt, attempts: state.attempts });
+            setAutoRetrying(true);
             setError(null);
           } else if (state.kind === "connected") {
             setStatus("streaming");
             setReconnectAttempt(null);
+            setAutoRetrying(false);
           } else {
             setReconnectAttempt(null);
+            if (source.reconnect) setAutoRetrying(true);
             setError(state.reason);
           }
         });
@@ -696,6 +708,7 @@ export function useEegMonitor() {
         if (!options?.preserveTimeline) reset();
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
+        setAutoRetrying(false);
         return true;
       } catch (e) {
         options?.onConnectionError?.(e);
@@ -721,6 +734,7 @@ export function useEegMonitor() {
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
         setReconnectAttempt(null);
+        setAutoRetrying(false);
         return true;
       }
       setStatus("error");
@@ -1194,6 +1208,8 @@ export function useEegMonitor() {
     /** How COEBIS-2 is being read on this montage. */
     coebisV2Setup: coebisV2Ref.current.deviceSetup,
     reconnectAttempt,
+    /** The source's own retry loop is still working on a dropped link. */
+    autoRetrying,
     analysisSource,
     dataGapSeconds,
     /** Live packet dropout / NaN / spike rates for the incoming stream. */

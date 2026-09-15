@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Minimize2, Moon, Sun, TriangleAlert } from "lucide-react";
 
 import { CaseActionBar, type CaseSheet } from "@/components/monitor/CaseActionBar";
+import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
+import type { ConnectionStatusView } from "@/lib/eeg/connection-status";
 import { TciStatusStrip } from "@/components/monitor/TciStatusStrip";
 import { DsaViewToggle } from "@/components/monitor/DsaViewToggle";
 import { useDeviceTuning } from "@/hooks/useDeviceTuning";
@@ -44,6 +46,8 @@ interface Props {
   startedAtMs?: number | null;
   sourceName: string;
   streaming: boolean;
+  /** Live link state, so a dropout is visible on the fullscreen screen too. */
+  connection?: ConnectionStatusView | undefined;
   modeLabel: string;
   windowMinutes: number;
   markers: DetectedEvent[];
@@ -71,6 +75,7 @@ export function FullscreenMonitor({
   sourceName,
   startedAtMs,
   streaming,
+  connection,
   modeLabel,
   windowMinutes,
   markers,
@@ -162,14 +167,18 @@ export function FullscreenMonitor({
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
       {/* Status bar */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
-        <span
-          className={cn(
-            "metric-value rounded-full border px-2 py-0.5 text-xs",
-            streaming ? "border-signal/50 text-signal" : "border-border text-muted-foreground",
-          )}
-        >
-          {streaming ? `${sourceName} · live` : "not streaming"}
-        </span>
+        {connection ? (
+          <ConnectionStatusBadge status={connection} />
+        ) : (
+          <span
+            className={cn(
+              "metric-value rounded-full border px-2 py-0.5 text-xs",
+              streaming ? "border-signal/50 text-signal" : "border-border text-muted-foreground",
+            )}
+          >
+            {streaming ? `${sourceName} · live` : "not streaming"}
+          </span>
+        )}
         <span className="metric-value text-sm">{formatClock(elapsed)}</span>
         <span className="hidden text-xs text-muted-foreground sm:inline">{modeLabel} mode</span>
         <span

@@ -10,6 +10,8 @@ import { ReactivityPanel } from "@/components/monitor/ReactivityPanel";
 import type { CaseObservation } from "@/lib/eeg/case-observations";
 
 import { CohortPositionPanel } from "@/components/monitor/CohortPositionPanel";
+import { ConnectionStatusBadge } from "@/components/monitor/ConnectionStatusBadge";
+import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 
 import { CvaWatchPanel } from "@/components/monitor/CvaWatchPanel";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
@@ -125,6 +127,15 @@ function BedsidePage() {
   const [observations, setObservations] = useState<CaseObservation[]>([]);
 
 
+  const connection = deriveConnectionStatus({
+    status: monitor.status,
+    sourceName: monitor.sourceName,
+    caseEnded: caseState === "ended",
+    dataGapSeconds: monitor.dataGapSeconds,
+    reconnectAttempt: monitor.reconnectAttempt,
+    autoRetrying: monitor.autoRetrying,
+  });
+
   const profile = monitor.deviceProfile;
   const calibrated = profile.calibratedAmplitude !== false;
   const unit = calibrated ? "µV" : "a.u.";
@@ -141,16 +152,17 @@ function BedsidePage() {
   return (
     <div className={cn("min-h-dvh bg-background transition-[filter]", dim && "brightness-[0.55]")}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:px-4">
-        <span
-          className={cn(
-            "size-2 rounded-full",
-            streaming ? "bg-signal" : reconnecting ? "bg-caution" : "bg-muted-foreground/50",
-          )}
-          aria-hidden
-        />
-        <span className="metric-value text-sm">
-          {streaming ? profile.label : reconnecting ? "Reconnecting…" : "No headband"}
-        </span>
+        <ConnectionStatusBadge status={connection} />
+        {connection.state === "reconnecting" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-11 sm:min-h-9"
+            onClick={() => void monitor.reconnect()}
+          >
+            Reconnect now
+          </Button>
+        ) : null}
         <span className="metric-value text-sm text-muted-foreground">
           {formatClock(monitor.elapsed)}
         </span>

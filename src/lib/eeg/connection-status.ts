@@ -29,22 +29,34 @@ export function deriveConnectionStatus(input: {
   caseEnded: boolean;
   dataGapSeconds: number;
   reconnectAttempt: { attempt: number; attempts: number } | null;
+  /** The headband's own retry loop is still working on a dropped link. */
+  autoRetrying?: boolean;
 }): ConnectionStatusView {
   const { status, sourceName, caseEnded, dataGapSeconds, reconnectAttempt } = input;
   const device = sourceName || "Headband";
+  const retrying = input.autoRetrying ?? false;
 
   if (status === "reconnecting") {
     const a = reconnectAttempt;
     return {
       state: "reconnecting",
       label: a ? `reconnecting ${a.attempt}/${a.attempts}` : "reconnecting",
-      detail: `${device} dropped out — the case keeps running while the link is rebuilt.`,
+      detail: `${device} dropped out — the case keeps running while the link is rebuilt. Nothing recorded so far is lost.`,
     };
   }
   if (status === "connecting") {
     return { state: "connecting", label: "connecting", detail: `Opening the link to ${device}.` };
   }
   if (status === "error") {
+    // The retry loop runs for as long as the case does: say so, rather than
+    // reading as a dead end the clinician has to act on.
+    if (retrying && !caseEnded) {
+      return {
+        state: "reconnecting",
+        label: "reconnecting…",
+        detail: `${device} has not come back yet. The case keeps running and reconnection retries automatically; everything recorded is kept.`,
+      };
+    }
     return {
       state: "lost",
       label: "link lost",
