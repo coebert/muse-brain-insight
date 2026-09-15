@@ -532,6 +532,8 @@ export class MuseClient implements EegSource {
   private static readonly STALL_RESET_MS = 15_000;
   /** How often the headband is asked for a status ("s") reply. */
   private static readonly BATTERY_POLL_MS = 60_000;
+  /** Check twice inside the keep-alive window; packet arrivals also drive it. */
+  private static readonly HEARTBEAT_CHECK_MS = 5_000;
   /** A reconnect attempt that has not streamed by now is abandoned and retried. */
   private static readonly ATTACH_TIMEOUT_MS = 20_000;
   private heartbeat: BackgroundTimer | null = null;
@@ -540,6 +542,8 @@ export class MuseClient implements EegSource {
   /** Unsubscribes the "page came back to the foreground" handler. */
   private foregroundOff: (() => void) | null = null;
   private lastSampleAt = 0;
+  private lastKeepAliveAt = 0;
+  private keepAlivePending = false;
   private nudgedAt = 0;
   /**
    * Bumped on every (re)attach and link teardown. An in-flight keep-alive that
@@ -554,6 +558,8 @@ export class MuseClient implements EegSource {
   private manualPending = false;
   /** Bluetooth stacks need a moment to release a half-open GATT link. */
   private static readonly LINK_SETTLE_MS = 600;
+  /** Serialises control writes; overlapping Web Bluetooth writes can drop GATT. */
+  private controlWriteTail: Promise<void> = Promise.resolve();
 
   /**
    * A device and preset can be supplied when the clinician has already probed
@@ -603,14 +609,24 @@ export class MuseClient implements EegSource {
     if (this.controlBuffer.length > 2000) this.controlBuffer = "";
   };
 
-  private async send(command: string) {
+  private send(command: string): Promise<void> {
     const control = this.control;
-    if (!control) return;
+    const epoch = this.epoch;
+    if (!control) return Promise.resolve();
     const encoded = new Uint8Array(command.length + 2);
     encoded[0] = command.length + 1;
     for (let i = 0; i < command.length; i++) encoded[i + 1] = command.charCodeAt(i);
     encoded[command.length + 1] = 0x0a;
-    await control.writeValue(encoded);
+    const write = this.controlWriteTail
+      .catch(() => undefined)
+      .then(async () => {
+        if (this.stopping || epoch !== this.epoch || control !== this.control) {
+          throw new Error("The Bluetooth link changed before the command was sent.");
+        }
+        await control.writeValue(encoded);
+      });
+    this.controlWriteTail = write;
+    return write;
   }
 
   async start(onSamples: SampleHandler) {
@@ -644,7 +660,12 @@ export class MuseClient implements EegSource {
       else void this.tick();
     });
 
-    await this.attach();
+    try {
+      await this.withAttachTimeout();
+    } catch (error) {
+      await this.resetLink();
+      throw error;
+    }
   }
 
   /**
@@ -679,6 +700,11 @@ export class MuseClient implements EegSource {
     const epoch = this.epoch;
     this.detachSubscriptions();
     const mine: { characteristic: BluetoothRemoteGATTCharacteristic; listener: (e: Event) => void }[] = [];
+    let awaitingFirstSample = false;
+    let firstSampleResolve: (() => void) | null = null;
+    const firstSample = new Promise<void>((resolve) => {
+      firstSampleResolve = resolve;
+    });
     const server = await device.gatt!.connect();
     // stop() can land mid-handshake; abandon rather than resurrect the link.
     if (this.stopping || epoch !== this.epoch) throw new Error("Connection cancelled.");
@@ -702,6 +728,11 @@ export class MuseClient implements EegSource {
         if (value && value.byteLength >= 20) {
           this.lastSampleAt = Date.now();
           onSamples(channel, decodeMusePacket(value));
+          this.maybeKeepAliveFromSamples();
+          if (awaitingFirstSample) {
+            awaitingFirstSample = false;
+            firstSampleResolve?.();
+          }
         }
       };
       characteristic.addEventListener("characteristicvaluechanged", listener);
@@ -718,13 +749,18 @@ export class MuseClient implements EegSource {
     await this.send("h"); // halt any existing stream
     await this.send(this.preset); // confirmed streaming preset
     await this.send("s"); // status
+    awaitingFirstSample = true;
     await this.send("d"); // start data
+    // A GATT connection is not a recovered stream. Do not report success until
+    // the Muse has actually resumed EEG notifications.
+    await firstSample;
     if (epoch !== this.epoch) {
       this.detachOwn(mine);
       throw new Error("Connection cancelled.");
     }
     this.lastSampleAt = Date.now();
     this.lastStatusAt = Date.now();
+    this.lastKeepAliveAt = Date.now();
     this.nudgedAt = 0;
     this.startHeartbeat();
   }
@@ -739,6 +775,8 @@ export class MuseClient implements EegSource {
     this.epoch++;
     this.control = null;
     this.controlBuffer = "";
+    this.controlWriteTail = Promise.resolve();
+    this.keepAlivePending = false;
     this.detachSubscriptions();
     try {
       this.device?.gatt?.disconnect();
@@ -787,7 +825,7 @@ export class MuseClient implements EegSource {
    */
   private startHeartbeat() {
     this.stopHeartbeat();
-    this.heartbeat = createBackgroundTimer(MuseClient.KEEP_ALIVE_MS, () => {
+    this.heartbeat = createBackgroundTimer(MuseClient.HEARTBEAT_CHECK_MS, () => {
       if (this.stopping) return;
       void this.tick();
     });
@@ -796,6 +834,33 @@ export class MuseClient implements EegSource {
   private stopHeartbeat() {
     this.heartbeat?.stop();
     this.heartbeat = null;
+  }
+
+  /**
+   * EEG notifications are a more reliable clock than browser timers. Chrome
+   * can throttle even worker timers when a window is occluded, but as long as
+   * samples are arriving these callbacks still run. Use them to guarantee the
+   * Muse receives its ten-second keep-alive throughout an hours-long case.
+   */
+  private maybeKeepAliveFromSamples() {
+    if (
+      this.stopping ||
+      this.reconnecting ||
+      this.keepAlivePending ||
+      Date.now() - this.lastKeepAliveAt < MuseClient.KEEP_ALIVE_MS
+    ) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.keepAlivePending = true;
+    this.lastKeepAliveAt = Date.now();
+    void this.send("k")
+      .catch(() => {
+        if (epoch === this.epoch && !this.stopping) void this.attemptReconnect();
+      })
+      .finally(() => {
+        if (epoch === this.epoch) this.keepAlivePending = false;
+      });
   }
 
   private async tick() {
@@ -808,7 +873,10 @@ export class MuseClient implements EegSource {
     }
     const silentFor = Date.now() - this.lastSampleAt;
     try {
-      await this.send("k"); // keep-alive: stops the firmware idling out mid-case
+      if (Date.now() - this.lastKeepAliveAt >= MuseClient.KEEP_ALIVE_MS) {
+        this.lastKeepAliveAt = Date.now();
+        await this.send("k"); // timer fallback when packet-driven keep-alive is unavailable
+      }
       if (Date.now() - this.lastStatusAt > MuseClient.BATTERY_POLL_MS) {
         this.lastStatusAt = Date.now();
         await this.send("s"); // status: refreshes the battery reading
