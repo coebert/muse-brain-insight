@@ -1180,6 +1180,8 @@ export function useEegMonitor() {
     latest,
     waveformStore: waveformStoreRef.current,
     rawArchive: rawArchiveRef.current,
+    /** Local on-disk copy of the waveform, written as the case runs. */
+    localSpool: localSpoolRef.current,
     elapsed,
     contactOk,
     channelQuality,
