@@ -17,6 +17,7 @@ import {
   type BackgroundTimer,
   type WakeLockHandle,
 } from "@/lib/eeg/keep-awake";
+import { museLinkLog } from "@/lib/eeg/muse-link-log";
 
 export const MUSE_SERVICE = "0000fe8d-0000-1000-8000-00805f9b34fb";
 const CONTROL_CHAR = "273e0001-4c4d-454d-96be-f03bac821358";
@@ -544,6 +545,8 @@ export class MuseClient implements EegSource {
   private lastSampleAt = 0;
   private lastKeepAliveAt = 0;
   private keepAlivePending = false;
+  /** Last battery percentage the headband reported, for the link log. */
+  private lastBattery: number | null = null;
   private nudgedAt = 0;
   /**
    * Bumped on every (re)attach and link teardown. An in-flight keep-alive that
@@ -600,7 +603,12 @@ export class MuseClient implements EegSource {
       this.controlBuffer = this.controlBuffer.slice(end + 1);
       const battery = Number(parsed["bp"]);
       if (Number.isFinite(battery)) {
-        this.batteryCb?.(Math.max(0, Math.min(100, Math.round(battery))));
+        const percent = Math.max(0, Math.min(100, Math.round(battery)));
+        if (percent !== this.lastBattery) {
+          this.lastBattery = percent;
+          museLinkLog.add("battery", `Headband battery ${percent}%`, { percent });
+        }
+        this.batteryCb?.(percent);
       }
     } catch {
       /* reply still incomplete */
@@ -638,11 +646,18 @@ export class MuseClient implements EegSource {
     const device = this.device ?? (await requestMuseDevice());
     this.device = device;
     this.name = device.name ?? "Muse";
+    museLinkLog.add("start", `Opening the link to ${this.name}`, { preset: this.preset });
     if (this.disconnectListener) {
       device.removeEventListener("gattserverdisconnected", this.disconnectListener);
     }
     this.disconnectListener = () => {
       if (this.stopping) return;
+      museLinkLog.add("dropped", "Bluetooth reported the headband disconnected", {
+        silentForSeconds: this.lastSampleAt
+          ? Math.round((Date.now() - this.lastSampleAt) / 1000)
+          : null,
+        lastBatteryPercent: this.lastBattery,
+      });
       void this.attemptReconnect();
     };
     device.addEventListener("gattserverdisconnected", this.disconnectListener);
@@ -762,6 +777,8 @@ export class MuseClient implements EegSource {
     this.lastStatusAt = Date.now();
     this.lastKeepAliveAt = Date.now();
     this.nudgedAt = 0;
+    museLinkLog.markAttached();
+    museLinkLog.add("attached", "Streaming — first EEG packet received");
     this.startHeartbeat();
   }
 
@@ -855,7 +872,10 @@ export class MuseClient implements EegSource {
     this.keepAlivePending = true;
     this.lastKeepAliveAt = Date.now();
     void this.send("k")
-      .catch(() => {
+      .catch((error: unknown) => {
+        museLinkLog.add("keepalive-failed", "Keep-alive write failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
         if (epoch === this.epoch && !this.stopping) void this.attemptReconnect();
       })
       .finally(() => {
@@ -891,11 +911,17 @@ export class MuseClient implements EegSource {
       // Nudged already and still nothing: drop the link so the normal
       // reconnect path rebuilds it from scratch.
       this.nudgedAt = 0;
+      museLinkLog.add("silent", "No EEG after a restart nudge — rebuilding the link", {
+        silentForSeconds: Math.round(silentFor / 1000),
+      });
       void this.attemptReconnect();
       return;
     }
     if (silentFor > MuseClient.STALL_NUDGE_MS && !this.nudgedAt) {
       this.nudgedAt = Date.now();
+      museLinkLog.add("nudge", "EEG stopped arriving — resending the start command", {
+        silentForSeconds: Math.round(silentFor / 1000),
+      });
       try {
         await this.send("d"); // restart the data stream
       } catch {
@@ -957,6 +983,7 @@ export class MuseClient implements EegSource {
     // Keep trying for as long as the case is running — the clinician ends the
     // case, not a retry counter.
     for (let i = 0; !this.stopping; i++) {
+      museLinkLog.add("reconnect-attempt", `Reconnect attempt ${i + 1}`);
       this.stateCb?.({ kind: "reconnecting", attempt: Math.min(i + 1, attempts), attempts });
       const delay = MuseClient.RETRY_DELAYS[Math.min(i, attempts - 1)]!;
       await this.waitForRetry(delay);
@@ -975,11 +1002,15 @@ export class MuseClient implements EegSource {
         // parks the retry ladder on a single attempt forever. Bound it so the
         // loop always comes back around.
         await this.withAttachTimeout();
+        museLinkLog.add("reconnect-ok", `Link restored after ${i + 1} attempt(s)`);
         this.reconnecting = false;
         this.settleWaiters(true);
         this.stateCb?.({ kind: "connected" });
         return;
-      } catch {
+      } catch (error) {
+        museLinkLog.add("reconnect-failed", `Reconnect attempt ${i + 1} failed`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
         if (this.manualPending) this.settleWaiters(false);
         if (i + 1 >= attempts && !told) {
           told = true;
@@ -1040,6 +1071,7 @@ export class MuseClient implements EegSource {
 
   async stop() {
     this.stopping = true;
+    if (this.device) museLinkLog.add("stopped", "Case ended — link closed by the app");
     this.epoch++;
     this.retryWake?.();
     this.reconnecting = false;
