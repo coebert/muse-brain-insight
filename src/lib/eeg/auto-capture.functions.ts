@@ -146,8 +146,8 @@ export const recoverCapture = createServerFn({ method: "POST" })
       throw new Error("Test recordings are never filed as cases.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { harvestOneCapture, RECOVER_LIMIT } = await import("@/lib/eeg/capture-harvest.server");
-    const done = await harvestOneCapture(supabaseAdmin as never, capture, RECOVER_LIMIT);
+    const { harvestOneCapture } = await import("@/lib/eeg/capture-harvest.server");
+    const done = await harvestOneCapture(supabaseAdmin as never, capture, RECOVER_MAX_EPOCHS);
     if (!done) throw new Error("That recording has no readings to recover.");
     return { sessionId: done.sessionId, epochs: done.epochsCopied };
   });
