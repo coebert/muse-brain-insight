@@ -207,6 +207,8 @@ function CapturePage() {
           </Card>
         </>
       )}
+
+      <LocalSpoolPanel />
     </div>
   );
 }
