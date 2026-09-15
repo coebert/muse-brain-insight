@@ -658,18 +658,23 @@ export function useEegMonitor() {
           // re-open the same headband without losing anything recorded.
           setStatus("error");
           setReconnectAttempt(null);
+          // The source keeps retrying on its own for as long as the case runs.
+          if (source.reconnect) setAutoRetrying(true);
         });
         source.onBattery?.((percent) => setBatteryPercent(percent));
         source.onState?.((state) => {
           if (state.kind === "reconnecting") {
             setStatus("reconnecting");
             setReconnectAttempt({ attempt: state.attempt, attempts: state.attempts });
+            setAutoRetrying(true);
             setError(null);
           } else if (state.kind === "connected") {
             setStatus("streaming");
             setReconnectAttempt(null);
+            setAutoRetrying(false);
           } else {
             setReconnectAttempt(null);
+            if (source.reconnect) setAutoRetrying(true);
             setError(state.reason);
           }
         });
