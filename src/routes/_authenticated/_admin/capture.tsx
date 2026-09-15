@@ -19,6 +19,7 @@ import {
 import { getCaptureStats, recoverCapture } from "@/lib/eeg/auto-capture.functions";
 import { HARVEST_QUIET_HOURS } from "@/lib/eeg/capture-harvest.constants";
 import { LocalSpoolPanel } from "@/components/monitor/LocalSpoolPanel";
+import { LinkLogPanel } from "@/components/monitor/LinkLogPanel";
 
 export const Route = createFileRoute("/_authenticated/_admin/capture")({
   head: () => ({
@@ -210,6 +211,7 @@ function CapturePage() {
       )}
 
       <LocalSpoolPanel />
+      <LinkLogPanel />
     </div>
   );
 }

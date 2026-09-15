@@ -526,7 +526,7 @@ export class MuseClient implements EegSource {
    * in practice around 15–20 minutes — even while it is happily streaming.
    * A periodic keep-alive ("k") holds the headband awake for the whole case.
    */
-  private static readonly KEEP_ALIVE_MS = 10_000;
+  private static readonly KEEP_ALIVE_MS = 5_000;
   /** Resend the start-data command if notifications dry up but GATT is up. */
   private static readonly STALL_NUDGE_MS = 6_000;
   /** Force a full reconnect if samples never come back after a nudge. */
