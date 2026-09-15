@@ -46,6 +46,8 @@ interface Props {
   startedAtMs?: number | null;
   sourceName: string;
   streaming: boolean;
+  /** Live link state, so a dropout is visible on the fullscreen screen too. */
+  connection?: ConnectionStatusView | undefined;
   modeLabel: string;
   windowMinutes: number;
   markers: DetectedEvent[];
