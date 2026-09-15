@@ -153,15 +153,27 @@ function BedsidePage() {
     <div className={cn("min-h-dvh bg-background transition-[filter]", dim && "brightness-[0.55]")}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:px-4">
         <ConnectionStatusBadge status={connection} />
-        {connection.state === "reconnecting" ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-h-11 sm:min-h-9"
-            onClick={() => void monitor.reconnect()}
-          >
-            Reconnect now
-          </Button>
+        {connection.state === "reconnecting" || connection.state === "lost" ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11 sm:min-h-9"
+              onClick={() => void monitor.reconnect()}
+            >
+              Reconnect now
+            </Button>
+            {/* A headband switched off and on comes back as a new Bluetooth
+                handle, which only a real tap can pick up. */}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="min-h-11 sm:min-h-9"
+              onClick={() => void monitor.repairHeadband()}
+            >
+              Re-pair headband
+            </Button>
+          </>
         ) : null}
         <span className="metric-value text-sm text-muted-foreground">
           {formatClock(monitor.elapsed)}
