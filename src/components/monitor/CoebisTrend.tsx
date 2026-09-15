@@ -21,7 +21,16 @@ interface Props {
   /** Bedside variant: darker plate, tighter chrome. */
   compact?: boolean;
   className?: string;
+  /**
+   * Live headband signal. When the depth trend has nothing valid to draw
+   * (dropout, gating, no usable epochs) the panel shows the raw EEG and the
+   * latest signal-quality reading instead of a blank trace.
+   */
+  archive?: RawArchive | null;
+  profile?: DeviceProfile | null;
 }
+
+const RAW_FALLBACK_SECONDS = 4;
 
 const TICKS = 4;
 /** Vertical span of the drift strip, in COEBIS points either side of baseline. */
