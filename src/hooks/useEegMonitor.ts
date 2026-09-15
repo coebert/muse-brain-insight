@@ -734,6 +734,7 @@ export function useEegMonitor() {
         lastSampleAtRef.current = Date.now();
         setStatus("streaming");
         setReconnectAttempt(null);
+        setAutoRetrying(false);
         return true;
       }
       setStatus("error");
