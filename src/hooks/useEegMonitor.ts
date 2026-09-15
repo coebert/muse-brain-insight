@@ -49,6 +49,7 @@ import {
 } from "@/lib/eeg/stream-integrity";
 import { createWaveformStore } from "@/lib/eeg/waveform-store";
 import { createRawArchive } from "@/lib/eeg/raw-archive";
+import { createLocalRawSpool, SPOOL_FLUSH_MS } from "@/lib/eeg/local-raw-spool";
 import {
   CAPTURE_FLUSH_SECONDS,
   captureRowsFrom,
@@ -378,6 +379,8 @@ export function useEegMonitor() {
   const waveformStoreRef = useRef(createWaveformStore());
   // Per-electrode rolling archive powering the raw-channel viewer.
   const rawArchiveRef = useRef(createRawArchive());
+  /** On-disk copy of the same archive, so a dropped case is never lost. */
+  const localSpoolRef = useRef(createLocalRawSpool(rawArchiveRef.current));
   /** Live packet-loss / NaN / spike accounting for the incoming stream. */
   const integrityRef = useRef(new StreamIntegrityMonitor(MUSE_SAMPLE_RATE));
   const [integrity, setIntegrity] = useState<IntegritySnapshot | null>(null);
@@ -1087,6 +1090,31 @@ export function useEegMonitor() {
     };
   }, [status, flushCapture]);
 
+  /**
+   * Keep a copy of the waveform on this machine as the case runs, so a
+   * headband that drops and never returns — or a tab that is closed or
+   * reloaded — cannot take the recording with it.
+   */
+  useEffect(() => {
+    if (status !== "streaming" && status !== "reconnecting") return;
+    const spool = localSpoolRef.current;
+    spool.open({
+      id: captureKeyRef.current,
+      device: sourceName || deviceProfile.label,
+      channels: [...deviceProfile.channels],
+    });
+    const id = setInterval(() => void spool.flush(), SPOOL_FLUSH_MS);
+    const onHide = () => void spool.flush();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+      void spool.flush();
+    };
+  }, [status, sourceName, deviceProfile]);
+
   // Waveform refresh.
   useEffect(() => {
     if (status !== "streaming" && status !== "reconnecting") return;
@@ -1152,6 +1180,8 @@ export function useEegMonitor() {
     latest,
     waveformStore: waveformStoreRef.current,
     rawArchive: rawArchiveRef.current,
+    /** Local on-disk copy of the waveform, written as the case runs. */
+    localSpool: localSpoolRef.current,
     elapsed,
     contactOk,
     channelQuality,
