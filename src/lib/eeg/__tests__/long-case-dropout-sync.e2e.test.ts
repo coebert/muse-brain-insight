@@ -122,6 +122,7 @@ describe("four-hour case with dropouts", () => {
       Math.round(retainedFrom) + 60, // just inside the retained window
       DROPOUTS[1]![0] - 30, // immediately before the long dropout
       DROPOUTS[1]![0] + DROPOUTS[1]![1] + 30, // immediately after it
+      DROPOUTS[1]![0] + DROPOUTS[1]![1] + 20 * 60, // twenty minutes later
       CASE_SECONDS - 120, // near the end
       // Anything older than the retained hour reads back as silence by design.
     ].filter((t) => !inDropout(t) && t > retainedFrom);
