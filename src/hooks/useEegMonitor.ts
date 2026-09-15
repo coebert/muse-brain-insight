@@ -680,6 +680,9 @@ export function useEegMonitor() {
             setError(state.reason);
           }
         });
+        // Hold the source before starting it, so a start that fails part-way
+        // is still reachable by stop()/End case rather than being orphaned.
+        sourceRef.current = source;
         await source.start((ch, samples) => {
           const buf = buffersRef.current[ch];
           if (!buf) return;
