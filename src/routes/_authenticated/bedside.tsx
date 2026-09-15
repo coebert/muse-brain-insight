@@ -141,16 +141,17 @@ function BedsidePage() {
   return (
     <div className={cn("min-h-dvh bg-background transition-[filter]", dim && "brightness-[0.55]")}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:px-4">
-        <span
-          className={cn(
-            "size-2 rounded-full",
-            streaming ? "bg-signal" : reconnecting ? "bg-caution" : "bg-muted-foreground/50",
-          )}
-          aria-hidden
-        />
-        <span className="metric-value text-sm">
-          {streaming ? profile.label : reconnecting ? "Reconnecting…" : "No headband"}
-        </span>
+        <ConnectionStatusBadge status={connection} />
+        {connection.state === "reconnecting" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-11 sm:min-h-9"
+            onClick={() => void monitor.reconnect()}
+          >
+            Reconnect now
+          </Button>
+        ) : null}
         <span className="metric-value text-sm text-muted-foreground">
           {formatClock(monitor.elapsed)}
         </span>
