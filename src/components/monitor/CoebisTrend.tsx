@@ -195,6 +195,7 @@ export function CoebisTrend({
             />
           </div>
         </div>
+        )}
       </div>
       <div className="flex items-center justify-between px-2 pb-1 text-[11px] text-muted-foreground tabular-nums">
         {ticks.map((label, i) => (
