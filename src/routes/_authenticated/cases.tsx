@@ -96,7 +96,10 @@ function Cases() {
             ...s,
             lastDepth:
               tail?.depth_index === null || tail === undefined ? null : Number(tail.depth_index),
-            lastSr: tail === undefined ? null : Number(tail.suppression_ratio ?? 0),
+            lastSr:
+              tail === undefined || tail.suppression_ratio == null
+                ? null
+                : Number(tail.suppression_ratio),
             criticalEvents: (events.data ?? []).filter(
               (e) =>
                 e.session_id === s.id && (e.severity === "critical" || e.severity === "warning"),
