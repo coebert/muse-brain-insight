@@ -273,9 +273,11 @@ export function MetricsGrid({
               value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
               hint={
                 latest
-                  ? latest.composite.held
-                    ? "Held — artefact"
-                    : COMPOSITE_BAND_LABEL[latest.composite.cBand]
+                  ? latest.composite.withheldReason
+                    ? "Withheld — suppression unavailable (no µV scale)"
+                    : latest.composite.held
+                      ? "Held — artefact"
+                      : COMPOSITE_BAND_LABEL[latest.composite.cBand]
                   : "Composite of fast/slow balance, entropy and suppression"
               }
               tone={
@@ -298,9 +300,11 @@ export function MetricsGrid({
               value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
               hint={
                 latest
-                  ? latest.composite.held
-                    ? "Held — artefact"
-                    : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
+                  ? latest.composite.withheldReason
+                    ? "Withheld — suppression unavailable (no µV scale)"
+                    : latest.composite.held
+                      ? "Held — artefact"
+                      : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
                   : "High-frequency drive, reactivity and entropy gap"
               }
               tone={
