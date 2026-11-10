@@ -178,6 +178,7 @@ export async function compareStateModels(
   const coebisScores: number[] = [];
   const lineageOf: string[] = [];
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const spectra: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -264,6 +265,7 @@ export async function compareStateModels(
       : separationFromScores([], []),
     simple,
     byLineage,
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }

@@ -162,6 +162,7 @@ export async function runChennuCoebis(
   let scored = 0;
   let unusable = 0;
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const epochs: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -241,6 +242,7 @@ export async function runChennuCoebis(
       }))
       .sort((a, b) => a.caseRef.localeCompare(b.caseRef)),
     separation: separationFromScores(points, scores),
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }

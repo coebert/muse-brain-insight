@@ -168,6 +168,7 @@ export async function runChennuPhaseFit(
   const perCasePhase = new Map<string, Map<CasePhase, number[]>>();
   let scored = 0;
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const spectra: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -254,6 +255,7 @@ export async function runChennuPhaseFit(
     deepenedCount: comparable.filter((a) => (a.deepening ?? 0) < 0).length,
     recoveredCount: arcs.filter((a) => (a.recovery ?? 0) > 0).length,
     comparableCount: comparable.length,
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }
