@@ -33,6 +33,7 @@ import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 interface Props {
   epochs: Epoch[];
