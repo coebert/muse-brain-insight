@@ -317,7 +317,9 @@ export function FullscreenMonitor({
                   SEF95 / SR
                 </span>
                 <span className="metric-value text-xs text-muted-foreground">
-                  {latest ? `${latest.sef95.toFixed(1)} Hz · ${srValue.toFixed(0)} %` : "—"}
+                  {latest
+                    ? `${latest.sef95.toFixed(1)} Hz · ${srValue == null ? "SR withheld" : `${srValue.toFixed(0)} %`}`
+                    : "—"}
                 </span>
               </div>
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">

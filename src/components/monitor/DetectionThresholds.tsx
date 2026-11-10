@@ -11,9 +11,9 @@ interface Props {
     /** Current suppression ratio (%) over the configured window. */
     ratio: number | null;
     /** Peak suppression ratio (%) so far this case. */
-    maxRatio: number;
-    /** Cumulative suppressed time this case, in seconds. */
-    seconds: number;
+    maxRatio: number | null;
+    /** Cumulative suppressed time this case, in seconds (null when withheld). */
+    seconds: number | null;
   };
   /** Applies a patch and records the reason in the case audit trail. */
   onApply: (patch: Partial<AnalysisSettings>, description: string) => void;
@@ -69,13 +69,13 @@ export function DetectionThresholds({ settings, suppression, onApply }: Props) {
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Peak SR</p>
-            <p className="metric-value text-sm">{suppression.maxRatio.toFixed(0)} %</p>
+            <p className="metric-value text-sm">{suppression.maxRatio == null ? "withheld" : `${suppression.maxRatio.toFixed(0)} %`}</p>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Suppression time
             </p>
-            <p className="metric-value text-sm">{formatDuration(suppression.seconds)}</p>
+            <p className="metric-value text-sm">{suppression.seconds == null ? "withheld" : formatDuration(suppression.seconds)}</p>
           </div>
         </div>
       ) : null}

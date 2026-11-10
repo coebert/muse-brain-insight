@@ -786,7 +786,11 @@ function Monitor() {
                         <div
                           key={i}
                           style={{ flexGrow: 1 }}
-                          title={`${formatClock(e.t)} · SR ${e.suppressionRatio.toFixed(0)}%`}
+                          title={`${formatClock(e.t)} · SR ${
+                            measuredSuppressionRatio(e) == null
+                              ? "withheld"
+                              : `${measuredSuppressionRatio(e)!.toFixed(0)}%`
+                          }`}
                           className={cn(
                             "h-full",
                             e.seizureAlert
@@ -1202,7 +1206,7 @@ function Monitor() {
                 <DetectionThresholds
                   settings={monitor.settings}
                   suppression={{
-                    ratio: latest ? latest.suppressionRatio : null,
+                    ratio: measuredSuppressionRatio(latest),
                     maxRatio: summary.maxSr,
                     seconds: summary.suppressionSeconds,
                   }}
