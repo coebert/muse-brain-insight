@@ -40,8 +40,12 @@ export interface MonitorEntropy {
   re: number | null;
   /** RE - SE: frontal EMG / arousal margin in index points. */
   emgGap: number | null;
-  /** Suppression ratio the entropies were scaled by (%). */
-  bsr: number;
+  /**
+   * Suppression ratio the entropies were scaled by (%). Null when suppression
+   * was not measured — then SE/RE are withheld, because the monitor's entropy
+   * folds suppression in and cannot be formed with an assumed 0 %.
+   */
+  bsr: number | null;
 }
 
 /**
@@ -119,11 +123,12 @@ function normalisedEntropy(power: number[], binHz: number, lo: number, hi: numbe
  */
 export function monitorEntropy(
   rows: (Float64Array | null)[],
-  bsr: number,
+  bsr: number | null,
   binHz = 0.5,
   epochSeconds = 1,
 ): MonitorEntropy {
-  const safeBsr = clamp(Number.isFinite(bsr) ? bsr : 0, 0, 100);
+  if (bsr == null || !Number.isFinite(bsr)) return { se: null, re: null, emgGap: null, bsr: null };
+  const safeBsr = clamp(bsr, 0, 100);
   const usable = rows.filter((r) => r != null).length;
   if (!usable) return { se: null, re: null, emgGap: null, bsr: safeBsr };
 

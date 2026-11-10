@@ -12,6 +12,7 @@
  * density-spectral array months later.
  */
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import { measuredSeizureScore } from "@/lib/eeg/measured";
 
 /** Rows per insert batch — matches the chunk size used by the save path. */
 export const EPOCH_BATCH_SIZE = 200;
@@ -23,6 +24,11 @@ export const EPOCH_BATCH_SIZE = 200;
 function num(value: number, dp: number): number {
   const rounded = Number(value.toFixed(dp));
   return rounded === 0 ? 0 : rounded;
+}
+
+/** As `num`, but a missing or non-finite value stays NULL (never 0). */
+function numOrNull(value: number | null | undefined, dp: number): number | null {
+  return value == null || !Number.isFinite(value) ? null : num(value, dp);
 }
 
 export type EpochPayload = ReturnType<typeof epochPayload>;
@@ -41,7 +47,8 @@ export function epochPayload(e: Epoch) {
     t_offset_seconds: num(e.t, 2),
     suppression_ratio: suppressionMeasured ? num(e.suppressionRatio, 2) : null,
     is_suppressed: suppressionMeasured ? e.isSuppressed : null,
-    seizure_score: num(e.seizureScore, 3),
+    // Withheld on an uncalibrated band (fixed µV gates) — stored as NULL.
+    seizure_score: numOrNull(measuredSeizureScore(e), 3),
     total_power: num(e.totalPower, 3),
     spectral_edge_95: num(e.sef95, 2),
     depth_index: e.depth.index === null ? null : num(e.depth.index, 1),
@@ -51,7 +58,7 @@ export function epochPayload(e: Epoch) {
     composite_components: {
       fast_slow: num(e.composite.components.fastSlow, 3),
       entropy: num(e.composite.components.entropy, 3),
-      bsr: suppressionMeasured ? num(e.composite.components.bsr, 2) : null,
+      bsr: suppressionMeasured ? numOrNull(e.composite.components.bsr, 2) : null,
       emg_drive: num(e.composite.components.emgDrive, 3),
       reactivity: num(e.composite.components.reactivity, 3),
       entropy_gap: num(e.composite.components.entropyGap, 3),
@@ -66,7 +73,7 @@ export function epochPayload(e: Epoch) {
       c3: Number.isFinite(e.depth.components.slowWave)
         ? num(e.depth.components.slowWave, 4)
         : null,
-      bsr: suppressionMeasured ? num(e.depth.components.bsr, 2) : null,
+      bsr: suppressionMeasured ? numOrNull(e.depth.components.bsr, 2) : null,
     } as Record<string, number | null>,
     bands: { ...e.bands } as Record<string, number>,
     entropy: {

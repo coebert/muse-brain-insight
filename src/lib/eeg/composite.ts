@@ -32,7 +32,15 @@ export interface CompositeReading {
   components: CompositeComponents;
   /** True while the last clean value is being held over artefact. */
   held: boolean;
+  /**
+   * Why both indices were withheld (e.g. suppression unavailable on an
+   * uncalibrated band). The scale-invariant components remain filled in.
+   */
+  withheldReason?: string | null;
 }
+
+export const COMPOSITE_WITHHELD_REASON =
+  "Suppression is unavailable (device amplitude not calibrated): the consciousness index's suppression branch and the nociception index's suppression damping cannot be evaluated, so both indices are withheld.";
 
 export type CompositeBand =
   "awake" | "light_sedation" | "surgical" | "deep" | "burst_suppression" | "unreliable";
@@ -44,8 +52,8 @@ export interface CompositeComponents {
   fastSlow: number;
   /** Normalised state entropy (0.8-32 Hz), 0-1. */
   entropy: number;
-  /** Suppression burden, %. */
-  bsr: number;
+  /** Suppression burden, %. Null when withheld on an uncalibrated band. */
+  bsr: number | null;
   /** Frontal high-frequency (EMG-weighted) drive, 0-1. */
   emgDrive: number;
   /** Short-term reactivity of the high-frequency drive, 0-1. */
@@ -63,9 +71,9 @@ function sigmoid(x: number, mid: number, k: number): number {
   return 1 / (1 + Math.exp(-(x - mid) / k));
 }
 
-export function compositeBand(index: number | null, bsr: number): CompositeBand {
+export function compositeBand(index: number | null, bsr: number | null): CompositeBand {
   if (index == null) return "unreliable";
-  if (bsr >= 5 || index < 20) return "burst_suppression";
+  if ((bsr != null && bsr >= 5) || index < 20) return "burst_suppression";
   if (index < 40) return "deep";
   if (index < 60) return "surgical";
   if (index < 80) return "light_sedation";
@@ -99,8 +107,8 @@ export interface CompositeInput {
   bands: BandPowers;
   ratios: PowerRatios;
   entropy: SpectralEntropy;
-  /** Suppression ratio over the trailing window, %. */
-  suppressionRatio: number;
+  /** Suppression ratio over the trailing window, %; null when withheld. */
+  suppressionRatio: number | null;
   /** Epoch is clean enough to update the indices. */
   usable: boolean;
 }
@@ -136,6 +144,23 @@ export class CompositeIndexEstimator {
     const stateEntropy = clamp(entropy.state, 0, 1);
     const emgDrive = clamp(sigmoid(Math.log10(bands.gamma / total + 1e-4), -1.9, 0.32), 0, 1);
     const entropyGap = clamp((entropy.response - entropy.state) * 4, 0, 1);
+
+    if (suppressionRatio == null) {
+      // No suppression measurement: the indices cannot be formed, and nothing
+      // smoothed under a previous (calibrated) scale may be held over.
+      this.cSmoothed = null;
+      this.nSmoothed = null;
+      this.cleanEpochs = 0;
+      return {
+        cIndex: null,
+        nIndex: null,
+        cBand: "unreliable",
+        nBand: "unreliable",
+        components: { fastSlow, entropy: stateEntropy, bsr: null, emgDrive, reactivity: 0, entropyGap },
+        held: false,
+        withheldReason: COMPOSITE_WITHHELD_REASON,
+      };
+    }
 
     if (input.usable) {
       this.emgHistory.push(emgDrive);
