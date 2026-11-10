@@ -808,15 +808,17 @@ function useCaseSessionState() {
       { label: "Case time", value: formatClock(monitor.elapsed) },
       {
         label: "Mean SR",
-        value: summary.suppressionAvailable
-          ? `${summary.meanSr.toFixed(0)} %`
-          : "withheld (no µV scale)",
+        value:
+          summary.suppressionAvailable && summary.meanSr != null
+            ? `${summary.meanSr.toFixed(0)} %`
+            : "withheld (no µV scale)",
       },
       {
         label: "Suppression time",
-        value: summary.suppressionAvailable
-          ? formatDuration(Math.round(summary.suppressionSeconds))
-          : "withheld (no µV scale)",
+        value:
+          summary.suppressionAvailable && summary.suppressionSeconds != null
+            ? formatDuration(Math.round(summary.suppressionSeconds))
+            : "withheld (no µV scale)",
       },
       {
         label: "Alerts",
@@ -851,7 +853,18 @@ function useCaseSessionState() {
             amplitudeCalibrated,
             withheld: amplitudeCalibrated
               ? []
-              : ["coebis-v2-index", "coebis-v2-suppression", "suppression-ratio", "suppression-seconds"],
+              : [
+                  "coebis-v2-index",
+                  "coebis-v2-suppression",
+                  "suppression-ratio",
+                  "suppression-seconds",
+                  "openibis-depth-index",
+                  "coebis-v1",
+                  "composite-consciousness",
+                  "composite-nociception",
+                  "monitor-entropy-se-re",
+                  "seizure-score",
+                ],
           }
         : null;
       const sessionId = await saveSession(

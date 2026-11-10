@@ -51,7 +51,8 @@ interface Props {
   modeLabel: string;
   windowMinutes: number;
   markers: DetectedEvent[];
-  suppressionSeconds: number;
+  /** Null when suppression was withheld (uncalibrated amplitude). */
+  suppressionSeconds: number | null;
   suppressionThresholdUv: number;
   dsaView: DsaView;
   onDsaViewChange: (view: DsaView) => void;
@@ -141,7 +142,7 @@ export function FullscreenMonitor({
       alignSeries<Epoch, number>(
         visible,
         (e) => e.t,
-        (e) => e.suppressionRatio,
+        (e) => measuredSuppressionRatio(e),
       ),
     [visible],
   );
@@ -157,8 +158,9 @@ export function FullscreenMonitor({
 
   const depth = latest?.depth;
   const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";
-  const srValue = latest?.suppressionRatio ?? 0;
-  const srTone: MetricTone = suppressionTone(latest ? srValue : null);
+  // Withheld suppression stays null — the tile reads "—", never 0 %.
+  const srValue = measuredSuppressionRatio(latest);
+  const srTone: MetricTone = suppressionTone(srValue);
   const quality = latest?.quality;
   const qualityTone: MetricTone =
     quality?.grade === "poor" ? "critical" : quality?.grade === "fair" ? "caution" : "signal";
@@ -389,9 +391,13 @@ export function FullscreenMonitor({
             size="bedside"
             label="Suppression ratio"
             info="sr"
-            value={latest ? srValue.toFixed(0) : "—"}
+            value={srValue == null ? "—" : srValue.toFixed(0)}
             unit="%"
-            hint={`Supp. time ${formatDuration(suppressionSeconds)}`}
+            hint={
+              latest && srValue == null
+                ? "Withheld — no microvolt scale"
+                : `Supp. time ${suppressionSeconds == null ? "—" : formatDuration(suppressionSeconds)}`
+            }
             tone={srTone}
           />
           <MetricCard
