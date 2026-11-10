@@ -1022,7 +1022,7 @@ export function useEegMonitor() {
         trackHemiEvent(
           side,
           "suppression",
-          e.isSuppressed,
+          e.suppressionAvailable !== false && e.isSuppressed,
           e.suppressionRatio,
           e.seizureScore,
           worst,
