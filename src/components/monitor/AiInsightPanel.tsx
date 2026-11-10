@@ -138,6 +138,16 @@ export function AiInsightPanel({
           <>
             <p className="text-sm font-medium leading-relaxed">{result.headline}</p>
 
+            <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              AI explanation of the measured metrics only — not a diagnosis and not a treatment
+              recommendation. It cannot raise critical alarms; the app&apos;s own research alarms
+              are shown separately. Your correct/incorrect marks are kept for offline review and
+              do not change future alerts.
+              {result.guard && (result.guard.removedStatements || result.guard.droppedAlerts)
+                ? ` The server safety check removed ${result.guard.removedStatements} statement${result.guard.removedStatements === 1 ? "" : "s"} and ${result.guard.droppedAlerts} alert${result.guard.droppedAlerts === 1 ? "" : "s"} that cited unverifiable numbers, unavailable data or treatment advice.`
+                : ""}
+            </p>
+
             {result.alertTuning && tuningSummary(result.alertTuning) ? (
               <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -191,7 +201,7 @@ export function AiInsightPanel({
                     </div>
                     <p className="mt-1 text-sm leading-relaxed text-foreground">{a.detail}</p>
                     {a.action ? (
-                      <p className="mt-1 text-xs font-medium">Suggested action: {a.action}</p>
+                      <p className="mt-1 text-xs font-medium">Suggested review: {a.action}</p>
                     ) : null}
                     <AlertEvidencePanel
                       evidence={a.evidence}
