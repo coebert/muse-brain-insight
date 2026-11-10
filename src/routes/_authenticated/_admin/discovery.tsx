@@ -404,11 +404,11 @@ function DiscoveryPage() {
             </section>
 
             <section className="rounded-lg border border-border/60 bg-card/40 p-4">
-              <h2 className="text-sm font-semibold">Diagnostic suggestion model</h2>
+              <h2 className="text-sm font-semibold">Exploratory pattern lead (unvalidated)</h2>
               <p className="mb-3 text-xs text-muted-foreground">
-                Case-level naive-Bayes over the same EEG features, scored by leave-one-case-out
-                cross-validation within this lineage. Suggestions are leads for a clinician to
-                confirm, never a diagnosis on their own.
+                Exploratory pattern-matching only, not a diagnosis. Relative pattern similarity is
+                uncalibrated. Cross-validation holds out patients when identity is available;
+                otherwise caseRef is a patient proxy. No clinical validation is asserted.
               </p>
               {diagnosis.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
@@ -426,16 +426,19 @@ function DiscoveryPage() {
                         <span
                           className={cn(
                             "rounded px-1.5 py-0.5 text-[11px]",
-                            SUFFICIENCY_TONE[m.sufficiency],
+                            "bg-muted text-muted-foreground",
                           )}
                         >
-                          {m.sufficiency}
+                          {m.computability} · exploratory / unvalidated
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          {m.cases} labelled cases · accuracy {fmt(m.accuracy, 2)} · balanced{" "}
+                          {m.cases} labelled cases · exploratory CV accuracy {fmt(m.accuracy, 2)} · balanced{" "}
                           {fmt(m.balancedAccuracy, 2)}
                         </span>
                       </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {m.labelLevel ?? "No usable label level"} · source {m.labelSource ?? "none"} · {m.excludedUnknownCases} unknown/unlabelled cases excluded · {m.excludedConflictingCases} conflicting cases excluded. {m.independence} {m.notes}
+                      </p>
                       {m.blocker ? (
                         <p className="mt-1 text-[11px] text-caution">{m.blocker}</p>
                       ) : null}

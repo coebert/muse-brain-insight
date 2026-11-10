@@ -43,6 +43,9 @@ function rows(lineage: string, perClass = 6): DiscoveryRow[] {
           caseRef: `${lineage}/${pathology}-${i}`,
           covariates: {
             pathology_category: pathology,
+            confirmed_diagnosis: pathology,
+            confirmed_diagnosis_level: "recording",
+            confirmed_diagnosis_provenance: "synthetic regression fixture, not clinical evidence",
             age_band: pathology === "sepsis" ? "70-79" : "30-39",
             sex: i % 2 === 0 ? "M" : "F",
           },
@@ -113,7 +116,9 @@ describe("diagnosis model", () => {
     const model = fitDiagnosisModel("app:muse-2", rows("app:muse-2"), "pathology");
     expect(model.cases).toBe(12);
     expect(model.classes).toHaveLength(2);
-    expect(model.sufficiency).toBe("sufficient");
+    expect(model.computability).toBe("computable");
+    expect(model.evidenceTier).toBe("exploratory");
+    expect(model.validated).toBe(false);
     expect(model.blocker).toBeNull();
     expect(model.accuracy).toBeGreaterThan(0.8);
     expect(model.balancedAccuracy).toBeGreaterThan(0.8);
@@ -122,15 +127,18 @@ describe("diagnosis model", () => {
 
   it("flags an under-powered label set instead of claiming a diagnosis", () => {
     const model = fitDiagnosisModel("app:muse-2", rows("app:muse-2", 2), "pathology");
-    expect(model.sufficiency).not.toBe("sufficient");
+    expect(model.computability).toBe("not-computable");
     expect(model.blocker).toContain(String(MIN_CASES_PER_CLASS));
   });
 
   it("returns a ranked suggestion with drivers for a live feature vector", () => {
     const model = fitDiagnosisModel("app:muse-2", rows("app:muse-2"), "pathology");
-    const ranked = suggestDiagnosis(model, features(8.1, 0.3, 0.55));
+    const result = suggestDiagnosis(model, features(8.1, 0.3, 0.55));
+    expect(result.eligible).toBe(true);
+    const ranked = result.predictions;
+    expect(ranked[0]!.calibrated).toBe(false);
     expect(ranked[0]!.level).toBe("sepsis");
-    expect(ranked[0]!.posterior).toBeGreaterThan(0.5);
+    expect(ranked[0]!.relativeScore).toBeGreaterThan(0.5);
     expect(ranked[0]!.logLR).toBeGreaterThan(0);
     expect(ranked[0]!.drivers.length).toBeGreaterThan(0);
   });
@@ -140,6 +148,51 @@ describe("diagnosis model", () => {
     const lineages = new Set(models.map((m) => m.lineage));
     expect(lineages).toEqual(new Set(["app:muse-2", "external:vitaldb"]));
     for (const m of models) expect(m.group).toBeTruthy();
+  });
+
+  it("four cases per class are exploratory only", () => {
+    const m = fitDiagnosisModel("app:muse-2", rows("app:muse-2", 4), "pathology");
+    expect(m.computability).toBe("computable");
+    expect(m.validated).toBe(false);
+    expect(m.evidenceTier).toBe("exploratory");
+    expect(m).not.toHaveProperty("sufficiency");
+    expect(m.classes.every(c => c.computable)).toBe(true);
+  });
+
+  it("enforces gates, complete finite features, lineage and target inside scoring", () => {
+    const m = fitDiagnosisModel("app:muse-2", rows("app:muse-2", 4), "pathology");
+    for (const result of [
+      suggestDiagnosis(fitDiagnosisModel("app:muse-2", rows("app:muse-2", 2), "pathology"), features(8, .3, .5)),
+      suggestDiagnosis(m, { ...features(8, .3, .5), sef95: null }),
+      suggestDiagnosis(m, features(8, .3, .5), "external:other"),
+      suggestDiagnosis({ ...m, group: "regimen" }, features(8, .3, .5)),
+    ]) {
+      expect(result.eligible).toBe(false);
+      expect(result.reason.length).toBeGreaterThan(0);
+      expect(result.predictions).toEqual([]);
+    }
+    expect(suggestDiagnosis(m, { ...features(8, .3, .5), sef95: NaN }).reason).toContain("sef95");
+  });
+
+  it("refuses collection categories without confirmed diagnosis provenance", () => {
+    const data = rows("app:muse-2", 4).map(r => ({ ...r, covariates: { pathology_category: r.covariates.pathology_category } }));
+    const m = fitDiagnosisModel("app:muse-2", data, "pathology");
+    expect(m.computability).toBe("not-computable");
+    expect(m.blocker).toContain("dataset/collection descriptor");
+    expect(m.classes).toEqual([]);
+    expect(fitDiagnosisModels(data).find(m => m.group === "pathology")).toBeDefined();
+  });
+
+  it("excludes unknown labels and preserves provenance", () => {
+    const data = rows("app:muse-2", 4);
+    const unknown = data.filter(r => r.caseRef.endsWith("sepsis-0")).map(r => ({ ...r, caseRef: "unknown-case", covariates: { ...r.covariates, confirmed_diagnosis: "unknown" } }));
+    const m = fitDiagnosisModel("app:muse-2", [...data, ...unknown], "pathology");
+    expect(m.excludedUnknownCases).toBe(1);
+    expect(m.cases).toBe(8);
+    expect(m.classes.some(c => c.level === "unknown")).toBe(false);
+    expect(m.labelLevel).toBe("recording");
+    expect(m.labelSource).toBe("confirmed_diagnosis");
+    expect(m.labelProvenance).toHaveLength(1);
   });
 
   it("computes a rank-based AUC", () => {
