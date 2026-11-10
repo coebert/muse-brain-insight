@@ -7,13 +7,16 @@
  * compatibility; every display, export, digest and persistence path must read
  * the values through these helpers so a withheld value is `null` — never 0.
  */
-import type { Epoch } from "@/lib/eeg/analysis";
 
-type SuppressionFields = Partial<Pick<Epoch, "suppressionRatio" | "epochSuppression" | "isSuppressed">> & {
-  suppressionAvailable?: boolean;
+type SuppressionFields = {
+  suppressionRatio?: number | null | undefined;
+  epochSuppression?: number | null | undefined;
+  isSuppressed?: boolean | null | undefined;
+  suppressionAvailable?: boolean | undefined;
 };
-type SeizureFields = Partial<Pick<Epoch, "seizureScore">> & {
-  seizureAvailable?: boolean;
+type SeizureFields = {
+  seizureScore?: number | null | undefined;
+  seizureAvailable?: boolean | undefined;
 };
 
 export const SUPPRESSION_WITHHELD_REASON =
