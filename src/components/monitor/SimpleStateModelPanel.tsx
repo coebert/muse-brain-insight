@@ -58,6 +58,12 @@ export function SimpleStateModelPanel() {
         <p className="text-xs text-muted-foreground">Fitting and grading…</p>
       ) : !r ? null : r.epochs === 0 ? (
         <p className="text-xs text-muted-foreground">
+          {r.coebisUnavailable?.reason ? (
+            <span className="block font-medium text-foreground">
+              {r.coebisUnavailable.reason} ({r.coebisUnavailable.epochs.toLocaleString()} epochs
+              not scored; they need reprocessing from the original waveforms.)
+            </span>
+          ) : null}
           No labelled sedation epochs stored yet. Import a collection on the Data exchange tab
           first.
         </p>

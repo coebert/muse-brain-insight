@@ -57,6 +57,12 @@ export function ChennuCoebisPanel() {
         <p className="text-xs text-muted-foreground">Scoring the stored epochs…</p>
       ) : !r ? null : r.epochsScored === 0 ? (
         <p className="text-xs text-muted-foreground">
+          {r.coebisUnavailable?.reason ? (
+            <span className="block font-medium text-foreground">
+              {r.coebisUnavailable.reason} ({r.coebisUnavailable.epochs.toLocaleString()} epochs
+              not scored; they need reprocessing from the original waveforms.)
+            </span>
+          ) : null}
           Nothing stored from this collection yet. Import it on the Data exchange tab first.
         </p>
       ) : (
