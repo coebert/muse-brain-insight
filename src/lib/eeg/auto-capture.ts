@@ -89,7 +89,9 @@ export function captureRowsFrom(
       suppressionRatio: e.suppressionAvailable === false ? null : num(e.suppressionRatio),
       epochSuppression: e.suppressionAvailable === false ? null : num(e.epochSuppression),
       totalPower: num(e.totalPower),
-      amplitudeUv: num(e.amplitudeUv),
+      // Peak-to-peak in arbitrary device units on an uncalibrated band is not
+      // a microvolt value, so the µV column stays null.
+      amplitudeUv: e.amplitudeCalibrated === false ? null : num(e.amplitudeUv),
       sqi: num(e.quality?.score),
       qualityGrade: e.quality?.grade ?? null,
       artifact: Boolean(e.artifact),
