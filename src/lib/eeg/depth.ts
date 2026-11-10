@@ -48,11 +48,16 @@ export interface DepthComponents {
   synchFastSlow: number;
   /** openibis component 3: mean 0.5-4 Hz power minus mid-band power, dB. */
   slowWave: number;
-  /** Burst-suppression ratio used by the mixer, 0-100 %. */
-  bsr: number;
+  /**
+   * Burst-suppression ratio used by the mixer, 0-100 %. Null when the device
+   * amplitude scale is not calibrated: the ±5 µV suppression rule cannot be
+   * applied on an unknown scale, so the ratio is withheld — never read as 0.
+   */
+  bsr: number | null;
   sedationScore: number;
   generalScore: number;
-  bsrScore: number;
+  /** Suppression-branch score; null whenever `bsr` is withheld. */
+  bsrScore: number | null;
 }
 
 export interface DepthReading {
@@ -92,7 +97,18 @@ export interface DepthReading {
   coebisRaw?: number | null;
   /** True while COEBIS is running on the uncalibrated baseline correction. */
   coebisBaseline?: boolean;
+  /**
+   * Why the amplitude-dependent index was withheld for this epoch (e.g. the
+   * device has no microvolt scale). When set, `index`, `raw`, `coebis` and the
+   * suppression components are null; the scale-invariant spectral components
+   * (betaRatio, synchFastSlow, slowWave) remain available as research features.
+   */
+  withheldReason?: string | null;
 }
+
+/** Reason recorded when the OpenIBIS index is withheld on an uncalibrated band. */
+export const UNCALIBRATED_DEPTH_REASON =
+  "Device amplitude scale is not calibrated in microvolts: the OpenIBIS suppression branch (±5 µV rule) cannot be evaluated, so the depth index and COEBIS are withheld rather than computed with an assumed zero suppression.";
 
 export type DepthState =
   "unreliable" | "awake" | "sedated" | "general_anaesthesia" | "deep" | "burst_suppression";
@@ -506,11 +522,43 @@ function concentration(row: Float64Array, fromA: number, toA: number, fromB: num
   return Math.sqrt(n ? sum / n : NaN);
 }
 
+/**
+ * openibis `logPowerRatios`: the three log power ratio subparameters. Each is a
+ * difference of dB values (a ratio of powers), so it is invariant to the
+ * amplitude scale of the recording.
+ */
+function spectralComponents(rows: Float64Array[]): { c1: number; c2: number; c3: number } {
+  if (!rows.length) return { c1: NaN, c2: NaN, c3: NaN };
+  const midPerBin: number[] = [];
+  for (let k = binOf(11); k <= binOf(20); k++) {
+    let s = 0;
+    let n = 0;
+    for (const row of rows) {
+      if (row[k]! > 0) {
+        s += 10 * Math.log10(row[k]!);
+        n++;
+      }
+    }
+    if (n) midPerBin.push(s / n);
+  }
+  const midBandPower = prctmean(midPerBin, 50, 100);
+  const ratios = rows.map((row) => {
+    const vhigh = concentration(row, 39.5, 46.5, 40, 47);
+    const whole = concentration(row, 0.5, 46.5, 1, 47);
+    return 10 * Math.log10(vhigh / whole);
+  });
+  return {
+    c1: meanBandPowerDb(rows, 30, 47) - midBandPower,
+    c2: trimmean(ratios, 50),
+    c3: meanBandPowerDb(rows, 0.5, 4) - midBandPower,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 
-export function depthState(index: number | null, bsr: number): DepthState {
+export function depthState(index: number | null, bsr: number | null): DepthState {
   if (index == null) return "unreliable";
-  if (bsr >= 5 || index < 20) return "burst_suppression";
+  if ((bsr != null && bsr >= 5) || index < 20) return "burst_suppression";
   if (index < 40) return "deep";
   if (index < 60) return "general_anaesthesia";
   if (index < 80) return "sedated";
@@ -577,6 +625,11 @@ export class DepthIndexEstimator {
   private coebisEma: number | null = null;
   /** Epochs since COEBIS last had a value (used to restart after a gap). */
   private coebisIdleEpochs = 0;
+  /**
+   * Whether samples are in real microvolts. When false the suppression branch
+   * and every number derived from the mixer are withheld.
+   */
+  private amplitudeCalibrated = true;
 
   reset() {
     this.psdHistory = [];
@@ -584,6 +637,24 @@ export class DepthIndexEstimator {
     this.heldEpochs = 0;
     this.coebisEma = null;
     this.coebisIdleEpochs = 0;
+  }
+
+  /**
+   * Switch amplitude calibration. Any change clears suppression history and
+   * the running COEBIS average so no value computed under the previous scale
+   * is held over into the new one.
+   */
+  setAmplitudeCalibrated(calibrated: boolean) {
+    if (calibrated === this.amplitudeCalibrated) return;
+    this.amplitudeCalibrated = calibrated;
+    this.bsrMap = [];
+    this.heldEpochs = 0;
+    this.coebisEma = null;
+    this.coebisIdleEpochs = 0;
+  }
+
+  get isAmplitudeCalibrated(): boolean {
+    return this.amplitudeCalibrated;
   }
 
   /**
@@ -600,6 +671,7 @@ export class DepthIndexEstimator {
     epochSeconds = 1,
   ): DepthReading {
     this.epochSeconds = epochSeconds;
+    if (!this.amplitudeCalibrated) return this.updateUncalibrated(window, fs, gate, epochSeconds);
 
     // --- suppression branch (openibis `suppression`) ----------------------
     const twoSec = window.subarray(Math.max(0, window.length - Math.round(2 * fs)));
@@ -629,33 +701,7 @@ export class DepthIndexEstimator {
     else this.heldEpochs++;
 
     const rows = this.psdHistory.filter((r): r is Float64Array => r != null);
-
-    let c1 = NaN;
-    let c2 = NaN;
-    let c3 = NaN;
-    if (rows.length) {
-      const midPerBin: number[] = [];
-      for (let k = binOf(11); k <= binOf(20); k++) {
-        let s = 0;
-        let n = 0;
-        for (const row of rows) {
-          if (row[k]! > 0) {
-            s += 10 * Math.log10(row[k]!);
-            n++;
-          }
-        }
-        if (n) midPerBin.push(s / n);
-      }
-      const midBandPower = prctmean(midPerBin, 50, 100);
-      const ratios = rows.map((row) => {
-        const vhigh = concentration(row, 39.5, 46.5, 40, 47);
-        const whole = concentration(row, 0.5, 46.5, 1, 47);
-        return 10 * Math.log10(vhigh / whole);
-      });
-      c1 = meanBandPowerDb(rows, 30, 47) - midBandPower;
-      c2 = trimmean(ratios, 50);
-      c3 = meanBandPowerDb(rows, 0.5, 4) - midBandPower;
-    }
+    const { c1, c2, c3 } = spectralComponents(rows);
 
     const valid = Number.isFinite(c1) && Number.isFinite(c2) && Number.isFinite(c3);
     const mixed = valid
@@ -784,6 +830,63 @@ export class DepthIndexEstimator {
     const alpha = 1 - Math.exp(-Math.max(epochSeconds, 0.1) / COEBIS_TAU_SECONDS);
     this.coebisEma += alpha * (value - this.coebisEma);
     return Math.round(clamp(this.coebisEma, 0, 100));
+  }
+
+  /**
+   * Uncalibrated amplitude: the ±5 µV suppression test has no meaning, so the
+   * mixer (which needs BSR) cannot produce an OpenIBIS index. Only the
+   * scale-invariant log power ratios are computed, as research features.
+   */
+  private updateUncalibrated(
+    window: Float64Array,
+    fs: number,
+    gate: { usable: boolean; reasons?: string[] },
+    epochSeconds: number,
+  ): DepthReading {
+    this.bsrMap = [];
+    this.psdHistory.push(gate.usable ? dftPower(window, fs) : null);
+    const keep = Math.max(1, Math.round(SPECTRAL_WINDOW_S / epochSeconds));
+    while (this.psdHistory.length > keep) this.psdHistory.shift();
+    this.heldEpochs = 0;
+    this.coebisEma = null;
+    this.coebisIdleEpochs = 0;
+    const rows = this.psdHistory.filter((r): r is Float64Array => r != null);
+    const { c1, c2, c3 } = spectralComponents(rows);
+    const gatedFraction = this.psdHistory.length
+      ? this.psdHistory.filter((r) => r == null).length / this.psdHistory.length
+      : 1;
+    const cal = getActiveDepthCalibration();
+    const relative = Number.isFinite(c1) && Number.isFinite(c2) && Number.isFinite(c3);
+    return {
+      index: null,
+      raw: null,
+      state: "unreliable",
+      components: {
+        betaRatio: c1,
+        synchFastSlow: c2,
+        slowWave: c3,
+        bsr: null,
+        // Sigmoid scores of the relative log ratios alone: scale-invariant.
+        sedationScore: relative
+          ? scurve(c1, cal.sedation.eo, cal.sedation.emax, cal.sedation.x50, cal.sedation.xwidth)
+          : NaN,
+        generalScore: NaN,
+        bsrScore: null,
+      },
+      held: false,
+      heldSeconds: 0,
+      gatedFraction,
+      gateReasons: gate.reasons ?? [],
+      bisAligned: activeBisAlignment != null,
+      entropy: null,
+      adjunct: NO_ADJUNCT,
+      coebis: null,
+      coebisRaw: null,
+      ketamine: NO_KETAMINE,
+      drugs: NO_DRUG_STAGE,
+      coebisBaseline: activeBisAlignment == null,
+      withheldReason: UNCALIBRATED_DEPTH_REASON,
+    };
   }
 
   /** Seconds of data currently contributing to the spectral window. */
