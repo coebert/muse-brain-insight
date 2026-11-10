@@ -216,6 +216,14 @@ export function StateLabelPanel() {
             </p>
           ) : null}
 
+          {data.incompatible ? (
+            <p className="rounded-md border border-caution/40 bg-caution/5 p-2 text-xs text-muted-foreground">
+              {data.incompatible.toLocaleString()} stored epochs were excluded from fitting and
+              grading: {data.incompatibleReason ?? "their transform is not fit-compatible"} The
+              original rows are kept unchanged.
+            </p>
+          ) : null}
+
 
           {selected ? (
             <div className="space-y-2 rounded-md border border-signal/40 bg-signal/5 p-3">
