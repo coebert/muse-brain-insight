@@ -131,6 +131,7 @@ import { BleIdentifyPanel } from "@/components/monitor/BleIdentifyPanel";
 import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
 
 import { cn } from "@/lib/utils";
+import { measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
