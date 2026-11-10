@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_authenticated/_admin/model-compare")({
   component: ModelComparePage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
   notFoundComponent: () => <div className="p-6 text-sm">Nothing to compare yet.</div>,

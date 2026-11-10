@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/_admin/coebis")({
   component: CoebisDataPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
   notFoundComponent: () => <div className="p-6 text-sm">No COEBIS data found.</div>,
