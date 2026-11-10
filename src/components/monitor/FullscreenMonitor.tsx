@@ -428,8 +428,14 @@ export function FullscreenMonitor({
               size="bedside"
               label="Seizure score"
               info="seizure"
-              value={latest ? latest.seizureScore.toFixed(2) : "—"}
-              hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
+              value={measuredSeizureScore(latest)?.toFixed(2) ?? "—"}
+              hint={
+                latest && measuredSeizureScore(latest) == null
+                  ? "Withheld — no microvolt scale"
+                  : latest?.seizureAlert
+                    ? "Rhythmic discharges"
+                    : "Below alert threshold"
+              }
               tone={latest?.seizureAlert ? "critical" : "default"}
             />
           </div>
