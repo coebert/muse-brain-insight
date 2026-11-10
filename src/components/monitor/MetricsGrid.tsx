@@ -12,13 +12,15 @@ import type { Epoch } from "@/lib/eeg/analysis";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import type { DepthWindowStatus, DepthWindowPrefs } from "@/hooks/useDepthWindowAlerts";
 import type { UncertaintyReport } from "@/lib/eeg/uncertainty";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface MetricsGridProps {
   latest: Epoch | null;
   summary: {
-    maxSr: number;
-    suppressionSeconds: number;
-    seizureAlerts: number;
+    /** Null when withheld (uncalibrated amplitude). */
+    maxSr: number | null;
+    suppressionSeconds: number | null;
+    seizureAlerts: number | null;
   };
   srWindowSeconds: number;
   srTone: MetricTone;
@@ -122,13 +124,17 @@ export function MetricsGrid({
               key="sr"
               info="sr"
               label={`Suppression ratio (${srWindowSeconds}s)`}
-              value={latest ? latest.suppressionRatio.toFixed(0) : "—"}
+              value={measuredSuppressionRatio(latest)?.toFixed(0) ?? "—"}
               unit="%"
               tone={srTone}
               hint={
-                srCi
-                  ? `Peak ${summary.maxSr.toFixed(0)} % · 95 % CI ${srCi.low.toFixed(0)}–${srCi.high.toFixed(0)} %`
-                  : `Peak ${summary.maxSr.toFixed(0)} %`
+                summary.maxSr == null
+                  ? latest
+                    ? "Withheld — no microvolt scale"
+                    : "—"
+                  : srCi
+                    ? `Peak ${summary.maxSr.toFixed(0)} % · 95 % CI ${srCi.low.toFixed(0)}–${srCi.high.toFixed(0)} %`
+                    : `Peak ${summary.maxSr.toFixed(0)} %`
               }
               confidence={latest?.confidence.suppression}
             />
@@ -138,10 +144,24 @@ export function MetricsGrid({
               key="time"
               info="suppressionTime"
               label="Suppression time"
-              value={formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0"}
-              unit={summary.suppressionSeconds < 60 ? "s" : "min"}
-              hint={`Total ${formatDuration(summary.suppressionSeconds)}`}
-              tone={summary.suppressionSeconds > 0 ? "caution" : "default"}
+              value={
+                summary.suppressionSeconds == null
+                  ? "—"
+                  : (formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0")
+              }
+              unit={
+                summary.suppressionSeconds == null ? "" : summary.suppressionSeconds < 60 ? "s" : "min"
+              }
+              hint={
+                summary.suppressionSeconds == null
+                  ? "Withheld — no microvolt scale"
+                  : `Total ${formatDuration(summary.suppressionSeconds)}`
+              }
+              tone={
+                summary.suppressionSeconds != null && summary.suppressionSeconds > 0
+                  ? "caution"
+                  : "default"
+              }
               confidence={latest?.confidence.suppression}
             />
           ),
@@ -150,23 +170,25 @@ export function MetricsGrid({
               key="seizure"
               info="seizure"
               label="Seizure score"
-              value={latest ? latest.seizureScore.toFixed(2) : "—"}
+              value={measuredSeizureScore(latest)?.toFixed(2) ?? "—"}
               tone={
                 seizureAlert
                   ? icuMode
                     ? "critical"
                     : "caution"
-                  : latest && latest.seizureScore > 0.4 && icuMode
+                  : (measuredSeizureScore(latest) ?? 0) > 0.4 && icuMode
                     ? "caution"
                     : "default"
               }
               hint={
-                (seizureCi
-                  ? `95 % CI ${seizureCi.low.toFixed(2)}–${seizureCi.high.toFixed(2)} · `
-                  : "") +
-                (icuMode
-                  ? `${summary.seizureAlerts} event(s) — high sensitivity`
-                  : `${summary.seizureAlerts} event(s) — background watch`)
+                summary.seizureAlerts == null
+                  ? "Withheld — fixed µV gates need a microvolt scale"
+                  : (seizureCi
+                      ? `95 % CI ${seizureCi.low.toFixed(2)}–${seizureCi.high.toFixed(2)} · `
+                      : "") +
+                    (icuMode
+                      ? `${summary.seizureAlerts} event(s) — high sensitivity`
+                      : `${summary.seizureAlerts} event(s) — background watch`)
               }
               pulse={seizureAlert && icuMode}
               confidence={latest?.confidence.seizure}
@@ -251,9 +273,11 @@ export function MetricsGrid({
               value={latest?.composite.cIndex != null ? String(latest.composite.cIndex) : "—"}
               hint={
                 latest
-                  ? latest.composite.held
-                    ? "Held — artefact"
-                    : COMPOSITE_BAND_LABEL[latest.composite.cBand]
+                  ? latest.composite.withheldReason
+                    ? "Withheld — suppression unavailable (no µV scale)"
+                    : latest.composite.held
+                      ? "Held — artefact"
+                      : COMPOSITE_BAND_LABEL[latest.composite.cBand]
                   : "Composite of fast/slow balance, entropy and suppression"
               }
               tone={
@@ -276,9 +300,11 @@ export function MetricsGrid({
               value={latest?.composite.nIndex != null ? String(latest.composite.nIndex) : "—"}
               hint={
                 latest
-                  ? latest.composite.held
-                    ? "Held — artefact"
-                    : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
+                  ? latest.composite.withheldReason
+                    ? "Withheld — suppression unavailable (no µV scale)"
+                    : latest.composite.held
+                      ? "Held — artefact"
+                      : NOCICEPTION_BAND_LABEL[latest.composite.nBand]
                   : "High-frequency drive, reactivity and entropy gap"
               }
               tone={

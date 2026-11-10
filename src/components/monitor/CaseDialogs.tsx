@@ -29,7 +29,8 @@ interface Props {
   eventCount: number;
   markerCount: number;
   elapsed: number;
-  meanSr: number;
+  /** Null when suppression was withheld (uncalibrated amplitude). */
+  meanSr: number | null;
   bleSupported: boolean;
   checklist: Record<string, boolean>;
   onToggleChecklist: (key: ChecklistKey) => void;
@@ -196,7 +197,7 @@ export function CaseDialogs({
           </DialogHeader>
           <p className="metric-value text-xs text-muted-foreground">
             {formatClock(elapsed)} · {epochCount} epochs · {eventCount} events · mean SR{" "}
-            {meanSr.toFixed(0)} %
+            {meanSr == null ? "withheld (no µV scale)" : `${meanSr.toFixed(0)} %`}
           </p>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => onEnd(false)}>

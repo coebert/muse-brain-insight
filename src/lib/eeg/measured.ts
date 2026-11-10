@@ -7,13 +7,16 @@
  * compatibility; every display, export, digest and persistence path must read
  * the values through these helpers so a withheld value is `null` — never 0.
  */
-import type { Epoch } from "@/lib/eeg/analysis";
 
-type SuppressionFields = Pick<Epoch, "suppressionRatio" | "epochSuppression" | "isSuppressed"> & {
-  suppressionAvailable?: boolean;
+type SuppressionFields = {
+  suppressionRatio?: number | null | undefined;
+  epochSuppression?: number | null | undefined;
+  isSuppressed?: boolean | null | undefined;
+  suppressionAvailable?: boolean | undefined;
 };
-type SeizureFields = Pick<Epoch, "seizureScore" | "seizureAlert"> & {
-  seizureAvailable?: boolean;
+type SeizureFields = {
+  seizureScore?: number | null | undefined;
+  seizureAvailable?: boolean | undefined;
 };
 
 export const SUPPRESSION_WITHHELD_REASON =
@@ -32,24 +35,30 @@ export function seizureMeasured(e: { seizureAvailable?: boolean } | null | undef
 /** Trailing-window suppression ratio (%), or null when withheld. */
 export function measuredSuppressionRatio(e: SuppressionFields | null | undefined): number | null {
   if (!e || e.suppressionAvailable === false) return null;
-  return Number.isFinite(e.suppressionRatio) ? e.suppressionRatio : null;
+  return typeof e.suppressionRatio === "number" && Number.isFinite(e.suppressionRatio)
+    ? e.suppressionRatio
+    : null;
 }
 
 /** Fraction of this epoch that was isoelectric (0–1), or null when withheld. */
 export function measuredEpochSuppression(e: SuppressionFields | null | undefined): number | null {
   if (!e || e.suppressionAvailable === false) return null;
-  return Number.isFinite(e.epochSuppression) ? e.epochSuppression : null;
+  return typeof e.epochSuppression === "number" && Number.isFinite(e.epochSuppression)
+    ? e.epochSuppression
+    : null;
 }
 
 export function measuredIsSuppressed(e: SuppressionFields | null | undefined): boolean | null {
   if (!e || e.suppressionAvailable === false) return null;
-  return e.isSuppressed;
+  return e.isSuppressed ?? null;
 }
 
 /** Seizure likelihood (0–1), or null when withheld. */
 export function measuredSeizureScore(e: SeizureFields | null | undefined): number | null {
   if (!e || e.seizureAvailable === false) return null;
-  return Number.isFinite(e.seizureScore) ? e.seizureScore : null;
+  return typeof e.seizureScore === "number" && Number.isFinite(e.seizureScore)
+    ? e.seizureScore
+    : null;
 }
 
 /** Values of `pick` over the epochs where it was measured (nulls dropped, never zero-filled). */

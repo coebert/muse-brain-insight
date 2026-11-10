@@ -11,6 +11,7 @@ import { useCaseSession } from "@/components/monitor/CaseSessionProvider";
 import { Button } from "@/components/ui/button";
 import { deriveConnectionStatus } from "@/lib/eeg/connection-status";
 import { formatClock } from "@/lib/eeg/format";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export const Route = createFileRoute("/_authenticated/_admin/brainwaves")({
   head: () => ({
@@ -138,11 +139,23 @@ function BrainwavesPage() {
                 <Metric label="SEF95" value={latest ? `${latest.sef95.toFixed(1)} Hz` : "—"} />
                 <Metric
                   label="Amplitude"
-                  value={latest ? `${latest.amplitudeUv.toFixed(1)} µV` : "—"}
+                  value={
+                    latest
+                      ? latest.amplitudeCalibrated === false
+                        ? `${latest.amplitudeUv.toFixed(1)} (device units)`
+                        : `${latest.amplitudeUv.toFixed(1)} µV`
+                      : "—"
+                  }
                 />
                 <Metric
                   label="Suppression ratio"
-                  value={latest ? `${latest.suppressionRatio.toFixed(0)} %` : "—"}
+                  value={
+                    latest
+                      ? measuredSuppressionRatio(latest) == null
+                        ? "withheld (no µV scale)"
+                        : `${measuredSuppressionRatio(latest)!.toFixed(0)} %`
+                      : "—"
+                  }
                 />
                 <Metric
                   label="Signal quality"

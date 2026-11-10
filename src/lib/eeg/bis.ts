@@ -19,6 +19,7 @@ import {
   type IndexSample,
   type PairStability,
 } from "@/lib/eeg/pairing-lag";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** One transcribed reading from the commercial monitor. */
 export interface BisReading {
@@ -222,7 +223,7 @@ export function pairBisReadings(
         nearestIndex == null || !series.length
           ? nearestIndex
           : laggedAppIndex(series, r.at, lag, nearestIndex);
-      const appSr = epoch ? epoch.suppressionRatio : null;
+      const appSr = measuredSuppressionRatio(epoch);
       const appSef = epoch?.sef95 ?? null;
       const appSefRaw = epoch?.sef95Raw ?? null;
       return {

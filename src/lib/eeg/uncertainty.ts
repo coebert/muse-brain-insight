@@ -10,6 +10,7 @@
  * Pure functions — no I/O, no React — so they can be unit-tested directly.
  */
 import type { Epoch } from "@/lib/eeg/analysis";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** Seconds between epoch updates (matches the analyser hop). */
 const HOP_SECONDS = 1;
@@ -277,12 +278,14 @@ function spectralUncertainty(epochs: Epoch[], trendSeconds: number): AssessmentU
 
 function suppressionUncertainty(epochs: Epoch[], srWindowSeconds: number): AssessmentUncertainty {
   const all = recent(epochs, srWindowSeconds);
-  const window = all.filter((e) => !e.artifact);
+  // Withheld epochs (uncalibrated amplitude) carry no measurement: they are
+  // excluded, so an all-withheld window gives the empty assessment, not 0 %.
+  const window = all.filter((e) => !e.artifact && measuredEpochSuppression(e) != null);
   if (!window.length) {
     return emptyAssessment("suppression", "Suppression ratio", "%", srWindowSeconds);
   }
 
-  const fractions = window.map((e) => e.epochSuppression);
+  const fractions = window.map((e) => measuredEpochSuppression(e)!);
   const p = mean(fractions);
   const nEff = effectiveN(fractions);
   const latest = window[window.length - 1]!;
@@ -386,7 +389,9 @@ function seizureUncertainty(
   trendSeconds: number,
   threshold: number,
 ): AssessmentUncertainty {
-  const window = recent(epochs, trendSeconds).filter((e) => !e.artifact);
+  const window = recent(epochs, trendSeconds).filter(
+    (e) => !e.artifact && measuredSeizureScore(e) != null,
+  );
   if (!window.length) return emptyAssessment("seizure", "Seizure risk score", "", trendSeconds);
 
   const scores = window.map((e) => e.seizureScore);

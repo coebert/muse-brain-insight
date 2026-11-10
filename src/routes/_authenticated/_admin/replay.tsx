@@ -67,6 +67,7 @@ function Replay() {
   const [bisCol, setBisCol] = useState<number | null>(null);
   const [timeCol, setTimeCol] = useState<number | null>(null);
   const [sampleRate, setSampleRate] = useState("250");
+  const [microvolts, setMicrovolts] = useState(true);
   const [cov, setCov] = useState<CaseCovariates>({});
   const [result, setResult] = useState<ReplayResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -114,6 +115,7 @@ function Replay() {
         covariates: cov,
         toleranceSeconds: Math.max(2, Math.min(30, spacing)),
         priors: priors.data?.groups ?? [],
+        amplitudeCalibrated: microvolts,
       });
       setResult(replay);
       if (!replay.frames.length) toast.error(replay.notes[0] ?? "Nothing to replay.");
@@ -218,6 +220,14 @@ function Replay() {
                   inputMode="numeric"
                 />
               </div>
+              <label className="flex items-center gap-2 pb-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={microvolts}
+                  onChange={(e) => setMicrovolts(e.target.checked)}
+                />
+                EEG column is in microvolts
+              </label>
             </>
           ) : null}
         </div>

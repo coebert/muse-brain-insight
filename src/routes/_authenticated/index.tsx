@@ -131,6 +131,7 @@ import { BleIdentifyPanel } from "@/components/monitor/BleIdentifyPanel";
 import { LiveSpectrumPanel } from "@/components/monitor/LiveSpectrumPanel";
 
 import { cn } from "@/lib/utils";
+import { measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -786,7 +787,11 @@ function Monitor() {
                         <div
                           key={i}
                           style={{ flexGrow: 1 }}
-                          title={`${formatClock(e.t)} · SR ${e.suppressionRatio.toFixed(0)}%`}
+                          title={`${formatClock(e.t)} · SR ${
+                            measuredSuppressionRatio(e) == null
+                              ? "withheld"
+                              : `${measuredSuppressionRatio(e)!.toFixed(0)}%`
+                          }`}
                           className={cn(
                             "h-full",
                             e.seizureAlert
@@ -1202,7 +1207,7 @@ function Monitor() {
                 <DetectionThresholds
                   settings={monitor.settings}
                   suppression={{
-                    ratio: latest ? latest.suppressionRatio : null,
+                    ratio: measuredSuppressionRatio(latest),
                     maxRatio: summary.maxSr,
                     seconds: summary.suppressionSeconds,
                   }}

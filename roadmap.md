@@ -10,7 +10,8 @@
 - [x] Regression tests, typecheck, AGENTS.md rules
 
 ## Pass 2 (continue remaining fixes)
-- [ ] A. OpenIBIS-style index withholds amplitude-dependent index/components on uncalibrated devices; audit null→0 fallbacks; no stale held score
+- [x] A. OpenIBIS-style index withholds amplitude-dependent index/components on uncalibrated devices; audit null→0 fallbacks; no stale held score
+- [ ] A-followup: signal-quality grade, depth artefact gate and ble/ingest paths still use fixed µV limits (CLIP 350, JUMP 30, flat 0.5) on uncalibrated bands
 - [ ] B. Case-notes AI explanatory-only (no feedback-driven ranking/threshold adaptation); guard numeric evidence by metric/value/unit/window
 - [ ] C. Hydration mismatch / first-load warning; typecheck, tests, build, authenticated smoke
 - [ ] D. Patient grouping: canonical cohort + subject key, case fallback reported, no split leakage; ds004504/ds006036 shared cohort

@@ -1,6 +1,7 @@
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { pearson } from "@/lib/eeg/correlation";
 import { ceHistory, tciModel, type TciInfusion } from "@/lib/eeg/tci";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** Seconds of EEG averaged either side of a Ce change. */
 const BEFORE_WINDOW = 90;
@@ -81,9 +82,9 @@ function value(e: Epoch, key: string): number | null {
     case "sef95Hz":
       return e.sef95;
     case "suppressionRatioPct":
-      return e.suppressionRatio;
+      return measuredSuppressionRatio(e);
     case "seizureScore":
-      return e.seizureScore;
+      return measuredSeizureScore(e);
     case "stateEntropy":
       return e.entropy.state;
     case "deltaAlphaRatio":
@@ -235,8 +236,13 @@ export function buildTciResponseDigest(
             meanDepth: round(
               mean(es.map((e) => e.depth.index).filter((v): v is number => v != null)),
             ),
-            meanSuppressionPct: round(mean(es.map((e) => e.suppressionRatio))),
-            meanSeizureScore: round(mean(es.map((e) => e.seizureScore)), 2),
+            meanSuppressionPct: round(
+              mean(es.map((e) => measuredSuppressionRatio(e)).filter((v): v is number => v != null)),
+            ),
+            meanSeizureScore: round(
+              mean(es.map((e) => measuredSeizureScore(e)).filter((v): v is number => v != null)),
+              2,
+            ),
           })),
       });
     }

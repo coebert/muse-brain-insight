@@ -33,6 +33,7 @@ import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 interface Props {
   epochs: Epoch[];
@@ -51,7 +52,8 @@ interface Props {
   modeLabel: string;
   windowMinutes: number;
   markers: DetectedEvent[];
-  suppressionSeconds: number;
+  /** Null when suppression was withheld (uncalibrated amplitude). */
+  suppressionSeconds: number | null;
   suppressionThresholdUv: number;
   dsaView: DsaView;
   onDsaViewChange: (view: DsaView) => void;
@@ -141,7 +143,7 @@ export function FullscreenMonitor({
       alignSeries<Epoch, number>(
         visible,
         (e) => e.t,
-        (e) => e.suppressionRatio,
+        (e) => measuredSuppressionRatio(e),
       ),
     [visible],
   );
@@ -157,8 +159,9 @@ export function FullscreenMonitor({
 
   const depth = latest?.depth;
   const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";
-  const srValue = latest?.suppressionRatio ?? 0;
-  const srTone: MetricTone = suppressionTone(latest ? srValue : null);
+  // Withheld suppression stays null — the tile reads "—", never 0 %.
+  const srValue = measuredSuppressionRatio(latest);
+  const srTone: MetricTone = suppressionTone(srValue);
   const quality = latest?.quality;
   const qualityTone: MetricTone =
     quality?.grade === "poor" ? "critical" : quality?.grade === "fair" ? "caution" : "signal";
@@ -314,7 +317,9 @@ export function FullscreenMonitor({
                   SEF95 / SR
                 </span>
                 <span className="metric-value text-xs text-muted-foreground">
-                  {latest ? `${latest.sef95.toFixed(1)} Hz · ${srValue.toFixed(0)} %` : "—"}
+                  {latest
+                    ? `${latest.sef95.toFixed(1)} Hz · ${srValue == null ? "SR withheld" : `${srValue.toFixed(0)} %`}`
+                    : "—"}
                 </span>
               </div>
               <div className="relative h-[calc(100%-18px)] min-h-[70px]">
@@ -389,9 +394,13 @@ export function FullscreenMonitor({
             size="bedside"
             label="Suppression ratio"
             info="sr"
-            value={latest ? srValue.toFixed(0) : "—"}
+            value={srValue == null ? "—" : srValue.toFixed(0)}
             unit="%"
-            hint={`Supp. time ${formatDuration(suppressionSeconds)}`}
+            hint={
+              latest && srValue == null
+                ? "Withheld — no microvolt scale"
+                : `Supp. time ${suppressionSeconds == null ? "—" : formatDuration(suppressionSeconds)}`
+            }
             tone={srTone}
           />
           <MetricCard
@@ -421,8 +430,14 @@ export function FullscreenMonitor({
               size="bedside"
               label="Seizure score"
               info="seizure"
-              value={latest ? latest.seizureScore.toFixed(2) : "—"}
-              hint={latest?.seizureAlert ? "Rhythmic discharges" : "Below alert threshold"}
+              value={measuredSeizureScore(latest)?.toFixed(2) ?? "—"}
+              hint={
+                latest && measuredSeizureScore(latest) == null
+                  ? "Withheld — no microvolt scale"
+                  : latest?.seizureAlert
+                    ? "Rhythmic discharges"
+                    : "Below alert threshold"
+              }
               tone={latest?.seizureAlert ? "critical" : "default"}
             />
           </div>

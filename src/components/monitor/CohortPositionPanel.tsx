@@ -7,6 +7,7 @@ import { depthExposureOf } from "@/lib/eeg/case-outcomes";
 import { getOutcomeCohort } from "@/lib/eeg/case-outcomes.functions";
 import { cohortPosition, type ExposureBand } from "@/lib/eeg/cohort-position";
 import { cn } from "@/lib/utils";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface CohortEpoch {
   t: number;
@@ -96,7 +97,7 @@ export function CohortPositionPanel({ epochs }: { epochs: CohortEpoch[] }) {
       .map((e) => ({
         atSeconds: e.t,
         index: e.depth!.index as number,
-        suppressionRatio: e.suppressionRatio,
+        suppressionRatio: measuredSuppressionRatio(e),
       }));
     return depthExposureOf("live", readings);
   }, [epochs]);

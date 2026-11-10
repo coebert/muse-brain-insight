@@ -1,0 +1,2 @@
+ALTER TABLE public.eeg_sessions ALTER COLUMN seizure_alerts DROP NOT NULL;
+COMMENT ON COLUMN public.eeg_sessions.seizure_alerts IS 'Count of seizure detections. NULL when the seizure score was withheld for the whole case (device amplitude not calibrated); never 0 in that case.';

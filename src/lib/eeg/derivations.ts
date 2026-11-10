@@ -6,6 +6,7 @@ import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
 import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
 import { computeUncertainty, type UncertaintyReport } from "@/lib/eeg/uncertainty";
+import { measuredSeizureScore } from "@/lib/eeg/measured";
 
 /** Suppression ratio (%) at which the readout turns critical. */
 export const DEEP_SUPPRESSION_PERCENT = 40;
@@ -101,7 +102,8 @@ export function deriveClinical(input: ClinicalDerivationInput): ClinicalDerivati
       // Withheld (null) when the band has no microvolt scale — never a 0 %.
       suppressionRatio:
         latest && latest.suppressionAvailable !== false ? Math.round(latest.suppressionRatio) : null,
-      seizureScore: latest?.seizureScore ?? null,
+      // Withheld (null) when the fixed µV seizure gates cannot be applied.
+      seizureScore: measuredSeizureScore(latest),
       sef95: latest?.sef95 ?? null,
       sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
     },

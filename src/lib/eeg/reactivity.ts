@@ -10,6 +10,7 @@
  */
 
 import type { CaseObservation } from "@/lib/eeg/case-observations";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** The minimum a reading needs to be placed on the case clock. */
 export interface ReactivityEpoch {
@@ -19,6 +20,10 @@ export interface ReactivityEpoch {
   sef95?: number | null;
   suppressionRatio?: number | null;
   seizureScore?: number | null;
+  /** False when suppression was withheld (uncalibrated amplitude). */
+  suppressionAvailable?: boolean;
+  /** False when the seizure score was withheld (uncalibrated amplitude). */
+  seizureAvailable?: boolean;
 }
 
 export interface ReactivityWindow {
@@ -92,8 +97,8 @@ export function reactivityAt(
       .map((e) => ({ t: e.t, offset: e.t - at, index: e.depth?.index ?? null })),
     depth: measure(before, after, (e) => e.depth?.index ?? null),
     sef95: measure(before, after, (e) => e.sef95 ?? null),
-    suppression: measure(before, after, (e) => e.suppressionRatio ?? null),
-    seizure: measure(before, after, (e) => e.seizureScore ?? null),
+    suppression: measure(before, after, (e) => measuredSuppressionRatio(e)),
+    seizure: measure(before, after, (e) => measuredSeizureScore(e)),
     beforeCount: before.length,
     afterCount: after.length,
   };

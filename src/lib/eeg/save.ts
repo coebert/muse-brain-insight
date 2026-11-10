@@ -102,12 +102,14 @@ export async function saveSession(
   epochs: Epoch[],
   events: DetectedEvent[],
   summary: {
-    meanSr: number;
-    maxSr: number;
-    suppressionSeconds: number;
-    seizureAlerts: number;
+    meanSr: number | null;
+    maxSr: number | null;
+    suppressionSeconds: number | null;
+    seizureAlerts: number | null;
     /** False when the band had no µV scale: suppression is filed as null, not 0. */
     suppressionAvailable?: boolean;
+    /** False when the seizure score was withheld for the whole case. */
+    seizureAvailable?: boolean;
   },
   elapsed: number,
   /** Wall-clock time the case actually started, in ms since epoch. */
@@ -214,13 +216,16 @@ export async function saveSession(
         acute_class: derivedClinical.acuteClass,
         duration_seconds: Math.round(elapsed),
         // Withheld on bands without a microvolt scale — null, never 0.
-        mean_suppression_ratio: suppressionAvailable ? Number(summary.meanSr.toFixed(2)) : null,
-        max_suppression_ratio: suppressionAvailable ? Number(summary.maxSr.toFixed(2)) : null,
-        suppression_seconds: suppressionAvailable
-          ? Number(summary.suppressionSeconds.toFixed(1))
-          : null,
+        mean_suppression_ratio:
+          suppressionAvailable && summary.meanSr != null ? Number(summary.meanSr.toFixed(2)) : null,
+        max_suppression_ratio:
+          suppressionAvailable && summary.maxSr != null ? Number(summary.maxSr.toFixed(2)) : null,
+        suppression_seconds:
+          suppressionAvailable && summary.suppressionSeconds != null
+            ? Number(summary.suppressionSeconds.toFixed(1))
+            : null,
         model_provenance: (modelProvenance ?? null) as unknown as Json,
-        seizure_alerts: summary.seizureAlerts,
+        seizure_alerts: summary.seizureAvailable === false ? null : summary.seizureAlerts,
         started_at: startedAt.toISOString(),
         ended_at: endedAt.toISOString(),
       })

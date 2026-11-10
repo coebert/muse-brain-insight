@@ -15,6 +15,7 @@ import type { ChannelStatePoint } from "@/lib/eeg/channel-completeness";
 import type { ChannelCompleteness } from "@/lib/eeg/channel-completeness";
 import { cn } from "@/lib/utils";
 import { MONITOR_JUMP, type MonitorJumpTarget } from "@/lib/monitor-jump";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface CaseDetailsDrawerProps {
   open: boolean;
@@ -182,7 +183,13 @@ export function CaseDetailsDrawer({
 
   const seizureAlerts = epochs.filter((e) => e.seizureAlert).length;
   const poorEpochs = epochs.filter((e) => e.quality.grade === "poor").length;
-  const suppressionSeconds = epochs.reduce((a, e) => a + e.epochSuppression * (coverage.cadenceSeconds || 1), 0);
+  // Null when no epoch measured suppression (uncalibrated band) — never 0 s.
+  const measuredFractions = epochs
+    .map((e) => measuredEpochSuppression(e))
+    .filter((v): v is number => v != null);
+  const suppressionSeconds = measuredFractions.length
+    ? measuredFractions.reduce((a, v) => a + v * (coverage.cadenceSeconds || 1), 0)
+    : null;
 
   // Last-few-minutes trends for the drawer sparklines.
   const cadence = coverage.cadenceSeconds || 1;
@@ -191,7 +198,7 @@ export function CaseDetailsDrawer({
   let cumulative = 0;
   const windowed: { t: number; suppression: number; quality: number | null }[] = [];
   for (const e of epochs) {
-    cumulative += e.epochSuppression * cadence;
+    cumulative += (measuredEpochSuppression(e) ?? 0) * cadence; // sparkline only; tile shows withheld
     if (e.t >= cutoff) {
       windowed.push({
         t: e.t,
@@ -300,9 +307,9 @@ export function CaseDetailsDrawer({
             />
             <Metric label="Depth index" value={num(latest?.depth?.index, 0)} sub="OpenIBIS-style" target="metrics" onJump={onJump} />
             <Metric label="SEF95" value={num(latest?.sef95, 1, " Hz")} target="dsa" onJump={onJump} />
-            <Metric label="Suppression ratio" value={num(latest?.suppressionRatio, 0, " %")} target="metrics" onJump={onJump} />
-            <Metric label="Suppression time" value={formatDuration(Math.round(suppressionSeconds))} target="metrics" onJump={onJump} />
-            <Metric label="Seizure score" value={num(latest?.seizureScore, 2)} sub={`${seizureAlerts} alert epochs`} target="events" onJump={onJump} />
+            <Metric label="Suppression ratio" value={latest && measuredSuppressionRatio(latest) == null ? "withheld" : num(measuredSuppressionRatio(latest), 0, " %")} target="metrics" onJump={onJump} />
+            <Metric label="Suppression time" value={suppressionSeconds == null ? "withheld" : formatDuration(Math.round(suppressionSeconds))} target="metrics" onJump={onJump} />
+            <Metric label="Seizure score" value={latest && measuredSeizureScore(latest) == null ? "withheld" : num(measuredSeizureScore(latest), 2)} sub={`${seizureAlerts} alert epochs`} target="events" onJump={onJump} />
             <Metric label="Signal quality" value={num(latest ? latest.quality.score * 100 : null, 0, " %")} sub={latest?.quality?.grade ?? "—"} target="signal-quality" onJump={onJump} />
           </div>
 

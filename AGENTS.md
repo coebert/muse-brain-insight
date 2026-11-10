@@ -11,7 +11,7 @@
 
 ## Research-integrity rules (EEG)
 
-- Uncalibrated amplitude (`calibratedAmplitude: false`) withholds COEBIS-2 and every µV-dependent output (suppression, PTP); store and pass NULL with a reason, never 0 — absolute features are invalid on an unknown scale.
+- Uncalibrated amplitude (`calibratedAmplitude: false`) withholds every µV-dependent output — COEBIS-2, OpenIBIS index/COEBIS, suppression/BSR, composite cIndex/nIndex, monitor SE/RE, seizure score, PTP; store and pass NULL with a reason, never 0, and read epoch values through `measured.ts`. Amplitude-invariant spectral features stay available. Calibration changes reset held state.
 - Never score a waveform-trained model from spectrum-only stored data with substituted inputs; return an explicit unavailable result listing missing inputs.
 - Harmonisation records the source reference and passband only; it never applies gains, never infers an average reference from "-REF", and leaves unsupported bands unavailable. New fits must pass `isHarmonizationFitCompatible` (legacy records stay stored but excluded until reprocessed).
 - Disease targets come only from explicit confirmed diagnoses with provenance; dataset categories (`pathology_category`, etc.) are descriptors, never targets. Diagnosis output is exploratory and uncalibrated.
