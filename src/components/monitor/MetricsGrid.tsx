@@ -12,6 +12,7 @@ import type { Epoch } from "@/lib/eeg/analysis";
 import type { MetricTone } from "@/components/monitor/MetricCard";
 import type { DepthWindowStatus, DepthWindowPrefs } from "@/hooks/useDepthWindowAlerts";
 import type { UncertaintyReport } from "@/lib/eeg/uncertainty";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface MetricsGridProps {
   latest: Epoch | null;
