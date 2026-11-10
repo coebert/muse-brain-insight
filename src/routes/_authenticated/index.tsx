@@ -941,7 +941,7 @@ function Monitor() {
               contactOk={monitor.contactOk}
             />
 
-            {/* Sudden one-sided loss of EEG — the stroke pattern. */}
+            {/* Experimental EEG asymmetry watch (no imaging validation). */}
             <CvaWatchPanel
               hemiSpectra={monitor.hemiSpectra}
               sqiHistory={monitor.sqiHistory}

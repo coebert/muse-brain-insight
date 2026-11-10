@@ -85,8 +85,9 @@ export function captureRowsFrom(
       recordedAt: new Date(sessionStart + e.t * 1000).toISOString(),
       depthIndex: num(e.depth?.index),
       sef95: num(e.sef95Raw ?? e.sef95),
-      suppressionRatio: num(e.suppressionRatio),
-      epochSuppression: num(e.epochSuppression),
+      // Withheld (uncalibrated amplitude) suppression is stored as null, not 0.
+      suppressionRatio: e.suppressionAvailable === false ? null : num(e.suppressionRatio),
+      epochSuppression: e.suppressionAvailable === false ? null : num(e.epochSuppression),
       totalPower: num(e.totalPower),
       amplitudeUv: num(e.amplitudeUv),
       sqi: num(e.quality?.score),

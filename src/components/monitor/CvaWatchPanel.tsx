@@ -15,9 +15,9 @@ interface Props {
 }
 
 /**
- * Watches for a sudden one-sided loss of EEG that sensor contact cannot
- * explain — the electrical signature of acute cortical ischaemia, and the
- * reason EEG is monitored during carotid cross-clamping.
+ * Experimental EEG asymmetry/change watch: flags a sudden one-sided loss of
+ * EEG that sensor contact cannot explain. It has no imaging validation and is
+ * not a stroke detector.
  */
 export function CvaWatchPanel({ hemiSpectra, sqiHistory, bilateral }: Props) {
   const report: CvaReport = useMemo(() => {
@@ -39,7 +39,7 @@ export function CvaWatchPanel({ hemiSpectra, sqiHistory, bilateral }: Props) {
     return (
       <section className="panel px-3 py-3 sm:px-4">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Brain className="size-4 text-muted-foreground" /> Stroke watch
+          <Brain className="size-4 text-muted-foreground" /> Experimental EEG asymmetry watch
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           This headband has sensors on one side only, so left cannot be compared with right.
@@ -70,8 +70,11 @@ export function CvaWatchPanel({ hemiSpectra, sqiHistory, bilateral }: Props) {
           ) : (
             <ShieldCheck className="size-4 text-signal" />
           )}
-          Stroke watch · left vs right
+          Experimental EEG asymmetry watch · left vs right
         </h2>
+        <span className="rounded-full border border-caution/50 bg-caution/10 px-2 py-0.5 text-[11px] font-medium text-caution">
+          No imaging validation
+        </span>
         <span
           className={cn(
             "metric-value ml-auto rounded-full px-2 py-0.5 text-xs",
@@ -124,9 +127,10 @@ export function CvaWatchPanel({ hemiSpectra, sqiHistory, bilateral }: Props) {
       ) : null}
 
       <p className="mt-3 text-[11px] text-muted-foreground">
-        Advisory pattern detection, not a diagnosis. It compares each side with its own earlier
-        self and stays silent when the falling side's contact quality has fallen too. It has not
-        been validated against imaging-confirmed strokes.
+        Experimental research pattern detection — not a stroke detector and not a diagnosis. It
+        compares each side with its own earlier self and stays silent when the falling side's
+        contact quality has fallen too. It has never been validated against imaging-confirmed
+        strokes or any clinical outcome.
       </p>
     </section>
   );

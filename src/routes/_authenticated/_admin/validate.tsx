@@ -1,3 +1,4 @@
+import { ValidationRegistryPanel } from "@/components/monitor/ValidationStatus";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -262,6 +263,8 @@ function Validate() {
           depth index it computed, then reports correlation, bias and Bland-Altman limits of
           agreement.
         </p>
+
+        <ValidationRegistryPanel className="mt-4" />
 
         <section className="panel mt-4 px-3 py-4 sm:px-4">
           <div

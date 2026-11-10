@@ -34,13 +34,20 @@ export interface FeatureDigest {
     /** Clinician's free-text case summary, for narrative context. */
     caseSummary: string | null;
   };
+  /**
+   * Null values (with `available: false`) mean suppression was withheld
+   * because the device amplitude scale is not calibrated — not "no
+   * suppression". Never read a withheld value as zero.
+   */
   suppression: {
-    meanRatioPct: number;
-    maxRatioPct: number;
-    suppressionSeconds: number;
-    longestSuppressionSeconds: number;
-    burstSuppressionEvents: number;
-    isoelectricEvents: number;
+    available: boolean;
+    unavailableReason: string | null;
+    meanRatioPct: number | null;
+    maxRatioPct: number | null;
+    suppressionSeconds: number | null;
+    longestSuppressionSeconds: number | null;
+    burstSuppressionEvents: number | null;
+    isoelectricEvents: number | null;
   };
   seizure: {
     alerts: number;
@@ -212,18 +219,39 @@ export function buildFeatureDigest(
       notes: patient.notes.trim() || null,
       caseSummary: (patient.caseSummary ?? "").trim() || null,
     },
-    suppression: {
-      meanRatioPct: round(mean(epochs.map((e) => e.suppressionRatio)), 1),
-      maxRatioPct: round(Math.max(0, ...epochs.map((e) => e.suppressionRatio)), 1),
-      // Summed over analysed epochs (1 s hop) so gap seconds add nothing.
-      suppressionSeconds: round(
-        epochs.reduce((a, e) => a + e.epochSuppression, 0),
-        1,
-      ),
-      longestSuppressionSeconds: round(Math.max(0, ...suppressionEvents.map((e) => e.duration)), 1),
-      burstSuppressionEvents: suppressionEvents.length,
-      isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
-    },
+    suppression: (() => {
+      const measured = epochs.filter((e) => e.suppressionAvailable !== false);
+      if (epochs.length > 0 && measured.length === 0) {
+        return {
+          available: false,
+          unavailableReason:
+            "Device amplitude scale is not calibrated; suppression was withheld, not measured as zero.",
+          meanRatioPct: null,
+          maxRatioPct: null,
+          suppressionSeconds: null,
+          longestSuppressionSeconds: null,
+          burstSuppressionEvents: null,
+          isoelectricEvents: null,
+        };
+      }
+      return {
+        available: true,
+        unavailableReason: null,
+        meanRatioPct: round(mean(measured.map((e) => e.suppressionRatio)), 1),
+        maxRatioPct: round(Math.max(0, ...measured.map((e) => e.suppressionRatio)), 1),
+        // Summed over analysed epochs (1 s hop) so gap seconds add nothing.
+        suppressionSeconds: round(
+          measured.reduce((a, e) => a + e.epochSuppression, 0),
+          1,
+        ),
+        longestSuppressionSeconds: round(
+          Math.max(0, ...suppressionEvents.map((e) => e.duration)),
+          1,
+        ),
+        burstSuppressionEvents: suppressionEvents.length,
+        isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
+      };
+    })(),
     seizure: {
       alerts: events.filter((e) => e.kind === "seizure").length,
       meanScore: round(mean(epochs.map((e) => e.seizureScore))),

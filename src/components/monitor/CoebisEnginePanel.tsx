@@ -1,3 +1,4 @@
+import { ValidationBadge } from "@/components/monitor/ValidationStatus";
 import { COEBIS_V2_MODEL } from "@/lib/eeg/coebis-v2";
 
 /**
@@ -20,7 +21,10 @@ export function CoebisEnginePanel() {
   return (
     <div className="space-y-3">
       <section className="panel p-3">
-        <h3 className="text-sm font-semibold">COEBIS-2: fitted from raw EEG</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold">COEBIS-2: research BIS-agreement index</h3>
+          <ValidationBadge task="bis-agreement" />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           The original index is the published OpenIBIS calculation with a
           calibration bolted on top, so tuning could only shift the answer up or
@@ -38,7 +42,7 @@ export function CoebisEnginePanel() {
           `points, on ${m.cases} held-out patients`,
         )}
         {stat(
-          "Against the old engine",
+          "Against OpenIBIS (agreement only)",
           `${gain > 0 ? "−" : "+"}${Math.abs(gain).toFixed(2)}`,
           `points; OpenIBIS scored ${m.baselineMae.toFixed(2)} on the same readings`,
         )}
@@ -57,9 +61,11 @@ export function CoebisEnginePanel() {
           does not carry over and the reading is labelled as an extrapolation.
         </div>
         <div className="mt-2">
-          COEBIS-2 is trained to agree with a BIS monitor. Agreement is not
-          proof of depth: both can be wrong together, and neither replaces
-          clinical assessment.
+          COEBIS-2 is trained to agree with a BIS monitor on {m.cases} retrospective
+          surgical cases. Agreement is not proof of depth or responsiveness, is not a
+          claim to outperform BIS, and has not been validated on Muse 2/Regul8 or
+          prospectively. Responsiveness, suppression and seizure are separate tasks
+          with their own (weaker) evidence.
         </div>
       </section>
     </div>

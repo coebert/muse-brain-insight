@@ -84,3 +84,49 @@ describe("EegAnalyzer", () => {
     expect(last.seizureScore).toBeLessThanOrEqual(1);
   });
 });
+
+describe("uncalibrated amplitude", () => {
+  it("withholds suppression instead of reporting it as zero", async () => {
+    const { epochPayload } = await import("./batch-integrity");
+    const { buildFeatureDigest } = await import("./features");
+    const a = new EegAnalyzer();
+    a.setAmplitudeCalibrated(false);
+    const epochs = [];
+    for (let t = 0; t <= 30; t++) epochs.push(a.analyze(suppressed(), t));
+    const last = epochs[epochs.length - 1]!;
+    expect(last.suppressionAvailable).toBe(false);
+    // No suppression burden is accumulated on an arbitrary amplitude scale.
+    expect(a.suppressionSeconds).toBe(0);
+    // Stored rows carry NULL, not a fabricated 0.
+    const row = epochPayload(last);
+    expect(row.suppression_ratio).toBeNull();
+    expect(row.is_suppressed).toBeNull();
+    // The AI digest marks it unavailable rather than 0 %.
+    const digest = buildFeatureDigest(
+      epochs,
+      [],
+      {
+        ageYears: "",
+        sex: "",
+        admissionDiagnosis: "",
+        clinicalFeatures: [],
+        context: "theatre",
+        notes: "",
+      } as never,
+      30,
+      "anaesthesia",
+    );
+    expect(digest.suppression.available).toBe(false);
+    expect(digest.suppression.meanRatioPct).toBeNull();
+    expect(digest.suppression.burstSuppressionEvents).toBeNull();
+  });
+
+  it("still measures suppression on a calibrated device", async () => {
+    const { epochPayload } = await import("./batch-integrity");
+    const a = new EegAnalyzer();
+    let last = a.analyze(suppressed(), 0);
+    for (let t = 1; t <= 40; t++) last = a.analyze(suppressed(), t);
+    expect(last.suppressionAvailable).not.toBe(false);
+    expect(epochPayload(last).suppression_ratio).toBeGreaterThan(90);
+  });
+});

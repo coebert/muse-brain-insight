@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/_admin/flags")({
   component: FlagsPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
 });

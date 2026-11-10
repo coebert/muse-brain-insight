@@ -31,7 +31,8 @@ describe("seizure detector validation pack", () => {
 
   it("writes the markdown record", () => {
     const md = seizureValidationMarkdown(report);
-    expect(md).toContain("Sensitivity");
+    expect(md).toContain("sensitivity (synthetic)");
+    expect(md).toContain("NOT HUMAN OR CLINICAL VALIDATION");
     writeFileSync("src/lib/eeg/seizure-validation.md", md);
   });
 });

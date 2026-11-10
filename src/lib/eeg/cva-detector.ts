@@ -1,5 +1,7 @@
 /**
- * CVA (acute stroke) watch — sudden unilateral loss of EEG signal.
+ * Experimental EEG asymmetry/change watch — sudden unilateral loss of EEG
+ * signal. Research pattern detection only: NOT validated against
+ * imaging-confirmed strokes and not a stroke detector.
  *
  * Acute cortical ischaemia shows on EEG before it shows clinically: the
  * affected side loses fast activity and gains slow activity, so one hemisphere
@@ -252,7 +254,7 @@ export function detectCva(
     return withBaseline({
       status: "stable",
       note: oneSided
-        ? `The ${poorSide} side has lost signal, but its contact quality fell at the same time — treat this as an electrode problem, not a stroke.`
+        ? `The ${poorSide} side has lost signal, but its contact quality fell at the same time — treat this as an electrode problem, not a one-sided EEG change.`
         : "Signal quality is too poor right now to judge left against right.",
       excludedBy: oneSided ? "sensor contact" : "signal quality",
     });
@@ -281,7 +283,7 @@ export function detectCva(
   if (drop >= settings.powerDropPercent && sideUnreadable) {
     return withBaseline({
       status: "stable",
-      note: `The ${side} side has lost signal, but its contact quality fell at the same time — treat this as an electrode problem, not a stroke.`,
+      note: `The ${side} side has lost signal, but its contact quality fell at the same time — treat this as an electrode problem, not a one-sided EEG change.`,
       excludedBy: "sensor contact",
     });
   }
@@ -354,7 +356,7 @@ export function detectCva(
     },
     note:
       severity === "alert"
-        ? `Sudden one-sided loss of EEG on the ${side} side, held for ${Math.round(durationSeconds)} s, with good contact on both sides. Consider an acute cortical event and look at the patient.`
+        ? `Sudden one-sided loss of EEG on the ${side} side, held for ${Math.round(durationSeconds)} s, with good contact on both sides. Experimental, not imaging-validated: look at the patient and the electrodes.`
         : `The ${side} side is drifting down on its own. Watching — not yet enough to call.`,
   };
 }

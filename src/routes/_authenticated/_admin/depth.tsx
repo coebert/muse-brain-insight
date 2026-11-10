@@ -70,7 +70,7 @@ export const Route = createFileRoute("/_authenticated/_admin/depth")({
   component: DepthPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
 });
@@ -293,7 +293,8 @@ function EngineCard() {
         <CardDescription>
           Fitted on {m.cases} patients from{" "}
           <span className="font-mono">{m.lineage}</span>, graded by holding whole
-          patients out of the fit.
+          patients out of the fit. This is retrospective agreement with BIS only — not
+          validation of depth or responsiveness, and not a claim to outperform BIS.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">

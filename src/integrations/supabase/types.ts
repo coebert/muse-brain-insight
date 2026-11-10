@@ -1165,14 +1165,14 @@ export type Database = {
           depth_state: string | null
           entropy: Json | null
           id: number
-          is_suppressed: boolean
+          is_suppressed: boolean | null
           nociception_index: number | null
           power_ratios: Json | null
           seizure_score: number
           session_id: string
           spectral_edge_95: number
           spectrum: Json
-          suppression_ratio: number
+          suppression_ratio: number | null
           t_offset_seconds: number
           total_power: number
           user_id: string
@@ -1187,14 +1187,14 @@ export type Database = {
           depth_state?: string | null
           entropy?: Json | null
           id?: number
-          is_suppressed?: boolean
+          is_suppressed?: boolean | null
           nociception_index?: number | null
           power_ratios?: Json | null
           seizure_score?: number
           session_id: string
           spectral_edge_95?: number
           spectrum?: Json
-          suppression_ratio?: number
+          suppression_ratio?: number | null
           t_offset_seconds: number
           total_power?: number
           user_id: string
@@ -1209,14 +1209,14 @@ export type Database = {
           depth_state?: string | null
           entropy?: Json | null
           id?: number
-          is_suppressed?: boolean
+          is_suppressed?: boolean | null
           nociception_index?: number | null
           power_ratios?: Json | null
           seizure_score?: number
           session_id?: string
           spectral_edge_95?: number
           spectrum?: Json
-          suppression_ratio?: number
+          suppression_ratio?: number | null
           t_offset_seconds?: number
           total_power?: number
           user_id?: string

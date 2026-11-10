@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/_admin/headband-scores")({
   component: HeadbandScoresPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
 });

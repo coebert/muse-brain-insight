@@ -178,11 +178,27 @@ export function buildStoredDigest(
       caseSummary: meta.caseSummary ?? null,
     },
     suppression: {
+      // No stored suppression values at all means it was withheld (an
+      // uncalibrated band), not that the patient never suppressed.
+      available: rows.length === 0 || srVals.length > 0,
+      unavailableReason:
+        rows.length > 0 && srVals.length === 0
+          ? "No suppression values were stored for this case (withheld or not measured)."
+          : null,
       meanRatioPct: round(mean(srVals), 1),
       maxRatioPct: srVals.length ? round(Math.max(...srVals), 1) : null,
-      suppressedSeconds: round(rows.filter((r) => r.suppressed).length * cadence, 1),
-      burstSuppressionEvents: events.filter((e) => e.kind === "burst_suppression").length,
-      isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
+      suppressedSeconds:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : round(rows.filter((r) => r.suppressed).length * cadence, 1),
+      burstSuppressionEvents:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : events.filter((e) => e.kind === "burst_suppression").length,
+      isoelectricEvents:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : events.filter((e) => e.kind === "isoelectric").length,
     },
     seizure: {
       alerts: events.filter((e) => e.kind === "seizure").length,

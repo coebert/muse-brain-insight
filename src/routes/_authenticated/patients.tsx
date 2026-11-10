@@ -64,7 +64,7 @@ export const Route = createFileRoute("/_authenticated/patients")({
   component: PatientsPage,
   errorComponent: ({ error }) => (
     <div role="alert" className="p-6 text-sm text-critical">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
 });

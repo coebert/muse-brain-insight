@@ -34,10 +34,13 @@ export type EventPayload = ReturnType<typeof eventPayload>;
  * over the same numbers Postgres receives.
  */
 export function epochPayload(e: Epoch) {
+  // Uncalibrated amplitude: suppression was withheld, so store NULL rather
+  // than the analyser's internal placeholder.
+  const suppressionMeasured = e.suppressionAvailable !== false;
   return {
     t_offset_seconds: num(e.t, 2),
-    suppression_ratio: num(e.suppressionRatio, 2),
-    is_suppressed: e.isSuppressed,
+    suppression_ratio: suppressionMeasured ? num(e.suppressionRatio, 2) : null,
+    is_suppressed: suppressionMeasured ? e.isSuppressed : null,
     seizure_score: num(e.seizureScore, 3),
     total_power: num(e.totalPower, 3),
     spectral_edge_95: num(e.sef95, 2),
@@ -48,11 +51,11 @@ export function epochPayload(e: Epoch) {
     composite_components: {
       fast_slow: num(e.composite.components.fastSlow, 3),
       entropy: num(e.composite.components.entropy, 3),
-      bsr: num(e.composite.components.bsr, 2),
+      bsr: suppressionMeasured ? num(e.composite.components.bsr, 2) : null,
       emg_drive: num(e.composite.components.emgDrive, 3),
       reactivity: num(e.composite.components.reactivity, 3),
       entropy_gap: num(e.composite.components.entropyGap, 3),
-    } as Record<string, number>,
+    } as Record<string, number | null>,
     depth_components: {
       c1: Number.isFinite(e.depth.components.betaRatio)
         ? num(e.depth.components.betaRatio, 4)
@@ -63,7 +66,7 @@ export function epochPayload(e: Epoch) {
       c3: Number.isFinite(e.depth.components.slowWave)
         ? num(e.depth.components.slowWave, 4)
         : null,
-      bsr: num(e.depth.components.bsr, 2),
+      bsr: suppressionMeasured ? num(e.depth.components.bsr, 2) : null,
     } as Record<string, number | null>,
     bands: { ...e.bands } as Record<string, number>,
     entropy: {
