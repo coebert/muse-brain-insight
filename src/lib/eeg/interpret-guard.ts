@@ -25,10 +25,9 @@ export type AlertConfidence = "low" | "moderate" | "high";
 export interface GuardEvidence {
   feature: string;
   value: string;
-  [key: string]: unknown;
 }
 
-export interface GuardAlert {
+export interface GuardAlert<E extends GuardEvidence = GuardEvidence> {
   id: string;
   severity: AlertSeverity;
   category: string;
@@ -36,13 +35,15 @@ export interface GuardAlert {
   detail: string;
   action: string;
   confidence: AlertConfidence;
-  evidence?: GuardEvidence[];
-  [key: string]: unknown;
+  evidence?: E[];
+  feedbackInfluence?: unknown;
+  tuning?: unknown;
+  origin?: "ai_explanatory";
 }
 
-export interface GuardInput {
+export interface GuardInput<A extends GuardAlert = GuardAlert> {
   headline: string;
-  alerts: GuardAlert[];
+  alerts: A[];
   depthOfAnaesthesia: string;
   burstSuppression: string;
   seizureRisk: string;
@@ -169,7 +170,7 @@ const SEVERITY_CAP: Record<AlertSeverity, AlertSeverity> = {
 
 /* ----------------------------------------------------------- the guard --- */
 
-export function guardInterpretation<T extends GuardInput>(
+export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A>>(
   parsed: T,
   digest: unknown,
 ): { output: T; report: GuardReport } {
@@ -197,7 +198,7 @@ export function guardInterpretation<T extends GuardInput>(
       .map((x) => clean(x, "", allowAwarenessLimitation))
       .filter((x) => x.length > 0);
 
-  const alerts: GuardAlert[] = [];
+  const alerts: A[] = [];
   for (const raw of Array.isArray(parsed.alerts) ? parsed.alerts : []) {
     if (!raw || typeof raw !== "object") continue;
     if (avail.suppressionWithheld && raw.category === "burst_suppression") {
@@ -205,7 +206,8 @@ export function guardInterpretation<T extends GuardInput>(
       droppedAlerts++;
       continue;
     }
-    const evidence: GuardEvidence[] = [];
+    type E = NonNullable<A["evidence"]>[number];
+    const evidence: E[] = [];
     for (const e of Array.isArray(raw.evidence) ? raw.evidence : []) {
       if (!e || typeof e.feature !== "string" || typeof e.value !== "string") {
         droppedEvidence++;
@@ -254,7 +256,7 @@ export function guardInterpretation<T extends GuardInput>(
       feedbackInfluence: null,
       tuning: null,
       origin: "ai_explanatory",
-    });
+    } as A);
   }
 
   const output: T = {

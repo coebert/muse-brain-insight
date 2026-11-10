@@ -166,7 +166,7 @@ describe("explanatory role", () => {
   it("never lets the AI raise a critical alarm", () => {
     const { output } = guardInterpretation(base({ alerts: [alert({ severity: "critical" })] }), digest);
     expect(output.alerts[0]!.severity).toBe("warning");
-    expect(output.alerts[0]!["origin"]).toBe("ai_explanatory");
+    expect(output.alerts[0]!.origin).toBe("ai_explanatory");
   });
 
   it("voids any model-reported feedback influence", () => {
@@ -174,7 +174,7 @@ describe("explanatory role", () => {
       base({ alerts: [alert({ feedbackInfluence: { adjustment: "raised_bar", note: "x" } })] }),
       digest,
     );
-    expect(output.alerts[0]!["feedbackInfluence"]).toBeNull();
+    expect(output.alerts[0]!.feedbackInfluence).toBeNull();
   });
 
   it("forces pathology patterns to low confidence", () => {

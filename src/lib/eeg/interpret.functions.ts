@@ -69,8 +69,10 @@ export interface ClinicalAlert {
   feedbackInfluence?: AlertFeedbackInfluence | null;
   /** Factual counts of past clinician verdicts for this alert id/category. */
   priorFeedback?: AlertPriorFeedback | null;
-  /** How adaptive tuning changed this alert's severity/confidence. */
+  /** Retired: adaptive tuning no longer changes alerts. */
   tuning?: AlertTuningEffect | null;
+  /** AI alerts are explanatory and separate from deterministic research alarms. */
+  origin?: "ai_explanatory";
 }
 
 export interface Interpretation {
