@@ -14,19 +14,23 @@
  *     behind-the-ear electrodes; a Regul8 has a single frontal differential.
  *     Whichever electrodes are used is stated with the reading, and a montage
  *     that is not bilateral frontal is labelled an extrapolation.
- *  3. **Amplitude.** Consumer bands with an unknown ADC scale are auto-gained,
- *     so `logRms`, `logPtp`, `logTotal` and the 5 µV suppression test have no
- *     fixed meaning. For those devices the stream is rescaled so its own
- *     typical amplitude matches the amplitude the model was fitted at, and the
- *     reading is flagged as amplitude-normalised. That makes the spectral
- *     shape terms usable; it does not make the absolute terms measurements.
+ *  3. **Amplitude.** The fitted model depends on absolute microvolt terms
+ *     (`logRms`, `logPtp`, `logTotal`, absolute band powers, the 5 µV
+ *     suppression fraction and every trend built on them). A band with an
+ *     unknown ADC scale cannot supply those terms. Rescaling its signal to the
+ *     training RMS would manufacture them, so it is **not** done: COEBIS-2 and
+ *     its suppression ratio are withheld with an explicit reason, and only the
+ *     scale-invariant relative spectral descriptors are reported, as research
+ *     features. No amplitude-independent model has been trained; none is
+ *     substituted.
  *
  * None of this turns an extrapolation into a validated reading. The held-out
- * error published for COEBIS-2 belongs to the fitted lineage only; on a
- * headband the number is a research reading and is labelled as one.
+ * BIS-agreement published for COEBIS-2 belongs to the fitted lineage only; on
+ * a headband the number is a research reading and is labelled as one.
  */
 
 import { applyTune, type SedationTune } from "./coebis-sedation-bands";
+import { computePsd } from "./dsp";
 import { resample } from "./ingest";
 import {
   ANALYSIS_SAMPLE_RATE,
@@ -38,9 +42,10 @@ import {
   COEBIS_V2_MODEL,
   CoebisV2Estimator,
   coebisV2Applicability,
+  coebisV2SpectralFeatures,
   type CoebisV2Covariates,
+  type CoebisV2Features,
   type CoebisV2Model,
-  type CoebisV2Reading,
   type CoebisV2Applicability,
 } from "./coebis-v2";
 
@@ -50,11 +55,37 @@ export const COEBIS_V2_FIT_RATE = 128;
 /** Frontal positions the fit was trained on. */
 const FRONTAL: AnalysisChannel[] = ["AF7", "AF8"];
 
-/** Typical window RMS in the fitted corpus, in µV, from the model's own scaler. */
-export function fittedReferenceRms(model: CoebisV2Model = COEBIS_V2_MODEL): number {
-  const i = model.names.indexOf("logRms");
-  return i < 0 ? 25 : Math.pow(10, model.mu[i] ?? 1.43);
-}
+/**
+ * Spectral descriptors that do not change when the whole window is multiplied
+ * by a constant — ratios, relative powers, edges, entropies and peak shape.
+ * These stay meaningful on a band whose microvolt scale is unknown.
+ */
+export const COEBIS_V2_RELATIVE_FEATURES = [
+  "relSlow",
+  "relDelta",
+  "relTheta",
+  "relAlpha",
+  "relBeta",
+  "relGamma",
+  "betaRatio",
+  "syncFastSlow",
+  "alphaDelta",
+  "thetaAlpha",
+  "sef50",
+  "sef75",
+  "sef90",
+  "sef95",
+  "entShannon",
+  "entSe95",
+  "entState",
+  "entResponse",
+  "peakFreq",
+  "peakProminence",
+] as const;
+
+/** Reason shown wherever COEBIS-2 is withheld for an uncalibrated band. */
+export const UNCALIBRATED_AMPLITUDE_REASON =
+  "Withheld: this band does not report a microvolt scale. COEBIS-2 was fitted on absolute amplitude and the 5 µV suppression test, so neither the index nor its suppression ratio can be computed. Only relative spectral research features are shown.";
 
 export interface CoebisV2DeviceSetup {
   /** Electrodes feeding the index on this device. */
@@ -62,8 +93,10 @@ export interface CoebisV2DeviceSetup {
   /** Electrodes present but deliberately left out. */
   excluded: AnalysisChannel[];
   applicability: CoebisV2Applicability;
-  /** True when the stream is rescaled because its microvolt scale is unknown. */
-  amplitudeNormalised: boolean;
+  /** True when samples arrive in real microvolts. */
+  amplitudeCalibrated: boolean;
+  /** Non-null when COEBIS-2 output is withheld on this device, and why. */
+  withheldReason: string | null;
   /** Plain-language caveats to show beside the number. */
   caveats: string[];
   /** One-line verdict for a badge. */
@@ -90,14 +123,16 @@ export function coebisV2DeviceSetup(
   const bilateral =
     channels.some((c) => CHANNEL_SIDE[c] === "left") &&
     channels.some((c) => CHANNEL_SIDE[c] === "right");
-  const amplitudeNormalised = profile.calibratedAmplitude === false;
+  const amplitudeCalibrated = profile.calibratedAmplitude !== false;
+  const withheldReason = amplitudeCalibrated ? null : UNCALIBRATED_AMPLITUDE_REASON;
 
   const applicability: CoebisV2Applicability =
-    nonFrontal.length > 0 || !bilateral || amplitudeNormalised
+    nonFrontal.length > 0 || !bilateral || !amplitudeCalibrated
       ? "extrapolated"
       : coebisV2Applicability(null, profile.sampleRate, channels);
 
   const caveats: string[] = [];
+  if (!amplitudeCalibrated) caveats.push(UNCALIBRATED_AMPLITUDE_REASON);
   if (profile.sampleRate !== COEBIS_V2_FIT_RATE) {
     caveats.push(
       `Recorded at ${profile.sampleRate} Hz and resampled to the ${COEBIS_V2_FIT_RATE} Hz the model was fitted at.`,
@@ -113,46 +148,77 @@ export function coebisV2DeviceSetup(
       "One side of the head only, so the left/right terms the model was fitted with are unavailable.",
     );
   }
-  if (amplitudeNormalised) {
-    caveats.push(
-      "This band does not report a microvolt scale, so its signal is rescaled to the typical size the model was fitted at. Shape-based terms carry the reading; absolute amplitude and the microvolt suppression test are relative to this recording.",
-    );
-  }
   if (excluded.length) {
     caveats.push(`${excluded.join(", ")} recorded but not used for this number.`);
   }
 
-  const verdict =
-    applicability === "fitted"
+  const verdict = withheldReason
+    ? "Withheld — amplitude scale unknown"
+    : applicability === "fitted"
       ? "Same setup the model was fitted on"
       : applicability === "near"
         ? "Comparable forehead setup — readable, but the published error does not transfer"
         : "Outside the setup the model was fitted on — research reading only";
 
-  return { channels, excluded, applicability, amplitudeNormalised, caveats, verdict };
+  return { channels, excluded, applicability, amplitudeCalibrated, withheldReason, caveats, verdict };
 }
 
-export interface LiveCoebisV2Reading extends CoebisV2Reading {
+export interface LiveCoebisV2Reading {
+  /** "withheld" when the inputs the model needs cannot be measured. */
+  status: "available" | "withheld";
+  /** Smoothed index 0–100, null when withheld. */
+  index: number | null;
+  /** Unsmoothed index, null when withheld. */
+  instant: number | null;
+  /** Trailing 60 s suppression ratio, %, null when withheld. */
+  suppressionRatio: number | null;
+  /** Every model term's value; null when the model was not run. */
+  terms: CoebisV2Features | null;
+  /** Largest signed contributions; empty when withheld. */
+  drivers: { term: string; contribution: number }[];
+  /** Why the index is withheld, null when available. */
+  withheldReason: string | null;
+  /** Scale-invariant spectral descriptors, always reported, research use only. */
+  researchFeatures: Partial<Record<(typeof COEBIS_V2_RELATIVE_FEATURES)[number], number>>;
   applicability: CoebisV2Applicability;
-  amplitudeNormalised: boolean;
-  /** Gain applied to the stream, 1 when the device is calibrated. */
-  gain: number;
+  amplitudeCalibrated: boolean;
   /** True when the sedation band curve is in force on this reading. */
   bandTuned: boolean;
+  /** Model version this reading was computed with (frozen for the recording). */
+  modelVersion: string;
+}
+
+/** Stable identifier for the active COEBIS-2 coefficients. */
+export function coebisV2ModelVersion(model: CoebisV2Model = COEBIS_V2_MODEL): string {
+  return `coebis-v2|${model.meta.lineage}|${model.meta.fittedAt}`;
+}
+
+function relativeFeatures(
+  features: CoebisV2Features,
+): LiveCoebisV2Reading["researchFeatures"] {
+  const out: LiveCoebisV2Reading["researchFeatures"] = {};
+  for (const k of COEBIS_V2_RELATIVE_FEATURES) {
+    const v = features[k];
+    if (v != null && Number.isFinite(v)) out[k] = v;
+  }
+  return out;
 }
 
 /**
- * Live COEBIS-2 for a headband: resamples onto the fitted rate, normalises
- * amplitude when the device has no microvolt scale, and carries the
- * estimator's trend memory across the case.
+ * Live COEBIS-2 for a headband: resamples onto the fitted rate, refuses to run
+ * the absolute-amplitude model when the device has no microvolt scale, and
+ * carries the estimator's trend memory across the case.
+ *
+ * The output curve (sedation tune) is fixed at construction: a recording is
+ * scored with one configuration from start to finish. A newer curve is picked
+ * up by the next recording, never mid-case.
  */
 export class LiveCoebisV2 {
   private readonly estimator: CoebisV2Estimator;
   private readonly setup: CoebisV2DeviceSetup;
+  private readonly model: CoebisV2Model;
   /** Output curve tuned to sedation labels; null means the raw model scale. */
-  private tune: SedationTune | null = null;
-  private logRmsEma: number | null = null;
-  private gain = 1;
+  private readonly tune: SedationTune | null;
 
   constructor(
     profile: DeviceProfile,
@@ -161,15 +227,8 @@ export class LiveCoebisV2 {
   ) {
     this.setup = coebisV2DeviceSetup(profile, options);
     this.tune = options.tune ?? null;
-    this.estimator = new CoebisV2Estimator(covariates, options.model ?? COEBIS_V2_MODEL);
-  }
-
-  /**
-   * Adopt (or clear) the sedation band curve. It is monotone, so it moves
-   * where a reading sits on the scale without changing the order of readings.
-   */
-  setTune(tune: SedationTune | null): void {
-    this.tune = tune;
+    this.model = options.model ?? COEBIS_V2_MODEL;
+    this.estimator = new CoebisV2Estimator(covariates, this.model);
   }
 
   get bandTuned(): boolean {
@@ -180,10 +239,12 @@ export class LiveCoebisV2 {
     return this.setup;
   }
 
+  get modelVersion(): string {
+    return coebisV2ModelVersion(this.model);
+  }
+
   reset(): void {
     this.estimator.reset();
-    this.logRmsEma = null;
-    this.gain = 1;
   }
 
   /**
@@ -200,45 +261,41 @@ export class LiveCoebisV2 {
       sampleRate === COEBIS_V2_FIT_RATE
         ? window
         : resample(window, sampleRate, COEBIS_V2_FIT_RATE);
-    const scaled = this.setup.amplitudeNormalised ? this.normalise(fitted) : fitted;
-    const reading = this.estimator.update(scaled, COEBIS_V2_FIT_RATE, stepSeconds);
-    if (!reading) return null;
-    const tuned = this.tune
-      ? {
-          ...reading,
-          index: Math.round(applyTune(this.tune, reading.index)),
-          instant: applyTune(this.tune, reading.instant),
-        }
-      : reading;
-    return {
-      ...tuned,
+    const common = {
       applicability: this.setup.applicability,
-      amplitudeNormalised: this.setup.amplitudeNormalised,
-      gain: this.gain,
+      amplitudeCalibrated: this.setup.amplitudeCalibrated,
       bandTuned: this.tune != null,
+      modelVersion: this.modelVersion,
     };
-  }
 
-  /**
-   * Rescales an auto-gained stream onto the amplitude the model was fitted at.
-   * The gain follows a slow trailing average of the window RMS, so a single
-   * artefact cannot move it and a genuine change in EEG amplitude over minutes
-   * is preserved rather than normalised away within an epoch.
-   */
-  private normalise(window: Float64Array): Float64Array {
-    let sumSquares = 0;
-    for (let i = 0; i < window.length; i++) sumSquares += window[i]! * window[i]!;
-    const rms = Math.sqrt(sumSquares / window.length);
-    if (!Number.isFinite(rms) || rms <= 0) {
-      return this.gain === 1 ? window : window.map((v) => v * this.gain);
+    if (!this.setup.amplitudeCalibrated) {
+      if (fitted.length < 2 * COEBIS_V2_FIT_RATE) return null;
+      const spectral = coebisV2SpectralFeatures(computePsd(fitted, COEBIS_V2_FIT_RATE));
+      return {
+        ...common,
+        status: "withheld",
+        index: null,
+        instant: null,
+        suppressionRatio: null,
+        terms: null,
+        drivers: [],
+        withheldReason: this.setup.withheldReason,
+        researchFeatures: relativeFeatures(spectral),
+      };
     }
-    const logRms = Math.log10(rms);
-    // ~5 min time constant at one window per second.
-    const alpha = this.logRmsEma == null ? 1 : 1 - Math.exp(-1 / 300);
-    this.logRmsEma = this.logRmsEma == null ? logRms : this.logRmsEma + alpha * (logRms - this.logRmsEma);
-    this.gain = Math.pow(10, Math.log10(fittedReferenceRms()) - this.logRmsEma);
-    const out = new Float64Array(window.length);
-    for (let i = 0; i < window.length; i++) out[i] = window[i]! * this.gain;
-    return out;
+
+    const reading = this.estimator.update(fitted, COEBIS_V2_FIT_RATE, stepSeconds);
+    if (!reading) return null;
+    return {
+      ...common,
+      status: "available",
+      index: this.tune ? Math.round(applyTune(this.tune, reading.index)) : reading.index,
+      instant: this.tune ? applyTune(this.tune, reading.instant) : reading.instant,
+      suppressionRatio: reading.suppressionRatio,
+      terms: reading.terms,
+      drivers: reading.drivers,
+      withheldReason: null,
+      researchFeatures: relativeFeatures(reading.terms),
+    };
   }
 }
