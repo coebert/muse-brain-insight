@@ -121,7 +121,9 @@ export function publishedIndices(
     return { ...EMPTY_PUBLISHED_INDICES, alphaDelta: alphaDeltaFromBands(bands) };
   }
   const { power, binHz } = grid;
-  const entropy = monitorEntropy([power], suppressionPct ?? 0, binHz, 1);
+  // Unknown suppression withholds SE/RE (they fold suppression in); the
+  // scale-invariant beta ratio and alpha/delta are still reported.
+  const entropy = monitorEntropy([power], suppressionPct, binHz, 1);
   return {
     stateEntropy: entropy.se,
     responseEntropy: entropy.re,
