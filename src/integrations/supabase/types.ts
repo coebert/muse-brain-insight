@@ -1301,6 +1301,7 @@ export type Database = {
           location: string | null
           max_suppression_ratio: number
           mean_suppression_ratio: number
+          model_provenance: Json | null
           notes: string | null
           patient_link_id: string | null
           patient_pseudonym: string | null
@@ -1336,6 +1337,7 @@ export type Database = {
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
+          model_provenance?: Json | null
           notes?: string | null
           patient_link_id?: string | null
           patient_pseudonym?: string | null
@@ -1371,6 +1373,7 @@ export type Database = {
           location?: string | null
           max_suppression_ratio?: number
           mean_suppression_ratio?: number
+          model_provenance?: Json | null
           notes?: string | null
           patient_link_id?: string | null
           patient_pseudonym?: string | null
