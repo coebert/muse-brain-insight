@@ -595,7 +595,7 @@ export function useEegMonitor() {
     setIntegrity(null);
     setClock(null);
     allocateBuffers(profileRef.current);
-  }, [allocateBuffers]);
+  }, [allocateBuffers, refreshBandTune]);
 
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
