@@ -189,7 +189,7 @@ function Trends() {
         cIndex: e.consciousness_index === null ? null : Number(e.consciousness_index),
         nIndex: e.nociception_index === null ? null : Number(e.nociception_index),
         entropy: typeof ent?.state === "number" ? Number((ent.state * 100).toFixed(1)) : null,
-        suppressed: e.is_suppressed ? 1 : 0,
+        suppressed: e.is_suppressed == null ? null : e.is_suppressed ? 1 : 0,
       };
     });
   }, [epochs.data, coebisModel]);
@@ -221,7 +221,7 @@ function Trends() {
         cIndex: null,
         nIndex: null,
         entropy: null,
-        suppressed: 0,
+        suppressed: null,
       })),
     [rows],
   );

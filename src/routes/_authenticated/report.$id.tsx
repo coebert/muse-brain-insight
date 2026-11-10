@@ -142,7 +142,7 @@ function CaseReport() {
           sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
           seizure: e.seizure_score === null ? null : Number(e.seizure_score),
           entropy: typeof ent?.state === "number" ? Number((ent.state * 100).toFixed(1)) : null,
-          suppressed: e.is_suppressed ? 1 : 0,
+          suppressed: e.is_suppressed == null ? null : e.is_suppressed ? 1 : 0,
         };
       }),
     [epochs.data, coebisModel],
