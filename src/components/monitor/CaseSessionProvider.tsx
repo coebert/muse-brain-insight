@@ -764,10 +764,17 @@ function useCaseSessionState() {
     onDimChange: setDim,
     handover: [
       { label: "Case time", value: formatClock(monitor.elapsed) },
-      { label: "Mean SR", value: `${summary.meanSr.toFixed(0)} %` },
+      {
+        label: "Mean SR",
+        value: summary.suppressionAvailable
+          ? `${summary.meanSr.toFixed(0)} %`
+          : "withheld (no µV scale)",
+      },
       {
         label: "Suppression time",
-        value: formatDuration(Math.round(summary.suppressionSeconds)),
+        value: summary.suppressionAvailable
+          ? formatDuration(Math.round(summary.suppressionSeconds))
+          : "withheld (no µV scale)",
       },
       {
         label: "Alerts",
