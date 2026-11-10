@@ -172,7 +172,14 @@ export function StateLabelPanel() {
         <p className="text-xs text-critical">{(pool.error as Error).message}</p>
       ) : !data || data.epochs === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No labelled epochs yet. Any collection whose published labels name an awake or an
+          {data?.incompatible ? (
+            <span className="block font-medium text-foreground">
+              {data.incompatible.toLocaleString()} stored epochs were excluded:{" "}
+              {data.incompatibleReason ?? "their transform is not fit-compatible."} Re-import the
+              original files to reprocess them.
+            </span>
+          ) : null}
+          No fit-compatible labelled epochs yet. Any collection whose published labels name an awake or an
           anaesthetised patient — PhysioNet <code>eeg-power-anesthesia</code>, Chennu, DOSE-I,
           ds004541 — appears here once uploaded on the Data exchange tab.
         </p>
