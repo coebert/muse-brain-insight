@@ -1,10 +1,13 @@
 # Roadmap — research-integrity & measurement fixes (Nov 2026)
 
-- [ ] 1. coebis-v2-device: withhold COEBIS-2 + µV suppression when amplitude calibration unknown; keep relative spectral research features; nulls through UI/export/AI digest
-- [ ] 2. coebis-spectra: no fabricated suppression / logPtp; explicit unavailable result; adapt consumers + tests
-- [ ] 3. harmonization: no invented reference gains; preserve source reference; missing bands unavailable (not 0); legacy transforms incompatible for new fits
-- [ ] 4. diagnosis-model: exploratory-only, eligibility in suggestDiagnosis, no disease target from pathology_category, label provenance
-- [ ] 5. interpret.functions: explanatory-only LLM, server-side output validation, no drug/awareness directives, feedback offline-only
-- [ ] 6. Freeze model/calibration/tuning for the recording; auto-refit files candidates only; next-session activation; provenance on saved results
-- [ ] 7. Stroke/CVA → experimental EEG asymmetry/change watch; separate synthetic vs real validation; no outperform-BIS claims; task separation
-- [ ] Regression tests, typecheck, AGENTS.md rules
+- [x] 1. coebis-v2-device: withhold COEBIS-2 + µV suppression when amplitude calibration unknown; nulls through UI/save/export/AI digest
+- [x] 2. coebis-spectra: no fabricated suppression / logPtp; explicit unavailable result; consumers + tests
+- [x] 3. harmonization: no invented gains; source reference preserved; bands unavailable not 0; legacy incompatible for new fits
+- [x] 4. diagnosis-model: exploratory-only, eligibility in suggestDiagnosis, confirmed-diagnosis provenance
+- [x] 5. interpret.functions: explanatory-only, server-side output guard, feedback offline-only
+- [x] 6. Recording model freeze, candidate-only auto-refit, provenance saved
+- [x] 7. Experimental asymmetry watch; validation registry; synthetic vs human separation
+- [x] Regression tests, typecheck, AGENTS.md rules
+- [ ] Reprocess legacy external collections with harmonise-2.0.0 (needs original files re-imported)
+- [ ] OpenIBIS-style depth index still uses an internal zero BSR on uncalibrated bands (not yet withheld)
+- [ ] Case-notes AI pattern ranking still uses verdict feedback (not alert tuning; review separately)
