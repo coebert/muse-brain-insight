@@ -1,11 +1,15 @@
-# Seizure detector validation pack
+# Seizure detector synthetic regression pack
+
+> SYNTHETIC REGRESSION CHECK — NOT HUMAN OR CLINICAL VALIDATION. These eight
+> vignettes prove the detector code behaves as designed; they are not evidence
+> of sensitivity, specificity or false-alarm rates in patients.
 
 Synthetic labelled vignettes scored through the live `EegAnalyzer` at the
 shipped detection settings. Regenerate with `bunx vitest run seizure-validation`.
 
-- Sensitivity: 100 % (3/3 ictal vignettes)
-- Specificity: 100 % (5/5 non-ictal vignettes)
-- False alarms per hour: 0.0 over 0.333 h of non-ictal recording
+- Vignette sensitivity (synthetic): 100 % (3/3 ictal vignettes)
+- Vignette specificity (synthetic): 100 % (5/5 non-ictal vignettes)
+- Synthetic false alarms per hour: 0.0 over 0.333 h of non-ictal recording
 
 | Vignette | Truth | Length | Verdict | Alert epochs | Peak score | First alert (s) |
 | --- | --- | --- | --- | --- | --- | --- |
