@@ -20,6 +20,10 @@ export interface ReactivityEpoch {
   sef95?: number | null;
   suppressionRatio?: number | null;
   seizureScore?: number | null;
+  /** False when suppression was withheld (uncalibrated amplitude). */
+  suppressionAvailable?: boolean;
+  /** False when the seizure score was withheld (uncalibrated amplitude). */
+  seizureAvailable?: boolean;
 }
 
 export interface ReactivityWindow {
