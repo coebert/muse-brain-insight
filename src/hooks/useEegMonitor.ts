@@ -111,8 +111,10 @@ export interface HemiSpectra {
 
 /** Per-hemisphere clinical metrics, derived from that side's electrode pair. */
 export interface HemiMetrics {
-  suppressionRatio: number;
-  seizureScore: number;
+  /** Null when withheld (uncalibrated amplitude) — never shown as 0 %. */
+  suppressionRatio: number | null;
+  /** Null when withheld (uncalibrated amplitude). */
+  seizureScore: number | null;
   seizureAlert: boolean;
   qualityGrade: SignalQuality["grade"];
   flat: boolean;
@@ -1040,8 +1042,8 @@ export function useEegMonitor() {
           sideEmg,
         );
         const metrics: HemiMetrics = {
-          suppressionRatio: e.suppressionRatio,
-          seizureScore: e.seizureScore,
+          suppressionRatio: measuredSuppressionRatio(e),
+          seizureScore: measuredSeizureScore(e),
           seizureAlert: e.seizureAlert,
           qualityGrade: worst,
           flat: flatSide,

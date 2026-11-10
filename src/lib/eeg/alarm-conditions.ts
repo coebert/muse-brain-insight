@@ -43,30 +43,33 @@ export function deriveAlarmConditions(input: AlarmDerivationInput): AlarmConditi
     for (const side of sides) {
       const score =
         side === "left"
-          ? (hemi?.left.seizureScore ?? 0)
+          ? (hemi?.left.seizureScore ?? null)
           : side === "right"
-            ? (hemi?.right.seizureScore ?? 0)
-            : (latest?.seizureScore ?? 0);
+            ? (hemi?.right.seizureScore ?? null)
+            : measuredSeizureScore(latest);
       conditions.push({
         id: `seizure:${side}`,
         side,
         priority: icuMode ? "high" : "medium",
         title: `Possible seizure activity — ${SIDE_LABEL[side]}`,
-        detail: `Rhythmic discharges, score ${score.toFixed(2)} — review the raw trace.`,
+        detail: `Rhythmic discharges, score ${score == null ? "—" : score.toFixed(2)} — review the raw trace.`,
       });
     }
   }
 
   // Suppression: raise one alarm per side that crosses the threshold.
-  const srBySide: { side: AlarmSide; sr: number }[] = hemi
+  // Withheld suppression (uncalibrated amplitude) raises no alarm and is never
+  // compared as 0 %: those sides are simply skipped.
+  const srBySide: { side: AlarmSide; sr: number | null }[] = hemi
     ? [
         { side: "left", sr: hemi.left.suppressionRatio },
         { side: "right", sr: hemi.right.suppressionRatio },
       ]
     : latest
-      ? [{ side: "bilateral", sr: latest.suppressionRatio }]
+      ? [{ side: "bilateral", sr: measuredSuppressionRatio(latest) }]
       : [];
   for (const { side, sr } of srBySide) {
+    if (sr == null) continue;
     if (sr >= DEEP_SUPPRESSION_PERCENT) {
       conditions.push({
         id: `deep-suppression:${side}`,
