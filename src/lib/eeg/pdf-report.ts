@@ -13,6 +13,7 @@ import { DSA_STOPS, dsaColor, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
 import type { EpochRow, EventRow } from "@/lib/eeg/db-rows";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { spansGap } from "@/lib/eeg/gaps";
+import { suppressedSecondsOrNull } from "@/lib/eeg/measured";
 
 export interface ReportSessionMeta {
   case_code?: string | null;
