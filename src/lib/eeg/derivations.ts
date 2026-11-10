@@ -6,6 +6,7 @@ import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import { deriveAlarmConditions } from "@/lib/eeg/alarm-conditions";
 import { buildDsaMarkers } from "@/lib/eeg/dsa-markers";
 import { computeUncertainty, type UncertaintyReport } from "@/lib/eeg/uncertainty";
+import { measuredSeizureScore } from "@/lib/eeg/measured";
 
 /** Suppression ratio (%) at which the readout turns critical. */
 export const DEEP_SUPPRESSION_PERCENT = 40;
