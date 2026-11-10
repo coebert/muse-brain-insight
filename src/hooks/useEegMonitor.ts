@@ -57,6 +57,12 @@ import {
   newCaptureKey,
 } from "@/lib/eeg/auto-capture";
 import { captureBatch } from "@/lib/eeg/auto-capture.functions";
+import {
+  measuredEpochSuppression,
+  measuredSeizureScore,
+  measuredSuppressionRatio,
+  measuredValues,
+} from "@/lib/eeg/measured";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 import {
   accumulateChannelQuality,
@@ -111,8 +117,10 @@ export interface HemiSpectra {
 
 /** Per-hemisphere clinical metrics, derived from that side's electrode pair. */
 export interface HemiMetrics {
-  suppressionRatio: number;
-  seizureScore: number;
+  /** Null when withheld (uncalibrated amplitude) — never shown as 0 %. */
+  suppressionRatio: number | null;
+  /** Null when withheld (uncalibrated amplitude). */
+  seizureScore: number | null;
   seizureAlert: boolean;
   qualityGrade: SignalQuality["grade"];
   flat: boolean;
@@ -1040,8 +1048,8 @@ export function useEegMonitor() {
           sideEmg,
         );
         const metrics: HemiMetrics = {
-          suppressionRatio: e.suppressionRatio,
-          seizureScore: e.seizureScore,
+          suppressionRatio: measuredSuppressionRatio(e),
+          seizureScore: measuredSeizureScore(e),
           seizureAlert: e.seizureAlert,
           qualityGrade: worst,
           flat: flatSide,
@@ -1202,26 +1210,36 @@ export function useEegMonitor() {
 
   const summary = useMemo(() => {
     const suppressionAvailable = deviceProfile.calibratedAmplitude !== false;
+    const seizureAvailable = suppressionAvailable;
     if (!epochs.length) {
       return {
         suppressionAvailable,
-        meanSr: 0,
-        maxSr: 0,
-        suppressionSeconds: 0,
-        seizureAlerts: 0,
+        seizureAvailable,
+        meanSr: suppressionAvailable ? 0 : null,
+        maxSr: suppressionAvailable ? 0 : null,
+        suppressionSeconds: suppressionAvailable ? 0 : null,
+        seizureAlerts: seizureAvailable ? 0 : null,
         meanQuality: 0,
         usableFraction: 0,
       };
     }
-    const meanSr = (epochs.reduce((a, e) => a + e.epochSuppression, 0) / epochs.length) * 100;
-    const maxSr = epochs.reduce((a, e) => Math.max(a, e.suppressionRatio), 0);
+    // Only epochs that actually measured suppression enter the averages; with
+    // none (uncalibrated band) the summary is null, never 0 %.
+    const fractions = measuredValues(epochs, measuredEpochSuppression);
+    const ratios = measuredValues(epochs, measuredSuppressionRatio);
+    const meanSr = fractions.length
+      ? (fractions.reduce((a, v) => a + v, 0) / fractions.length) * 100
+      : null;
+    const maxSr = ratios.length ? Math.max(...ratios) : null;
+    const scored = measuredValues(epochs, measuredSeizureScore);
     return {
-      /** False when the band has no µV scale; the suppression fields are then not measurements. */
-      suppressionAvailable,
+      /** False when the band has no µV scale; the suppression fields are then null. */
+      suppressionAvailable: suppressionAvailable && ratios.length > 0,
+      seizureAvailable: seizureAvailable && scored.length > 0,
       meanSr,
       maxSr,
-      suppressionSeconds: analyzerRef.current.suppressionSeconds,
-      seizureAlerts: events.filter((e) => e.kind === "seizure").length,
+      suppressionSeconds: ratios.length ? analyzerRef.current.suppressionSeconds : null,
+      seizureAlerts: scored.length ? events.filter((e) => e.kind === "seizure").length : null,
       meanQuality: epochs.reduce((a, e) => a + e.quality.score, 0) / epochs.length,
       usableFraction: epochs.filter((e) => e.quality.grade !== "poor").length / epochs.length,
     };

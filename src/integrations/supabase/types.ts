@@ -1168,7 +1168,7 @@ export type Database = {
           is_suppressed: boolean | null
           nociception_index: number | null
           power_ratios: Json | null
-          seizure_score: number
+          seizure_score: number | null
           session_id: string
           spectral_edge_95: number
           spectrum: Json
@@ -1190,7 +1190,7 @@ export type Database = {
           is_suppressed?: boolean | null
           nociception_index?: number | null
           power_ratios?: Json | null
-          seizure_score?: number
+          seizure_score?: number | null
           session_id: string
           spectral_edge_95?: number
           spectrum?: Json
@@ -1212,7 +1212,7 @@ export type Database = {
           is_suppressed?: boolean | null
           nociception_index?: number | null
           power_ratios?: Json | null
-          seizure_score?: number
+          seizure_score?: number | null
           session_id?: string
           spectral_edge_95?: number
           spectrum?: Json

@@ -6,6 +6,14 @@ import {
   type MarkerPhase,
   type MarkerResponse,
 } from "@/lib/eeg/marker-analysis";
+import {
+  measuredEpochSuppression,
+  measuredSeizureScore,
+  measuredSuppressionRatio,
+  measuredValues,
+  SEIZURE_WITHHELD_REASON,
+  SUPPRESSION_WITHHELD_REASON,
+} from "@/lib/eeg/measured";
 
 export interface PatientContext {
   ageYears: string;
@@ -49,11 +57,17 @@ export interface FeatureDigest {
     burstSuppressionEvents: number | null;
     isoelectricEvents: number | null;
   };
+  /**
+   * Null values (with `available: false`) mean the seizure score was withheld
+   * because its fixed microvolt gates cannot be applied on this device.
+   */
   seizure: {
-    alerts: number;
-    meanScore: number;
-    maxScore: number;
-    fractionAboveHalf: number;
+    available: boolean;
+    unavailableReason: string | null;
+    alerts: number | null;
+    meanScore: number | null;
+    maxScore: number | null;
+    fractionAboveHalf: number | null;
   };
   spectral: {
     meanSef95Hz: number;
@@ -87,13 +101,19 @@ export interface FeatureDigest {
    * cannot quietly read a number that artefact and EMG gating had rejected.
    */
   depthIndex: {
+    /**
+     * False when the amplitude-dependent index was withheld on every epoch
+     * (uncalibrated band); the aggregates below are then null.
+     */
+    available: boolean;
+    unavailableReason: string | null;
     /** Mean of the depth index across reliable epochs only. */
     meanWhenReliable: number | null;
     /** Range across reliable epochs only. */
     minWhenReliable: number | null;
     maxWhenReliable: number | null;
     /** Share of reliable epochs below 40 (deeper than the usual target). */
-    fractionBelow40WhenReliable: number;
+    fractionBelow40WhenReliable: number | null;
     /** Fraction of epochs where the depth index was trustworthy (0-1). */
     reliableFraction: number;
     /** Mean 0-1 confidence in the depth index across the session. */
@@ -110,11 +130,13 @@ export interface FeatureDigest {
   };
   /** qCON/qNOX-style composite indices (transparent re-implementation). */
   compositeIndex: {
+    available: boolean;
+    unavailableReason: string | null;
     meanConsciousness: number | null;
     latestConsciousness: number | null;
     meanNociception: number | null;
     latestNociception: number | null;
-    fractionNociceptionAbove60: number;
+    fractionNociceptionAbove60: number | null;
   };
   annotations: { tSeconds: number; label: string }[];
   /** Before/after index changes around each user marker. */
@@ -123,7 +145,8 @@ export interface FeatureDigest {
   markerPhases: MarkerPhase[];
   /** Automatically detected events (suppression, seizure, trend alerts). */
   detectedEvents: { tSeconds: number; kind: string; severity: string; detail: string }[];
-  timeline: { tSeconds: number; srPct: number; sef95: number; seizureScore: number }[];
+  /** srPct / seizureScore are null where withheld (uncalibrated amplitude). */
+  timeline: { tSeconds: number; srPct: number | null; sef95: number; seizureScore: number | null }[];
 }
 
 function mean(values: number[]): number {
@@ -173,11 +196,13 @@ function sampleTimeline(epochs: Epoch[], points = 40) {
   const out: FeatureDigest["timeline"] = [];
   for (let i = 0; i < epochs.length; i += step) {
     const e = epochs[i]!;
+    const sr = measuredSuppressionRatio(e);
+    const sz = measuredSeizureScore(e);
     out.push({
       tSeconds: round(e.t, 0),
-      srPct: round(e.suppressionRatio, 1),
+      srPct: sr == null ? null : round(sr, 1),
       sef95: round(e.sef95, 1),
-      seizureScore: round(e.seizureScore, 2),
+      seizureScore: sz == null ? null : round(sz, 2),
     });
   }
   return out;
@@ -220,12 +245,11 @@ export function buildFeatureDigest(
       caseSummary: (patient.caseSummary ?? "").trim() || null,
     },
     suppression: (() => {
-      const measured = epochs.filter((e) => e.suppressionAvailable !== false);
+      const measured = epochs.filter((e) => measuredSuppressionRatio(e) != null);
       if (epochs.length > 0 && measured.length === 0) {
         return {
           available: false,
-          unavailableReason:
-            "Device amplitude scale is not calibrated; suppression was withheld, not measured as zero.",
+          unavailableReason: SUPPRESSION_WITHHELD_REASON,
           meanRatioPct: null,
           maxRatioPct: null,
           suppressionSeconds: null,
@@ -237,11 +261,11 @@ export function buildFeatureDigest(
       return {
         available: true,
         unavailableReason: null,
-        meanRatioPct: round(mean(measured.map((e) => e.suppressionRatio)), 1),
-        maxRatioPct: round(Math.max(0, ...measured.map((e) => e.suppressionRatio)), 1),
+        meanRatioPct: round(mean(measuredValues(measured, measuredSuppressionRatio)), 1),
+        maxRatioPct: round(Math.max(0, ...measuredValues(measured, measuredSuppressionRatio)), 1),
         // Summed over analysed epochs (1 s hop) so gap seconds add nothing.
         suppressionSeconds: round(
-          measured.reduce((a, e) => a + e.epochSuppression, 0),
+          measuredValues(measured, measuredEpochSuppression).reduce((a, v) => a + v, 0),
           1,
         ),
         longestSuppressionSeconds: round(
@@ -252,14 +276,29 @@ export function buildFeatureDigest(
         isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
       };
     })(),
-    seizure: {
-      alerts: events.filter((e) => e.kind === "seizure").length,
-      meanScore: round(mean(epochs.map((e) => e.seizureScore))),
-      maxScore: round(Math.max(0, ...epochs.map((e) => e.seizureScore))),
-      fractionAboveHalf: round(
-        epochs.length ? epochs.filter((e) => e.seizureScore > 0.5).length / epochs.length : 0,
-      ),
-    },
+    seizure: (() => {
+      const scores = measuredValues(epochs, measuredSeizureScore);
+      if (epochs.length > 0 && scores.length === 0) {
+        return {
+          available: false,
+          unavailableReason: SEIZURE_WITHHELD_REASON,
+          alerts: null,
+          meanScore: null,
+          maxScore: null,
+          fractionAboveHalf: null,
+        };
+      }
+      return {
+        available: true,
+        unavailableReason: null,
+        alerts: events.filter((e) => e.kind === "seizure").length,
+        meanScore: round(mean(scores)),
+        maxScore: round(Math.max(0, ...scores)),
+        fractionAboveHalf: round(
+          scores.length ? scores.filter((v) => v > 0.5).length / scores.length : 0,
+        ),
+      };
+    })(),
     spectral: {
       meanSef95Hz: round(mean(sefs), 1),
       sef95TrendHzPerHour: round(slope(epochs.map((e) => ({ t: e.t, y: e.sef95 }))) * 3600, 1),
@@ -320,27 +359,33 @@ export function buildFeatureDigest(
         note:
           "All depth aggregates are computed from reliability-gated epochs only; epochs rejected by artefact/EMG gating are excluded rather than averaged in.",
       };
+      const withheld = epochs.length > 0 && epochs.every((e) => e.depth.withheldReason);
       return {
+        available: !withheld,
+        unavailableReason: withheld ? (epochs[0]!.depth.withheldReason ?? null) : null,
         meanWhenReliable: reliableVals.length ? round(mean(reliableVals), 0) : null,
         minWhenReliable: reliableVals.length ? Math.min(...reliableVals) : null,
         maxWhenReliable: reliableVals.length ? Math.max(...reliableVals) : null,
         fractionBelow40WhenReliable: reliableVals.length
           ? round(reliableVals.filter((v) => v < 40).length / reliableVals.length)
-          : 0,
+          : null,
         ...reliability,
       };
     })(),
     compositeIndex: (() => {
       const c = epochs.map((e) => e.composite.cIndex).filter((v): v is number => v != null);
       const n = epochs.map((e) => e.composite.nIndex).filter((v): v is number => v != null);
+      const withheld = epochs.length > 0 && epochs.every((e) => e.composite.withheldReason);
       return {
+        available: !withheld,
+        unavailableReason: withheld ? (epochs[0]!.composite.withheldReason ?? null) : null,
         meanConsciousness: c.length ? round(mean(c), 0) : null,
         latestConsciousness: c.length ? c[c.length - 1]! : null,
         meanNociception: n.length ? round(mean(n), 0) : null,
         latestNociception: n.length ? n[n.length - 1]! : null,
         fractionNociceptionAbove60: n.length
           ? round(n.filter((v) => v >= 60).length / n.length)
-          : 0,
+          : null,
       };
     })(),
     annotations: events

@@ -13,7 +13,8 @@ export interface StoredEpochPoint {
   nIndex: number | null;
   /** State entropy as a percentage (0-100), matching the trends view. */
   entropy: number | null;
-  suppressed: number;
+  /** 1/0 when suppression was measured; null when withheld (stored NULL). */
+  suppressed: number | null;
 }
 
 export interface StoredEventPoint {
@@ -190,7 +191,7 @@ export function buildStoredDigest(
       suppressedSeconds:
         rows.length > 0 && srVals.length === 0
           ? null
-          : round(rows.filter((r) => r.suppressed).length * cadence, 1),
+          : round(rows.filter((r) => r.suppressed === 1).length * cadence, 1),
       burstSuppressionEvents:
         rows.length > 0 && srVals.length === 0
           ? null
@@ -201,21 +202,32 @@ export function buildStoredDigest(
           : events.filter((e) => e.kind === "isoelectric").length,
     },
     seizure: {
-      alerts: events.filter((e) => e.kind === "seizure").length,
+      // No stored scores at all means the score was withheld (uncalibrated
+      // band) — not that no seizure activity was seen.
+      available: rows.length === 0 || seizureVals.length > 0,
+      unavailableReason:
+        rows.length > 0 && seizureVals.length === 0
+          ? "No seizure scores were stored for this case (withheld or not measured)."
+          : null,
+      alerts:
+        rows.length > 0 && seizureVals.length === 0
+          ? null
+          : events.filter((e) => e.kind === "seizure").length,
       meanScore: round(mean(seizureVals), 2),
       maxScore: seizureVals.length ? round(Math.max(...seizureVals), 2) : null,
       fractionAboveHalf: seizureVals.length
         ? round(seizureVals.filter((v) => v > 0.5).length / seizureVals.length, 2)
-        : 0,
+        : null,
     },
     depthIndex: {
+      available: rows.length === 0 || depthVals.length > 0,
       mean: round(mean(depthVals), 0),
       min: depthVals.length ? Math.min(...depthVals) : null,
       max: depthVals.length ? Math.max(...depthVals) : null,
       latest: depthVals.length ? depthVals[depthVals.length - 1]! : null,
       fractionBelow40: depthVals.length
         ? round(depthVals.filter((v) => v < 40).length / depthVals.length, 2)
-        : 0,
+        : null,
       // Retrospective review of stored epochs: per-epoch gating detail is not
       // persisted, so treat reliability as unknown rather than assured.
       reliableFraction: null,

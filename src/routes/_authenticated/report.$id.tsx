@@ -23,6 +23,7 @@ import { PatientLinkBadge } from "@/components/monitor/PatientLinkBadge";
 import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
 import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { computeCoebis } from "@/lib/eeg/depth";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
@@ -142,7 +143,7 @@ function CaseReport() {
           sr: e.suppression_ratio === null ? null : Number(e.suppression_ratio),
           seizure: e.seizure_score === null ? null : Number(e.seizure_score),
           entropy: typeof ent?.state === "number" ? Number((ent.state * 100).toFixed(1)) : null,
-          suppressed: e.is_suppressed ? 1 : 0,
+          suppressed: e.is_suppressed == null ? null : e.is_suppressed ? 1 : 0,
         };
       }),
     [epochs.data, coebisModel],
@@ -177,7 +178,7 @@ function CaseReport() {
       meanSr: mean(sr),
       maxSr: sr.length ? Math.max(...sr) : null,
       maxSeizure: vals("seizure").length ? Math.max(...vals("seizure")) : null,
-      suppressedSeconds: rows.filter((r) => r.suppressed).length * cadence,
+      suppressedSeconds: suppressedSecondsOrNull(rows, cadence),
       deepSeconds,
       cadence,
     };
@@ -329,7 +330,7 @@ function CaseReport() {
                   value={summary.meanSr == null ? "—" : `${summary.meanSr.toFixed(1)} %`}
                   {...(summary.maxSr == null ? {} : { sub: `peak ${summary.maxSr.toFixed(0)} %` })}
                 />
-                <Stat label="Suppression time" value={formatDuration(summary.suppressedSeconds)} />
+                <Stat label="Suppression time" value={withheldOr(summary.suppressedSeconds, formatDuration)} />
                 <Stat
                   label="Peak seizure score"
                   value={summary.maxSeizure == null ? "—" : summary.maxSeizure.toFixed(2)}

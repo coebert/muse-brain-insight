@@ -1,0 +1,2 @@
+ALTER TABLE public.eeg_epochs ALTER COLUMN seizure_score DROP NOT NULL;
+COMMENT ON COLUMN public.eeg_epochs.seizure_score IS 'Seizure likelihood 0-1. NULL when withheld because the device amplitude scale is not calibrated (fixed microvolt gates cannot be applied); never stored as 0 in that case.';

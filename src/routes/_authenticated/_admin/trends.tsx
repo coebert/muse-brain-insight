@@ -44,6 +44,7 @@ import { computeCoebis } from "@/lib/eeg/depth";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
+import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 
 export const Route = createFileRoute("/_authenticated/_admin/trends")({
@@ -189,7 +190,7 @@ function Trends() {
         cIndex: e.consciousness_index === null ? null : Number(e.consciousness_index),
         nIndex: e.nociception_index === null ? null : Number(e.nociception_index),
         entropy: typeof ent?.state === "number" ? Number((ent.state * 100).toFixed(1)) : null,
-        suppressed: e.is_suppressed ? 1 : 0,
+        suppressed: e.is_suppressed == null ? null : e.is_suppressed ? 1 : 0,
       };
     });
   }, [epochs.data, coebisModel]);
@@ -221,7 +222,7 @@ function Trends() {
         cIndex: null,
         nIndex: null,
         entropy: null,
-        suppressed: 0,
+        suppressed: null,
       })),
     [rows],
   );
@@ -249,7 +250,7 @@ function Trends() {
       rows.length > 1
         ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1))
         : 1;
-    const suppressedSeconds = rows.filter((r) => r.suppressed).length * cadence;
+    const suppressedSeconds = suppressedSecondsOrNull(rows, cadence);
     const sr = vals("sr");
     return {
       duration: rows.length ? rows[rows.length - 1]!.t : 0,
@@ -504,7 +505,7 @@ function Trends() {
                 value={summary.meanSr == null ? "—" : `${summary.meanSr.toFixed(1)} %`}
                 sub={summary.maxSr == null ? undefined : `peak ${summary.maxSr.toFixed(0)} %`}
               />
-              <Stat label="Suppressed time" value={formatDuration(summary.suppressedSeconds)} />
+              <Stat label="Suppressed time" value={withheldOr(summary.suppressedSeconds, formatDuration)} />
               <Stat
                 label="Peak seizure score"
                 value={summary.maxSeizure == null ? "—" : summary.maxSeizure.toFixed(2)}

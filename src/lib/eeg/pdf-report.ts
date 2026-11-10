@@ -13,6 +13,7 @@ import { DSA_STOPS, dsaColor, paintDsaHeatmap } from "@/lib/eeg/dsa-render";
 import type { EpochRow, EventRow } from "@/lib/eeg/db-rows";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { spansGap } from "@/lib/eeg/gaps";
+import { suppressedSecondsOrNull } from "@/lib/eeg/measured";
 
 export interface ReportSessionMeta {
   case_code?: string | null;
@@ -31,7 +32,8 @@ export interface ReportSessionMeta {
 interface Row {
   t: number;
   sr: number | null;
-  suppressed: boolean;
+  /** Null when suppression was withheld for this epoch (stored NULL). */
+  suppressed: boolean | null;
   seizure: number | null;
   depth: number | null;
   sef95: number | null;
@@ -54,7 +56,7 @@ function toRows(epochs: EpochRow[]): Row[] {
   return epochs.map((e) => ({
     t: num(e.t_offset_seconds) ?? 0,
     sr: num(e.suppression_ratio),
-    suppressed: Boolean(e.is_suppressed),
+    suppressed: e.is_suppressed == null ? null : Boolean(e.is_suppressed),
     seizure: num(e.seizure_score),
     depth: num(e.depth_index),
     sef95: num(e.spectral_edge_95),
@@ -344,13 +346,14 @@ function summarise(rows: Row[]) {
   const sef = rows.map((r) => r.sef95).filter((v): v is number => v != null);
   const seiz = rows.map((r) => r.seizure).filter((v): v is number => v != null);
   const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null);
-  const suppressedSeconds = rows.filter((r) => r.suppressed).length * cadence;
+  const suppressedSeconds = suppressedSecondsOrNull(rows, cadence);
   const duration = rows.length ? rows[rows.length - 1]!.t : 0;
   return {
     duration,
     cadence,
     suppressedSeconds,
-    suppressedFraction: duration > 0 ? suppressedSeconds / duration : 0,
+    suppressedFraction:
+      suppressedSeconds == null ? null : duration > 0 ? suppressedSeconds / duration : 0,
     meanSr: mean(srVals),
     maxSr: srVals.length ? Math.max(...srVals) : null,
     meanDepth: mean(depth),
@@ -465,7 +468,9 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
     ["Peak suppression ratio", s.maxSr == null ? "—" : `${s.maxSr.toFixed(0)} %`],
     [
       "Suppression time",
-      `${formatDuration(s.suppressedSeconds)} (${(s.suppressedFraction * 100).toFixed(1)} % of case)`,
+      s.suppressedSeconds == null || s.suppressedFraction == null
+        ? "Withheld (uncalibrated amplitude)"
+        : `${formatDuration(s.suppressedSeconds)} (${(s.suppressedFraction * 100).toFixed(1)} % of case)`,
     ],
     ["Suppression episodes", String(episodes.length)],
     ["Mean depth index", s.meanDepth == null ? "—" : s.meanDepth.toFixed(0)],
@@ -510,9 +515,9 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   let y2 = M + 5;
   heading("Burst-suppression timeline", y2);
   body(
-    `Shaded bands mark epochs scored as suppressed. Suppression time ${formatDuration(
-      s.suppressedSeconds,
-    )} · mean SR ${s.meanSr == null ? "—" : `${s.meanSr.toFixed(1)} %`} · peak SR ${
+    `Shaded bands mark epochs scored as suppressed. Suppression time ${
+      s.suppressedSeconds == null ? "withheld" : formatDuration(s.suppressedSeconds)
+    } · mean SR ${s.meanSr == null ? "—" : `${s.meanSr.toFixed(1)} %`} · peak SR ${
       s.maxSr == null ? "—" : `${s.maxSr.toFixed(0)} %`
     }`,
     M,
