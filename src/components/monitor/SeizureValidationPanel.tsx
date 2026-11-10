@@ -165,13 +165,13 @@ export function SeizureValidationPanel({
         <>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Stat
-              label="Sensitivity"
+              label="Vignette sensitivity"
               value={pct(report.sensitivity)}
               tone={report.sensitivity >= 1 ? "good" : report.sensitivity >= 0.67 ? "warn" : "bad"}
               hint={`${report.truePositives}/${report.truePositives + report.falseNegatives} ictal vignettes detected`}
             />
             <Stat
-              label="Specificity"
+              label="Vignette specificity"
               value={pct(report.specificity)}
               tone={report.specificity >= 1 ? "good" : report.specificity >= 0.8 ? "warn" : "bad"}
               hint={`${report.trueNegatives}/${report.trueNegatives + report.falsePositives} non-ictal vignettes stayed quiet`}
