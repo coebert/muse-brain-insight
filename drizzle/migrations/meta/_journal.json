@@ -239,6 +239,13 @@
       "when": 1794307529547,
       "tag": "0033_eeg_epochs_seizure_score_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794308188775,
+      "tag": "0034_eeg_sessions_seizure_alerts_nullable",
+      "breakpoints": true
     }
   ]
 }

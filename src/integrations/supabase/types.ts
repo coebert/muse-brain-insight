@@ -1306,7 +1306,7 @@ export type Database = {
           patient_link_id: string | null
           patient_pseudonym: string | null
           regimen: string | null
-          seizure_alerts: number
+          seizure_alerts: number | null
           sex: string | null
           started_at: string
           suppression_seconds: number | null
@@ -1342,7 +1342,7 @@ export type Database = {
           patient_link_id?: string | null
           patient_pseudonym?: string | null
           regimen?: string | null
-          seizure_alerts?: number
+          seizure_alerts?: number | null
           sex?: string | null
           started_at?: string
           suppression_seconds?: number | null
@@ -1378,7 +1378,7 @@ export type Database = {
           patient_link_id?: string | null
           patient_pseudonym?: string | null
           regimen?: string | null
-          seizure_alerts?: number
+          seizure_alerts?: number | null
           sex?: string | null
           started_at?: string
           suppression_seconds?: number | null
