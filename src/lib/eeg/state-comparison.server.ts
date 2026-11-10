@@ -15,6 +15,7 @@
  * in the read-out rather than buried, because the interesting result is if a
  * one-descriptor rule tuned to the data still fails to beat an untuned index.
  */
+import { isHarmonizationFitCompatible } from "./harmonization";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
@@ -125,7 +126,7 @@ export async function loadSedationRows(
     const { data, error } = await supabase
       .from("external_spectral_epochs")
       .select(
-        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz, covariates, external_ref",
+        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz, covariates, external_ref, harmonization",
       )
       .eq("user_id", userId)
       .in("source_lineage", SEDATION_LINEAGES)
@@ -137,6 +138,8 @@ export async function loadSedationRows(
     if (error) throw new Error(error.message);
     const page = (data ?? []) as unknown as Record<string, unknown>[];
     for (const r of page) {
+      // Legacy transforms are not fit-compatible until reprocessed.
+      if (!isHarmonizationFitCompatible(r["harmonization"]).compatible) continue;
       rows.push({
         lineage: String(r["source_lineage"] ?? "?"),
         caseRef: String(r["case_ref"] ?? "?"),
