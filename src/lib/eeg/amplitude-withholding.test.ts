@@ -18,7 +18,7 @@ import { epochsToCsv, debugSessionJson, suppressionToCsv } from "./debug-export"
 import { deriveAlarmConditions } from "./alarm-conditions";
 import { deriveClinical } from "./derivations";
 import { computeUncertainty } from "./uncertainty";
-import { buildCaptureBatch } from "./auto-capture";
+import { captureRowsFrom } from "./auto-capture";
 import { replayRawEeg } from "./replay";
 import { FOCUSCALM_PROFILE, REGUL8_PROFILE } from "./device-profile";
 import {
@@ -273,18 +273,15 @@ describe("persistence, export, digest and display missingness", () => {
     const header = csv.find((l) => l.startsWith("t_seconds"))!.split(",");
     const cells = csv.at(-1)!.split(",");
     expect(cells[header.indexOf("seizure_score")]).toBe("");
-    expect(cells[header.indexOf("suppression_ratio_pct")] ?? "").toBe("");
+    expect(cells[header.indexOf("suppression_ratio_pct")]).toBe("");
+    expect(cells[header.indexOf("amplitude_uv")]).toBe("");
     const supp = suppressionToCsv(epochs).trim().split("\n").at(-1)!.split(",");
     expect(supp[3]).toBe("");
     expect(supp[4]).toBe("");
   });
 
   it("the background capture stores no µV amplitude for device units", () => {
-    const batch = buildCaptureBatch(uncalibratedEpochs(), {
-      afterSeconds: -1,
-      sessionStartMs: 0,
-    } as never);
-    const row = batch.epochs.at(-1)!;
+    const row = captureRowsFrom(uncalibratedEpochs(), -1, 0).at(-1)!;
     expect(row.amplitudeUv).toBeNull();
     expect(row.suppressionRatio).toBeNull();
     expect(row.depthIndex).toBeNull();
@@ -363,8 +360,9 @@ describe("persistence, export, digest and display missingness", () => {
     });
     expect(alarms.some((c) => c.id.includes("suppression"))).toBe(false);
     const u = computeUncertainty(epochs, { srWindowSeconds: 60, seizureThreshold: 0.6 });
-    expect(u.suppression.value).toBeNull();
-    expect(u.seizure.value).toBeNull();
+    expect(u.suppression.point).toBeNull();
+    expect(u.suppression.samples).toBe(0);
+    expect(u.seizure.point).toBeNull();
   });
 
   it("offline replay of a non-microvolt file withholds suppression and the index", () => {
