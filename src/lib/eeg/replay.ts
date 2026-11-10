@@ -33,9 +33,9 @@ export interface ReplayFrame {
   /** Summed band power, µV². */
   totalPower: number;
   sef95: number;
-  /** Trailing-window suppression ratio, %. */
-  suppressionRatio: number;
-  isSuppressed: boolean;
+  /** Trailing-window suppression ratio, %. Null when amplitude is uncalibrated. */
+  suppressionRatio: number | null;
+  isSuppressed: boolean | null;
   /** OpenIBIS-scale index the estimator produced for this window. */
   appIndex: number | null;
   /** COEBIS prediction: the index after the fitted alignment and covariates. */
@@ -93,6 +93,12 @@ export interface ReplayOptions {
   toleranceSeconds?: number;
   /** External-pool priors to sit alongside the per-covariate breakdown. */
   priors?: PriorGroup[];
+  /**
+   * False when the samples are not in microvolts. Suppression, the OpenIBIS
+   * index and COEBIS are then withheld (null), exactly as on the live monitor.
+   * Defaults to true (files declared as µV).
+   */
+  amplitudeCalibrated?: boolean;
 }
 
 const EPOCH_SECONDS = 4;
@@ -134,7 +140,14 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
   });
 
   // The index itself, from the live estimator, on the same grid.
+  const amplitudeCalibrated = options.amplitudeCalibrated !== false;
+  if (!amplitudeCalibrated) {
+    notes.push(
+      "Samples are not in microvolts: suppression, the depth index and COEBIS are withheld; only the spectrum and SEF95 are shown.",
+    );
+  }
   const est = new DepthIndexEstimator();
+  est.setAmplitudeCalibrated(amplitudeCalibrated);
   const windowLen = Math.max(Math.round(EPOCH_SECONDS * fs), 8);
   const hop = Math.max(1, Math.round(fs));
   const indexAt = new Map<number, number>();
@@ -169,8 +182,8 @@ export function replayRawEeg(options: ReplayOptions): ReplayResult {
       spectrum: e.spectrumDb,
       totalPower: e.totalPower,
       sef95: e.sef95,
-      suppressionRatio: e.suppressionRatio,
-      isSuppressed: e.isSuppressed,
+      suppressionRatio: amplitudeCalibrated ? e.suppressionRatio : null,
+      isSuppressed: amplitudeCalibrated ? e.isSuppressed : null,
       appIndex,
       coebis,
       bis: nearest(bisPoints, t, tolerance),

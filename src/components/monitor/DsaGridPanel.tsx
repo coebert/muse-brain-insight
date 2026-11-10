@@ -28,7 +28,8 @@ export function DsaGridPanel({ frames }: { frames: ReplayFrame[] }) {
       t: f.t,
       power: Number(f.totalPower.toFixed(2)),
       sef: Number(f.sef95.toFixed(2)),
-      sr: Number(f.suppressionRatio.toFixed(1)),
+      // Null (gap in the line) when suppression was withheld — never 0 %.
+      sr: f.suppressionRatio == null ? null : Number(f.suppressionRatio.toFixed(1)),
     }));
     return { spectra, times, rows };
   }, [frames]);
