@@ -25,7 +25,12 @@ import {
   type BandPoint,
   type SedationTune,
 } from "./coebis-sedation-bands";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 import { loadSedationRows, SEDATION_LINEAGES, type SedationRow } from "./state-comparison.server";
 
 type Client = SupabaseClient<any, any, any>;
@@ -58,6 +63,11 @@ export interface SedationTuneReport {
   bis: BisGuard | null;
   promoted: boolean;
   reason: string;
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
@@ -81,7 +91,7 @@ function pointsFrom(rows: SedationRow[]): BandPoint[] {
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const byTime = new Map(scoreStoredCase(spectra).map((x) => [x.atSeconds, x.index]));
+    const byTime = new Map(scoreLogPush(scoreLog, scoreStoredCase(spectra)).map((x) => [x.atSeconds, x.index]));
     for (const r of track) {
       const band = bandOfLabel(r.label);
       const index = byTime.get(r.atSeconds);

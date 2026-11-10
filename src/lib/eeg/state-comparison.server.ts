@@ -18,7 +18,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 import { DOSE1_LINEAGE } from "./sedation-icu";
 import {
   BASELINE_STATE_MODEL,
@@ -67,6 +72,11 @@ export interface StateComparisonReport {
     bestSimpleKey: string | null;
     bestSimpleAuc: number | null;
   }[];
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
@@ -176,7 +186,9 @@ export async function compareStateModels(
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const readings = scoreStoredCase(spectra);
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const readings = scored_.readings;
     const byTime = new Map(readings.map((x) => [x.atSeconds, x.index]));
 
     for (const r of track) {
