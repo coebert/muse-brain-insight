@@ -1,11 +1,12 @@
 /**
- * Automatic COEBIS recompute.
+ * Automatic COEBIS candidate filing.
  *
- * Paired commercial-BIS values used to reach the pooled fit only when a case
- * was filed, so a COEBIS refit lagged behind the bedside by a whole case. This
- * hook files each newly pairable reading as it is entered during the running
- * case and immediately refits COEBIS (and the SEF alignment) from the pooled
- * data, so the displayed number reflects every reading already logged.
+ * Each newly pairable commercial-BIS reading is filed as it is entered during
+ * the running case, and a candidate refit is requested from the pooled data.
+ * The candidate is NEVER put in force mid-recording: the models in use are
+ * frozen for the whole recording (see model-freeze.ts), so a refit that lands
+ * now takes effect from the next recording. Every number on the running
+ * case's trend therefore comes from one model version.
  */
 
 import { activeLineageKey } from "@/lib/eeg/model-lineage";
@@ -16,7 +17,11 @@ import type { Epoch } from "@/lib/eeg/analysis";
 import { pairBisReadings, type BisReading } from "@/lib/eeg/bis";
 import { getBisDrift, recordBisPoints } from "@/lib/eeg/bis-drift.functions";
 import { getSefDrift } from "@/lib/eeg/sef-drift.functions";
-import { getLatestBisAlignment, syncBisAlignment } from "@/lib/eeg/bis-alignment";
+import {
+  getLatestBisAlignment,
+  getPendingBisAlignment,
+  syncBisAlignment,
+} from "@/lib/eeg/bis-alignment";
 import { syncSefAlignment } from "@/lib/eeg/sef-alignment";
 import { useCoebisRefitSettings } from "@/lib/eeg/coebis-refit-settings";
 import { recordCoebisRefit } from "@/lib/eeg/coebis-refit-log";
@@ -132,12 +137,14 @@ export function useAutoCoebisRefit(opts: {
           });
           markFiled(points.map((p) => byId.get(p.at)?.id).filter((id): id is string => !!id));
           await refreshCoebis({ data: { lineage: activeLineageKey() } });
-          const model = await syncBisAlignment();
+          // Frozen while recording: this fetches the candidate but holds it.
+          await syncBisAlignment();
+          const candidate = getPendingBisAlignment() ?? getLatestBisAlignment();
           recordCoebisRefit({
             trigger: "auto",
             before: beforeModel,
-            after: model,
-            changed: !!model?.id && model.id !== before,
+            after: candidate,
+            changed: !!candidate?.id && candidate.id !== before,
           });
           try {
             await refreshSef({});
@@ -145,11 +152,11 @@ export function useAutoCoebisRefit(opts: {
           } catch {
             // SEF alignment is secondary; a failure must not block COEBIS.
           }
-          if (model?.id && model.id !== before) {
-            toast.success(
-              `COEBIS updated from ${model.n ?? points.length} paired readings${
-                model.provisional ? " (provisional)" : ""
-              }.`,
+          if (candidate?.id && candidate.id !== before) {
+            toast.info(
+              `New COEBIS candidate from ${candidate.n ?? points.length} paired readings${
+                candidate.provisional ? " (provisional)" : ""
+              } — it will be used from the next recording. This case stays on the model it started with.`,
             );
           }
         } catch {
