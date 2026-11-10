@@ -1299,8 +1299,8 @@ export type Database = {
           ketamine_detail: string | null
           ketamine_given: boolean | null
           location: string | null
-          max_suppression_ratio: number
-          mean_suppression_ratio: number
+          max_suppression_ratio: number | null
+          mean_suppression_ratio: number | null
           model_provenance: Json | null
           notes: string | null
           patient_link_id: string | null
@@ -1309,7 +1309,7 @@ export type Database = {
           seizure_alerts: number
           sex: string | null
           started_at: string
-          suppression_seconds: number
+          suppression_seconds: number | null
           user_id: string
         }
         Insert: {
@@ -1335,8 +1335,8 @@ export type Database = {
           ketamine_detail?: string | null
           ketamine_given?: boolean | null
           location?: string | null
-          max_suppression_ratio?: number
-          mean_suppression_ratio?: number
+          max_suppression_ratio?: number | null
+          mean_suppression_ratio?: number | null
           model_provenance?: Json | null
           notes?: string | null
           patient_link_id?: string | null
@@ -1345,7 +1345,7 @@ export type Database = {
           seizure_alerts?: number
           sex?: string | null
           started_at?: string
-          suppression_seconds?: number
+          suppression_seconds?: number | null
           user_id: string
         }
         Update: {
@@ -1371,8 +1371,8 @@ export type Database = {
           ketamine_detail?: string | null
           ketamine_given?: boolean | null
           location?: string | null
-          max_suppression_ratio?: number
-          mean_suppression_ratio?: number
+          max_suppression_ratio?: number | null
+          mean_suppression_ratio?: number | null
           model_provenance?: Json | null
           notes?: string | null
           patient_link_id?: string | null
@@ -1381,7 +1381,7 @@ export type Database = {
           seizure_alerts?: number
           sex?: string | null
           started_at?: string
-          suppression_seconds?: number
+          suppression_seconds?: number | null
           user_id?: string
         }
         Relationships: [
