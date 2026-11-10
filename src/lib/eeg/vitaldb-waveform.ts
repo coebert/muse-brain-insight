@@ -473,7 +473,7 @@ export function pairVitalDbCase(
       sqi: s.sqi,
       appIndex: Number(frame.appIndex.toFixed(2)),
       appSef: Number(frame.sef95.toFixed(2)),
-      appSr: Number(frame.suppressionRatio.toFixed(2)),
+      appSr: frame.suppressionRatio == null ? null : Number(frame.suppressionRatio.toFixed(2)),
       // The monitor's own SQI decides reliability; the replay index is only as
       // trustworthy as the signal the monitor was reading at the time.
       reliable: s.sqi == null ? true : s.sqi >= minSqi,

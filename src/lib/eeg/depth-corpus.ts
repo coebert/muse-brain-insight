@@ -310,7 +310,7 @@ export function pairCorpusCase(entry: CorpusCase, options: PairOptions): CorpusC
       reference: Number(score.value.toFixed(1)),
       appIndex: Number(frame.appIndex.toFixed(2)),
       appSef: Number(frame.sef95.toFixed(2)),
-      appSr: Number(frame.suppressionRatio.toFixed(2)),
+      appSr: frame.suppressionRatio == null ? null : Number(frame.suppressionRatio.toFixed(2)),
       refSr: score.sr,
       refSef: score.sef,
       sqi: score.sqi,

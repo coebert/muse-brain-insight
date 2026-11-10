@@ -146,7 +146,7 @@ export function pairFigshareBisCase(
       bis: Number(value.toFixed(1)),
       appIndex: Number(frame.appIndex.toFixed(2)),
       appSef: Number(frame.sef95.toFixed(2)),
-      appSr: Number(frame.suppressionRatio.toFixed(2)),
+      appSr: frame.suppressionRatio == null ? null : Number(frame.suppressionRatio.toFixed(2)),
       // The record publishes no signal-quality index, so nothing here can claim
       // a reading was rejected by the monitor; reliability is left true and the
       // absence of an SQI travels with the row.

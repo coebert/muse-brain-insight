@@ -390,7 +390,7 @@ export function buildMoaasDepthPoints(
         state: moaasState(iv.score),
         appIndex: Number(frame.appIndex.toFixed(1)),
         appSef: Number.isFinite(frame.sef95) ? Number(frame.sef95.toFixed(2)) : null,
-        appSr: Number.isFinite(frame.suppressionRatio)
+        appSr: frame.suppressionRatio != null && Number.isFinite(frame.suppressionRatio)
           ? Number(frame.suppressionRatio.toFixed(1))
           : null,
         reliable: true,
