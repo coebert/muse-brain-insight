@@ -122,7 +122,7 @@ export const FOCUSCALM_PROFILE = profile({
   sampleRate: 250,
   sourceLabels: { AF7: "Fp1–Fp2" },
   calibratedAmplitude: false,
-  note: "One frontal channel only. Suppression ratio and spectral edge remain interpretable; hemispheric asymmetry, side preference and bilateral coherence are not available, and COEBIS runs without its bilateral adjunct.",
+  note: "One frontal channel, not calibrated in microvolts. Spectral shape, relative band powers, SEF95 and spectral entropy are reported. Suppression ratio, the OpenIBIS depth index, COEBIS, the consciousness/nociception indices and the seizure score depend on microvolt thresholds and are withheld. Hemispheric asymmetry, side preference and bilateral coherence are not available.",
   // The BLE source re-pairs itself with backoff and resumes the same stream,
   // so a dropout no longer needs the clinician to rebuild the link by hand.
   capabilities: { battery: true, reconnect: true, contactSensing: false },
@@ -142,7 +142,7 @@ export const REGUL8_PROFILE = profile({
   sampleRate: 250,
   sourceLabels: { AF7: "Fp1–Fp2" },
   calibratedAmplitude: false,
-  note: "One frontal channel, auto-gained rather than calibrated in microvolts. Spectral shape, spectral edge and suppression fraction stay interpretable; hemispheric asymmetry and bilateral coherence are unavailable, and absolute amplitude thresholds are relative to this recording.",
+  note: "One frontal channel, auto-gained rather than calibrated in microvolts. Spectral shape, relative band powers, SEF95 and spectral entropy are reported. Suppression ratio, the OpenIBIS depth index, COEBIS, the consciousness/nociception indices and the seizure score depend on microvolt thresholds and are withheld. Hemispheric asymmetry and bilateral coherence are unavailable.",
   capabilities: { battery: true, reconnect: true, contactSensing: false },
 });
 
