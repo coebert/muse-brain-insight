@@ -37,11 +37,20 @@ export function CoebisV2LivePanel({
         <span className={`rounded-full px-2 py-1 text-[11px] ${badgeTone}`}>{setup.verdict}</span>
       </div>
 
+      {setup.withheldReason ? (
+        <p
+          role="status"
+          className="mt-3 rounded-md border border-border bg-muted/40 p-2 text-xs text-foreground"
+        >
+          {setup.withheldReason}
+        </p>
+      ) : null}
+
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Index</div>
           <div className="metric-value text-3xl tabular-nums">
-            {reading ? reading.index : "—"}
+            {reading?.index ?? "—"}
           </div>
         </div>
         <div>
@@ -49,7 +58,7 @@ export function CoebisV2LivePanel({
             Suppression (60 s)
           </div>
           <div className="metric-value text-3xl tabular-nums">
-            {reading ? `${reading.suppressionRatio.toFixed(0)}%` : "—"}
+            {reading?.suppressionRatio != null ? `${reading.suppressionRatio.toFixed(0)}%` : "—"}
           </div>
         </div>
         <div>
@@ -57,9 +66,7 @@ export function CoebisV2LivePanel({
             Amplitude scale
           </div>
           <div className="mt-1 text-sm">
-            {setup.amplitudeNormalised
-              ? `Auto-matched (×${reading ? reading.gain.toFixed(2) : "…"})`
-              : "Real microvolts"}
+            {setup.amplitudeCalibrated ? "Real microvolts" : "Unknown — not calibrated"}
           </div>
         </div>
       </div>
@@ -83,14 +90,38 @@ export function CoebisV2LivePanel({
         </div>
       ) : null}
 
+      {reading && reading.status === "withheld" ? (
+        <div className="mt-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Relative spectral features (research only, not a depth reading)
+          </div>
+          <ul className="mt-1 grid gap-1 text-xs sm:grid-cols-3">
+            {(["relDelta", "relAlpha", "relBeta", "sef95", "entState"] as const).map((k) =>
+              reading.researchFeatures[k] != null ? (
+                <li key={k} className="flex items-center justify-between gap-2">
+                  <span className="font-mono">{k}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {reading.researchFeatures[k]!.toFixed(2)}
+                  </span>
+                </li>
+              ) : null,
+            )}
+          </ul>
+        </div>
+      ) : null}
+
       <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
         {setup.caveats.map((c) => (
           <li key={c}>· {c}</li>
         ))}
         <li>
-          · Fitted on {COEBIS_V2_MODEL.meta.lineage}; its {COEBIS_V2_MODEL.meta.heldOutMae.toFixed(2)}
-          -point held-out error belongs to that setup, not to this band.
+          · Research BIS-agreement only: fitted on {COEBIS_V2_MODEL.meta.lineage} (
+          {COEBIS_V2_MODEL.meta.cases} retrospective VitalDB surgical cases, held-out patients); its{" "}
+          {COEBIS_V2_MODEL.meta.heldOutMae.toFixed(2)}-point held-out gap to BIS belongs to that setup,
+          not to this band. Agreement with BIS is not validation of depth of anaesthesia,
+          responsiveness or outcomes.
         </li>
+        {reading ? <li>· Model version {reading.modelVersion}, fixed for this recording.</li> : null}
       </ul>
     </section>
   );
