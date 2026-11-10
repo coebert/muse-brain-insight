@@ -136,7 +136,7 @@ export function SeizureValidationPanel({
         <div className="min-w-0">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             <FlaskConical className="size-3.5" />
-            Detector check
+            Detector check · synthetic regression, not human validation
           </h2>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             Scores the labelled vignette pack through the detector at your current settings —

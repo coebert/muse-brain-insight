@@ -240,18 +240,22 @@ export function seizureValidationMarkdown(report: SeizureValidationReport): stri
     )
     .join("\n");
   return [
-    "# Seizure detector validation pack",
+    "# Seizure detector synthetic regression pack",
+    "",
+    "> SYNTHETIC REGRESSION CHECK — NOT HUMAN OR CLINICAL VALIDATION. These eight",
+    "> vignettes prove the detector code behaves as designed; they are not evidence",
+    "> of sensitivity, specificity or false-alarm rates in patients.",
     "",
     "Synthetic labelled vignettes scored through the live `EegAnalyzer` at the",
     "shipped detection settings. Regenerate with `bunx vitest run seizure-validation`.",
     "",
-    `- Sensitivity: ${(report.sensitivity * 100).toFixed(0)} % (${report.truePositives}/${
+    `- Vignette sensitivity (synthetic): ${(report.sensitivity * 100).toFixed(0)} % (${report.truePositives}/${
       report.truePositives + report.falseNegatives
     } ictal vignettes)`,
-    `- Specificity: ${(report.specificity * 100).toFixed(0)} % (${report.trueNegatives}/${
+    `- Vignette specificity (synthetic): ${(report.specificity * 100).toFixed(0)} % (${report.trueNegatives}/${
       report.trueNegatives + report.falsePositives
     } non-ictal vignettes)`,
-    `- False alarms per hour: ${report.falseAlarmsPerHour.toFixed(1)} over ${report.nonIctalHours} h of non-ictal recording`,
+    `- Synthetic false alarms per hour: ${report.falseAlarmsPerHour.toFixed(1)} over ${report.nonIctalHours} h of non-ictal recording`,
     "",
     "| Vignette | Truth | Length | Verdict | Alert epochs | Peak score | First alert (s) |",
     "| --- | --- | --- | --- | --- | --- | --- |",
