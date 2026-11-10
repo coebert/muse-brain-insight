@@ -1,36 +1,34 @@
 /**
- * Cross-dataset harmonisation — making external EEG comparable to this app's
- * own frontal montage, and saying exactly what was done to it.
+ * Cross-dataset harmonisation — recording exactly how external EEG differs
+ * from this app's own frontal montage, without pretending to correct it.
  *
- * Every collection the model pool draws on was recorded differently: a
- * mastoid-referenced clinical montage records roughly twice the frontal
- * amplitude of a short bipolar forehead derivation; a Cz reference attenuates
- * the frontal delta the depth index leans on; sample rates and anti-alias
- * bandwidths differ, so the same "gamma" band is not the same measurement.
- * Pooling those numbers untouched teaches the model dataset identity rather
- * than physiology.
+ * Every collection the model pool draws on was recorded differently: mastoid,
+ * linked-ear, average, Cz or device references; different sample rates and
+ * anti-alias bandwidths. Those differences are real and they matter.
  *
- * Harmonisation therefore does two things, and only two:
+ * What this module does NOT do (since harmonise-2.0.0):
+ *   - It does not re-reference. Re-referencing needs the other electrodes'
+ *     signals; a scalar spectral gain cannot turn a mastoid derivation into a
+ *     bipolar frontal one, so no reference "gain" is applied. The source
+ *     reference is preserved verbatim and a mismatch is a stated caveat.
+ *   - It does not infer an average reference from a generic "-REF" label.
+ *     "REF" is whatever the amplifier used; without metadata it is unknown.
+ *   - It does not write zeros for bands the source passband cannot support.
+ *     Those bands are listed as unavailable and left out of the available
+ *     band set and the available total; the original values stay untouched.
  *
- *   1. It applies a documented, reversible spectral gain (and a band-limit)
- *      that brings a source montage onto the reference target below. The
- *      corrections are *approximate* scaling factors from the montage
- *      literature, not measured per-subject transfer functions, so they are
- *      always labelled `approximate` and carry a confidence.
- *
- *   2. It records the transformation in full — source montage, reference,
- *      bandwidth, every step, every gain, and what could not be corrected —
- *      so any model fitted on external data can be audited back to what the
- *      raw dataset actually contained.
- *
- * Nothing here invents data: if a source cannot reach the target (no gamma
- * band because the dataset was low-passed at 25 Hz), the affected features are
- * marked unusable rather than extrapolated.
+ * What it does: records source montage, reference, passband and rate, lists
+ * unavailable bands, and says whether the record may enter a new fit.
+ * Records made by harmonise-1.0.0 applied literature gain factors and zeroed
+ * unsupported bands; they are kept as stored but are incompatible with new
+ * fits until reprocessed from the original files.
  */
 
 import type { PhysionetBands, PhysionetEpoch } from "./physionet";
 
-export const HARMONIZATION_VERSION = "harmonise-1.0.0";
+export const HARMONIZATION_VERSION = "harmonise-2.0.0";
+/** Versions that applied invented reference gains or zeroed bands. */
+export const LEGACY_HARMONIZATION_VERSIONS = ["harmonise-1.0.0"] as const;
 
 /** The montage every pooled epoch is expressed on after harmonisation. */
 export const HARMONIZATION_TARGET = {
@@ -66,7 +64,7 @@ export interface SourceMontage {
 export interface HarmonizationStep {
   step: string;
   detail: string;
-  /** Spectral gain applied by this step, dB (positive = power raised). */
+  /** Spectral gain applied by this step, dB. Always 0 from harmonise-2.0.0. */
   gainDb?: number;
 }
 
@@ -75,15 +73,17 @@ export interface HarmonizationRecord {
   target: typeof HARMONIZATION_TARGET;
   source: SourceMontage;
   steps: HarmonizationStep[];
-  /** Total spectral gain applied across all steps, dB. */
+  /** Total spectral gain applied across all steps, dB. 0 from harmonise-2.0.0. */
   totalGainDb: number;
+  /** True only when the source reference is the target's bipolar frontal one. */
+  referenceMatchesTarget: boolean;
   /** How much of the target band the source can actually support (0–1). */
   bandCoverage: number;
   /** Bands that must not be used from this source. */
   unusableBands: (keyof PhysionetBands)[];
   /** 0–1 confidence that the harmonised values are comparable to the target. */
   confidence: number;
-  /** Always true: these are literature scaling factors, not measured ones. */
+  /** True: comparability is judged, not measured. */
   approximate: true;
   /** Anything the transform could not correct, stated plainly. */
   caveats: string[];
@@ -91,27 +91,15 @@ export interface HarmonizationRecord {
 
 export interface HarmonizedEpoch extends PhysionetEpoch {
   harmonization: HarmonizationRecord;
+  /** Bands the source passband supports; unavailable bands are absent, not 0. */
+  availableBands: Partial<PhysionetBands>;
+  /** Sum of available bands only. */
+  availableTotalPower: number;
+  /** True when one or more bands were unavailable. */
+  totalPowerPartial: boolean;
 }
 
 /* ------------------------------------------------- reference correction --- */
-
-/**
- * Approximate amplitude ratio of a frontal signal on each reference scheme
- * relative to the short bipolar frontal derivation the target uses. Power
- * gain is the square of this ratio, applied as its reciprocal to bring the
- * source down (or up) onto the target scale.
- */
-const REFERENCE_AMPLITUDE_RATIO: Record<ReferenceScheme, number> = {
-  "bipolar-frontal": 1,
-  // Long inter-electrode distance to an inactive ear/mastoid: larger swings.
-  mastoid: 2.0,
-  "linked-ears": 1.9,
-  // Common-average removes shared frontal delta, so amplitudes sit lower.
-  average: 1.4,
-  // Cz sits near the frontal signal, cancelling much of the low-frequency swing.
-  cz: 1.2,
-  unknown: 1,
-};
 
 const REFERENCE_CONFIDENCE: Record<ReferenceScheme, number> = {
   "bipolar-frontal": 1,
@@ -128,7 +116,9 @@ export function inferReference(channel: string | null | undefined): ReferenceSch
   if (!c) return "unknown";
   if (/-(A1|A2|M1|M2)$/.test(c)) return "mastoid";
   if (/-(LE|EARS?|A1A2)$/.test(c)) return "linked-ears";
-  if (/-(AVG|AVE|AVERAGE|REF)$/.test(c)) return "average";
+  // Only an explicit average label means average. A generic "-REF" is the
+  // amplifier's own reference, which is unknown without dataset metadata.
+  if (/-(AVG|AVE|AVERAGE)$/.test(c)) return "average";
   if (/-CZ$/.test(c)) return "cz";
   if (/^(AF7|AF8|FP1|FP2|F7|F8)-(AF7|AF8|FP1|FP2|F7|F8)$/.test(c)) return "bipolar-frontal";
   return "unknown";
@@ -161,35 +151,38 @@ export function planHarmonization(source: SourceMontage): HarmonizationRecord {
   const steps: HarmonizationStep[] = [];
   const caveats: string[] = [];
 
-  const ratio = REFERENCE_AMPLITUDE_RATIO[source.reference];
-  const refGainDb = -20 * Math.log10(ratio);
+  const referenceMatchesTarget = source.reference === HARMONIZATION_TARGET.reference;
   steps.push({
-    step: "reference-normalisation",
-    detail: `${source.reference} → ${HARMONIZATION_TARGET.reference} (amplitude ratio ${ratio.toFixed(2)}×, approximate)`,
-    gainDb: Math.round(refGainDb * 100) / 100,
+    step: "reference-preserved",
+    detail: `source reference ${source.reference} kept as recorded; re-referencing to ${HARMONIZATION_TARGET.reference} needs the other electrodes' signals and was not performed`,
+    gainDb: 0,
   });
   if (source.reference === "unknown") {
-    caveats.push("Reference scheme was not documented; no reference gain applied.");
+    caveats.push("Reference scheme was not documented; it is treated as unknown.");
+  } else if (!referenceMatchesTarget) {
+    caveats.push(
+      `Recorded against a ${source.reference} reference, not the target bipolar frontal derivation. Amplitudes and absolute powers are not comparable across references; no correction was applied.`,
+    );
   }
 
   const lo = source.lowHz ?? HARMONIZATION_TARGET.lowHz;
   const hi = source.highHz ?? (source.sampleRateHz ? source.sampleRateHz / 2.5 : 45);
   steps.push({
     step: "band-limit",
-    detail: `source ${lo}–${Math.round(hi)} Hz restricted to target ${HARMONIZATION_TARGET.lowHz}–${HARMONIZATION_TARGET.highHz} Hz`,
+    detail: `source passband ${lo}–${Math.round(hi)} Hz documented against the ${HARMONIZATION_TARGET.lowHz}–${HARMONIZATION_TARGET.highHz} Hz target; no filtering applied`,
   });
 
   if (source.sampleRateHz && source.sampleRateHz !== HARMONIZATION_TARGET.sampleRateHz) {
     steps.push({
       step: "spectral-regrid",
-      detail: `${source.sampleRateHz} Hz native rate resampled onto the 0.5 Hz DSA grid`,
+      detail: `${source.sampleRateHz} Hz native rate; spectra are on the 0.5 Hz DSA grid as imported`,
     });
   }
 
   const bad = unusableBands(source);
   if (bad.length) {
     caveats.push(
-      `Source passband cannot support: ${bad.join(", ")} — these features are withheld from pooled fitting.`,
+      `Source passband cannot support: ${bad.join(", ")} — these bands are unavailable (not zero) and the record is withheld from full-band fits.`,
     );
   }
 
@@ -203,23 +196,20 @@ export function planHarmonization(source: SourceMontage): HarmonizationRecord {
     ),
   );
 
-  const totalGainDb = steps.reduce((acc, s) => acc + (s.gainDb ?? 0), 0);
   const confidence =
     Math.round(REFERENCE_CONFIDENCE[source.reference] * (0.5 + 0.5 * coverage) * 100) / 100;
 
   if (!source.channel) {
     caveats.push("Channel label absent; montage inferred from dataset defaults.");
   }
-  caveats.push(
-    "Scaling factors are literature approximations, not per-subject transfer functions.",
-  );
 
   return {
     version: HARMONIZATION_VERSION,
     target: HARMONIZATION_TARGET,
     source,
     steps,
-    totalGainDb: Math.round(totalGainDb * 100) / 100,
+    totalGainDb: 0,
+    referenceMatchesTarget,
     bandCoverage: Math.round(coverage * 1000) / 1000,
     unusableBands: bad,
     confidence,
@@ -229,12 +219,10 @@ export function planHarmonization(source: SourceMontage): HarmonizationRecord {
 }
 
 /**
- * Apply the planned transform to one epoch's DSA features.
- *
- * Spectral shape is preserved; only the level is corrected, so SEF95 and the
- * suppression verdict are untouched by design — a gain cannot change which
- * frequency holds 95 % of the power, and re-deriving a suppression label from
- * rescaled power would fabricate a detector verdict the dataset never gave.
+ * Attach the plan to one epoch. Nothing is rescaled: the spectrum, band
+ * powers, SEF95 and suppression verdict are the source's own values. Bands
+ * the source cannot support are left out of `availableBands` rather than
+ * written as zero.
  */
 export function harmonizeEpoch(
   epoch: PhysionetEpoch,
@@ -242,20 +230,20 @@ export function harmonizeEpoch(
   plan?: HarmonizationRecord,
 ): HarmonizedEpoch {
   const record = plan ?? planHarmonization(source);
-  const gainDb = record.totalGainDb;
-  const linear = Math.pow(10, gainDb / 10);
-
-  const bands: PhysionetBands = { ...epoch.bands };
-  for (const key of Object.keys(bands) as (keyof PhysionetBands)[]) {
-    bands[key] = record.unusableBands.includes(key) ? 0 : bands[key] * linear;
+  const availableBands: Partial<PhysionetBands> = {};
+  let availableTotalPower = 0;
+  for (const key of Object.keys(epoch.bands) as (keyof PhysionetBands)[]) {
+    if (record.unusableBands.includes(key)) continue;
+    availableBands[key] = epoch.bands[key];
+    availableTotalPower += epoch.bands[key];
   }
-  const totalPower = bands.delta + bands.theta + bands.alpha + bands.beta + bands.gamma;
-
   return {
     ...epoch,
-    spectrumDb: epoch.spectrumDb.map((v) => Math.round((v + gainDb) * 1000) / 1000),
-    bands,
-    totalPower,
+    spectrumDb: [...epoch.spectrumDb],
+    bands: { ...epoch.bands },
+    availableBands,
+    availableTotalPower,
+    totalPowerPartial: record.unusableBands.length > 0,
     harmonization: record,
   };
 }
@@ -271,10 +259,57 @@ export function harmonizeEpochs(
 
 /** One-line audit string for reports and model provenance panels. */
 export function describeHarmonization(record: HarmonizationRecord): string {
+  const unavailable = record.unusableBands?.length
+    ? `, unavailable bands ${record.unusableBands.join("/")}`
+    : "";
   return (
-    `${record.source.reference} → ${record.target.reference}, ` +
-    `${record.totalGainDb >= 0 ? "+" : ""}${record.totalGainDb} dB, ` +
-    `coverage ${(record.bandCoverage * 100).toFixed(0)}%, ` +
+    `source reference ${record.source.reference} preserved; no re-referencing, ` +
+    `coverage ${(record.bandCoverage * 100).toFixed(0)}%${unavailable}, ` +
     `confidence ${(record.confidence * 100).toFixed(0)}% (${record.version})`
   );
+}
+
+export interface FitCompatibility {
+  compatible: boolean;
+  reason: string | null;
+}
+
+/**
+ * Whether a stored record may enter a NEW model fit. Fails closed: legacy
+ * versions, any applied gain, an applied reference-normalisation step, or
+ * missing bands the fit needs all make it incompatible. Stored rows are not
+ * modified; they must be reprocessed from the original files.
+ */
+export function isHarmonizationFitCompatible(
+  record: unknown,
+  requiredBands: (keyof PhysionetBands)[] = ["delta", "theta", "alpha", "beta", "gamma"],
+): FitCompatibility {
+  if (!record || typeof record !== "object") {
+    return { compatible: false, reason: "No harmonisation record — provenance unknown." };
+  }
+  const r = record as Partial<HarmonizationRecord>;
+  if (!r.version || (LEGACY_HARMONIZATION_VERSIONS as readonly string[]).includes(r.version)) {
+    return {
+      compatible: false,
+      reason: `Legacy transform ${r.version ?? "(unversioned)"} applied invented reference gains or zeroed bands; reprocess from the original files before fitting.`,
+    };
+  }
+  if (r.version !== HARMONIZATION_VERSION) {
+    return { compatible: false, reason: `Unrecognised transform version ${r.version}.` };
+  }
+  const gain = Number(r.totalGainDb);
+  if (!Number.isFinite(gain) || gain !== 0) {
+    return { compatible: false, reason: "Record carries a non-zero spectral gain." };
+  }
+  if ((r.steps ?? []).some((s) => s.step === "reference-normalisation" || (s.gainDb ?? 0) !== 0)) {
+    return { compatible: false, reason: "Record applied a reference-normalisation gain." };
+  }
+  const missing = requiredBands.filter((b) => (r.unusableBands ?? []).includes(b));
+  if (missing.length) {
+    return {
+      compatible: false,
+      reason: `Bands ${missing.join(", ")} are unavailable from this source's passband.`,
+    };
+  }
+  return { compatible: true, reason: null };
 }

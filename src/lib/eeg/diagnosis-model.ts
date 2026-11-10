@@ -100,9 +100,9 @@ const known = (v: unknown): string | null => {
  */
 function labelFor(group: DiagnosisGroup, cov: DiscoveryRow["covariates"]) {
   if (group !== "pathology") return null;
-  const value = known(cov.confirmed_diagnosis);
-  const provenance = known(cov.confirmed_diagnosis_provenance);
-  const level = cov.confirmed_diagnosis_level;
+  const value = known(cov["confirmed_diagnosis"]);
+  const provenance = known(cov["confirmed_diagnosis_provenance"]);
+  const level = cov["confirmed_diagnosis_level"];
   if (!value || !provenance || !["event", "recording", "patient"].includes(String(level))) return null;
   return { value, provenance, labelLevel: level as LabelLevel, labelSource: "confirmed_diagnosis" };
 }
@@ -119,7 +119,7 @@ function aggregate(rows: DiscoveryRow[], group: DiagnosisGroup, features: Featur
     if (resolved.some(l => !l)) { excludedUnknownCases++; continue; }
     const ls = resolved as NonNullable<ReturnType<typeof labelFor>>[];
     const first = ls[0]!;
-    const patients = new Set(rs.map(r => known(r.covariates.patient_id) ?? known(r.covariates.patientRef)).filter(Boolean));
+    const patients = new Set(rs.map(r => known(r.covariates["patient_id"]) ?? known(r.covariates["patientRef"])).filter(Boolean));
     // Never collapse distinct event labels, levels, or patients into a case class.
     if (patients.size > 1 || ls.some(l => l.value !== first.value || l.labelLevel !== first.labelLevel)) {
       excludedConflictingCases++; continue;
@@ -237,7 +237,7 @@ export function fitDiagnosisModel(
     labelProvenance: [...new Set(labels.map(l => l.provenance))],
     excludedUnknownCases,
     excludedConflictingCases,
-    independence: scopedRows.some(r => known(r.covariates.patient_id) || known(r.covariates.patientRef))
+    independence: scopedRows.some(r => known(r.covariates["patient_id"]) || known(r.covariates["patientRef"]))
       ? "Leave-one-patient-out where identity is available; caseRef is a patient proxy otherwise."
       : "Leave-one-case-out; caseRef is a patient proxy, patient independence is unverified.",
     notes: DISCLAIMER,

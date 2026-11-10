@@ -72,6 +72,9 @@ import { useSefAlignment } from "@/hooks/useSefAlignment";
 import { lookupPatientLink } from "@/lib/eeg/patient-link.functions";
 import { setActiveSefPatientKey } from "@/lib/eeg/sef-personalisation";
 import { saveSession } from "@/lib/eeg/save";
+import { freezeModels, releaseModels, type ModelProvenance } from "@/lib/eeg/model-freeze";
+import { getSyncedBisAlignment, isBisAlignmentPinned } from "@/lib/eeg/bis-alignment";
+import { getSyncedSefAlignment } from "@/lib/eeg/sef-alignment";
 import { saveSessionRawTraces } from "@/lib/eeg/raw-trace-store";
 import { markSpoolAttached } from "@/lib/eeg/local-raw-spool";
 import { getActiveDeviceProfile } from "@/lib/eeg/device-profile";
@@ -319,6 +322,45 @@ function useCaseSessionState() {
   }, [meta.regimen, meta.notes, meta.caseSummary]);
 
   const { summary, status } = monitor;
+
+  /**
+   * Freeze every model, calibration and tuning for the length of the
+   * recording; refits that land meanwhile wait for the next one. The final
+   * provenance is kept so it can be filed with the case after it ends.
+   */
+  const provenanceRef = useRef<ModelProvenance | null>(null);
+  useEffect(() => {
+    if (caseState === "running") {
+      const bis = getSyncedBisAlignment();
+      const sef = getSyncedSefAlignment();
+      provenanceRef.current = freezeModels({
+        coebisAlignment: bis
+          ? {
+              id: bis.id ?? null,
+              version: bis.version ?? null,
+              fittedAt: bis.fittedAt,
+              n: bis.n,
+              provisional: bis.provisional ?? null,
+              pinned: isBisAlignmentPinned(),
+              family: bis.family ?? null,
+            }
+          : null,
+        sefAlignment: sef
+          ? { id: sef.id ?? null, fittedAt: sef.fittedAt, n: sef.n, provisional: sef.provisional ?? null }
+          : null,
+        coebisV2: monitor.coebisV2ModelVersion,
+        sedationTune: monitor.coebisV2BandTuned ? { id: "active-at-start" } : null,
+        amplitudeCalibrated: monitor.deviceProfile.calibratedAmplitude !== false,
+        withheld: [],
+      });
+    } else {
+      provenanceRef.current = releaseModels() ?? provenanceRef.current;
+    }
+    // Only the recording lifecycle moves the freeze.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseState]);
+  useEffect(() => () => void releaseModels(), []);
+
   const streaming = status === "streaming";
   const reconnecting = status === "reconnecting";
   const caseRunning = caseState === "running";
@@ -802,6 +844,16 @@ function useCaseSessionState() {
     }
     setSaving(true);
     try {
+      const amplitudeCalibrated = monitor.deviceProfile.calibratedAmplitude !== false;
+      const provenance: ModelProvenance | null = provenanceRef.current
+        ? {
+            ...provenanceRef.current,
+            amplitudeCalibrated,
+            withheld: amplitudeCalibrated
+              ? []
+              : ["coebis-v2-index", "coebis-v2-suppression", "suppression-ratio", "suppression-seconds"],
+          }
+        : null;
       const sessionId = await saveSession(
         { ...meta, deviceName: monitor.sourceName },
         monitor.epochs,
@@ -809,6 +861,7 @@ function useCaseSessionState() {
         summary,
         monitor.elapsed,
         sessionStartedAtMs,
+        provenance,
       );
       // Tie the running continuous capture to the case just filed, so the
       // nightly harvest leaves it alone rather than filing it a second time.

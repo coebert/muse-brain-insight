@@ -5,6 +5,7 @@ import {
   harmonizeEpoch,
   harmonizeEpochs,
   inferReference,
+  isHarmonizationFitCompatible,
   planHarmonization,
   HARMONIZATION_VERSION,
   type SourceMontage,
@@ -48,19 +49,19 @@ describe("reference inference", () => {
 });
 
 describe("harmonisation plan", () => {
-  it("records every transformation step and stays approximate", () => {
+  it("records the source reference but applies no invented gain", () => {
     const plan = planHarmonization(mastoid);
     expect(plan.version).toBe(HARMONIZATION_VERSION);
-    expect(plan.approximate).toBe(true);
-    expect(plan.steps.map((s) => s.step)).toContain("reference-normalisation");
-    expect(plan.steps.map((s) => s.step)).toContain("band-limit");
-    // Mastoid montage records larger swings, so the gain is negative.
-    expect(plan.totalGainDb).toBeLessThan(0);
-    expect(plan.bandCoverage).toBe(1);
-    expect(plan.caveats.join(" ")).toMatch(/approximation/i);
+    expect(plan.totalGainDb).toBe(0);
+    expect(plan.steps.every((s) => (s.gainDb ?? 0) === 0)).toBe(true);
+    expect(plan.steps.map((s) => s.step)).not.toContain("reference-normalisation");
+    expect(plan.steps.map((s) => s.step)).toContain("reference-preserved");
+    expect(plan.source.reference).toBe("mastoid");
+    expect(plan.referenceMatchesTarget).toBe(false);
+    expect(plan.caveats.join(" ")).toMatch(/no correction was applied/i);
   });
 
-  it("applies no reference gain when the scheme is undocumented", () => {
+  it("treats an undocumented scheme as unknown", () => {
     const plan = planHarmonization({
       channel: null,
       reference: "unknown",
@@ -73,6 +74,11 @@ describe("harmonisation plan", () => {
     expect(plan.caveats.join(" ")).toMatch(/not documented/i);
   });
 
+  it("does not read a generic REF channel as an average reference", () => {
+    expect(inferReference("FP1-REF")).toBe("unknown");
+    expect(inferReference("FP1-AVG")).toBe("average");
+  });
+
   it("marks bands the source passband cannot support", () => {
     const plan = planHarmonization({ ...mastoid, highHz: 20 });
     expect(plan.unusableBands).toContain("gamma");
@@ -82,22 +88,25 @@ describe("harmonisation plan", () => {
 });
 
 describe("applying harmonisation", () => {
-  it("rescales power without inventing detector verdicts", () => {
+  it("leaves the measured spectrum, powers and verdicts untouched", () => {
     const out = harmonizeEpoch(epoch, mastoid);
-    const linear = Math.pow(10, out.harmonization.totalGainDb / 10);
-    expect(out.bands.delta).toBeCloseTo(40 * linear, 6);
-    expect(out.spectrumDb[0]).toBeCloseTo(10 + out.harmonization.totalGainDb, 3);
-    // Shape-preserving: SEF95 and the suppression label are untouched.
+    expect(out.bands).toEqual(epoch.bands);
+    expect(out.spectrumDb).toEqual(epoch.spectrumDb);
+    expect(out.totalPower).toBe(77);
     expect(out.sef95).toBe(epoch.sef95);
     expect(out.isSuppressed).toBe(false);
-    expect(out.suppressionRatio).toBe(0);
-    expect(out.totalPower).toBeCloseTo(77 * linear, 5);
+    expect(out.availableTotalPower).toBe(77);
+    expect(out.totalPowerPartial).toBe(false);
   });
 
-  it("zeroes bands the source cannot support", () => {
+  it("leaves unsupported bands unavailable rather than zero", () => {
     const out = harmonizeEpoch(epoch, { ...mastoid, highHz: 20 });
-    expect(out.bands.gamma).toBe(0);
-    expect(out.bands.delta).toBeGreaterThan(0);
+    expect(out.availableBands.gamma).toBeUndefined();
+    expect("gamma" in out.availableBands).toBe(false);
+    expect(out.bands.gamma).toBe(2); // original preserved, not overwritten
+    expect(out.availableBands.delta).toBe(40);
+    expect(out.totalPowerPartial).toBe(true);
+    expect(out.availableTotalPower).toBe(70); // delta+theta+alpha only
   });
 
   it("plans once per case and yields an audit line", () => {
@@ -105,7 +114,37 @@ describe("applying harmonisation", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]!.harmonization).toEqual(rows[1]!.harmonization);
     expect(describeHarmonization(rows[0]!.harmonization)).toMatch(
-      /mastoid → bipolar-frontal/,
+      /source reference mastoid preserved; no re-referencing/,
     );
+  });
+});
+
+describe("fit compatibility", () => {
+  it("rejects legacy harmonise-1.0.0 records until reprocessed", () => {
+    const legacy = { ...planHarmonization(mastoid), version: "harmonise-1.0.0", totalGainDb: -2.92 };
+    const r = isHarmonizationFitCompatible(legacy);
+    expect(r.compatible).toBe(false);
+    expect(r.reason).toMatch(/reprocess/i);
+  });
+
+  it("rejects a legacy record even when its gain was zero", () => {
+    const legacy = { ...planHarmonization(mastoid), version: "harmonise-1.0.0" };
+    expect(isHarmonizationFitCompatible(legacy).compatible).toBe(false);
+  });
+
+  it("rejects a missing record and any non-zero gain", () => {
+    expect(isHarmonizationFitCompatible(null).compatible).toBe(false);
+    const gained = { ...planHarmonization(mastoid), totalGainDb: 1.5 };
+    expect(isHarmonizationFitCompatible(gained).compatible).toBe(false);
+  });
+
+  it("rejects records whose required bands are unavailable", () => {
+    const plan = planHarmonization({ ...mastoid, highHz: 20 });
+    expect(isHarmonizationFitCompatible(plan).compatible).toBe(false);
+    expect(isHarmonizationFitCompatible(plan, ["delta", "theta"]).compatible).toBe(true);
+  });
+
+  it("accepts a current full-band record", () => {
+    expect(isHarmonizationFitCompatible(planHarmonization(mastoid)).compatible).toBe(true);
   });
 });

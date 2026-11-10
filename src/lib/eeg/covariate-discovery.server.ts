@@ -7,6 +7,7 @@
  * long recording cannot dominate the pass.
  */
 
+import { isHarmonizationFitCompatible } from "./harmonization";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildAdoptionLedger, type DiscoveryBundle } from "./discovery-adoption";
@@ -29,6 +30,7 @@ interface ExternalRow {
   source_lineage: string;
   case_ref: string;
   bands: Record<string, unknown> | null;
+  harmonization?: unknown;
   total_power: number | null;
   sef95: number | null;
   suppression_ratio: number | null;
@@ -68,13 +70,17 @@ async function loadExternalRows(supabase: Client, limit: number): Promise<Discov
   for (let from = 0; from < limit; from += PAGE) {
     const { data, error } = await supabase
       .from("external_spectral_epochs")
-      .select("source_lineage, case_ref, bands, total_power, sef95, suppression_ratio, covariates")
+      .select(
+        "source_lineage, case_ref, bands, total_power, sef95, suppression_ratio, covariates, harmonization",
+      )
       .order("created_at", { ascending: true })
       .range(from, Math.min(from + PAGE, limit) - 1);
     if (error) throw new Error(error.message);
     const page = (data ?? []) as unknown as ExternalRow[];
     for (const r of page) {
       const caseRef = `${r.source_lineage}/${r.case_ref}`;
+      // Legacy transforms are not fit-compatible until reprocessed.
+      if (!isHarmonizationFitCompatible(r.harmonization).compatible) continue;
       if (!keep(counts, caseRef)) continue;
       const features = featuresFromBands(r.bands, r.total_power, r.sef95, r.suppression_ratio);
       if (!features) continue;

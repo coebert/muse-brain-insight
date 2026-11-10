@@ -1264,6 +1264,10 @@ export function useEegMonitor() {
     coebisV2,
     /** How COEBIS-2 is being read on this montage. */
     coebisV2Setup: coebisV2Ref.current.deviceSetup,
+    /** COEBIS-2 coefficients version, fixed for the running recording. */
+    coebisV2ModelVersion: coebisV2Ref.current.modelVersion,
+    /** True when a sedation output curve was frozen in for this recording. */
+    coebisV2BandTuned: coebisV2Ref.current.bandTuned,
     reconnectAttempt,
     /** The source's own retry loop is still working on a dropped link. */
     autoRetrying,

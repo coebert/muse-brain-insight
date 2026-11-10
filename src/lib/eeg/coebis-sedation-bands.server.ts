@@ -25,7 +25,12 @@ import {
   type BandPoint,
   type SedationTune,
 } from "./coebis-sedation-bands";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 import { loadSedationRows, SEDATION_LINEAGES, type SedationRow } from "./state-comparison.server";
 
 type Client = SupabaseClient<any, any, any>;
@@ -58,10 +63,18 @@ export interface SedationTuneReport {
   bis: BisGuard | null;
   promoted: boolean;
   reason: string;
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
-function pointsFrom(rows: SedationRow[]): BandPoint[] {
+function pointsFrom(rows: SedationRow[]): {
+  points: BandPoint[];
+  unavailable: { epochs: number; reason: string | null };
+} {
   const tracks = new Map<string, SedationRow[]>();
   for (const r of rows) {
     // Block included: the Cambridge blocks each restart at zero, so keying on
@@ -73,6 +86,7 @@ function pointsFrom(rows: SedationRow[]): BandPoint[] {
   }
 
   const points: BandPoint[] = [];
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const spectra: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -81,7 +95,9 @@ function pointsFrom(rows: SedationRow[]): BandPoint[] {
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const byTime = new Map(scoreStoredCase(spectra).map((x) => [x.atSeconds, x.index]));
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const byTime = new Map(scored_.readings.map((x) => [x.atSeconds, x.index]));
     for (const r of track) {
       const band = bandOfLabel(r.label);
       const index = byTime.get(r.atSeconds);
@@ -89,7 +105,7 @@ function pointsFrom(rows: SedationRow[]): BandPoint[] {
       points.push({ index, band, caseRef: `${r.lineage}/${r.caseRef}` });
     }
   }
-  return points;
+  return { points, unavailable: summariseUnavailable(scoreLog) };
 }
 
 /** Replay the curve over stored bedside BIS pairs; nothing is re-derived. */
@@ -135,7 +151,7 @@ export async function runSedationTune(
   limit = MAX_TUNE_EPOCHS,
 ): Promise<SedationTuneReport> {
   const { rows, truncated } = await loadSedationRows(supabase, userId, limit);
-  const points = pointsFrom(rows);
+  const { points, unavailable: coebisUnavailable } = pointsFrom(rows);
   const cases = new Set(points.map((p) => p.caseRef)).size;
 
   const empty = (reason: string): SedationTuneReport => ({
@@ -153,6 +169,7 @@ export async function runSedationTune(
     promoted: false,
     reason,
     truncated,
+    coebisUnavailable,
   });
 
   const folds = bandFolds(points);
@@ -227,6 +244,7 @@ export async function runSedationTune(
     promoted,
     reason,
     truncated,
+    coebisUnavailable,
   };
 }
 

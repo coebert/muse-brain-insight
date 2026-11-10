@@ -25,7 +25,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
 import { PHASE_ORDER, PHASE_TEXT, phaseOfLevel, type CasePhase } from "./chennu-phases";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 export { PHASE_ORDER, PHASE_TEXT, phaseOfLevel, type CasePhase };
 
 import { COEBIS_V2_MODEL, coebisV2Applicability } from "./coebis-v2";
@@ -75,6 +80,11 @@ export interface ChennuPhaseReport {
   recoveredCount: number;
   /** Volunteers with both a baseline and a maintenance block. */
   comparableCount: number;
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
@@ -158,6 +168,7 @@ export async function runChennuPhaseFit(
   const perCasePhase = new Map<string, Map<CasePhase, number[]>>();
   let scored = 0;
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const spectra: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -166,7 +177,9 @@ export async function runChennuPhaseFit(
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const byTime = new Map(scoreStoredCase(spectra).map((x) => [x.atSeconds, x.index]));
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const byTime = new Map(scored_.readings.map((x) => [x.atSeconds, x.index]));
 
     for (const r of track) {
       const phase = phaseOfLevel(r.level);
@@ -242,6 +255,7 @@ export async function runChennuPhaseFit(
     deepenedCount: comparable.filter((a) => (a.deepening ?? 0) < 0).length,
     recoveredCount: arcs.filter((a) => (a.recovery ?? 0) > 0).length,
     comparableCount: comparable.length,
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }

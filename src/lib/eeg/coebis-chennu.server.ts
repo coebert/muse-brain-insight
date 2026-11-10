@@ -16,7 +16,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 import { COEBIS_V2_MODEL, coebisV2Applicability } from "./coebis-v2";
 import {
   collapseState,
@@ -62,6 +67,11 @@ export interface ChennuCoebisReport {
   byLabel: ChennuLabelScore[];
   byCase: ChennuCaseScore[];
   separation: Separation;
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
@@ -152,6 +162,7 @@ export async function runChennuCoebis(
   let scored = 0;
   let unusable = 0;
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const epochs: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -160,7 +171,9 @@ export async function runChennuCoebis(
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const readings = scoreStoredCase(epochs);
+    const scored_ = scoreStoredCase(epochs);
+    scoreLog.push(scored_);
+    const readings = scored_.readings;
     const byTime = new Map(readings.map((x) => [x.atSeconds, x.index]));
 
     for (const r of track) {
@@ -229,6 +242,7 @@ export async function runChennuCoebis(
       }))
       .sort((a, b) => a.caseRef.localeCompare(b.caseRef)),
     separation: separationFromScores(points, scores),
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }

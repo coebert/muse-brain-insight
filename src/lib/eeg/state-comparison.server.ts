@@ -15,10 +15,16 @@
  * in the read-out rather than buried, because the interesting result is if a
  * one-descriptor rule tuned to the data still fails to beat an untuned index.
  */
+import { isHarmonizationFitCompatible } from "./harmonization";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
-import { scoreStoredCase, type StoredSpectrum } from "./coebis-spectra";
+import {
+  scoreStoredCase,
+  summariseUnavailable,
+  type StoredCaseScore,
+  type StoredSpectrum,
+} from "./coebis-spectra";
 import { DOSE1_LINEAGE } from "./sedation-icu";
 import {
   BASELINE_STATE_MODEL,
@@ -67,6 +73,11 @@ export interface StateComparisonReport {
     bestSimpleKey: string | null;
     bestSimpleAuc: number | null;
   }[];
+  /**
+   * Epochs COEBIS-2 could not score because a required input was not
+   * genuinely measured (peak-to-peak, 5 µV suppression, calibrated µV), and why.
+   */
+  coebisUnavailable: { epochs: number; reason: string | null };
   truncated: boolean;
 }
 
@@ -115,7 +126,7 @@ export async function loadSedationRows(
     const { data, error } = await supabase
       .from("external_spectral_epochs")
       .select(
-        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz, covariates, external_ref",
+        "source_lineage, case_ref, channel, at_seconds, label, bands, sef95, suppression_ratio, spectrum_db, freq_start_hz, freq_step_hz, covariates, external_ref, harmonization",
       )
       .eq("user_id", userId)
       .in("source_lineage", SEDATION_LINEAGES)
@@ -127,6 +138,8 @@ export async function loadSedationRows(
     if (error) throw new Error(error.message);
     const page = (data ?? []) as unknown as Record<string, unknown>[];
     for (const r of page) {
+      // Legacy transforms are not fit-compatible until reprocessed.
+      if (!isHarmonizationFitCompatible(r["harmonization"]).compatible) continue;
       rows.push({
         lineage: String(r["source_lineage"] ?? "?"),
         caseRef: String(r["case_ref"] ?? "?"),
@@ -168,6 +181,7 @@ export async function compareStateModels(
   const coebisScores: number[] = [];
   const lineageOf: string[] = [];
 
+  const scoreLog: StoredCaseScore[] = [];
   for (const track of tracks.values()) {
     const spectra: StoredSpectrum[] = track.map((r) => ({
       atSeconds: r.atSeconds,
@@ -176,7 +190,9 @@ export async function compareStateModels(
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const readings = scoreStoredCase(spectra);
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const readings = scored_.readings;
     const byTime = new Map(readings.map((x) => [x.atSeconds, x.index]));
 
     for (const r of track) {
@@ -252,6 +268,7 @@ export async function compareStateModels(
       : separationFromScores([], []),
     simple,
     byLineage,
+    coebisUnavailable: summariseUnavailable(scoreLog),
     truncated,
   };
 }

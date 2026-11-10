@@ -4,6 +4,7 @@
  * on them with whole-case holdout, and promotes a candidate only when the
  * held-out separation genuinely improves.
  */
+import { isHarmonizationFitCompatible } from "./harmonization";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { CHENNU_LINEAGE } from "./chennu";
@@ -84,6 +85,9 @@ export interface StatePoolSummary {
   /** How the current reference mapping separates the two states. */
   current: Separation;
   activeVersion: number | null;
+  /** Stored rows excluded because their transform is not fit-compatible. */
+  incompatible?: number;
+  incompatibleReason?: string | null;
 }
 
 /** Load every stored epoch carrying a label that means responsive or not. */
@@ -92,15 +96,26 @@ export async function loadStatePool(
   userId: string,
   limit = MAX_POOL_EPOCHS,
   lineage?: string | null,
-): Promise<{ points: StateEpoch[]; unusable: number; labels: Map<string, number> }> {
+): Promise<{
+  points: StateEpoch[];
+  unusable: number;
+  labels: Map<string, number>;
+  /** Rows excluded because their harmonisation record is not fit-compatible. */
+  incompatible: number;
+  incompatibleReason: string | null;
+}> {
   const points: StateEpoch[] = [];
   const labels = new Map<string, number>();
   let unusable = 0;
+  let incompatible = 0;
+  let incompatibleReason: string | null = null;
 
   for (let from = 0; from < limit; from += PAGE) {
     let query = supabase
       .from("external_spectral_epochs")
-      .select("case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio")
+      .select(
+        "case_ref, source_lineage, at_seconds, label, bands, sef95, suppression_ratio, harmonization",
+      )
       .eq("user_id", userId)
       .not("label", "is", null);
     const keys = scopeLineages(lineage);
@@ -121,6 +136,14 @@ export async function loadStatePool(
       const state = collapseState(label);
       if (!state) {
         unusable++;
+        continue;
+      }
+      // Legacy transforms applied invented gains or zeroed bands: excluded
+      // from new fits until reprocessed. The stored row is left as it is.
+      const compat = isHarmonizationFitCompatible(row["harmonization"]);
+      if (!compat.compatible) {
+        incompatible++;
+        incompatibleReason ??= compat.reason;
         continue;
       }
       const bandsRow = (row["bands"] ?? {}) as Record<string, unknown>;
@@ -146,7 +169,7 @@ export async function loadStatePool(
     if (rows.length < PAGE) break;
   }
 
-  return { points, unusable, labels };
+  return { points, unusable, labels, incompatible, incompatibleReason };
 }
 
 async function loadIncumbent(supabase: Client, userId: string, lineage?: string | null) {
@@ -175,7 +198,7 @@ export async function loadStateSummary(
   userId: string,
   lineage?: string | null,
 ): Promise<StatePoolSummary> {
-  const { points, unusable, labels } = await loadStatePool(
+  const { points, unusable, labels, incompatible, incompatibleReason } = await loadStatePool(
     supabase,
     userId,
     MAX_POOL_EPOCHS,
@@ -218,6 +241,8 @@ export async function loadStateSummary(
       .sort((a, b) => b.epochs - a.epochs),
     current: separationOf(points, (f) => scoreState(model, f)),
     activeVersion: incumbent.version,
+    incompatible,
+    incompatibleReason,
   };
 
 }
@@ -236,12 +261,27 @@ export async function runStateFit(
   lineage?: string | null,
 ): Promise<StateFitResult> {
   const scope = lineage ?? null;
-  const { points } = await loadStatePool(supabase, userId, MAX_POOL_EPOCHS, scope);
+  const { points, incompatible, incompatibleReason } = await loadStatePool(
+    supabase,
+    userId,
+    MAX_POOL_EPOCHS,
+    scope,
+  );
   const incumbent = await loadIncumbent(supabase, userId, scope);
   const report = gradeStateFit(points);
 
   if (!report.model) {
-    return { ...report, version: null, promoted: false, lineage: scope };
+    const excluded =
+      incompatible > 0
+        ? ` ${incompatible.toLocaleString()} stored epochs were excluded as not fit-compatible: ${incompatibleReason ?? "legacy transform"}`
+        : "";
+    return {
+      ...report,
+      reason: `${report.reason}${excluded}`,
+      version: null,
+      promoted: false,
+      lineage: scope,
+    };
   }
 
   const version = incumbent.maxVersion + 1;

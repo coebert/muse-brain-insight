@@ -175,7 +175,7 @@ describe("diagnosis model", () => {
   });
 
   it("refuses collection categories without confirmed diagnosis provenance", () => {
-    const data = rows("app:muse-2", 4).map(r => ({ ...r, covariates: { pathology_category: r.covariates.pathology_category } }));
+    const data = rows("app:muse-2", 4).map(r => ({ ...r, covariates: { pathology_category: r.covariates["pathology_category"] } }));
     const m = fitDiagnosisModel("app:muse-2", data, "pathology");
     expect(m.computability).toBe("not-computable");
     expect(m.blocker).toContain("dataset/collection descriptor");
