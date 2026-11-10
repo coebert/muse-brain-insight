@@ -412,26 +412,25 @@ export function useEegMonitor() {
   const coebisV2Ref = useRef<LiveCoebisV2>(new LiveCoebisV2(MUSE_2_PROFILE));
   const [coebisV2, setCoebisV2] = useState<LiveCoebisV2Reading | null>(null);
   /**
-   * The adopted sedation band curve, if one has been tuned. It is monotone,
-   * so it only moves the reading onto the scale clinicians read; it is held
-   * here so a montage change rebuilds the estimator with it still in force.
+   * The newest adopted sedation band curve, if one has been tuned. It is
+   * fetched in the background but never applied to a running recording:
+   * `sessionTuneRef` holds the curve frozen when the current recording began,
+   * and a newer curve takes effect only when the next recording starts.
    */
   const bandTuneRef = useRef<SedationTune | null>(null);
-  useEffect(() => {
-    let cancelled = false;
+  const sessionTuneRef = useRef<SedationTune | null>(null);
+  const refreshBandTune = useCallback(() => {
     void getSedationBandTune({ data: undefined })
       .then((tune) => {
-        if (cancelled || !tune) return;
-        bandTuneRef.current = tune;
-        coebisV2Ref.current.setTune(tune);
+        bandTuneRef.current = tune ?? null;
       })
       .catch(() => {
         // No tuned scale is a normal state, not an error worth surfacing.
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+  useEffect(() => {
+    refreshBandTune();
+  }, [refreshBandTune]);
   const sourceRef = useRef<EegSource | null>(null);
   /** Last successful connection request, so a manual retry can repeat it. */
   const lastConnectRef = useRef<{
@@ -580,7 +579,10 @@ export function useEegMonitor() {
     manualEventsRef.current = [];
     hemiEventsRef.current = [];
     channelTalliesRef.current = emptyChannelTallies(profileRef.current.channels);
-    coebisV2Ref.current.reset();
+    // A new recording starts on the newest curve; it then stays fixed.
+    sessionTuneRef.current = bandTuneRef.current;
+    coebisV2Ref.current = new LiveCoebisV2(profileRef.current, {}, { tune: sessionTuneRef.current });
+    refreshBandTune();
     setCoebisV2(null);
     dispatch({ type: "reset" });
     waveformStoreRef.current.set(new Float64Array(0));
@@ -593,7 +595,7 @@ export function useEegMonitor() {
     setIntegrity(null);
     setClock(null);
     allocateBuffers(profileRef.current);
-  }, [allocateBuffers]);
+  }, [allocateBuffers, refreshBandTune]);
 
   /** Appends a clinician annotation or audit entry to the session event log. */
   const addEvent = useCallback((event: DetectedEvent) => {
@@ -643,9 +645,16 @@ export function useEegMonitor() {
           setActiveDeviceProfile(p);
           allocateBuffers(p);
           channelTalliesRef.current = emptyChannelTallies(p.channels);
-          // Rate handling and amplitude normalisation are device-specific.
-          coebisV2Ref.current = new LiveCoebisV2(p, {}, { tune: bandTuneRef.current });
+          // Rate handling and amplitude calibration are device-specific. The
+          // output curve is the one frozen for this recording.
+          coebisV2Ref.current = new LiveCoebisV2(p, {}, { tune: sessionTuneRef.current });
           setCoebisV2(null);
+          // A band without a microvolt scale cannot be tested against the µV
+          // suppression threshold, so suppression is withheld, not guessed.
+          const calibrated = p.calibratedAmplitude !== false;
+          analyzerRef.current.setAmplitudeCalibrated(calibrated);
+          leftAnalyzerRef.current.setAmplitudeCalibrated(calibrated);
+          rightAnalyzerRef.current.setAmplitudeCalibrated(calibrated);
           if (channelRef.current !== "average" && !p.channels.includes(channelRef.current)) {
             setChannel("average");
           }
@@ -1192,8 +1201,10 @@ export function useEegMonitor() {
   const latest = epochs.length ? epochs[epochs.length - 1]! : null;
 
   const summary = useMemo(() => {
+    const suppressionAvailable = deviceProfile.calibratedAmplitude !== false;
     if (!epochs.length) {
       return {
+        suppressionAvailable,
         meanSr: 0,
         maxSr: 0,
         suppressionSeconds: 0,
@@ -1205,6 +1216,8 @@ export function useEegMonitor() {
     const meanSr = (epochs.reduce((a, e) => a + e.epochSuppression, 0) / epochs.length) * 100;
     const maxSr = epochs.reduce((a, e) => Math.max(a, e.suppressionRatio), 0);
     return {
+      /** False when the band has no µV scale; the suppression fields are then not measurements. */
+      suppressionAvailable,
       meanSr,
       maxSr,
       suppressionSeconds: analyzerRef.current.suppressionSeconds,
@@ -1212,7 +1225,7 @@ export function useEegMonitor() {
       meanQuality: epochs.reduce((a, e) => a + e.quality.score, 0) / epochs.length,
       usableFraction: epochs.filter((e) => e.quality.grade !== "poor").length / epochs.length,
     };
-  }, [epochs, events]);
+  }, [epochs, events, deviceProfile]);
 
   return {
     status,

@@ -183,8 +183,18 @@ export interface Epoch {
   epochSuppression: number;
   /** True when the epoch is predominantly suppressed. */
   isSuppressed: boolean;
-  /** Suppression ratio over the trailing SR window (0–100 %). */
+  /**
+   * Suppression ratio over the trailing SR window (0–100 %). Meaningless when
+   * `suppressionAvailable` is false — read that flag before showing it.
+   */
   suppressionRatio: number;
+  /**
+   * False when the µV suppression test cannot be applied (the device has no
+   * microvolt scale). Then suppressionRatio/epochSuppression are placeholders,
+   * never measurements, and every consumer must show them as unavailable.
+   * Absent on older epochs, which were all recorded in microvolts.
+   */
+  suppressionAvailable?: boolean;
   seizureScore: number;
   seizureAlert: boolean;
   /** Amplitude looked implausible for EEG (movement/diathermy). */
@@ -328,6 +338,16 @@ export class EegAnalyzer {
     this.settings = settings;
   }
 
+  /**
+   * Whether samples are in real microvolts. When they are not, the absolute
+   * suppression threshold has no meaning, so suppression is withheld rather
+   * than computed on an arbitrary scale.
+   */
+  private amplitudeCalibrated = true;
+  setAmplitudeCalibrated(calibrated: boolean) {
+    this.amplitudeCalibrated = calibrated;
+  }
+
   reset() {
     this.lineLengthBaseline = [];
     this.consecutiveSeizureEpochs = 0;
@@ -429,15 +449,19 @@ export class EegAnalyzer {
       if (p2p < this.settings.suppressionThresholdUv) suppressedSegs++;
       segs++;
     }
-    const epochSuppression = segs ? suppressedSegs / segs : 0;
+    const suppressionMeasurable = this.amplitudeCalibrated;
+    const epochSuppression = suppressionMeasurable && segs ? suppressedSegs / segs : 0;
     // A flat trace is an electrode off the skin, not a suppressed brain. Gating
     // only on the composite grade let a "fair" near-flat epoch count as
     // suppression seconds, which is the one artefact that must never inflate a
     // burst-suppression burden.
     const artifact = maxP2p > 500 || quality.grade === "poor" || quality.flat;
-    const isSuppressed = !artifact && !gapAffected && epochSuppression >= 0.5;
+    const isSuppressed =
+      suppressionMeasurable && !artifact && !gapAffected && epochSuppression >= 0.5;
 
-    if (!artifact && !gapAffected) {
+    if (!suppressionMeasurable) {
+      // Uncalibrated amplitude: nothing feeds the suppression clock.
+    } else if (!artifact && !gapAffected) {
       this.suppressionHistory.push({ t, fraction: epochSuppression });
       this.suppressionSeconds += epochSuppression * HOP_SECONDS;
       this.analysedSeconds += HOP_SECONDS;
@@ -475,7 +499,7 @@ export class EegAnalyzer {
     // --- burst-suppression burden alerts -----------------------------------
     // Fires once on crossing the configured suppression ratio, then again each
     // time the burden worsens by a further step.
-    if (!artifact && !gapAffected) {
+    if (suppressionMeasurable && !artifact && !gapAffected) {
       if (!this.bsrAlerted && suppressionRatio >= this.settings.bsrAlertPercent) {
         this.bsrAlerted = true;
         this.lastBsrAlertValue = suppressionRatio;
@@ -683,7 +707,9 @@ export class EegAnalyzer {
 
     const confidence: MetricConfidence = {
       spectral: clamp01(quality.score * (0.6 + 0.4 * sustainedQuality)),
-      suppression: clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty)),
+      suppression: suppressionMeasurable
+        ? clamp01(quality.score * (0.35 + 0.65 * srFill) * (1 - 0.4 * emgPenalty))
+        : 0,
       seizure: seizureConfidence,
       // EMG in the 30–47 Hz band directly contaminates the beta ratio, so it
       // penalises the depth index harder than the plain spectral metrics; the
@@ -772,6 +798,7 @@ export class EegAnalyzer {
       epochSuppression,
       isSuppressed,
       suppressionRatio,
+      suppressionAvailable: suppressionMeasurable,
       seizureScore,
       seizureAlert,
       artifact,

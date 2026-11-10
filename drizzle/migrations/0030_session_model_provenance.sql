@@ -1,0 +1,2 @@
+ALTER TABLE public.eeg_sessions ADD COLUMN IF NOT EXISTS model_provenance jsonb NULL;
+COMMENT ON COLUMN public.eeg_sessions.model_provenance IS 'Model, calibration and tuning versions frozen for the whole recording, plus measurement-availability flags (e.g. suppression withheld when amplitude calibration is unknown). Null for cases filed before provenance was recorded.';

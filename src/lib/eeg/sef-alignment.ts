@@ -17,6 +17,8 @@ import {
   type SefPersonalModel,
 } from "@/lib/eeg/sef-personalisation";
 
+import { deferWhileFrozen } from "@/lib/eeg/model-freeze";
+
 let syncedAt = 0;
 const listeners = new Set<(alignment: SefAlignment | null) => void>();
 
@@ -41,10 +43,14 @@ export async function syncSefAlignment(): Promise<SefAlignment | null> {
     .limit(1);
   syncedAt = Date.now();
   if (error || !data || !data.length) {
-    setActiveSefPersonalModel(null);
-    setActiveSefAlignment(null);
-    listeners.forEach((fn) => fn(null));
-    return null;
+    // A failed fetch is not evidence the correction was retired.
+    if (error) return getActiveSefAlignment();
+    deferWhileFrozen("sef-alignment", () => {
+      setActiveSefPersonalModel(null);
+      setActiveSefAlignment(null);
+      listeners.forEach((fn) => fn(null));
+    });
+    return getActiveSefAlignment();
   }
   const row = data[0]!;
   const gain = Number(row.gain);
@@ -69,8 +75,9 @@ export async function syncSefAlignment(): Promise<SefAlignment | null> {
   const coefficients = (row.coefficients ?? null) as
     | { terms?: SefPersonalModel["terms"]; patientOffsets?: Record<string, number> }
     | null;
-  if (row.model_family === "personal" && coefficients && Array.isArray(coefficients.terms)) {
-    setActiveSefPersonalModel({
+  const personal: SefPersonalModel | null =
+    row.model_family === "personal" && coefficients && Array.isArray(coefficients.terms)
+      ? {
       gain,
       offset,
       terms: coefficients.terms,
@@ -81,13 +88,16 @@ export async function syncSefAlignment(): Promise<SefAlignment | null> {
       cv: (row.cv_metrics ?? {}) as unknown as SefPersonalModel["cv"],
       fittedAt: String(row.created_at),
       id: String(row.id),
-    });
-  } else {
-    setActiveSefPersonalModel(null);
-  }
-  setActiveSefAlignment(alignment);
-  listeners.forEach((fn) => fn(alignment));
-  return alignment;
+    }
+      : null;
+  // During a recording the correction in force stays in force; the new one
+  // is applied when the recording ends.
+  deferWhileFrozen("sef-alignment", () => {
+    setActiveSefPersonalModel(personal);
+    setActiveSefAlignment(alignment);
+    listeners.forEach((fn) => fn(alignment));
+  });
+  return getActiveSefAlignment();
 }
 
 /** Re-sync only when the cached model is older than `maxAgeMs`. */

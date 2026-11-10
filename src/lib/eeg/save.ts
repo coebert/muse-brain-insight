@@ -8,6 +8,8 @@ import {
   validateClinicalCovariates,
 } from "@/lib/eeg/clinical-covariates";
 import { linkPatient } from "@/lib/eeg/patient-link.functions";
+import type { ModelProvenance } from "@/lib/eeg/model-freeze";
+import type { Json } from "@/integrations/supabase/types";
 import { clearStagedSave, isTransient, stageSave, withRetry } from "@/lib/eeg/save-staging";
 import {
   EPOCH_BATCH_SIZE,
@@ -99,11 +101,21 @@ export async function saveSession(
   meta: SessionMeta,
   epochs: Epoch[],
   events: DetectedEvent[],
-  summary: { meanSr: number; maxSr: number; suppressionSeconds: number; seizureAlerts: number },
+  summary: {
+    meanSr: number;
+    maxSr: number;
+    suppressionSeconds: number;
+    seizureAlerts: number;
+    /** False when the band had no µV scale: suppression is filed as null, not 0. */
+    suppressionAvailable?: boolean;
+  },
   elapsed: number,
   /** Wall-clock time the case actually started, in ms since epoch. */
   startedAtMs?: number,
+  /** Models and calibrations frozen for this recording. */
+  modelProvenance?: ModelProvenance | null,
 ) {
+  const suppressionAvailable = summary.suppressionAvailable !== false;
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (!userId) throw new Error("You need to be signed in to save a session.");
@@ -201,9 +213,13 @@ export async function saveSession(
         chronic_cns: derivedClinical.chronicCns,
         acute_class: derivedClinical.acuteClass,
         duration_seconds: Math.round(elapsed),
-        mean_suppression_ratio: Number(summary.meanSr.toFixed(2)),
-        max_suppression_ratio: Number(summary.maxSr.toFixed(2)),
-        suppression_seconds: Number(summary.suppressionSeconds.toFixed(1)),
+        // Withheld on bands without a microvolt scale — null, never 0.
+        mean_suppression_ratio: suppressionAvailable ? Number(summary.meanSr.toFixed(2)) : null,
+        max_suppression_ratio: suppressionAvailable ? Number(summary.maxSr.toFixed(2)) : null,
+        suppression_seconds: suppressionAvailable
+          ? Number(summary.suppressionSeconds.toFixed(1))
+          : null,
+        model_provenance: (modelProvenance ?? null) as unknown as Json,
         seizure_alerts: summary.seizureAlerts,
         started_at: startedAt.toISOString(),
         ended_at: endedAt.toISOString(),

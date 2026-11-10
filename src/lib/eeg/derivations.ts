@@ -98,11 +98,15 @@ export function deriveClinical(input: ClinicalDerivationInput): ClinicalDerivati
     }),
     live: {
       depthIndex: latest?.depth.index ?? null,
-      suppressionRatio: latest ? Math.round(latest.suppressionRatio) : null,
+      // Withheld (null) when the band has no microvolt scale — never a 0 %.
+      suppressionRatio:
+        latest && latest.suppressionAvailable !== false ? Math.round(latest.suppressionRatio) : null,
       seizureScore: latest?.seizureScore ?? null,
       sef95: latest?.sef95 ?? null,
       sqi: latest?.quality ? Math.round(latest.quality.score * 100) : null,
     },
-    srTone: suppressionTone(latest?.suppressionRatio ?? null),
+    srTone: suppressionTone(
+      latest && latest.suppressionAvailable !== false ? latest.suppressionRatio : null,
+    ),
   };
 }

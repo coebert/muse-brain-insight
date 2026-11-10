@@ -1,12 +1,10 @@
-# Roadmap
+# Roadmap — research-integrity & measurement fixes (Nov 2026)
 
-- [x] Bulk VitalDB waveform intake: 33 cases, 38,952 paired readings under vitaldb-snuadc|AF7-AF8|128 (5,500+ candidates remain).
-- [x] Full-set COEBIS refit: vitaldb v2 PROMOTED (MAE 8.17→7.00, 33 case-folds, +1.17). v1 (−1.25) superseded.
-- [x] DOSE-I refit re-run (forced, scripts/refit-lineage.ts): 3,465 readings / 40 case-folds, v1 incumbent retained (mae_gain -0.12). Per-lineage training budget added so VitalDB no longer starves other lineages.
-- [x] Graded depth-state (56 cases, COEBIS AUC 0.88) and recorded suppression (34 cases, SR AUC 0.81, COEBIS 0.46).
-- [ ] Train suppression model on VitalDB SR labels (bis_sr≥5 vs ≤1) on app_sr+app_sef, versioned storage, wire into pathology labels + depth suppression flag.
-- [x] /blockers page: gate status per lineage (cases/readings still needed, data-block vs evidence-block) + covariate headroom, pooled and per lineage.
-- [ ] Patient dashboard: gate status column/filter; verify VitalDB lineage now shows promoted model.
-- [x] figshare 5589841 intake (CC-BY, 24 surgical cases, raw frontal EEG + bedside BIS): 16,933 paired readings under figshare-ma-bis|AF7|125; first fit cleared the gate and v1 PROMOTED (MAE 31.43→12.05 across 24 case-folds, +19.38).
-- [x] ds004541 exhausted — all 8 published anaesthesia recordings ingested; re-run attempts 0 files.
-- [ ] Optional: continue VitalDB intake (candidates.txt has ~5,500 more cases).
+- [ ] 1. coebis-v2-device: withhold COEBIS-2 + µV suppression when amplitude calibration unknown; keep relative spectral research features; nulls through UI/export/AI digest
+- [ ] 2. coebis-spectra: no fabricated suppression / logPtp; explicit unavailable result; adapt consumers + tests
+- [ ] 3. harmonization: no invented reference gains; preserve source reference; missing bands unavailable (not 0); legacy transforms incompatible for new fits
+- [ ] 4. diagnosis-model: exploratory-only, eligibility in suggestDiagnosis, no disease target from pathology_category, label provenance
+- [ ] 5. interpret.functions: explanatory-only LLM, server-side output validation, no drug/awareness directives, feedback offline-only
+- [ ] 6. Freeze model/calibration/tuning for the recording; auto-refit files candidates only; next-session activation; provenance on saved results
+- [ ] 7. Stroke/CVA → experimental EEG asymmetry/change watch; separate synthetic vs real validation; no outperform-BIS claims; task separation
+- [ ] Regression tests, typecheck, AGENTS.md rules

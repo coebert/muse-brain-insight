@@ -258,7 +258,11 @@ function BedsidePage() {
             label="Suppression"
             value={sr == null ? "—" : sr.toFixed(0)}
             unit="%"
-            note={`${Math.round(summary.suppressionSeconds)} s suppressed this case`}
+            note={
+              calibrated
+                ? `${Math.round(summary.suppressionSeconds)} s suppressed this case`
+                : "Withheld — band reports no microvolt scale, so the µV suppression test cannot be applied"
+            }
             tone={sr != null && sr >= 40 ? "critical" : sr != null && sr >= 10 ? "caution" : "default"}
           />
           <Instrument

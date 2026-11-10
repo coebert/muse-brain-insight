@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { setActiveBisAlignment, type BisAlignment, type BisKnot } from "@/lib/eeg/depth";
 import { MIN_POINTS, MIN_SESSIONS } from "@/lib/eeg/bis-drift";
 import type { CovariateTerm } from "@/lib/eeg/covariates";
+import { deferWhileFrozen } from "@/lib/eeg/model-freeze";
 
 function toKnots(value: unknown): BisKnot[] {
   if (!Array.isArray(value)) return [];
@@ -110,12 +111,24 @@ export function isBisAlignmentPinned(): boolean {
   return pinnedAlignment !== null;
 }
 
-/** Pin an earlier fit (or `null` to go back to the live model). */
-export function pinBisAlignment(alignment: BisAlignment | null) {
-  pinnedAlignment = alignment;
-  const effective = pinnedAlignment ?? syncedAlignment;
-  setActiveBisAlignment(effective);
-  for (const fn of listeners) fn(effective);
+/**
+ * Pin an earlier fit (or `null` to go back to the live model). During a
+ * recording the choice is queued and takes effect from the next recording.
+ * Returns true when it was deferred.
+ */
+export function pinBisAlignment(alignment: BisAlignment | null): boolean {
+  return deferWhileFrozen("coebis-pin", () => {
+    pinnedAlignment = alignment;
+    const effective = pinnedAlignment ?? syncedAlignment;
+    setActiveBisAlignment(effective);
+    for (const fn of listeners) fn(effective);
+  });
+}
+
+/** Newest fit fetched while a recording ran, waiting for the next recording. */
+let pendingAlignment: BisAlignment | null = null;
+export function getPendingBisAlignment(): BisAlignment | null {
+  return pendingAlignment;
 }
 
 /** Subscribe to model swaps; returns an unsubscribe. */
@@ -124,18 +137,26 @@ export function subscribeBisAlignment(fn: (alignment: BisAlignment | null) => vo
   return () => listeners.delete(fn);
 }
 
-/** Fetch and apply the active alignment to the live estimator. */
+/**
+ * Fetch the active alignment and put it in force — unless a recording is
+ * running, in which case it is held and applied when that recording ends.
+ * Returns the alignment actually driving the display.
+ */
 export async function syncBisAlignment(): Promise<BisAlignment | null> {
   try {
     const alignment = await fetchActiveBisAlignment();
-    if (!pinnedAlignment) setActiveBisAlignment(alignment);
-    const changed =
-      (syncedAlignment?.fittedAt ?? null) !== (alignment?.fittedAt ?? null) ||
-      (syncedAlignment?.n ?? 0) !== (alignment?.n ?? 0);
-    syncedAlignment = alignment;
     syncedAt = Date.now();
-    if (changed && !pinnedAlignment) for (const fn of listeners) fn(alignment);
-    return pinnedAlignment ?? alignment;
+    const apply = () => {
+      pendingAlignment = null;
+      if (!pinnedAlignment) setActiveBisAlignment(alignment);
+      const changed =
+        (syncedAlignment?.fittedAt ?? null) !== (alignment?.fittedAt ?? null) ||
+        (syncedAlignment?.n ?? 0) !== (alignment?.n ?? 0);
+      syncedAlignment = alignment;
+      if (changed && !pinnedAlignment) for (const fn of listeners) fn(alignment);
+    };
+    if (deferWhileFrozen("coebis-alignment", apply)) pendingAlignment = alignment;
+    return pinnedAlignment ?? syncedAlignment;
   } catch {
     return null;
   }
