@@ -1,4 +1,5 @@
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** Metrics tracked either side of a user marker. */
 export interface MarkerMetricDelta {
@@ -49,9 +50,9 @@ function pick(epochs: Epoch[], key: string): number[] {
     case "sef95Hz":
       return epochs.map((e) => e.sef95);
     case "suppressionRatioPct":
-      return epochs.map((e) => e.suppressionRatio);
+      return epochs.map((e) => measuredSuppressionRatio(e)).filter((v): v is number => v != null);
     case "seizureScore":
-      return epochs.map((e) => e.seizureScore);
+      return epochs.map((e) => measuredSeizureScore(e)).filter((v): v is number => v != null);
     case "stateEntropy":
       return epochs.map((e) => e.entropy.state);
     case "nociceptionIndex":

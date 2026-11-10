@@ -11,6 +11,7 @@ import type { MonitorEntropy } from "@/lib/eeg/entropy-monitor";
 import { ADJUNCT_COMPONENTS, type AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import { calibrationReport, predictionInterval } from "@/lib/eeg/coebis-uncertainty";
 import { cn } from "@/lib/utils";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 /** Which tier of the COEBIS hierarchy the live model represents. */
 function tierOf(model: BisAlignment | null): { tier: "A" | "B" | "C"; label: string } {
@@ -90,7 +91,7 @@ export function CoebisVsBisPanel({
         {
           prediction: live.tiered,
           reliable: openIbis != null,
-          suppressionRatio: epochs.length ? epochs[epochs.length - 1]!.suppressionRatio : 0,
+          suppressionRatio: measuredSuppressionRatio(epochs[epochs.length - 1]),
           covariatesKnown: Boolean(
             covariates && (covariates.ageBand || covariates.sex || covariates.regimen),
           ),

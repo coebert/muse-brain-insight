@@ -10,6 +10,7 @@ import { assessSessionCoverage, type CoverageEpoch } from "@/lib/eeg/coverage";
 import { cn } from "@/lib/utils";
 import type { Epoch } from "@/lib/eeg/analysis";
 import type { MonitorJumpTarget } from "@/lib/monitor-jump";
+import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface CaseStatusWidgetProps {
   caseState: "idle" | "running" | "ended";
@@ -54,8 +55,8 @@ function toCoverageEpochs(epochs: Epoch[]): CoverageEpoch[] {
     t: e.t,
     depth: e.depth?.index ?? null,
     sef95: e.sef95 ?? null,
-    sr: e.suppressionRatio ?? null,
-    seizure: e.seizureScore ?? null,
+    sr: measuredSuppressionRatio(e),
+    seizure: measuredSeizureScore(e),
     entropy: e.entropy?.state ?? null,
     spectrumBins: e.spectrum?.length ?? 0,
   }));

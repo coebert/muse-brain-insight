@@ -118,8 +118,8 @@ export function predictionInterval(
   if (sqi != null && Number.isFinite(sqi) && sqi < 0.6) {
     parts.push({ sigma: (0.6 - Math.max(0, sqi)) * 15, why: "poor signal quality" });
   }
-  const sr = input.suppressionRatio ?? 0;
-  if (sr > 0) {
+  const sr = input.suppressionRatio;
+  if (sr != null && sr > 0) {
     // Monitors and open indices diverge most across burst suppression.
     parts.push({ sigma: Math.min(6, sr * 0.08), why: `burst suppression ${Math.round(sr)}%` });
   }
