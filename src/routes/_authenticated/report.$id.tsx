@@ -23,6 +23,7 @@ import { PatientLinkBadge } from "@/components/monitor/PatientLinkBadge";
 import { SessionPdfButton } from "@/components/monitor/SessionPdfButton";
 import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
+import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { computeCoebis } from "@/lib/eeg/depth";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
@@ -177,7 +178,7 @@ function CaseReport() {
       meanSr: mean(sr),
       maxSr: sr.length ? Math.max(...sr) : null,
       maxSeizure: vals("seizure").length ? Math.max(...vals("seizure")) : null,
-      suppressedSeconds: rows.filter((r) => r.suppressed).length * cadence,
+      suppressedSeconds: suppressedSecondsOrNull(rows, cadence),
       deepSeconds,
       cadence,
     };
@@ -329,7 +330,7 @@ function CaseReport() {
                   value={summary.meanSr == null ? "—" : `${summary.meanSr.toFixed(1)} %`}
                   {...(summary.maxSr == null ? {} : { sub: `peak ${summary.maxSr.toFixed(0)} %` })}
                 />
-                <Stat label="Suppression time" value={formatDuration(summary.suppressedSeconds)} />
+                <Stat label="Suppression time" value={withheldOr(summary.suppressedSeconds, formatDuration)} />
                 <Stat
                   label="Peak seizure score"
                   value={summary.maxSeizure == null ? "—" : summary.maxSeizure.toFixed(2)}

@@ -61,3 +61,27 @@ export function measuredValues<T>(rows: T[], pick: (row: T) => number | null): n
   }
   return out;
 }
+
+/**
+ * Seconds scored as suppressed across stored rows, or null when no row carries
+ * a suppression measurement (every value withheld). A withheld row is skipped,
+ * never counted as "not suppressed".
+ */
+export function suppressedSecondsOrNull(
+  rows: { suppressed: number | boolean | null | undefined }[],
+  cadence: number,
+): number | null {
+  let measured = 0;
+  let suppressed = 0;
+  for (const r of rows) {
+    if (r.suppressed == null) continue;
+    measured++;
+    if (r.suppressed === true || r.suppressed === 1) suppressed++;
+  }
+  return measured === 0 && rows.length > 0 ? null : suppressed * cadence;
+}
+
+/** "—" (withheld) for a null duration, else the formatted value. */
+export function withheldOr<T>(value: T | null | undefined, format: (v: T) => string, missing = "— (withheld)"): string {
+  return value == null ? missing : format(value);
+}
