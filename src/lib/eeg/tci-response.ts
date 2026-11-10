@@ -236,8 +236,13 @@ export function buildTciResponseDigest(
             meanDepth: round(
               mean(es.map((e) => e.depth.index).filter((v): v is number => v != null)),
             ),
-            meanSuppressionPct: round(mean(es.map((e) => e.suppressionRatio))),
-            meanSeizureScore: round(mean(es.map((e) => e.seizureScore)), 2),
+            meanSuppressionPct: round(
+              mean(es.map((e) => measuredSuppressionRatio(e)).filter((v): v is number => v != null)),
+            ),
+            meanSeizureScore: round(
+              mean(es.map((e) => measuredSeizureScore(e)).filter((v): v is number => v != null)),
+              2,
+            ),
           })),
       });
     }
