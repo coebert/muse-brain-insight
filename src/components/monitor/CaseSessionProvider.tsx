@@ -346,7 +346,7 @@ function useCaseSessionState() {
             }
           : null,
         sefAlignment: sef
-          ? { id: sef.id ?? null, fittedAt: sef.fittedAt, n: sef.n, provisional: sef.provisional }
+          ? { id: sef.id ?? null, fittedAt: sef.fittedAt, n: sef.n, provisional: sef.provisional ?? null }
           : null,
         coebisV2: monitor.coebisV2ModelVersion,
         sedationTune: monitor.coebisV2BandTuned ? { id: "active-at-start" } : null,
