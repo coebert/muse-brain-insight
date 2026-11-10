@@ -57,6 +57,7 @@ import {
   newCaptureKey,
 } from "@/lib/eeg/auto-capture";
 import { captureBatch } from "@/lib/eeg/auto-capture.functions";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 import { SidePreference, type SideDecision, type SideQuality } from "@/lib/eeg/side-preference";
 import {
   accumulateChannelQuality,

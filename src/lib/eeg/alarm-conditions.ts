@@ -2,6 +2,7 @@ import type { AlarmCondition } from "@/hooks/useAlarms";
 import type { HemiLatest } from "@/hooks/useEegMonitor";
 import type { Epoch } from "@/lib/eeg/analysis";
 import { SIDE_LABEL, type AlarmSide } from "@/lib/eeg/alarms";
+import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
 
 export interface AlarmDerivationInput {
   latest: Epoch | null;
