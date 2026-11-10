@@ -389,7 +389,9 @@ function seizureUncertainty(
   trendSeconds: number,
   threshold: number,
 ): AssessmentUncertainty {
-  const window = recent(epochs, trendSeconds).filter((e) => !e.artifact);
+  const window = recent(epochs, trendSeconds).filter(
+    (e) => !e.artifact && measuredSeizureScore(e) != null,
+  );
   if (!window.length) return emptyAssessment("seizure", "Seizure risk score", "", trendSeconds);
 
   const scores = window.map((e) => e.seizureScore);
