@@ -176,7 +176,9 @@ export async function runChennuPhaseFit(
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const byTime = new Map(scoreLogPush(scoreLog, scoreStoredCase(spectra)).map((x) => [x.atSeconds, x.index]));
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const byTime = new Map(scored_.readings.map((x) => [x.atSeconds, x.index]));
 
     for (const r of track) {
       const phase = phaseOfLevel(r.level);

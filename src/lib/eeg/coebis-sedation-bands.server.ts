@@ -91,7 +91,9 @@ function pointsFrom(rows: SedationRow[]): BandPoint[] {
       freqStep: r.freqStep,
       suppressionPct: r.suppressionPct,
     }));
-    const byTime = new Map(scoreLogPush(scoreLog, scoreStoredCase(spectra)).map((x) => [x.atSeconds, x.index]));
+    const scored_ = scoreStoredCase(spectra);
+    scoreLog.push(scored_);
+    const byTime = new Map(scored_.readings.map((x) => [x.atSeconds, x.index]));
     for (const r of track) {
       const band = bandOfLabel(r.label);
       const index = byTime.get(r.atSeconds);
