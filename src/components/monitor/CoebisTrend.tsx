@@ -62,7 +62,7 @@ function RawFallback({ archive, profile }: { archive: RawArchive; profile: Devic
         const samples = to > from ? archive.read(channel, from, to) : new Float32Array(0);
         return (
           <div key={channel} className="flex items-center gap-2">
-            <span className="metric-value w-9 shrink-0 text-[10px] text-muted-foreground">
+            <span className="metric-value w-9 shrink-0 text-[11px] text-muted-foreground">
               {channel}
             </span>
             <div className="h-[14px] min-w-0 flex-1">
