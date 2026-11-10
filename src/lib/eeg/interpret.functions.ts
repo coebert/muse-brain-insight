@@ -1,13 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  applyAlertTuning,
-  deriveAlertTuning,
-  tuningPromptBlock,
-  type AlertTuning,
-  type AlertTuningEffect,
-  type TuningFeedbackRow,
-} from "@/lib/eeg/alert-tuning";
+import type { AlertTuning, AlertTuningEffect, TuningFeedbackRow } from "@/lib/eeg/alert-tuning";
+import { guardInterpretation, type GuardReport } from "@/lib/eeg/interpret-guard";
 
 export interface InterpretationFinding {
   title: string;
@@ -92,10 +86,16 @@ export interface Interpretation {
   dataQualityCaveat: string;
   /** Model that produced this interpretation. */
   modelVersion?: string;
-  /** Adaptive tuning derived from clinician feedback and applied to these alerts. */
+  /**
+   * Retired: clinician feedback no longer tunes alerts. Kept on the type so
+   * stored interpretations still load; always null/0 for new reviews.
+   */
   alertTuning?: AlertTuning | null;
-  /** Alerts the tuning suppressed before display. */
   suppressedByTuning?: number;
+  /** What the server-side output restrictions removed from this review. */
+  guard?: GuardReport | null;
+  /** The reviewer explains supplied metrics; it does not decide treatment. */
+  role?: "explanatory";
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology decision-support assistant reviewing quantitative EEG derived from a 4-channel consumer Muse 2 headband (frontal/temporal electrodes: TP9, AF7, AF8, TP10) used during general anaesthesia or ICU sedation.
@@ -106,7 +106,12 @@ You receive a numeric digest of one monitoring session plus anonymised demograph
 - Seizure/ictal risk: interpret rhythmicity-based seizure score, alert count, and the fraction of time above threshold, especially in ICU/hypoxic-brain-injury contexts (non-convulsive status epilepticus).
 - Possible cerebral pathology indicators visible to a frontal montage: generalised slowing (encephalopathy, sepsis-associated or delirium), focal/asymmetric slowing, loss of frontal alpha, attenuation/low voltage (hypoxic-ischaemic injury after OOHCA), highly suppressed or discontinuous background, periodic patterns and rhythmic ictal-interictal patterns. Only raise these where the numbers support them.
 
-Hard constraints:
+Your role (hard constraints, also enforced on your output by the server):
+- You EXPLAIN the supplied, already-computed metrics. You do not analyse raw EEG, and you are not a treatment decision maker.
+- Never recommend starting, stopping, increasing, reducing or titrating any drug, infusion, dose, vapour or target. Any treatment change is the clinician's decision.
+- Never assert or suspect awareness or recall: EEG from this montage cannot establish them. You may state this as a limitation.
+- Every number you cite must appear in the digest. If a value is null or marked unavailable/withheld (e.g. suppression.available is false), say it is unavailable — never treat it as zero and never estimate it.
+- The depth index is a research index graded for agreement with BIS on surgical cases; it is not a validated measure of consciousness or responsiveness.
 - Never state a diagnosis. Phrase findings as indicators, patterns, and their differential, with an explicit confidence level.
 - Explicitly acknowledge what a 4-channel frontal consumer montage CANNOT assess (posterior/occipital activity, most focal onsets, spike morphology, formal ACNS ictal-interictal criteria, asymmetry beyond frontotemporal).
 - Weigh data quality: if usable fraction is low or the session is short (<5 minutes), degrade confidence and say so.
@@ -120,10 +125,10 @@ Marker cross-referencing (important):
 
 Alerting:
 - Populate "alerts" with the actionable problems you can defend from the numbers, most urgent first (at most 5, and only real ones — return [] if nothing is actionable).
-- severity: "critical" for immediate patient-safety issues (sustained deep suppression/isoelectric background, probable ongoing ictal activity, suspected awareness during paralysis), "warning" for developing problems, "advisory" for things to watch.
+- severity: "warning" for patterns that merit prompt clinician review, "advisory" for things to watch. Do not use "critical": deterministic research alarms are computed separately by the app.
 - category must be one of excessive_depth, inadequate_depth, burst_suppression, seizure, hypoxic_injury, encephalopathy, nociception, signal_quality, other.
 - id: a short lowercase stable slug for the problem (e.g. "deep-suppression", "ictal-risk", "low-voltage-hie") so repeat analyses of the same problem reuse the same id.
-- action: one concrete clinical next step (e.g. "Reduce propofol infusion and re-check suppression ratio in 5 min", "Consider urgent formal EEG for non-convulsive status").
+- action: one review or monitoring step, never a drug change (e.g. "Re-check electrode contact and the suppression trend over the next 5 min", "Consider formal multichannel EEG review").
 - tSeconds: session time the problem is anchored to, or null.
 - Never alert purely on poor signal quality unless quality is the problem — use category signal_quality then.
 
@@ -137,17 +142,11 @@ Explainability (required for every alert):
 - note: at most 15 words on why that feature supports the alert.
 - Always include signal-quality context in the evidence when it affected the alert: cite "Usable fraction", "Depth index reliability" or "Top gating reason" as an evidence item with direction low/unstable, so the clinician can see how trustworthy the driving numbers were.
 
-Clinician feedback (learning loop):
-- You may be given "clinicianFeedback": past alerts this clinician marked correct or incorrect, with their stated reason. Treat it as calibration for this user and setting.
-- Where an alert id/category was repeatedly marked incorrect for a stated reason, raise your evidential bar for that alert: only re-raise it if the numbers clearly overcome the objection, and address the objection in the detail text.
-- Where an alert was marked correct, keep raising it under similar conditions and reuse the same id.
-- Never mention the feedback mechanism itself in your output.
-- You will also be given "adaptiveTuning": per-category agreement rates and the evidential bar currently in force for this clinician. Respect the stated bar for each category when deciding whether to raise an alert and what confidence to assign.
-- Every alert MUST include "feedbackInfluence": how that past feedback changed this interpretation versus an unmoderated read. adjustment: "raised_bar" (past objections made you demand stronger numbers), "reinforced" (past correct marks support raising it again), "reworded" (same finding, framing/threshold changed to address an objection), "downgraded" (severity or confidence lowered because of past objections), or "none" (no relevant feedback). note: one sentence, at most 20 words, describing what changed, written for the clinician (e.g. "Severity kept at warning: previous rocuronium-related depth alerts were marked incorrect as EMG loss.").
+Style:
 - Use British clinical English, be concise and specific, cite the numbers you rely on.
 
 Respond with JSON ONLY, no markdown fences, in this exact shape:
-{"headline":string,"alerts":[{"id":string,"severity":"critical"|"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}],"feedbackInfluence":{"adjustment":"raised_bar"|"reinforced"|"reworded"|"downgraded"|"none","note":string}}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
+{"headline":string,"alerts":[{"id":string,"severity":"warning"|"advisory","category":string,"title":string,"detail":string,"action":string,"confidence":"low"|"moderate"|"high","tSeconds":number|null,"evidence":[{"feature":string,"value":string,"expected":string|null,"direction":"high"|"low"|"rising"|"falling"|"unstable"|"normal","weight":number,"windowStartSeconds":number|null,"windowEndSeconds":number|null,"note":string}]}],"depthOfAnaesthesia":string,"burstSuppression":string,"seizureRisk":string,"markerCorrelations":[string],"pathologyIndicators":[{"title":string,"detail":string,"confidence":"low"|"moderate"|"high","supporting":[string]}],"recommendedChecks":[string],"limitations":[string],"dataQualityCaveat":string}
 Keep each string under about 60 words, at most 5 alerts, at most 6 markerCorrelations (one per notable marker, naming the marker), at most 5 pathology indicators, at most 5 recommended checks and 4 limitations.`;
 
 const INFLUENCE_VALUES = new Set(["raised_bar", "reinforced", "reworded", "downgraded", "none"]);
@@ -278,6 +277,8 @@ export const interpretSession = createServerFn({ method: "POST" })
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("AI is not configured for this project.");
 
+    // Feedback is stored for offline review only. It is NOT sent to the model
+    // and does not tune alerts; the counts are attached as plain history.
     const { data: feedback } = await context.supabase
       .from("ai_alert_feedback")
       .select(
@@ -285,9 +286,7 @@ export const interpretSession = createServerFn({ method: "POST" })
       )
       .order("created_at", { ascending: false })
       .limit(40);
-
     const rows = (feedback ?? []) as FeedbackRow[];
-    const tuning = deriveAlertTuning(rows, data.sessionId ?? null);
 
     const text = await streamText(
       {
@@ -297,7 +296,7 @@ export const interpretSession = createServerFn({ method: "POST" })
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}\n\nclinicianFeedback (JSON, most recent first):\n${JSON.stringify(rows)}\n\nadaptiveTuning (evidential bar in force per category):\n${tuningPromptBlock(tuning)}`,
+            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}`,
           },
         ],
         reasoning: { effort: "medium", summary: "auto" },
@@ -309,16 +308,15 @@ export const interpretSession = createServerFn({ method: "POST" })
 
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
     const parsed = extractJson(text);
-    const withFeedback = parsed.alerts.map((a) => ({
-      ...a,
-      priorFeedback: priorFeedbackFor(a, rows),
-    }));
-    const tuned = applyAlertTuning(withFeedback, tuning);
+    // Enforce the output restrictions server-side; the prompt alone is not trusted.
+    const { output, report } = guardInterpretation(parsed, data.digest);
     return {
-      ...parsed,
-      alerts: tuned,
-      alertTuning: tuning,
-      suppressedByTuning: Math.max(0, withFeedback.length - tuned.length),
+      ...output,
+      alerts: output.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+      alertTuning: null,
+      suppressedByTuning: 0,
+      guard: report,
+      role: "explanatory",
       modelVersion: AI_MODEL_VERSION,
     };
   });
