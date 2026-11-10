@@ -187,9 +187,18 @@ export function buildStoredDigest(
           : null,
       meanRatioPct: round(mean(srVals), 1),
       maxRatioPct: srVals.length ? round(Math.max(...srVals), 1) : null,
-      suppressedSeconds: round(rows.filter((r) => r.suppressed).length * cadence, 1),
-      burstSuppressionEvents: events.filter((e) => e.kind === "burst_suppression").length,
-      isoelectricEvents: events.filter((e) => e.kind === "isoelectric").length,
+      suppressedSeconds:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : round(rows.filter((r) => r.suppressed).length * cadence, 1),
+      burstSuppressionEvents:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : events.filter((e) => e.kind === "burst_suppression").length,
+      isoelectricEvents:
+        rows.length > 0 && srVals.length === 0
+          ? null
+          : events.filter((e) => e.kind === "isoelectric").length,
     },
     seizure: {
       alerts: events.filter((e) => e.kind === "seizure").length,
