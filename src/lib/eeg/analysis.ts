@@ -346,6 +346,9 @@ export class EegAnalyzer {
   private amplitudeCalibrated = true;
   setAmplitudeCalibrated(calibrated: boolean) {
     this.amplitudeCalibrated = calibrated;
+    // The OpenIBIS estimator withholds its amplitude-dependent index too, and
+    // drops any value held from the previous scale.
+    this.depthEstimator.setAmplitudeCalibrated(calibrated);
   }
 
   reset() {
@@ -728,7 +731,8 @@ export class EegAnalyzer {
     // The depth index is the most artefact-sensitive metric on this montage, so
     // it gets an explicit verdict rather than only a confidence bar.
     const depthReasons: string[] = [];
-    if (depth.index == null) depthReasons.push("warming up — not enough clean EEG yet");
+    if (depth.withheldReason) depthReasons.push(depth.withheldReason);
+    else if (depth.index == null) depthReasons.push("warming up — not enough clean EEG yet");
     if (quality.grade === "poor") depthReasons.push("poor electrode signal");
     if (artifact) depthReasons.push("amplitude outside physiological range");
     if (emgPenalty > 0.5) depthReasons.push("EMG contamination of the 30–47 Hz band");
