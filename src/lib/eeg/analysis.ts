@@ -195,8 +195,23 @@ export interface Epoch {
    * Absent on older epochs, which were all recorded in microvolts.
    */
   suppressionAvailable?: boolean;
+  /**
+   * Seizure likelihood (0-1). A placeholder 0 when `seizureAvailable` is
+   * false — read it through `measuredSeizureScore` before showing it.
+   */
   seizureScore: number;
   seizureAlert: boolean;
+  /**
+   * False when the seizure detector's fixed microvolt amplitude gates cannot
+   * be applied (no microvolt scale), so the score was withheld. Absent on
+   * older epochs, which were all recorded in microvolts.
+   */
+  seizureAvailable?: boolean;
+  /**
+   * False when the samples are not in microvolts. Then `amplitudeUv` is in
+   * arbitrary device units and must not be shown as µV. Absent on older epochs.
+   */
+  amplitudeCalibrated?: boolean;
   /** Amplitude looked implausible for EEG (movement/diathermy). */
   artifact: boolean;
   amplitudeUv: number;
@@ -345,6 +360,21 @@ export class EegAnalyzer {
    */
   private amplitudeCalibrated = true;
   setAmplitudeCalibrated(calibrated: boolean) {
+    if (calibrated !== this.amplitudeCalibrated) {
+      // Nothing measured on the previous scale may carry over: suppression
+      // history, the BSR alert latch, any open episode, the seizure baseline
+      // and the composite's smoothed values all restart.
+      this.suppressionHistory = [];
+      this.activeSuppressionStart = null;
+      this.bsrAlerted = false;
+      this.lastBsrAlertValue = 0;
+      this.lineLengthBaseline = [];
+      this.consecutiveSeizureEpochs = 0;
+      this.activeSeizureStart = null;
+      this.seizureRun = null;
+      this.depthHistory = [];
+      this.compositeEstimator.reset();
+    }
     this.amplitudeCalibrated = calibrated;
     // The OpenIBIS estimator withholds its amplitude-dependent index too, and
     // drops any value held from the previous scale.
@@ -458,7 +488,10 @@ export class EegAnalyzer {
     // only on the composite grade let a "fair" near-flat epoch count as
     // suppression seconds, which is the one artefact that must never inflate a
     // burst-suppression burden.
-    const artifact = maxP2p > 500 || quality.grade === "poor" || quality.flat;
+    // The 500 µV ceiling is a microvolt threshold: on an uncalibrated band it
+    // cannot be applied, so only the scale-invariant quality checks gate.
+    const artifact =
+      (suppressionMeasurable && maxP2p > 500) || quality.grade === "poor" || quality.flat;
     const isSuppressed =
       suppressionMeasurable && !artifact && !gapAffected && epochSuppression >= 0.5;
 
@@ -477,6 +510,8 @@ export class EegAnalyzer {
     while (this.suppressionHistory.length && this.suppressionHistory[0]!.t < cutoff) {
       this.suppressionHistory.shift();
     }
+    // Uncalibrated: the history is empty, so this is a placeholder 0 that is
+    // never passed on as a measurement (see `suppressionAvailable`).
     const suppressionRatio = this.suppressionHistory.length
       ? (this.suppressionHistory.reduce((a, b) => a + b.fraction, 0) /
           this.suppressionHistory.length) *
@@ -540,6 +575,10 @@ export class EegAnalyzer {
     const ictalBand = bands.theta + bands.alpha + bandPower(psd, 3, 4);
     const ictalFraction = totalPower > 0 ? ictalBand / totalPower : 0;
 
+    // The detector's minimum-amplitude gate (2 × the µV suppression threshold)
+    // is a fixed microvolt value; without a microvolt scale the score is
+    // withheld rather than computed on an arbitrary amplitude.
+    const seizureMeasurable = this.amplitudeCalibrated;
     let seizureScore = 0;
     // Muscle activity is rhythmic too. Penalising only the reported confidence
     // let a chewing or shivering artefact cross the alarm threshold and merely
@@ -551,6 +590,7 @@ export class EegAnalyzer {
     // pattern rather than as a seizure.
     const burstContext = clamp01((suppressionRatio - 8) / 22);
     if (
+      seizureMeasurable &&
       !artifact &&
       !gapAffected &&
       !isSuppressed &&
@@ -564,7 +604,7 @@ export class EegAnalyzer {
         Math.min(1, seizureScore) * (1 - 0.6 * emgContamination) * (1 - 0.7 * burstContext);
     }
 
-    if (!artifact && !gapAffected && !isSuppressed && seizureScore < 0.4) {
+    if (seizureMeasurable && !artifact && !gapAffected && !isSuppressed && seizureScore < 0.4) {
       this.lineLengthBaseline.push(ll);
       if (this.lineLengthBaseline.length > 300) this.lineLengthBaseline.shift();
     }
@@ -574,13 +614,13 @@ export class EegAnalyzer {
     // block below) so the evidence attached to the event reflects the run.
     const seizureBaselineMaturity = clamp01(this.lineLengthBaseline.length / 60);
     const seizureEmgPenalty = emgContamination;
-    const seizureConfidence = clamp01(
+    const seizureConfidence = !seizureMeasurable ? 0 : clamp01(
       quality.score *
         (0.3 + 0.7 * seizureBaselineMaturity) *
         (1 - 0.6 * seizureEmgPenalty) *
         (isSuppressed ? 0.6 : 1),
     );
-    if (gapAffected) {
+    if (gapAffected || !seizureMeasurable) {
       // Inside (or straddling) a gap: neither start, extend nor terminate an
       // episode. The run was already closed at the last good sample by
       // closeRunsAtGap, so there is nothing to score or emit here.
@@ -769,7 +809,9 @@ export class EegAnalyzer {
       bands,
       ratios,
       entropy,
-      suppressionRatio,
+      // Withheld suppression is passed as null so the composite withholds the
+      // indices that depend on it instead of mixing in an assumed 0 %.
+      suppressionRatio: suppressionMeasurable ? suppressionRatio : null,
       usable: depthArtifact.usable && !artifact,
     });
 
@@ -805,6 +847,8 @@ export class EegAnalyzer {
       suppressionAvailable: suppressionMeasurable,
       seizureScore,
       seizureAlert,
+      seizureAvailable: seizureMeasurable,
+      amplitudeCalibrated: this.amplitudeCalibrated,
       artifact,
       amplitudeUv: maxP2p,
       quality,
