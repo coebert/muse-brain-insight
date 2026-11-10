@@ -197,10 +197,10 @@ describe("EegAnalyzer amplitude calibration", () => {
   });
 
   it("does not apply the 500 µV artefact ceiling to device units", () => {
-    // 300-unit 1 Hz sine: 600 peak-to-peak, below the clip and jump limits.
+    // 300-unit 2 Hz sine: 600 peak-to-peak per 0.5 s segment, below clip/jump limits.
     const big = () => {
       const w = new Float64Array(N);
-      for (let i = 0; i < N; i++) w[i] = 300 * Math.sin((2 * Math.PI * 1 * i) / FS);
+      for (let i = 0; i < N; i++) w[i] = 300 * Math.sin((2 * Math.PI * 2 * i) / FS);
       return w;
     };
     const cal = new EegAnalyzer();
