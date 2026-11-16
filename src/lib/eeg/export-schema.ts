@@ -127,7 +127,7 @@ export const bleLogEntrySchema = z.object({
     "info",
   ]),
   message: z.string(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
   hex: hexSchema.optional(),
   rawHex: hexSchema.optional(),
   bytes: z.number().optional(),
@@ -183,7 +183,7 @@ export const bleLogExportSchema = z.object({
   userAgent: z.string().optional(),
   captureContext: bleCaptureContextSchema.optional(),
   acks: z.array(bleAckRecordSchema).optional(),
-  packetTotals: z.record(z.number()).optional(),
+  packetTotals: z.record(z.string(), z.number()).optional(),
   entries: z.array(bleLogEntrySchema),
 });
 
@@ -196,7 +196,7 @@ export const debugSessionExportSchema = z.object({
   spectrum: z
     .object({ minHz: z.number(), maxHz: z.number(), bins: z.number() })
     .optional(),
-  frames: z.array(z.record(z.unknown())).optional(),
+  frames: z.array(z.record(z.string(), z.unknown())).optional(),
   packets: z.array(blePacketRecordSchema).optional(),
   connectionLog: z.array(bleLogEntrySchema).optional(),
   captureContext: bleCaptureContextSchema.optional(),
