@@ -88,3 +88,63 @@ describe("diagnostic export validation", () => {
     expect(check.level).toBe("ready");
   });
 });
+
+// Zod 4 requires an explicit key schema on z.record(); these synthetic captures
+// pin the record-shaped fields (entry data, packet totals, session frames) so a
+// validator upgrade cannot silently start accepting or rejecting them.
+describe("diagnostic export record fields (Zod 4 compatibility)", () => {
+  const meta = buildExportMeta({ kind: "ble-log", deviceLabel: "Muse 2", sampleRate: 256 });
+
+  it("accepts free-form entry data and numeric packet totals", () => {
+    const check = validateDiagnosticExport(
+      JSON.stringify({
+        meta,
+        packetTotals: { "fe8d/273e0003": 3, "fe8d/273e0004": 1 },
+        entries: [
+          { t: 0, at: 1_000, kind: "info", message: "start", data: { variant: "p21", retries: 2, nested: { ok: true } } },
+          ...Array.from({ length: 4 }, (_, i) => packetEntry(i + 1)),
+        ],
+      }),
+    );
+    expect(check.level).toBe("ready");
+    expect(check.replayablePackets).toBe(4);
+  });
+
+  it("rejects non-numeric packet totals and names the field", () => {
+    const check = validateDiagnosticExport(
+      JSON.stringify({ meta, packetTotals: { "fe8d/273e0003": "three" }, entries: [packetEntry(0)] }),
+    );
+    expect(check.level).toBe("invalid");
+    expect(check.issues.join(" ")).toContain("packetTotals.fe8d/273e0003");
+  });
+
+  it("rejects entry data that is not an object", () => {
+    const check = validateDiagnosticExport(
+      JSON.stringify({ meta, entries: [{ t: 0, at: 1, kind: "info", message: "x", data: [1, 2] }] }),
+    );
+    expect(check.level).toBe("invalid");
+    expect(check.issues.join(" ")).toContain("entries.0.data");
+  });
+
+  it("reports received-but-unstored notifications from packet totals", () => {
+    const check = validateDiagnosticExport(
+      JSON.stringify({ meta, packetTotals: { a: 5, b: 2 }, entries: [{ t: 0, at: 1, kind: "info", message: "x" }] }),
+    );
+    expect(check.issues.some((issue) => issue.startsWith("7 notification(s)"))).toBe(true);
+  });
+
+  it("accepts session frames as keyed records and rejects non-object frames", () => {
+    const base = {
+      meta: buildExportMeta({ kind: "debug-session", deviceLabel: "Muse 2" }),
+      connectionLog: Array.from({ length: 5 }, (_, i) => packetEntry(i)),
+    };
+    const ok = validateDiagnosticExport(
+      JSON.stringify({ ...base, frames: [{ t: 0, tp9: 1.5, af7: null }, { t: 1, quality: "good" }] }),
+    );
+    expect(ok.kind).toBe("debug-session");
+    expect(ok.level).toBe("ready");
+    const bad = validateDiagnosticExport(JSON.stringify({ ...base, frames: [42] }));
+    expect(bad.level).toBe("invalid");
+    expect(bad.issues.join(" ")).toContain("frames.0");
+  });
+});
