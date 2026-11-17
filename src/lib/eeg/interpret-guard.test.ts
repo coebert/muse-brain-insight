@@ -72,6 +72,58 @@ describe("treatment directives", () => {
   });
 });
 
+describe("treatment directives vs descriptions", () => {
+  it.each([
+    "Lower the sevoflurane MAC.",
+    "Deepen anaesthesia now.",
+    "Please give a bolus of propofol.",
+    "We recommend reducing the propofol infusion.",
+    "The propofol infusion should be reduced.",
+    "Increasing the remifentanil rate may help.",
+    "A reduction in propofol is recommended.",
+    "It may be worth lightening the anaesthetic.",
+  ])("treats %j as a directive", (sentence) => {
+    expect(isTreatmentDirective(sentence)).toBe(true);
+  });
+
+  it.each([
+    "Depth index fell from 60 to 35, indicating deepening anaesthesia.",
+    "Lower readings during sedation are expected.",
+    "SEF95 decreased after induction of anaesthesia.",
+    "Propofol infusion was reduced at 10:05 per the drug log.",
+    "Increasing suppression is consistent with deep anaesthesia.",
+    "Readings should be lower during sedation.",
+    "Alpha power started to rise as anaesthesia lightened.",
+  ])("keeps the description %j", (sentence) => {
+    expect(isTreatmentDirective(sentence)).toBe(false);
+  });
+
+  it("keeps descriptive depth, headline and alert text through the full guard", () => {
+    const depth = "Depth index mean 31, indicating deepening anaesthesia.";
+    const { output, report } = guardInterpretation(
+      base({
+        headline: "Lower readings during sedation with rising suppression.",
+        depthOfAnaesthesia: depth,
+        alerts: [alert({ detail: "Suppression ratio is high, consistent with deepening anaesthesia." })],
+      }),
+      digest,
+    );
+    expect(output.depthOfAnaesthesia).toBe(depth);
+    expect(output.headline).toBe("Lower readings during sedation with rising suppression.");
+    expect(output.alerts[0]!.detail).toBe("Suppression ratio is high, consistent with deepening anaesthesia.");
+    expect(report.rules).not.toContain("treatment-directive");
+  });
+
+  it("still removes a directive mixed into an otherwise descriptive depth section", () => {
+    const { output, report } = guardInterpretation(
+      base({ depthOfAnaesthesia: "Depth index mean 31, indicating deepening anaesthesia. Consider reducing propofol." }),
+      digest,
+    );
+    expect(output.depthOfAnaesthesia).toBe("Depth index mean 31, indicating deepening anaesthesia.");
+    expect(report.rules).toContain("treatment-directive");
+  });
+});
+
 describe("awareness and diagnosis", () => {
   it("removes awareness claims but keeps an awareness limitation", () => {
     const { output } = guardInterpretation(

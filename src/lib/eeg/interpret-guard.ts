@@ -65,10 +65,48 @@ export interface GuardReport {
   rules: string[];
 }
 
-const DIRECTIVE_VERB =
-  /\b(reduce|reducing|decrease|decreasing|lower|lowering|increase|increasing|raise|raising|up-?titrate|down-?titrate|titrate|titrating|stop|stopping|pause|halt|start|starting|commence|give|giving|administer|administering|bolus|wean|weaning|deepen|deepening|lighten|lightening|turn (?:up|down)|cut|withhold|discontinue|switch|add)\b/i;
-const DRUG_TERM =
-  /\b(infusion|dose|dosing|rate|propofol|remifentanil|alfentanil|sufentanil|fentanyl|morphine|opioid|analgesi[ac]\w*|sevoflurane|desflurane|isoflurane|volatile|vapou?r|MAC|anaesthetic|anesthetic|anaesthesia|anesthesia|sedation|sedative|midazolam|lorazepam|benzodiazepine|dexmedetomidine|clonidine|ketamine|thiopent\w*|etomidate|TCI|effect-site|target|antiepileptic|anticonvulsant|levetiracetam|phenytoin|valproate|rocuronium|relaxant)\b/i;
+/*
+ * Treatment-directive detection. A sentence is only a directive when it is
+ * phrased as a recommendation (an instruction, a recommending cue such as
+ * "consider"/"should", a modal passive such as "should be reduced", or an
+ * outcome cue such as "may help") AND it targets a drug or anaesthetic
+ * delivery. Co-occurrence alone is not enough: "Depth index fell, indicating
+ * deepening anaesthesia" or "lower readings during sedation" are descriptions,
+ * not advice, and must survive the guard.
+ */
+const ACTION_BASE =
+  "reduce|decrease|lower|increase|raise|up-?titrate|down-?titrate|titrate|stop|pause|halt|start|commence|give|administer|bolus|wean|deepen|lighten|turn (?:up|down)|cut|withhold|discontinue|switch|add|restart|resume";
+const ACTION_GERUND =
+  "reducing|decreasing|lowering|increasing|raising|up-?titrating|down-?titrating|titrating|stopping|pausing|halting|starting|commencing|giving|administering|bolusing|weaning|deepening|lightening|turning (?:up|down)|cutting|withholding|discontinuing|switching|adding|restarting|resuming";
+const ACTION_PARTICIPLE =
+  "reduced|decreased|lowered|increased|raised|up-?titrated|down-?titrated|titrated|stopped|paused|halted|started|commenced|given|administered|bolused|weaned|deepened|lightened|turned (?:up|down)|cut|withheld|discontinued|switched|added|restarted|resumed";
+const TREATMENT =
+  /\b(infusion|dose|dosing|bolus|propofol|remifentanil|alfentanil|sufentanil|fentanyl|morphine|opioids?|analgesi[ac]\w*|sevoflurane|desflurane|isoflurane|volatile|vapou?r|MAC|anaesthetic|anesthetic|anaesthesia|anesthesia|sedation|sedatives?|midazolam|lorazepam|benzodiazepines?|dexmedetomidine|clonidine|ketamine|thiopent\w*|etomidate|TCI|effect-site|target concentration|antiepileptics?|anticonvulsants?|levetiracetam|phenytoin|valproate|rocuronium|relaxants?)\b/i;
+const TREATMENT_SRC = TREATMENT.source.replace(/^\\b\(|\)\\b$/g, "");
+
+/** "Reduce propofol…", "Please lower the sevoflurane MAC", "Deepen anaesthesia". */
+const IMPERATIVE = new RegExp(
+  `^\\W*(?:please\\s+|now\\s+|then\\s+|immediately\\s+)?(?:${ACTION_BASE})\\s+(?:the\\s+|a\\s+|an\\s+|any\\s+|their\\s+|its\\s+|patient'?s\\s+)?(?:[\\w-]+\\s+)?(?:${TREATMENT_SRC})\\b`,
+  "i",
+);
+/** "Consider increasing…", "We recommend reducing…", "should reduce…". */
+const RECOMMENDING_CUE = new RegExp(
+  `\\b(?:consider(?:ing)?|recommend(?:s|ed|ing)?|suggest(?:s|ed|ing)?|advis(?:e|es|ed|able)|try|aim to|needs? to|should|must|ought to|may wish to|it (?:may|might|would) be (?:worth|appropriate|reasonable|prudent|advisable)(?:\\s+to)?)\\s+(?:(?!be\\b)\\w+\\s+)?(?:${ACTION_BASE}|${ACTION_GERUND})\\b`,
+  "i",
+);
+/** "The propofol infusion should be reduced" — the treatment is the subject. */
+const MODAL_PASSIVE = new RegExp(
+  `\\b(?:${TREATMENT_SRC})\\b[^.;:,]{0,40}?\\b(?:should|must|needs? to|ought to|could|may|might|would|can)\\s+(?:\\w+\\s+)?be\\s+(?:${ACTION_PARTICIPLE})\\b`,
+  "i",
+);
+const OUTCOME_CUE =
+  "(?:may|might|could|would|should|will) help|(?:is|are|would be) (?:advised|recommended|warranted|indicated|required|appropriate|reasonable)";
+/** "Increasing the propofol rate may help", "A reduction in propofol is recommended". */
+const OUTCOME_ADVICE = new RegExp(
+  `(?:^\\W*(?:${ACTION_GERUND})\\b|\\b(?:reduction|increase|decrease|titration|weaning)\\s+(?:in|of)\\s+(?:the\\s+)?(?:[\\w-]+\\s+)?(?:${TREATMENT_SRC})\\b)[^.;:]*?\\b(?:${OUTCOME_CUE})\\b`,
+  "i",
+);
+
 const AWARENESS = /\b(awareness|aware|recall)\b/i;
 const DIAGNOSIS =
   /\b(diagnos(?:is|ed|e|tic)\s+(?:of|for|is)|confirms?\s+(?:a|an|the)?\s*(?:seizure|stroke|status|hypoxic|encephalopathy|infarct)|is\s+(?:a|an)\s+(?:seizure|stroke|infarct)|has\s+(?:a|an)\s+(?:stroke|seizure|infarct))\b/i;
@@ -84,7 +122,11 @@ function splitSentences(text: string): string[] {
 }
 
 export function isTreatmentDirective(sentence: string): boolean {
-  return DIRECTIVE_VERB.test(sentence) && DRUG_TERM.test(sentence);
+  if (!TREATMENT.test(sentence)) return false;
+  if (IMPERATIVE.test(sentence)) return true;
+  if (RECOMMENDING_CUE.test(sentence)) return true;
+  if (MODAL_PASSIVE.test(sentence)) return true;
+  return OUTCOME_ADVICE.test(sentence);
 }
 
 function breach(sentence: string, allowAwarenessLimitation: boolean): string | null {
