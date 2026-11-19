@@ -84,9 +84,27 @@ const TREATMENT =
   /\b(infusion|dose|dosing|bolus|propofol|remifentanil|alfentanil|sufentanil|fentanyl|morphine|opioids?|analgesi[ac]\w*|sevoflurane|desflurane|isoflurane|volatile|vapou?r|MAC|anaesthetic|anesthetic|anaesthesia|anesthesia|sedation|sedatives?|midazolam|lorazepam|benzodiazepines?|dexmedetomidine|clonidine|ketamine|thiopent\w*|etomidate|TCI|effect-site|target concentration|antiepileptics?|anticonvulsants?|levetiracetam|phenytoin|valproate|rocuronium|relaxants?)\b/i;
 const TREATMENT_SRC = TREATMENT.source.replace(/^\\b\(|\)\\b$/g, "");
 
-/** "Reduce propofol…", "Please lower the sevoflurane MAC", "Deepen anaesthesia". */
+/*
+ * Instruction detection. An action verb in the base (imperative) form at the
+ * start of a clause — sentence start, after a comma/semicolon/colon/dash, after
+ * "then/and/or/otherwise", or after a leading "If…/When…/Once…" condition —
+ * whose object is a treatment. The object may carry determiners, doses and
+ * delivery words ("the rate of the propofol infusion", "20 mg of propofol") and
+ * at most one other free word, so "lower readings during sedation" stays a
+ * description while "If BIS < 40, reduce the rate of propofol" is an instruction.
+ */
+const OBJECT_MOD =
+  "the|a|an|any|their|its|your|this|that|current|patient'?s|of|to|by|rate|dose|dosing|infusion|bolus|concentration|target|effect-site|end-tidal|inspired|background|maintenance|delivered|pump|vapori[sz]er|dial|setting|level|amount|\\d+(?:\\.\\d+)?\\s*(?:mg\\/kg|mcg\\/kg|mg|mcg|µg|ug|ml|mL|%)?";
+/** Delivery words that count as a treatment object only straight after an instruction verb. */
+const DELIVERY_OBJECT = "rate|dose|dosing|infusion|bolus|concentration|target|pump|vapori[sz]er|dial|setting";
+const INSTRUCTION_OBJECT = `(?:(?:${OBJECT_MOD})\\s+){0,5}(?:[\\w-]+\\s+)?(?:(?:${OBJECT_MOD})\\s+){0,4}(?:${TREATMENT_SRC}|${DELIVERY_OBJECT})\\b`;
+const CLAUSE_START =
+  "(?:^\\W*|[,;:\\u2013\\u2014]\\s*|\\s-\\s+|\\b(?:then|and|or|otherwise)\\s+|^\\W*(?:if|when|whenever|once|unless|until|should)\\b[^.;:]{0,80}?\\s)";
+/** "…is lower during sedation" uses the verb as a comparative adjective, not an instruction. */
+const NOT_COMPARATIVE =
+  "(?<!\\b(?:is|are|was|were|be|been|being|remain|remains|remained|become|becomes|became|stay|stays|stayed|appear|appears|appeared|seem|seems|seemed|get|gets|got|much|slightly|even|far|no|any|significantly|markedly|somewhat)\\s)";
 const IMPERATIVE = new RegExp(
-  `^\\W*(?:please\\s+|now\\s+|then\\s+|immediately\\s+)?(?:${ACTION_BASE})\\s+(?:the\\s+|a\\s+|an\\s+|any\\s+|their\\s+|its\\s+|patient'?s\\s+)?(?:[\\w-]+\\s+)?(?:${TREATMENT_SRC})\\b`,
+  `${CLAUSE_START}${NOT_COMPARATIVE}(?:please\\s+|now\\s+|then\\s+|immediately\\s+|promptly\\s+|gently\\s+|slowly\\s+)?(?:${ACTION_BASE})\\s+${INSTRUCTION_OBJECT}`,
   "i",
 );
 /** "Consider increasing…", "We recommend reducing…", "should reduce…". */
@@ -122,8 +140,8 @@ function splitSentences(text: string): string[] {
 }
 
 export function isTreatmentDirective(sentence: string): boolean {
-  if (!TREATMENT.test(sentence)) return false;
   if (IMPERATIVE.test(sentence)) return true;
+  if (!TREATMENT.test(sentence)) return false;
   if (RECOMMENDING_CUE.test(sentence)) return true;
   if (MODAL_PASSIVE.test(sentence)) return true;
   return OUTCOME_ADVICE.test(sentence);

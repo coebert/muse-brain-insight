@@ -82,6 +82,16 @@ describe("treatment directives vs descriptions", () => {
     "Increasing the remifentanil rate may help.",
     "A reduction in propofol is recommended.",
     "It may be worth lightening the anaesthetic.",
+    "If suppression persists, reduce the propofol infusion.",
+    "If suppression persists reduce the propofol infusion.",
+    "If BIS < 40, reduce propofol infusion.",
+    "When suppression rises, lower sevoflurane.",
+    "Reduce the rate of propofol.",
+    "Reduce the rate of the propofol infusion.",
+    "Suppression is high; reduce the propofol infusion.",
+    "Re-check in 5 min and reduce the propofol infusion if it persists.",
+    "Give 20 mg of propofol.",
+    "Reduce the infusion rate.",
   ])("treats %j as a directive", (sentence) => {
     expect(isTreatmentDirective(sentence)).toBe(true);
   });
@@ -94,6 +104,9 @@ describe("treatment directives vs descriptions", () => {
     "Increasing suppression is consistent with deep anaesthesia.",
     "Readings should be lower during sedation.",
     "Alpha power started to rise as anaesthesia lightened.",
+    "When anaesthesia deepens, lower readings during sedation are typical.",
+    "If the depth index is lower during sedation, review electrode contact.",
+    "Depth fell, and suppression rose during maintenance of anaesthesia.",
   ])("keeps the description %j", (sentence) => {
     expect(isTreatmentDirective(sentence)).toBe(false);
   });
@@ -112,6 +125,16 @@ describe("treatment directives vs descriptions", () => {
     expect(output.headline).toBe("Lower readings during sedation with rising suppression.");
     expect(output.alerts[0]!.detail).toBe("Suppression ratio is high, consistent with deepening anaesthesia.");
     expect(report.rules).not.toContain("treatment-directive");
+  });
+
+  it("replaces a conditional dosing instruction in an alert action with the neutral review", () => {
+    const { output, report } = guardInterpretation(
+      base({ alerts: [alert({ action: "If suppression persists, reduce the propofol infusion." })] }),
+      digest,
+    );
+    expect(output.alerts[0]!.action).not.toMatch(/propofol/i);
+    expect(output.alerts[0]!.action).toMatch(/clinician decision/i);
+    expect(report.rules).toContain("treatment-directive");
   });
 
   it("still removes a directive mixed into an otherwise descriptive depth section", () => {
