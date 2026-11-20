@@ -1,0 +1,34 @@
+name: EEG research baseline
+on:
+  push:
+    branches: [research/eeg-baselines]
+    paths:
+      - 'research/eeg/**'
+      - '.github/workflows/eeg-research-baseline.yml'
+permissions:
+  contents: read
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [seizures, bis]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install training dependencies
+        run: python -m pip install numpy==2.2.6 scipy==1.15.3 scikit-learn==1.6.1 pyedflib==0.1.42 h5py==3.13.0 requests==2.32.5
+      - name: Fit and evaluate
+        run: python research/eeg/train.py ${{ matrix.task }} --data "${RUNNER_TEMP}/eeg" --output research-results
+      - name: Record metrics and coefficients
+        run: cat research-results/*.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eeg-${{ matrix.task }}
+          path: research-results/*.json
+          retention-days: 7
+          if-no-files-found: error
