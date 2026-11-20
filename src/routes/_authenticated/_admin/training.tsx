@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { ResearchEegBaselinePanel } from "@/components/admin/ResearchEegBaselinePanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,6 +332,8 @@ function TrainingPage() {
           never saw.
         </p>
       </div>
+
+      <ResearchEegBaselinePanel />
 
       {history.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading training history…</p>
