@@ -14,14 +14,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [seizures, bis]
+        task: [seizures, bis, responsiveness]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Install training dependencies
-        run: python -m pip install numpy==2.2.6 scipy==1.15.3 scikit-learn==1.6.1 pyedflib==0.1.42 h5py==3.13.0 requests==2.32.5
+        run: python -m pip install numpy==2.2.6 scipy==1.15.3 scikit-learn==1.6.1 pyedflib==0.1.42 h5py==3.13.0 requests==2.32.5 pandas==2.2.3
       - name: Fit and evaluate
         run: python research/eeg/train.py ${{ matrix.task }} --data "${RUNNER_TEMP}/eeg" --output research-results
       - name: Record metrics and coefficients

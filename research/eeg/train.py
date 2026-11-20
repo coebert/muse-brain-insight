@@ -323,14 +323,112 @@ def train_bis(output):
     (output / "bis-agreement.json").write_text(json.dumps(report, indent=2, allow_nan=False))
 
 
+
+def read_dose_case(stream):
+    import pandas as pd
+    fields = pd.read_csv(stream, nrows=0).columns
+    stream.seek(0)
+    lookup = {name.strip().split("/")[-1].lower(): name for name in fields}
+    time, eeg1, eeg2, score = [lookup[key] for key in ("time", "eeg_1", "eeg_2", "moaas")]
+    table = pd.read_csv(stream, usecols=[time, eeg1, eeg2, score], low_memory=False)
+    timestamp = pd.to_datetime(table[time], format="mixed", errors="coerce", utc=True)
+    if timestamp.notna().sum() < 1000:
+        raise ValueError("unsupported or insufficient clock data")
+    t = (timestamp - timestamp.min()).dt.total_seconds().to_numpy()
+    observations = pd.to_numeric(table[score], errors="coerce").to_numpy()
+    channels = []
+    for key in (eeg1, eeg2):
+        wave = pd.to_numeric(table[key], errors="coerce").to_numpy()
+        valid = np.isfinite(t) & np.isfinite(wave)
+        times, idx = np.unique(t[valid], return_index=True)
+        channels.append((times, wave[valid][idx]))
+    rows = []
+    for at, level in zip(t, observations):
+        if not np.isfinite(at) or level not in (0, 3, 4, 5):
+            continue
+        predict_times = at - 10 + np.arange(1000) / 125
+        feats = []
+        for times, samples in channels:
+            left = max(0, np.searchsorted(times, predict_times[0]) - 1)
+            right = min(len(times), np.searchsorted(times, predict_times[-1]) + 2)
+            segment = times[left:right]
+            if (len(segment) < 950 or predict_times[0] < segment[0] or
+                    predict_times[-1] > segment[-1] or np.max(np.diff(segment)) > 0.04):
+                break
+            f = feature(np.interp(predict_times, segment, samples[left:right]), 125)
+            if f is None:
+                break
+            feats.extend(f)
+        if len(feats) == 2 * len(FEATURES):
+            rows.append((feats, int(level == 0)))
+    return rows
+
+
+def train_responsiveness(data, output):
+    """Research only. Keep source rows, patient-level results and weights off the repo."""
+    data.mkdir(parents=True, exist_ok=True)
+    archive_path = data / "dose-i-v2.zip"
+    url = "https://zenodo.org/records/22145442/files/data.zip?download=1"
+    digest = hashlib.md5()
+    with requests.get(url, stream=True, timeout=(30, 180)) as response:
+        response.raise_for_status()
+        with archive_path.open("wb") as handle:
+            for block in response.iter_content(chunk_size=1024 * 1024):
+                handle.write(block)
+                digest.update(block)
+    if digest.hexdigest() != "b98c8a81d2e866085f9e7ac75a950754":
+        raise ValueError("unexpected DOSE-I release file checksum")
+    recordings = []
+    problems = {}
+    with zipfile.ZipFile(archive_path) as archive:
+        files = [f for f in archive.namelist()
+                 if re.fullmatch(r"\d{2}-\d+\.csv", Path(f).name, re.I)]
+        for name in sorted(files):
+            try:
+                with archive.open(name) as stream:
+                    rows = read_dose_case(stream)
+                if rows:
+                    recordings.append((Path(name).stem, rows))
+                else:
+                    problems["no eligible time-aligned EEG"] = problems.get("no eligible time-aligned EEG", 0) + 1
+            except (KeyError, ValueError) as error:
+                key = str(error)
+                problems[key] = problems.get(key, 0) + 1
+    records = sorted(recordings, key=lambda record: hashlib.sha256(("dose-i-v2/" + record[0]).encode()).hexdigest())
+    if len(records) < 30:
+        raise ValueError(f"only {len(records)} eligible recordings from {len(files)} CSV files: {problems}")
+    n_test = max(10, len(records) // 4)
+    training, test = records[n_test:], records[:n_test]
+    x, y = zip(*(item for _, rows in training for item in rows))
+    x_test, y_test = zip(*(item for _, rows in test for item in rows))
+    model = make_pipeline(StandardScaler(), LogisticRegression(class_weight="balanced", max_iter=500))
+    model.fit(x, y)
+    probabilities = model.predict_proba(x_test)[:, 1]
+    report = {
+        "task": "DOSE-I MOAA/S 0 versus 3–5, observed responsiveness benchmark",
+        "state": "research only; DOSE-I data agreement",
+        "train_procedures": len(training), "test_procedures": len(test),
+        "train_labeled_windows": len(y), "test_labeled_windows": len(y_test),
+        "test_MOAAS_0_windows": int(sum(y_test)),
+        "test_window_roc_auc": float(roc_auc_score(y_test, probabilities)),
+        "test_average_precision": float(average_precision_score(y_test, probabilities)),
+        "excluded_recordings_by_reason": problems,
+        "limitations": "Separation by procedure; patient identity across procedures and site generalisation are unverified. No clinical or product claim.",
+    }
+    (output / "responsiveness-aggregate.json").write_text(json.dumps(report, indent=2, allow_nan=False))
+    # Keep fitted coefficients private to the in-memory experiment under the data agreement.
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("task", choices=("seizures", "bis"))
+    parser.add_argument("task", choices=("seizures", "bis", "responsiveness"))
     parser.add_argument("--data", type=Path, default=Path("research-cache"))
     parser.add_argument("--output", type=Path, default=Path("research-results"))
     options = parser.parse_args()
     options.output.mkdir(parents=True, exist_ok=True)
     if options.task == "seizures":
         train_seizures(options.data, options.output)
-    else:
+    elif options.task == "bis":
         train_bis(options.output)
+    else:
+        train_responsiveness(options.data, options.output)
