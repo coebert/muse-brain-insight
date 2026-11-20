@@ -344,7 +344,7 @@ def read_dose_case(stream):
         channels.append((times, wave[valid][idx]))
     rows = []
     for at, level in zip(t, observations):
-        if not np.isfinite(at) or level not in (0, 3, 4, 5):
+        if not np.isfinite(at) or level not in (1, 2, 4, 5):
             continue
         predict_times = at - 10 + np.arange(1000) / 125
         feats = []
@@ -360,7 +360,7 @@ def read_dose_case(stream):
                 break
             feats.extend(f)
         if len(feats) == 2 * len(FEATURES):
-            rows.append((feats, int(level == 0)))
+            rows.append((feats, int(level <= 2)))
     return rows
 
 
@@ -402,14 +402,15 @@ def train_responsiveness(data, output):
     x, y = zip(*(item for _, rows in training for item in rows))
     x_test, y_test = zip(*(item for _, rows in test for item in rows))
     model = make_pipeline(StandardScaler(), LogisticRegression(class_weight="balanced", max_iter=500))
+    print(f'DOSE-I: fitting low/high={sum(y)}/{len(y)-sum(y)}, testing low/high={sum(y_test)}/{len(y_test)-sum(y_test)}', flush=True)
     model.fit(x, y)
     probabilities = model.predict_proba(x_test)[:, 1]
     report = {
-        "task": "DOSE-I MOAA/S 0 versus 3–5, observed responsiveness benchmark",
+        "task": "DOSE-I MOAA/S 1–2 versus 4–5, observed responsiveness benchmark",
         "state": "research only; DOSE-I data agreement",
         "train_procedures": len(training), "test_procedures": len(test),
         "train_labeled_windows": len(y), "test_labeled_windows": len(y_test),
-        "test_MOAAS_0_windows": int(sum(y_test)),
+        "test_MOAAS_1_or_2_windows": int(sum(y_test)),
         "test_window_roc_auc": float(roc_auc_score(y_test, probabilities)),
         "test_average_precision": float(average_precision_score(y_test, probabilities)),
         "excluded_recordings_by_reason": problems,
