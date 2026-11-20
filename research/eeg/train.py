@@ -264,7 +264,8 @@ def train_bis(output):
         raise ValueError("unexpected Figshare licence")
     cases = []
     for f in api["files"]:
-        raw = get(f["downloadUrl"]).content
+        raw = get(f.get("downloadUrl") or f.get("download_url") or
+                  f"https://ndownloader.figshare.com/files/{int(f['id'])}").content
         if f.get("computed_md5") and hashlib.md5(raw).hexdigest() != f["computed_md5"]:
             raise ValueError(f"checksum mismatch: {f['name']}")
         if f["name"].lower().endswith(".mat"):
