@@ -16,6 +16,7 @@ import {
 } from "recharts";
 
 import { ResearchEegBaselinePanel } from "@/components/admin/ResearchEegBaselinePanel";
+import { ResearchEegDiscoveryPanel } from "@/components/admin/ResearchEegDiscoveryPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -334,6 +335,7 @@ function TrainingPage() {
       </div>
 
       <ResearchEegBaselinePanel />
+      <ResearchEegDiscoveryPanel />
 
       {history.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading training history…</p>
