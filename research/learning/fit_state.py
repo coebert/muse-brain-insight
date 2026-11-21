@@ -162,7 +162,9 @@ def behaviour(rows):
             "mean_absolute_error_correct_responses": float(np.mean(abs(p - target))),
             "moderate_stage_mean_absolute_error": float(np.mean(abs(p[within] - target[within]))),
             "moderate_stage_spearman": (
-                float(spearmanr(p[within], target[within])[0]) if np.std(p[within]) > 1e-6 else None
+                float(spearmanr(p[within], target[within])[0])
+                if name in ("EEG", "EEG_plus_stage") and np.std(p[within]) > 1e-6
+                else None
             ),
         }
     # Positive gain means the combined model makes fewer errors than stage alone.

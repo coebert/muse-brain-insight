@@ -117,7 +117,7 @@ def cambridge(out):
         list(pool.map(one, info))
 
 
-def oslo(out):
+def oslo(out, eyes_open_only=False):
     api = "https://api.github.com/repos/" + OSLO_REPO
     paths = [
         r["path"] for r in json.loads(get(api + "/git/trees/" + OSLO_TAG + "?recursive=1"))["tree"]
@@ -133,7 +133,11 @@ def oslo(out):
     )
     chosen = []
     for path in paths:
-        m = re.search(r"/sub-(\d+)_task-(awake_acq-EC|sed2_acq-rest_run-\d+)_eeg\.vhdr$", path)
+        if eyes_open_only and "_task-awake_acq-EO_" not in path:
+            continue
+        if not eyes_open_only and "_task-awake_acq-EO_" in path:
+            continue
+        m = re.search(r"/sub-(\d+)_task-(awake_acq-E[CO]|sed2_acq-rest_run-\d+)_eeg\.vhdr$", path)
         if m and m[1] not in excluded and ("task-" + m[2]) not in bad.get(m[1], ""):
             chosen.append((m[1], m[2], path))
 
@@ -190,4 +194,7 @@ def oslo(out):
 if __name__ == "__main__":
     out = Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
-    {"cambridge": cambridge, "oslo": oslo}[sys.argv[1]](out)
+    if sys.argv[1] == "oslo-eyes-open":
+        oslo(out, eyes_open_only=True)
+    else:
+        {"cambridge": cambridge, "oslo": oslo}[sys.argv[1]](out)

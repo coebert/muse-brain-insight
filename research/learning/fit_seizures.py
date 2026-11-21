@@ -168,6 +168,7 @@ def pooled(cases, scores, thresholds):
     ps = []
     delays = []
     patient = []
+    patient_index = []
     good = total = tp = tn = pos = neg = 0
     for i, p in enumerate(scores):
         r = cases[i]
@@ -175,6 +176,7 @@ def pooled(cases, scores, thresholds):
         ok = known & np.isfinite(p)
         good += ok.sum()
         total += known.sum()
+        patient_index.extend([i] * int(ok.sum()))
         ys.extend(r["y"][ok])
         ps.extend(p[ok])
         counts, lat = alarm_counts(r, p, thresholds[i])
@@ -193,9 +195,21 @@ def pooled(cases, scores, thresholds):
     rng = np.random.default_rng(942)
     boot = pt[rng.integers(0, len(pt), size=(1500, len(pt)))].sum(axis=1)
     ci = lambda x: [float(v) for v in np.percentile(x, [2.5, 97.5])]
+    patient_index = np.array(patient_index)
+    auc_replicates = []
+    ap_replicates = []
+    for _ in range(350):
+        multiplicity = np.bincount(rng.integers(len(pt), size=len(pt)), minlength=len(pt))
+        weight = multiplicity[patient_index]
+        if min(weight[y == 0].sum(), weight[y == 1].sum()) == 0:
+            continue
+        auc_replicates.append(roc_auc_score(y, p, sample_weight=weight))
+        ap_replicates.append(average_precision_score(y, p, sample_weight=weight))
     return {
         "window_AUROC": float(roc_auc_score(y, p)),
         "window_average_precision": float(average_precision_score(y, p)),
+        "AUROC_patient_bootstrap_95": ci(auc_replicates),
+        "average_precision_patient_bootstrap_95": ci(ap_replicates),
         "window_seizure_prevalence": float(y.mean()),
         "window_Brier": float(brier_score_loss(y, p)),
         "scored_windows": int(good),

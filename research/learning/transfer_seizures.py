@@ -18,7 +18,7 @@ from waveforms import PAIRS, SECONDS, features
 from fit_seizures import case, apply_calibration, raw_scores, alarm_counts
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "eeg"))
-from train import chb_annotations, siena_annotations
+from train import chb_annotations, siena_annotations, clock
 
 ROOT = "https://physionet-open.s3.amazonaws.com/"
 SITES = {
@@ -122,6 +122,28 @@ def prepare(folder):
         f = pid + "-summary.txt" if site == "chb" else "Seizures-list-" + pid + ".txt"
         annotation = get(base + f).decode("latin1")
         mapping = (chb_annotations if site == "chb" else siena_annotations)(annotation)
+        if site == "siena" and pid in {"PN01", "PN06"}:
+            # Two released annotation files use legacy names. Confirm the EDF time as well.
+            listing = get(f"{ROOT}{ds}/1.0.0/RECORDS").decode().splitlines()
+            actual = f"{pid}-1.edf"
+            if f"{pid}/{actual}" not in listing:
+                raise ValueError("expected annotated version absent from source")
+            start_match = re.search(r"Registration start time:\s*([0-9.:]+)", annotation, re.I)
+            origin = clock(start_match[1])
+            if clock(get(base + actual, 0, 255)[176:184].decode()) != origin:
+                raise ValueError("annotated and EDF start times disagree")
+            if pid == "PN01":
+                blocks = re.split(r"Seizure n\s*\d+", annotation, flags=re.I)[1:]
+                periods = []
+                for block in blocks:
+                    a = re.search(r"Start time:\s*([0-9.:]+)", block, re.I)
+                    b = re.search(r"End time:\s*([0-9.:]+)", block, re.I)
+                    if not a or not b:
+                        raise ValueError("missing single-file seizure times")
+                    periods.append(((clock(a[1]) - origin) % 86400, (clock(b[1]) - origin) % 86400))
+                mapping = {actual: periods}
+            else:
+                mapping = {name.replace("PNO6-", "PN06-"): iv for name, iv in mapping.items()}
         event = next(((file, v, "event") for file, v in mapping.items() if v), None)
         background = next(((file, v, "background") for file, v in mapping.items() if not v), None)
         errors = []
