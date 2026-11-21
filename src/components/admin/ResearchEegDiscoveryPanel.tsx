@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import discovery from "@/lib/eeg/research-disease-discovery.json";
+import arousal from "@/lib/eeg/research-arousal-summary.json";
 
 type Benchmark = {
   auroc: number;
@@ -86,6 +87,25 @@ export function ResearchEegDiscoveryPanel() {
             <a className="underline" href={study.run}>Research run and methods</a>
           </div>
         ))}
+        <section className="space-y-1 border-t pt-4">
+          <h3 className="font-medium">Sleep deprivation research</h3>
+          <p>
+            Southwest University eyes-open EEG · {arousal.completePairs} matched participants.
+            Fitted on {arousal.fitParticipants}, tested on {arousal.testParticipants}.
+            Extended multichannel AUROC {arousal.extended.toFixed(2)} (95% paired bootstrap interval{" "}
+            {arousal.interval.map((value) => value.toFixed(2)).join("–")}).
+            Frontal-only AUROC {arousal.frontal.toFixed(2)}.
+          </p>
+          <p className="text-muted-foreground">
+            The previously fitted Parkinson’s research score increased after sleep deprivation
+            in {arousal.scoreIncreased} of {arousal.completePairs} healthy participants. This research
+            used sleep-deprivation labels and assessed score sensitivity to a non-disease state change.
+          </p>
+          <div className="flex flex-wrap gap-x-3">
+            <a className="underline" href={arousal.dataset}>Southwest University data</a>
+            <a className="underline" href={arousal.run}>Research run and methods</a>
+          </div>
+        </section>
       </CardContent>
     </Card>
   );

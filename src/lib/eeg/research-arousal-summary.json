@@ -1,0 +1,14 @@
+{
+  "dataset": "https://doi.org/10.18112/openneuro.ds004902.v1.0.8",
+  "run": "https://github.com/coebert/muse-brain-insight/actions/runs/44914162341",
+  "completePairs": 66,
+  "fitParticipants": 46,
+  "testParticipants": 20,
+  "extended": 0.6575,
+  "interval": [
+    0.48999999999999994,
+    0.8325
+  ],
+  "frontal": 0.5925,
+  "scoreIncreased": 46
+}
