@@ -1,0 +1,53 @@
+name: EEG disease discovery
+on:
+  push:
+    branches: [research/eeg-baselines]
+    paths:
+      - 'research/discovery/**'
+      - '.github/workflows/eeg-disease-discovery.yml'
+permissions:
+  contents: read
+jobs:
+  check-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify public waveform formats
+        run: |
+          python3 - <<'PY'
+          from concurrent.futures import ThreadPoolExecutor
+          import hashlib, json, pathlib, urllib.request, zipfile
+          def probe(item):
+              dataset, path = item
+              for host in (f"https://s3.amazonaws.com/openneuro.org/{dataset}/", f"https://{dataset}.s3.amazonaws.com/"):
+                  try:
+                      request = urllib.request.Request(host + path, headers={"Range": "bytes=0-127"})
+                      with urllib.request.urlopen(request, timeout=15) as reply:
+                          print(dataset, reply.status, reply.headers.get("Content-Range"), repr(reply.read(80)), flush=True)
+                      return
+                  except Exception as error:
+                      print(dataset, host, str(error), flush=True)
+          with ThreadPoolExecutor() as pool:
+              list(pool.map(probe, [
+                  ("ds004504", "sub-001/eeg/sub-001_task-eyesclosed_eeg.set"),
+                  ("ds003490", "sub-001/ses-01/eeg/sub-001_ses-01_task-Rest_eeg.set"),
+                  ("ds007526", "sub-001/eeg/sub-001_task-rest_eeg.set"),
+              ]))
+          with urllib.request.urlopen("https://api.figshare.com/v2/articles/5450293/versions/1", timeout=30) as reply:
+              article = json.load(reply)
+          print("Figshare Cejnek", article.get("license"), article.get("files"), flush=True)
+          for file in article["files"]:
+              name = pathlib.Path("cejn.zip")
+              urllib.request.urlretrieve(file["downloadUrl"], name)
+              if not zipfile.is_zipfile(name):
+                  continue
+              with zipfile.ZipFile(name) as archive:
+                  print(len(archive.namelist()), archive.namelist()[:50], flush=True)
+                  print("folders", sorted(set(tuple(p.split("/")[:2]) for p in archive.namelist()))[:25], flush=True)
+                  for member in archive.infolist():
+                      if member.filename.lower().endswith((".txt", ".csv")) and member.file_size < 160000:
+                          body = archive.read(member).decode("utf-8", errors="replace")
+                          # Source documentation only, no subject-level metadata in logs.
+                          lines = [line for line in body.splitlines() if any(term in line.lower() for term in ("sampling", "electrode", "frequency", "control", "dementia", "protocol"))]
+                          print("documentation", member.filename, "\\n".join(lines[:20])[:2000], flush=True)
+          PY
