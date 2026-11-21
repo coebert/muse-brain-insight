@@ -7,3 +7,5 @@ h5py==3.14.0
 joblib==1.5.3
 pyedflib==0.1.42
 matplotlib==3.9.4
+PyMuPDF==1.26.5
+Pillow==11.3.0

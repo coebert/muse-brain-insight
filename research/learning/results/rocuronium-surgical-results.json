@@ -1,0 +1,44 @@
+{
+  "track_intersection": 264,
+  "unique_tracks": 264,
+  "timed_pump_transitions": 32,
+  "attempted_EEG": 32,
+  "retention": {
+    "no_confirming_pump_volume": 14,
+    "ok": 17,
+    "insufficient_clean_EEG": 1
+  },
+  "selection": "First sustained rise from <=0.2 to >=1 mL/h with a low-rate run-in; ascending fixed-seed SHA-256 of case ID; volume confirmation and signal quality >=80 required.",
+  "cases": 17,
+  "valid_windows": 476,
+  "case_mean_MAE_EMG_dB": 1.2107287566385905,
+  "case_mean_baseline_MAE_dB": 1.2221120971712633,
+  "paired_MAE_gain_ci": [
+    -0.3048560239025035,
+    0.32254327762584833
+  ],
+  "pre_post_cases": 14,
+  "post_minus_pre": {
+    "EMG_dB": {
+      "median": 0.04249999999999865,
+      "IQR": [
+        -0.06999999999999762,
+        0.18562500000000082
+      ]
+    },
+    "42_to_55_log10_power": {
+      "median": 0.009735232825261453,
+      "IQR": [
+        -0.048296304951461866,
+        0.039410714184280216
+      ]
+    },
+    "alpha_log10_power": {
+      "median": -0.0011107359130727024,
+      "IQR": [
+        -0.044964565937445106,
+        0.02379400460348491
+      ]
+    }
+  }
+}

@@ -32,7 +32,9 @@ def read_session(file, mode):
     return x[:, [names.index(n) for n in required], :], hz
 
 
-def score(task, montage, file, model_dir):
+def score(task, montage, file, model_dir, blockade="unknown"):
+    if blockade not in ("documented", "suspected", "reported-absent", "unknown"):
+        raise ValueError("unknown blockade context")
     pairs = 2 if montage == "frontal" else 6 if task == "propofol" else 8
     segments, hz = read_session(file, pairs)
     if task == "propofol":
@@ -51,11 +53,31 @@ def score(task, montage, file, model_dir):
         usable = e[np.isfinite(e).all(axis=(1, 2))]
         if len(usable) < 2:
             return {"status": "insufficient usable EEG", "eligible_windows": len(usable)}
+        if blockade in ("documented", "suspected"):
+            # These models have never been validated to infer awareness during paralysis.
+            # Return signal descriptors, without mapping them to consciousness or drug exposure.
+            rel = usable[..., 1:4].astype(float)
+            valid = np.isfinite(rel).all(axis=2) & (rel.min(axis=2) > 0)
+            if not valid.all():
+                return {"status": "insufficient usable EEG", "eligible_windows": 0}
+            ratios = np.median(np.log(rel[..., 1:] / rel[..., :1]), axis=(0, 1))
+            return {
+                "status": "abstained from depth interpretation",
+                "blockade_context": blockade,
+                "consciousness_inference": None,
+                "eligible_windows": len(usable),
+                "total_windows": len(e),
+                "EEG_log_theta_to_delta": float(ratios[0]),
+                "EEG_log_alpha_to_delta": float(ratios[1]),
+                "reason": "Neuromuscular blockade can suppress EMG while awareness persists.",
+            }
         meds = np.median(usable.reshape(len(usable), pairs // 2, 2, -1), axis=(0, 2)).ravel()
         v = (meds - spec["mean"]) / spec["scale"]
         return {
             "status": "research replay",
             "target": "propofol protocol state",
+            "blockade_context": blockade,
+            "consciousness_inference": None,
             "eligible_windows": len(usable),
             "total_windows": len(e),
             "session_score": float(expit(v @ spec["coef"] + spec["intercept"])),
@@ -101,5 +123,16 @@ if __name__ == "__main__":
     parser.add_argument("montage", choices=["frontal", "broader"])
     parser.add_argument("input", type=Path)
     parser.add_argument("--models", type=Path, default=Path(__file__).parent / "results")
+    parser.add_argument(
+        "--blockade",
+        choices=["documented", "suspected", "reported-absent", "unknown"],
+        default="unknown",
+        help="Recorded or suspected exposure, supplied independently of the EEG",
+    )
     args = parser.parse_args()
-    print(json.dumps(score(args.task, args.montage, args.input, args.models), allow_nan=False))
+    print(
+        json.dumps(
+            score(args.task, args.montage, args.input, args.models, args.blockade),
+            allow_nan=False,
+        )
+    )

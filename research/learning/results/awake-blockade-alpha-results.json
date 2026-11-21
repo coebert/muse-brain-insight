@@ -1,0 +1,39 @@
+{
+  "source": "Halder et al. 2026, Supplementary Figure S3, CC BY 4.0",
+  "doi": "10.1038/s41598-026-50911-6",
+  "source_sha256": "a0a9131f04a66a89a0c5cbcee55ff40c3800abbc4f27ae3b6e6e34e0f67fc307",
+  "units": "paper's frontal FOOOF log alpha power",
+  "state_order": [
+    "awake_unparalysed",
+    "awake_cisatracurium",
+    "propofol_sedation_blockade_protocol"
+  ],
+  "participants": 6,
+  "grouped_leave_one_out": {
+    "absolute": {
+      "omit_awake_blockade": {
+        "awake_pre_false_sedated": 1,
+        "awake_blockade_false_sedated": 1,
+        "propofol_protocol_detected": 5
+      },
+      "with_awake_blockade": {
+        "awake_pre_false_sedated": 0,
+        "awake_blockade_false_sedated": 1,
+        "propofol_protocol_detected": 5
+      }
+    },
+    "change_from_own_awake_baseline": {
+      "omit_awake_blockade": {
+        "awake_pre_false_sedated": 0,
+        "awake_blockade_false_sedated": 1,
+        "propofol_protocol_detected": 6
+      },
+      "with_awake_blockade": {
+        "awake_pre_false_sedated": 0,
+        "awake_blockade_false_sedated": 1,
+        "propofol_protocol_detected": 6
+      }
+    }
+  },
+  "protocol_deviation": "One participant received reversal before the sedated sample. See published protocol."
+}

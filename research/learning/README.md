@@ -2,6 +2,8 @@
 
 21 November 2026 · Retrospective research
 
+[Neuromuscular blockade and the awake EEG](neuromuscular-blockade.md) includes training on awake-paralysed volunteers, drug-aligned surgical EEG and the failure analysis.
+
 ## Propofol state and behavioural responsiveness
 
 The Cambridge dataset contributed 20 people and 80 sessions. Oslo contributed 20 people and 71 eyes-closed baseline and pre-awakening recordings. Cambridge contributed cleaned ten-second epochs. Oslo contributed continuous BrainVision samples. The aligned extraction produced 3,366 candidate eight-second windows before montage quality screening. An additional Oslo awake eyes-open condition was reserved for a control.
