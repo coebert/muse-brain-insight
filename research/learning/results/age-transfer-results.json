@@ -1,0 +1,63 @@
+{
+  "chb": {
+    "frontal": {
+      "patients": 12,
+      "segments": 24,
+      "hours_sampled": 6.057777777777778,
+      "scorable_fraction": 0.9336023477622891,
+      "events": 12,
+      "detected": 5,
+      "false_alarm_starts": 232,
+      "false_alarm_starts_per_background_hour": 39.73925869534187,
+      "background_hours": 5.838055555555556,
+      "window_AUROC": 0.5766668883273485,
+      "window_average_precision": 0.040999098250999844,
+      "window_prevalence": 0.028683693516699412
+    },
+    "broader": {
+      "patients": 12,
+      "segments": 24,
+      "hours_sampled": 6.057777777777778,
+      "scorable_fraction": 0.8785766691122524,
+      "events": 12,
+      "detected": 4,
+      "false_alarm_starts": 158,
+      "false_alarm_starts_per_background_hour": 27.063805490793168,
+      "background_hours": 5.838055555555556,
+      "window_AUROC": 0.5399674524273721,
+      "window_average_precision": 0.03247295924779621,
+      "window_prevalence": 0.022129436325678497
+    }
+  },
+  "siena": {
+    "frontal": {
+      "patients": 6,
+      "segments": 6,
+      "hours_sampled": 2.108888888888889,
+      "scorable_fraction": 0.9135932560590094,
+      "events": 6,
+      "detected": 2,
+      "false_alarm_starts": 7,
+      "false_alarm_starts_per_background_hour": 3.510727222067428,
+      "background_hours": 1.9938888888888888,
+      "window_AUROC": 0.6657376439985137,
+      "window_average_precision": 0.24714858483762409,
+      "window_prevalence": 0.04498269896193772
+    },
+    "broader": {
+      "patients": 6,
+      "segments": 6,
+      "hours_sampled": 2.108888888888889,
+      "scorable_fraction": 0.8777660695468915,
+      "events": 6,
+      "detected": 2,
+      "false_alarm_starts": 9,
+      "false_alarm_starts_per_background_hour": 4.513792142658122,
+      "background_hours": 1.9938888888888888,
+      "window_AUROC": 0.5573209326357941,
+      "window_average_precision": 0.0767064825477304,
+      "window_prevalence": 0.0468187274909964
+    }
+  },
+  "source_exclusions": []
+}

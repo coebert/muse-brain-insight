@@ -16,6 +16,7 @@ import {
 } from "recharts";
 
 import { ResearchEegBaselinePanel } from "@/components/admin/ResearchEegBaselinePanel";
+import { ResearchLearningPanel } from "@/components/admin/ResearchLearningPanel";
 import { ResearchEegDiscoveryPanel } from "@/components/admin/ResearchEegDiscoveryPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -335,6 +336,7 @@ function TrainingPage() {
       </div>
 
       <ResearchEegBaselinePanel />
+      <ResearchLearningPanel />
       <ResearchEegDiscoveryPanel />
 
       {history.isLoading ? (

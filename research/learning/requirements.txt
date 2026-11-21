@@ -6,3 +6,4 @@ requests==2.32.5
 h5py==3.14.0
 joblib==1.5.3
 pyedflib==0.1.42
+matplotlib==3.9.4

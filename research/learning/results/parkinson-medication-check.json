@@ -1,0 +1,20 @@
+{
+  "source": "OpenNeuro ds002778 v1.0.5",
+  "target": "Change in frozen New Mexico Parkinson research score, medication ON minus OFF in the same person.",
+  "eligible_raw_pairs": 13,
+  "offered_patients": 15,
+  "exclusions": {
+    "source identifies substituted preprocessed data": 2
+  },
+  "seconds_used": 1240,
+  "median_on_minus_off": -0.2081240912164436,
+  "mean_on_minus_off": -0.13130475948807255,
+  "mean_delta_participant_bootstrap_95": [
+    -0.2670464491422944,
+    0.019293624210800695
+  ],
+  "paired_wilcoxon_two_sided_p": 0.080322265625,
+  "median_absolute_change": 0.23291254581304055,
+  "score_higher_on_medication": 3,
+  "notes": "Small paired sensitivity experiment. No healthy-control diagnosis test, dose-time reference or treatment recommendation. Scores are uncalibrated."
+}

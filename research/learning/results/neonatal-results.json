@@ -1,0 +1,178 @@
+{
+  "frontal": {
+    "linear": {
+      "window_AUROC": 0.6102023247070155,
+      "window_average_precision": 0.19133965690277152,
+      "AUROC_patient_bootstrap_95": [
+        0.5437762916211407,
+        0.6646746969474007
+      ],
+      "average_precision_patient_bootstrap_95": [
+        0.12211209292360432,
+        0.26375503065346523
+      ],
+      "window_seizure_prevalence": 0.12890086730971873,
+      "window_Brier": 0.11048859833013656,
+      "scored_windows": 49348,
+      "coverage_known_windows": 0.9807031141318389,
+      "majority_seizures_at_least_10s": 483,
+      "events_with_alarm_start": 15,
+      "event_sensitivity": 0.031055900621118012,
+      "event_sensitivity_patient_bootstrap_95": [
+        0.0,
+        0.07460283329117125
+      ],
+      "false_alarm_starts": 11,
+      "background_hours": 97.76138888888889,
+      "false_alarm_starts_per_background_hour": 0.11251885969523301,
+      "false_alarms_per_hour_patient_bootstrap_95": [
+        0.0,
+        0.3276048559509733
+      ],
+      "background_fraction_alarm_active": 0.00031539377338815313,
+      "median_latency_seconds_detected": 74.0,
+      "window_sensitivity_at_threshold": 0.022952365980191795,
+      "window_specificity_at_threshold": 0.9972782469118571,
+      "calibration_thresholds": [
+        1.000001,
+        0.517784638699483,
+        1.000001,
+        0.4893366131279083,
+        0.2503692995274349
+      ]
+    },
+    "boosted": {
+      "window_AUROC": 0.6606759021083165,
+      "window_average_precision": 0.25493210293471935,
+      "AUROC_patient_bootstrap_95": [
+        0.5837570888306514,
+        0.7242628321660152
+      ],
+      "average_precision_patient_bootstrap_95": [
+        0.15807538746604738,
+        0.36724348958734043
+      ],
+      "window_seizure_prevalence": 0.12890086730971873,
+      "window_Brier": 0.1066917779201636,
+      "scored_windows": 49348,
+      "coverage_known_windows": 0.9807031141318389,
+      "majority_seizures_at_least_10s": 483,
+      "events_with_alarm_start": 41,
+      "event_sensitivity": 0.08488612836438923,
+      "event_sensitivity_patient_bootstrap_95": [
+        0.046394121602738765,
+        0.13970679012345671
+      ],
+      "false_alarm_starts": 23,
+      "background_hours": 97.76138888888889,
+      "false_alarm_starts_per_background_hour": 0.2352667066354872,
+      "false_alarms_per_hour_patient_bootstrap_95": [
+        0.08490530903803913,
+        0.41400769370140683
+      ],
+      "background_fraction_alarm_active": 0.0006393117028138239,
+      "median_latency_seconds_detected": 50.0,
+      "window_sensitivity_at_threshold": 0.055651627102656816,
+      "window_specificity_at_threshold": 0.9934864028659828,
+      "calibration_thresholds": [
+        0.24298870236098602,
+        0.4385033946179094,
+        0.5338808496130761,
+        0.3769728868028581,
+        0.2919838195763046
+      ]
+    }
+  },
+  "broader": {
+    "linear": {
+      "window_AUROC": 0.6575506767860956,
+      "window_average_precision": 0.30325384145238743,
+      "AUROC_patient_bootstrap_95": [
+        0.5959454817687421,
+        0.7345474287858932
+      ],
+      "average_precision_patient_bootstrap_95": [
+        0.20344784084318993,
+        0.39299896540480195
+      ],
+      "window_seizure_prevalence": 0.13002656124529002,
+      "window_Brier": 0.10476095972395433,
+      "scored_windows": 48567,
+      "coverage_known_windows": 0.9651821379598163,
+      "majority_seizures_at_least_10s": 483,
+      "events_with_alarm_start": 81,
+      "event_sensitivity": 0.16770186335403728,
+      "event_sensitivity_patient_bootstrap_95": [
+        0.08501548786783686,
+        0.2565144692677536
+      ],
+      "false_alarm_starts": 98,
+      "background_hours": 97.76138888888889,
+      "false_alarm_starts_per_background_hour": 1.002440750012076,
+      "false_alarms_per_hour_patient_bootstrap_95": [
+        0.25319422040636347,
+        2.141150883731022
+      ],
+      "background_fraction_alarm_active": 0.004259236633412987,
+      "median_latency_seconds_detected": 42.0,
+      "window_sensitivity_at_threshold": 0.13222486144101345,
+      "window_specificity_at_threshold": 0.9861071665246616,
+      "calibration_thresholds": [
+        0.21352373266245206,
+        0.3175750739172709,
+        0.5465370385757724,
+        0.630400373188974,
+        0.319435826532384
+      ]
+    },
+    "boosted": {
+      "window_AUROC": 0.733924155553052,
+      "window_average_precision": 0.4138804834422013,
+      "AUROC_patient_bootstrap_95": [
+        0.6696759064147477,
+        0.7841219684994374
+      ],
+      "average_precision_patient_bootstrap_95": [
+        0.29221340296684406,
+        0.5149274789396389
+      ],
+      "window_seizure_prevalence": 0.13002656124529002,
+      "window_Brier": 0.09638621860575987,
+      "scored_windows": 48567,
+      "coverage_known_windows": 0.9651821379598163,
+      "majority_seizures_at_least_10s": 483,
+      "events_with_alarm_start": 62,
+      "event_sensitivity": 0.12836438923395446,
+      "event_sensitivity_patient_bootstrap_95": [
+        0.06448313672111312,
+        0.20586326979472136
+      ],
+      "false_alarm_starts": 33,
+      "background_hours": 97.76138888888889,
+      "false_alarm_starts_per_background_hour": 0.337556579085699,
+      "false_alarms_per_hour_patient_bootstrap_95": [
+        0.11113273317701576,
+        0.6668459944950713
+      ],
+      "background_fraction_alarm_active": 0.001147919679719044,
+      "median_latency_seconds_detected": 41.0,
+      "window_sensitivity_at_threshold": 0.11306413301662707,
+      "window_specificity_at_threshold": 0.9937517750639023,
+      "calibration_thresholds": [
+        0.3699517614597053,
+        1.000001,
+        0.5126496685297992,
+        0.5983611957611575,
+        0.5438766546157641
+      ]
+    }
+  },
+  "cohort": {
+    "neonates": 79,
+    "recording_hours_windowed": 111.82,
+    "known_expert_hours": 111.82,
+    "nonunanimous_fraction_known_seconds": 0.08586468332041575,
+    "patients_with_majority_events_10s": 46,
+    "outer_folds": 5
+  }
+}
