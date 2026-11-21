@@ -33,6 +33,8 @@ ELECTRODES = (
     "P3", "P4", "O1", "O2", "T7", "T8", "P7", "P8", "FZ", "CZ", "PZ",
 )
 ALIAS = {"T3": "T7", "T4": "T8", "T5": "P7", "T6": "P8"}
+CEJNEK_CHANNEL_ORDER = ("FP1", "FP2", "F7", "FZ", "F3", "F4", "F8", "T7", "C3", "CZ",
+                        "C4", "T8", "P7", "P3", "PZ", "P4", "P8", "O1", "O2")
 MONTAGE = {"frontal": ("FP1", "F7", "FP2", "F8"),
            "central": ("F3", "C3", "F4", "C4"),
            "posterior": ("P3", "O1", "P4", "O2")}
@@ -268,18 +270,58 @@ def cejnek(cache):
     if not checksum or digest(release, "md5") != checksum:
         raise ValueError("Figshare checksum differs from release")
     with zipfile.ZipFile(release) as archive:
-        member_types = Counter((len(Path(n).parts), Path(n).suffix.lower()) for n in archive.namelist())
-        print("Cejnek source structure", dict(member_types), flush=True)
+        readme = next(n for n in archive.namelist() if n.lower() == "readme.txt")
+        notes = archive.read(readme).decode("utf-8-sig", errors="replace")
+        rates = {}
+        for line in notes.splitlines():
+            fields = line.strip().split("\t")
+            if len(fields) >= 2 and fields[-2] in ("128", "256"):
+                rates[fields[-1].strip().lower()] = int(fields[-2])
+        if len(rates) != 68:
+            raise ValueError("unexpected group and sampling-rate table in Cejnek archive")
+        members = {}
         for name in archive.namelist():
-            if Path(name).name.lower() == "readme.txt":
-                print("Cejnek release README", archive.read(name).decode(errors="replace")[:6500], flush=True)
-        for folder in sorted({Path(n).parts[0] for n in archive.namelist() if "/" in n})[:12]:
-            files = [n for n in archive.namelist() if n.startswith(folder + "/") and n.endswith(".mat")]
-            if files:
-                rel = Path(files[0])
-                print("Cejnek group layout", folder, len(files), re.sub(r"\d", "#", str(rel)),
-                      matio.whosmat(io.BytesIO(archive.read(files[0]))), flush=True)
-    raise ValueError("Cejnek source layout must be verified before independent scoring")
+            path = Path(name)
+            if path.suffix.lower() != ".mat":
+                continue
+            if len(path.parts) == 2 and path.stem.lower().endswith("fir"):
+                key = (path.parts[0], path.stem, "segmenty", 128)
+            elif len(path.parts) == 3 and path.parts[1].lower() in rates:
+                key = (path.parts[0], path.parts[1], "export", rates[path.parts[1].lower()])
+            else:
+                raise ValueError("unrecognised participant or sample rate in Cejnek archive")
+            members.setdefault(key, []).append(name)
+        records, rejected, formats = [], Counter(), Counter()
+        full = []
+        for (group, pid, variable, hz), names in sorted(members.items()):
+            formats[f"{group}/{variable}/{hz}Hz"] += 1
+            # Equalise sample rate for the technical check. The FIR/EXPORT split still confounds label.
+            if hz != 128:
+                rejected["256 Hz excluded from rate-matched check"] += 1
+                continue
+            segments = []
+            width = hz * 4
+            try:
+                for name in sorted(names, key=lambda n: [int(k) if k.isdigit() else k for k in re.split(r"(\d+)", n)]):
+                    values = matio.loadmat(io.BytesIO(archive.read(name)), variable_names=[variable])[variable]
+                    if variable == "export" and values.ndim == 2 and values.shape[1] == 19:
+                        values = values.T
+                    elif variable == "segmenty" and values.ndim == 2 and values.shape[0] == 22:
+                        values = values[:19]
+                    else:
+                        raise ValueError("source channel shape incompatible")
+                    usable = values.shape[1] // width * width
+                    if usable:
+                        segments.append(bipolar(values[:, :usable], CEJNEK_CHANNEL_ORDER))
+                if not segments:
+                    raise ValueError("source segments all shorter than four seconds")
+                features, windows, offered = extract(np.concatenate(segments, axis=1), hz)
+            except (ValueError, KeyError) as error:
+                rejected[str(error)] += 1
+                continue
+            records.append(Recording(pid, group, np.nan, "", features, windows, offered))
+            full.append((group, variable))
+    return records, dict(rejected), dict(formats), dict(Counter(f"{group}/{variable}" for group, variable in full))
 
 
 def matrices(rows, positive, negative):
@@ -336,7 +378,7 @@ def score(y, pred):
             "average_precision": float(average_precision_score(y, pred)), "positive": len(positive), "negative": len(negative)}
 
 
-def evaluate(train_rows, test_rows, positive, negative, target, test_labels=None):
+def evaluate(train_rows, test_rows, positive, negative, target, test_labels=None, technical_only=False):
     names, x, y, meta = matrices(train_rows, positive, negative)
     effects, adjusted = scan(names, x, y, meta)
     shortlist = sorted([e for e in effects if e["q_bh"] <= .1], key=lambda e: e["p"])[:8]
@@ -344,12 +386,13 @@ def evaluate(train_rows, test_rows, positive, negative, target, test_labels=None
     if not shortlist:
         shortlist = sorted(effects, key=lambda e: e["p"])[:3]
         screening_only = True
-    mode = "independent cohort" if test_rows else "discovery cohort only"
+    mode = "external technical check" if technical_only else "independent cohort" if test_rows else "discovery cohort only"
     report = {"target": target, "evaluation": mode, "feature_count": len(names), "age_sex_adjusted_discovery": adjusted,
               "discovery_n": len(y), "shortlist_screening_only": screening_only, "shortlist": shortlist, "models": {}}
     split = StratifiedKFold(5, shuffle=True, random_state=RNG_SEED)
     feature_sets = {"frontal_standard": [i for i, n in enumerate(names) if n.startswith("frontal.") and n.split(".")[1] in SIMPLE],
                     "all_standard": [i for i, n in enumerate(names) if n.split(".")[1] in SIMPLE],
+                    "frontal_extended": [i for i, n in enumerate(names) if n.startswith("frontal.")],
                     "all_extended": list(range(len(names)))}
     if test_rows:
         ext_names, test_x, test_y, test_meta = matrices(test_rows, *(test_labels or (positive, negative)))
@@ -359,7 +402,7 @@ def evaluate(train_rows, test_rows, positive, negative, target, test_labels=None
         q = fdr([e["p"] for e in tested], method="holm")
         for discovered, result, corrected in zip(shortlist, tested, q):
             result["p_holm"] = float(corrected)
-            result["replicated"] = bool(not screening_only and corrected < .05 and np.sign(discovered["effect_sd"]) == np.sign(result["effect_sd"]))
+            result["replicated"] = bool(not technical_only and not screening_only and corrected < .05 and np.sign(discovered["effect_sd"]) == np.sign(result["effect_sd"]))
         report["replication"] = {"age_sex_adjusted": ext_adjusted, "features": tested}
     for name, selected in {**feature_sets, "nonlinear_extended": feature_sets["all_extended"]}.items():
         train_x = x[:, selected]
@@ -367,8 +410,15 @@ def evaluate(train_rows, test_rows, positive, negative, target, test_labels=None
         model = make_pipeline(StandardScaler(), estimator)
         predictions = cross_val_predict(model, train_x, y, cv=split, method="decision_function")
         summary = {"internal_oof": score(y, predictions)}
+        model.fit(train_x, y)
+        if name != "nonlinear_extended":
+            standardizer, classifier = model.steps[0][1], model.steps[1][1]
+            summary["offline_model"] = {
+                "features": [names[i] for i in selected], "mean": standardizer.mean_.tolist(),
+                "scale": standardizer.scale_.tolist(), "coefficients": classifier.coef_[0].tolist(),
+                "intercept": float(classifier.intercept_[0]),
+            }
         if test_rows:
-            model.fit(train_x, y)
             summary["external"] = score(test_y, model.decision_function(test_x[:, selected]))
         report["models"][name] = summary
     if adjusted:
@@ -387,6 +437,24 @@ def population(rows, errors):
             "eligible_offered_seconds": 4 * sum(r.offered for r in rows), "exclusions": errors}
 
 
+def medication_check(on, off):
+    off_by_patient = {r.participant: r for r in off}
+    paired = [(row, off_by_patient[row.participant]) for row in on if row.participant in off_by_patient]
+    if len(paired) < 5:
+        return {"paired_patients": len(paired)}
+    names = list(paired[0][0].features)
+    changes = np.array([[b.features[n] - a.features[n] for n in names] for a, b in paired])
+    ps = []
+    for column in changes.T:
+        ps.append(float(stats.wilcoxon(column).pvalue) if np.any(column != 0) else 1.0)
+    adjusted = fdr(ps)
+    return {"paired_patients": len(paired), "features_tested": len(names),
+            "q_bh_at_most_point_one": [
+                {"feature": name, "median_off_minus_on": float(np.median(values)), "q_bh": float(q)}
+                for name, values, q in zip(names, changes.T, adjusted) if q <= .1
+            ]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("task", choices=("dementia", "parkinson"))
@@ -402,17 +470,25 @@ def main():
             raise SystemExit(f"External Parkinson waveform loading failed: {e_errors}")
         report["cohorts"] = {"ds003490": population(primary, p_errors), "ds007526": population(external, e_errors)}
         report["contrasts"] = [evaluate(primary, external, "PD", "CTL", "Parkinson's vs controls", ("PD", "HC"))]
+        off, off_errors = openneuro("ds003490", cache, "off")
+        report["medication_sensitivity"] = medication_check(primary, off)
+        report["medication_sensitivity"]["off_visit_exclusions"] = off_errors
     else:
         primary, p_errors = openneuro("ds004504", cache)
         try:
-            external, e_errors = cejnek(cache)
-        except (ValueError, requests.RequestException) as error:
+            external, e_errors, formats, eligible_formats = cejnek(cache)
+            report["cejnek_source_layout"] = formats
+            report["cejnek_analysed_layout"] = eligible_formats
+            if sum(r.group == "AD" for r in external) < 5 or sum(r.group == "CONTROL" for r in external) < 5:
+                e_errors["too few patients for external technical comparison"] = 1
+                external = []
+        except (ValueError, KeyError, requests.RequestException) as error:
             external, e_errors = [], {"release_status": str(error).split("\n")[0]}
         report["cohorts"] = {"ds004504": population(primary, p_errors), "cejnek": population(external, e_errors)}
         if not primary:
             raise SystemExit(f"Dementia waveform loading failed: {p_errors}")
         report["contrasts"] = [
-            evaluate(primary, external, "A", "C", "Alzheimer's vs controls", ("AD", "CONTROL")),
+            evaluate(primary, external, "A", "C", "Alzheimer's vs controls", ("AD", "CONTROL"), technical_only=bool(external)),
             evaluate(primary, [], "F", "C", "Frontotemporal dementia vs controls"),
             evaluate(primary, [], "A", "F", "Alzheimer's vs frontotemporal dementia"),
         ]
