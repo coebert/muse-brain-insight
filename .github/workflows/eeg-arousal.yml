@@ -1,0 +1,26 @@
+name: EEG arousal research
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/eeg-baselines]
+    paths:
+      - 'research/discovery/arousal.py'
+      - '.github/workflows/eeg-arousal.yml'
+permissions:
+  contents: read
+jobs:
+  waveform-training:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.2.6 scipy==1.15.3 pandas==2.2.3 scikit-learn==1.6.1 requests==2.32.5
+      - run: python research/discovery/arousal.py --cache "${RUNNER_TEMP}/eeg" --out eeg-arousal-results.json --previous docs/eeg-disease-discovery-results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eeg-arousal-results
+          path: eeg-arousal-results.json
+          retention-days: 30
