@@ -276,9 +276,9 @@ def cejnek(cache):
         for line in notes.splitlines():
             fields = line.strip().split("\t")
             if len(fields) >= 2 and fields[-2] in ("128", "256"):
-                rates[fields[-1].strip().lower()] = int(fields[-2])
-        if len(rates) != 68:
-            raise ValueError("unexpected group and sampling-rate table in Cejnek archive")
+                pid = fields[-1].strip().lower()
+                if re.fullmatch(r"(?:ad|mci|normal)\d+", pid):
+                    rates[pid] = int(fields[-2])
         members = {}
         for name in archive.namelist():
             path = Path(name)
