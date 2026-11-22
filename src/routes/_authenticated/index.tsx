@@ -55,6 +55,7 @@ import { SqiTrend } from "@/components/monitor/SqiTrend";
 import { LiveWaveform } from "@/components/monitor/LiveWaveform";
 import { RawChannelViewer } from "@/components/monitor/RawChannelViewer";
 import { Button } from "@/components/ui/button";
+import { CaseResearchLink } from "@/components/monitor/CaseResearchLink";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -447,7 +448,7 @@ function Monitor() {
                     className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
                     onClick={() => requestTestSession()}
                   >
-                    <FlaskConical className="size-4" /> Testing mode
+                    <FlaskConical className="size-4" /> Test a device
                   </Button>
                 </>
               )}
@@ -768,10 +769,21 @@ function Monitor() {
                 />
                 {!monitor.epochs.length ? (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-                    <p className="max-w-xs rounded-lg border border-border bg-background/90 px-4 py-3 text-center text-sm text-muted-foreground backdrop-blur-sm">
-                      Connect a Muse 2 headband to start building the spectrogram — or run the demo
-                      signal to see anaesthesia, burst suppression and ictal patterns.
-                    </p>
+                    <div className="max-w-sm rounded-lg border border-border bg-background/95 px-4 py-3 text-center text-sm">
+                      {caseState === "running" ? (
+                        <p role="status">Waiting for the first EEG samples.</p>
+                      ) : (
+                        <>
+                          <p className="font-medium">No EEG signal yet</p>
+                          <p className="mt-1 text-muted-foreground">
+                            Start a case with a connected device or explore sample signals in the research lab.
+                          </p>
+                          <Button asChild size="sm" variant="outline" className="pointer-events-auto mt-2 min-h-11">
+                            <CaseResearchLink>Try sample EEG</CaseResearchLink>
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ) : null}
               </div>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResearchLabRouteImport } from './routes/research-lab'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as AuthenticatedBedsideRouteImport } from './routes/_authenticated/bedside'
@@ -66,6 +67,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchLabRoute = ResearchLabRouteImport.update({
+  id: '/research-lab',
+  path: '/research-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -339,6 +345,7 @@ const ApiPublicHooksCoebisRefitRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/research-lab': typeof ResearchLabRoute
   '/bedside': typeof AuthenticatedBedsideRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/notes': typeof AuthenticatedNotesRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/research-lab': typeof ResearchLabRoute
   '/': typeof AuthenticatedIndexRoute
   '/bedside': typeof AuthenticatedBedsideRoute
   '/cases': typeof AuthenticatedCasesRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/research-lab': typeof ResearchLabRoute
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/bedside': typeof AuthenticatedBedsideRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/research-lab'
     | '/bedside'
     | '/cases'
     | '/notes'
@@ -539,6 +549,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/research-lab'
     | '/'
     | '/bedside'
     | '/cases'
@@ -589,6 +600,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/research-lab'
     | '/_authenticated/_admin'
     | '/_authenticated/bedside'
     | '/_authenticated/cases'
@@ -641,6 +653,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ResearchLabRoute: typeof ResearchLabRoute
   ApiPublicHooksCoebisRefitRoute: typeof ApiPublicHooksCoebisRefitRoute
 }
 
@@ -658,6 +671,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research-lab': {
+      id: '/research-lab'
+      path: '/research-lab'
+      fullPath: '/research-lab'
+      preLoaderRoute: typeof ResearchLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -1105,6 +1125,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ResearchLabRoute: ResearchLabRoute,
   ApiPublicHooksCoebisRefitRoute: ApiPublicHooksCoebisRefitRoute,
 }
 export const routeTree = rootRouteImport

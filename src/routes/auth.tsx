@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Activity, ScanFace } from "lucide-react";
+import { Activity, ArrowRight, ScanFace } from "lucide-react";
 import { toast } from "sonner";
 import { startAuthentication } from "@simplewebauthn/browser";
 
@@ -48,8 +48,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<PasskeyFailure | null>(null);
   const [standaloneUrl, setStandaloneUrl] = useState<string | undefined>(undefined);
-  // Session state lives in browser storage, so only render the form after
-  // hydration; server and first client render both produce null (no mismatch).
+  // Keep the public sample entry available while the session controls hydrate.
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -62,9 +61,14 @@ function AuthPage() {
 
   async function signIn() {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) toast.error(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) toast.error(error.message);
+    } catch {
+      toast.error("Sign-in could not complete. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function biometricSignIn() {
@@ -124,55 +128,75 @@ function AuthPage() {
     if (result.error) toast.error("Google sign-in failed.");
   }
 
-  if (!mounted) return null;
-
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="panel w-full max-w-sm px-6 py-7">
+    <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
+      <div className="panel w-full max-w-md px-5 py-6 sm:px-7">
         <Link to="/" className="flex items-center gap-2">
           <Activity className="size-5 text-signal" />
           <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
         </Link>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This monitor is private. Sign in to view live traces and saved sessions.
-        </p>
+        <section className="my-6 rounded-lg border border-border bg-muted/35 p-4" aria-labelledby="sample-heading">
+          <h1 id="sample-heading" className="text-lg font-semibold">EEG research lab</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Explore seizure detection, brain age and depth of anaesthesia with sample signals.
+            You can try the lab without an account or headset.
+          </p>
+          <Button asChild variant="outline" className="mt-3 min-h-11">
+            <Link to="/research-lab">Try sample EEG <ArrowRight aria-hidden="true" className="size-4" /></Link>
+          </Button>
+        </section>
 
-        <div className="mt-6">
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username webauthn"
-                className="mt-1.5"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="pw">Password</Label>
-              <Input
-                id="pw"
-                type="password"
-                autoComplete="current-password"
-                className="mt-1.5"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button className="w-full" disabled={busy} onClick={() => void signIn()}>
-              Sign in
-            </Button>
+        <h2 className="text-lg font-semibold">Clinician sign in</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Access live monitoring and saved sessions.
+        </p>
+        {mounted && (
+          <div className="mt-4 space-y-3">
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!busy) void signIn();
+              }}
+            >
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  autoComplete="username webauthn"
+                  className="mt-1.5"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="pw">Password</Label>
+                <Input
+                  id="pw"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  className="mt-1.5"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <Button type="submit" className="min-h-11 w-full" disabled={busy}>
+                Sign in
+              </Button>
+            </form>
             <Button
+              type="button"
               variant="secondary"
-              className="w-full"
+              className="min-h-11 w-full"
               disabled={busy}
               onClick={() => void biometricSignIn()}
             >
               <ScanFace className="size-4" /> Face ID / Touch ID
             </Button>
-            <Button variant="outline" className="w-full" onClick={() => void google()}>
+            <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => void google()}>
               Continue with Google
             </Button>
             {failure && (
@@ -187,8 +211,8 @@ function AuthPage() {
               device.
             </p>
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

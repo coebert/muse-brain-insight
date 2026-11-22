@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Activity, Menu, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Activity, Menu } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { CaseResearchLink } from "@/components/monitor/CaseResearchLink";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 
 export const ADMIN_SECTIONS = [
@@ -71,8 +73,17 @@ export const ADMIN_SECTIONS = [
 export function AdminShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    const wideScreen = window.matchMedia("(min-width: 64rem)");
+    const handleLayoutChange = () => {
+      if (wideScreen.matches) setOpen(false);
+    };
+    wideScreen.addEventListener("change", handleLayoutChange);
+    return () => wideScreen.removeEventListener("change", handleLayoutChange);
+  }, []);
+
   const nav = (
-    <nav className="space-y-5">
+    <nav aria-label="Administration" className="space-y-5">
       {ADMIN_SECTIONS.map((section) => (
         <div key={section.title}>
           <p className="px-2 text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -84,7 +95,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <Link
                   to={item.to}
                   onClick={() => setOpen(false)}
-                  className="block rounded-md px-2 py-1.5 text-sm text-foreground/85 transition-colors hover:bg-accent hover:text-foreground"
+                  className="flex min-h-11 items-center rounded-md px-2 py-1.5 text-sm lg:min-h-8 text-foreground/85 transition-colors hover:bg-accent hover:text-foreground"
                   activeProps={{ className: "bg-accent font-medium text-foreground" }}
                   activeOptions={{ exact: item.to === "/admin" }}
                 >
@@ -101,16 +112,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
-        <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Toggle admin menu"
-          >
-            {open ? <Menu className="size-4" /> : <Menu className="size-4" />}
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 sm:px-4">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="min-h-11 min-w-11 lg:hidden" aria-label="Open admin menu">
+                <Menu aria-hidden="true" className="size-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" aria-describedby={undefined} className="overflow-y-auto bg-sidebar px-3">
+              <SheetTitle className="mb-4">Administration</SheetTitle>
+              {nav}
+            </SheetContent>
+          </Sheet>
           <Link to="/" className="flex min-w-0 items-center gap-2">
             <Activity className="size-5 shrink-0 text-signal" />
             <span className="truncate text-sm font-semibold tracking-[0.18em] uppercase">
@@ -120,7 +133,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <span className="rounded-full border border-border px-2 py-0.5 text-[11px] tracking-wide text-muted-foreground uppercase">
             Admin
           </span>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <Button asChild variant="ghost" size="sm" className="min-h-11 sm:min-h-9">
+              <CaseResearchLink>Research lab</CaseResearchLink>
+            </Button>
             <Button asChild variant="ghost" size="sm">
               <Link to="/">Back to monitor</Link>
             </Button>
@@ -135,24 +151,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <aside className="sticky top-[52px] hidden h-[calc(100dvh-52px)] w-60 shrink-0 overflow-y-auto border-r border-border bg-sidebar px-2 py-4 lg:block">
           {nav}
         </aside>
-
-        {open ? (
-          <div className="fixed inset-0 z-40 lg:hidden">
-            <button
-              className="absolute inset-0 bg-background/80"
-              aria-label="Close admin menu"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute inset-y-0 left-0 w-64 overflow-y-auto border-r border-border bg-sidebar px-2 py-4">
-              <div className="mb-3 flex justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-                  <X className="size-4" />
-                </Button>
-              </div>
-              {nav}
-            </div>
-          </div>
-        ) : null}
 
         <main className="min-w-0 flex-1">{children}</main>
       </div>
