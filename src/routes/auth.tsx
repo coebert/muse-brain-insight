@@ -138,7 +138,7 @@ function AuthPage() {
         <section className="my-6 rounded-lg border border-border bg-muted/35 p-4" aria-labelledby="sample-heading">
           <h1 id="sample-heading" className="text-lg font-semibold">EEG research lab</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Explore seizure detection, brain age and depth of anaesthesia with sample signals.
+            Explore seizure detection, brain age, depth of anaesthesia and stroke research with sample signals.
             You can try the lab without an account or headset.
           </p>
           <Button asChild variant="outline" className="mt-3 min-h-11">

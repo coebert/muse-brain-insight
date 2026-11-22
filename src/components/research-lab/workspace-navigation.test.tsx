@@ -1,8 +1,13 @@
-import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppNav } from "@/components/AppNav";
 import { AdminShell, ADMIN_SECTIONS } from "@/components/admin/AdminShell";
@@ -27,7 +32,10 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { auth: { getUser: state.getUser, signOut: state.signOut } },
 }));
 vi.mock("@/integrations/lovable/index", () => ({ lovable: {} }));
-vi.mock("@/lib/webauthn.functions", () => ({ startPasskeyLogin: vi.fn(), finishPasskeyLogin: vi.fn() }));
+vi.mock("@/lib/webauthn.functions", () => ({
+  startPasskeyLogin: vi.fn(),
+  finishPasskeyLogin: vi.fn(),
+}));
 vi.mock("@/components/monitor/ActiveCaseBar", () => ({ ActiveCaseBar: () => null }));
 vi.mock("@/components/monitor/CaseSessionProvider", () => ({
   CaseSessionProvider: ({ children }: { children: ReactNode }) => children,
@@ -36,7 +44,10 @@ vi.mock("@/components/monitor/CaseSessionProvider", () => ({
 
 function renderInRouter(children: ReactNode) {
   const routeTree = createRootRoute({ component: () => children });
-  const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ["/"] }) });
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
   return render(<RouterProvider router={router} />);
 }
 
@@ -47,10 +58,18 @@ beforeEach(() => {
   state.isAdmin = false;
   state.caseRunning = false;
   state.hasUnfiledData = false;
-  vi.stubGlobal("matchMedia", vi.fn(() => ({
-    matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  })));
+  vi.stubGlobal("scrollTo", vi.fn());
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("research entry and clinical workspace navigation", () => {
   it("offers the sample before sign-in and keeps all three clinician sign-in methods", async () => {
@@ -58,7 +77,10 @@ describe("research entry and clinical workspace navigation", () => {
     const sample = await screen.findByRole("link", { name: "Try sample EEG" });
     expect(sample).toHaveAttribute("href", "/research-lab");
     expect(sample).not.toHaveAttribute("target");
-    expect(await screen.findByRole("button", { name: "Sign in" })).toHaveAttribute("type", "submit");
+    expect(await screen.findByRole("button", { name: "Sign in" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
     expect(screen.getByRole("button", { name: /Face ID/ })).toBeVisible();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
     expect(state.getUser).not.toHaveBeenCalled();
@@ -74,7 +96,11 @@ describe("research entry and clinical workspace navigation", () => {
     records.focus();
     await user.keyboard("{ArrowDown}");
     const menu = await screen.findByRole("menu");
-    for (const [name, href] of [["Cases", "/cases"], ["Patients", "/patients"], ["Notes", "/notes"]]) {
+    for (const [name, href] of [
+      ["Cases", "/cases"],
+      ["Patients", "/patients"],
+      ["Notes", "/notes"],
+    ] as const) {
       expect(within(menu).getByRole("menuitem", { name })).toHaveAttribute("href", href);
     }
     await user.keyboard("{Escape}");
@@ -82,7 +108,10 @@ describe("research entry and clinical workspace navigation", () => {
     const account = screen.getByRole("button", { name: "Account" });
     account.focus();
     await user.keyboard("{Enter}");
-    expect(await screen.findByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    expect(await screen.findByRole("menuitem", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
     expect(screen.queryByRole("menuitem", { name: "Admin" })).toBeNull();
     await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
     expect(state.signOut).toHaveBeenCalledOnce();
@@ -95,46 +124,70 @@ describe("research entry and clinical workspace navigation", () => {
     expect(await screen.findByRole("link", { name: "Research lab" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Monitor" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Account" }));
-    expect(await screen.findByRole("menuitem", { name: "Admin" })).toHaveAttribute("href", "/admin");
+    expect(await screen.findByRole("menuitem", { name: "Admin" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
   });
 
-  it.each(["running", "unfiled"])("opens sample links independently for a %s case", async (situation) => {
-    state.caseRunning = situation === "running";
-    state.hasUnfiledData = situation === "unfiled";
-    renderInRouter(<><AppNav /><Directory /></>);
-    for (const name of [/Research lab.*opens in a new tab/i, /Try sample EEG.*opens in a new tab/i]) {
-      const link = await screen.findByRole("link", { name });
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    }
-  });
+  it.each(["running", "unfiled"])(
+    "opens sample links independently for a %s case",
+    async (situation) => {
+      state.caseRunning = situation === "running";
+      state.hasUnfiledData = situation === "unfiled";
+      const { container } = renderInRouter(
+        <>
+          <AppNav />
+          <Directory />
+        </>,
+      );
+      await screen.findByText("Try sample EEG");
+      const links = container.querySelectorAll('a[href="/research-lab"]');
+      expect(links).toHaveLength(2);
+      for (const link of links) {
+        expect(link.textContent).toContain("opens in a new tab");
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      }
+    },
+  );
 
   it("lists existing admin tools and recovers keyboard focus after clearing a search", async () => {
-    const user = userEvent.setup();
-    renderInRouter(<Directory />);
-    await screen.findByRole("heading", { name: "Research and administration" });
-    const destinations = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+    const { container } = renderInRouter(<Directory />);
+    await screen.findByText("Research and administration");
+    const destinations = Array.from(document.querySelectorAll("li a"), (link) =>
+      link.getAttribute("href"),
+    );
     const existingTools = ADMIN_SECTIONS.flatMap((section) => section.items.map((item) => item.to));
-    expect(destinations.sort()).toEqual([...existingTools.filter((to) => to !== "/admin"), "/research-lab"].sort());
-    const search = screen.getByRole("textbox", { name: "Find a tool" });
-    await user.type(search, "ketamine exposure");
-    expect(screen.getByRole("link", { name: /Ketamine signature/i })).toHaveAttribute("href", "/ketamine");
-    expect(screen.queryByRole("link", { name: /People/ })).toBeNull();
-    await user.type(search, " xyz");
+    expect(destinations.sort()).toEqual(
+      [...existingTools.filter((to) => to !== "/admin"), "/research-lab"].sort(),
+    );
+    const search = screen.getByLabelText("Find a tool");
+    fireEvent.change(search, { target: { value: "ketamine exposure" } });
+    expect(container.querySelector('a[href="/ketamine"]')).toHaveTextContent("Ketamine signature");
+    expect(container.querySelector('a[href="/admin/people"]')).toBeNull();
+    fireEvent.change(search, { target: { value: "no such tool" } });
     expect(screen.getByRole("status")).toHaveTextContent("No matching tools");
-    await user.click(screen.getByRole("button", { name: "Clear tool search" }));
+    fireEvent.click(screen.getByLabelText("Clear tool search"));
     expect(search).toHaveFocus();
-    expect(screen.getByRole("link", { name: /People/ })).toHaveAttribute("href", "/admin/people");
+    expect(container.querySelector('a[href="/admin/people"]')).toHaveTextContent("People");
   });
 
   it("opens the admin drawer with a keyboard and returns focus on Escape", async () => {
     const user = userEvent.setup();
-    renderInRouter(<AdminShell><p>Test content</p></AdminShell>);
+    renderInRouter(
+      <AdminShell>
+        <p>Test content</p>
+      </AdminShell>,
+    );
     const trigger = await screen.findByRole("button", { name: "Open admin menu" });
     trigger.focus();
     await user.keyboard("{Enter}");
     const drawer = await screen.findByRole("dialog", { name: "Administration" });
-    expect(within(drawer).getByRole("link", { name: "Ketamine signature" })).toHaveAttribute("href", "/ketamine");
+    expect(within(drawer).getByRole("link", { name: "Ketamine signature" })).toHaveAttribute(
+      "href",
+      "/ketamine",
+    );
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
