@@ -22,7 +22,11 @@ import { MetricsGrid } from "./MetricsGrid";
 import { DEFAULT_DEPTH_WINDOW } from "@/hooks/useDepthWindowAlerts";
 import type { Epoch } from "@/lib/eeg/analysis";
 import { MUSE_2_PROFILE } from "@/lib/eeg/device-profile";
-import { DESCRIPTOR_ONLY_TEMPLATES, RESEARCH_SCORE_LABEL } from "@/lib/eeg/descriptor-only";
+import {
+  DESCRIPTOR_ONLY_TEMPLATES,
+  RESEARCH_SCORE_LABEL,
+  descriptorPolicy,
+} from "@/lib/eeg/descriptor-only";
 import type { Interpretation } from "@/lib/eeg/interpret.functions";
 import type { CoebisV2DeviceSetup, LiveCoebisV2Reading } from "@/lib/eeg/coebis-v2-device";
 
@@ -134,6 +138,24 @@ const staleInterpretation = {
 } as unknown as Interpretation;
 
 const gridSummary = { maxSr: null, suppressionSeconds: null, seizureAlerts: null };
+
+/** Current case/interval evidence that supports an experimental descriptor. */
+const eligibleEvidence = {
+  durationSeconds: 1800,
+  researchContext: {
+    blockade: "reported-absent",
+    caseId: "case-1",
+    acquiredAt: "2026-11-21T12:00:00Z",
+    reference: "mastoid",
+    absenceDocumented: true,
+    montageCompatible: true,
+    referenceCompatible: true,
+    calibrationCompatible: true,
+    coverageAdequate: true,
+    status: "research score",
+  },
+};
+const eligibleKey = descriptorPolicy(eligibleEvidence).evidenceKey!;
 
 describe("DepthWindowPanel", () => {
   it("withholds a stale breach and the target window when the verdict is omitted", () => {
@@ -254,14 +276,16 @@ describe("AiInsightPanel", () => {
     expect(screen.getByText(/No actionable alerts raised from this review/)).toBeInTheDocument();
   });
 
-  it("keeps a review that explicitly carries an eligible verdict", () => {
+  it("keeps a review only while its evidence fingerprint matches the current case", () => {
     render(
       <AiInsightPanel
         {...props}
+        evidence={eligibleEvidence}
         result={{
           ...staleInterpretation,
           alerts: [],
           descriptorOnly: false,
+          descriptorEvidenceKey: eligibleKey,
           headline: "Depth index trended from 42 to 38 over the case.",
         }}
       />,
@@ -272,5 +296,47 @@ describe("AiInsightPanel", () => {
       screen.getByText("Depth index trended from 42 to 38 over the case."),
     ).toBeInTheDocument();
     expect(screen.queryByText(DESCRIPTOR_ONLY_TEMPLATES.headline)).toBeNull();
+  });
+
+  it("withholds an explicitly eligible cached claim when no current evidence exists", () => {
+    render(
+      <AiInsightPanel
+        {...props}
+        result={{
+          ...staleInterpretation,
+          alerts: [],
+          descriptorOnly: false,
+          descriptorEvidenceKey: eligibleKey,
+          headline: "The patient is unconscious.",
+        }}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.getByText(DESCRIPTOR_ONLY_TEMPLATES.headline)).toBeInTheDocument();
+    expect(screen.queryByText(/unconscious/i)).toBeNull();
+  });
+
+  it("withholds an explicitly eligible cached claim when the evidence changed", () => {
+    render(
+      <AiInsightPanel
+        {...props}
+        evidence={{
+          ...eligibleEvidence,
+          researchContext: { ...eligibleEvidence.researchContext, caseId: "case-2" },
+        }}
+        result={{
+          ...staleInterpretation,
+          alerts: [],
+          descriptorOnly: false,
+          descriptorEvidenceKey: eligibleKey,
+          headline: "The patient is unconscious.",
+        }}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.getByText(DESCRIPTOR_ONLY_TEMPLATES.headline)).toBeInTheDocument();
+    expect(screen.queryByText(/unconscious/i)).toBeNull();
   });
 });

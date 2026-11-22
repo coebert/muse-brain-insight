@@ -55,6 +55,11 @@ interface Props {
   sessionId?: string | null;
   /** Monitoring context, e.g. "general_anaesthesia" or "icu". */
   feedbackContext?: string | null;
+  /**
+   * Current case/interval evidence. A cached result is only shown when this
+   * evidence still supports it; absent or changed evidence fails closed.
+   */
+  evidence?: unknown;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -80,12 +85,13 @@ export function AiInsightPanel({
   runLabel,
   sessionId,
   feedbackContext,
+  evidence,
 }: Props) {
   const enoughData = epochCount >= 30;
-  // A cached result written before the policy changed (or without an explicit
-  // eligible context) is replaced with the deterministic descriptor-only
-  // shape before any of its prose can reach the screen.
-  const result = rawResult ? sanitizeCachedInterpretation(rawResult) : null;
+  // A cached result is replaced with the deterministic descriptor-only shape
+  // unless the *current* case/interval evidence still matches the fingerprint
+  // it was produced with. A stale `descriptorOnly: false` is not trusted.
+  const result = rawResult ? sanitizeCachedInterpretation(rawResult, evidence) : null;
 
   return (
     <section className="panel overflow-hidden">

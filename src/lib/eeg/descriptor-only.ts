@@ -40,6 +40,12 @@ export interface DescriptorPolicy {
   scoreEligible: boolean;
   /** An experimental protocol score is always research-only. */
   researchOnly: true;
+  /**
+   * Stable fingerprint of the case/interval evidence behind an eligible
+   * verdict, or null when the policy withheld. A cached result may only be
+   * reused when its stored fingerprint still matches the current evidence.
+   */
+  evidenceKey: string | null;
 }
 
 export const DESCRIPTOR_ONLY_TEMPLATES = {
@@ -196,6 +202,7 @@ function blocked(): DescriptorPolicy {
     reason: "the supplied context aliases disagree",
     scoreEligible: false,
     researchOnly: true,
+    evidenceKey: null,
   };
 }
 
@@ -206,7 +213,34 @@ function withhold(context: BlockadeContext, reason: string): DescriptorPolicy {
     reason,
     scoreEligible: false,
     researchOnly: true,
+    evidenceKey: null,
   };
+}
+
+/** Keys that carry a research/blockade context on a stored row or case meta. */
+const EVIDENCE_ALIAS_KEYS = [
+  "researchContext",
+  "research_context",
+  "blockadeContext",
+  "blockade_context",
+] as const;
+
+/**
+ * Forward every research-context alias from a stored row or case metadata.
+ *
+ * Passing the containing object straight to `descriptorPolicy` is unsafe: a
+ * case also has a clinical `context` field (e.g. "general_anaesthesia") that
+ * the policy would read as a blockade context. This copies only the blockade
+ * aliases — and keeps *both* spellings, so a conflicting pair stays
+ * detectable instead of being collapsed with `??`.
+ */
+export function researchContextEvidence(source: unknown): Record<string, unknown> {
+  const src = (source && typeof source === "object" ? source : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of EVIDENCE_ALIAS_KEYS) {
+    if (hasOwn(src, key)) out[key] = src[key];
+  }
+  return out;
 }
 
 /**
@@ -284,12 +318,24 @@ function evidenceOf(obj: Record<string, unknown>): Record<string, unknown> {
     "acquiredAt",
     "acquired_at",
     "intervals",
+    "maxContextAgeHours",
+    "max_context_age_hours",
   ];
   const out: Record<string, unknown> = {};
   for (const key of keys) {
     if (hasOwn(obj, key)) out[key] = obj[key];
   }
   return out;
+}
+
+/**
+ * Fingerprint the case/interval evidence an eligible verdict rests on.
+ *
+ * The recording duration is deliberately excluded: it advances every epoch
+ * and would invalidate an otherwise unchanged context on every refresh.
+ */
+function evidenceKeyOf(obj: Record<string, unknown>): string {
+  return JSON.stringify(evidenceOf(obj));
 }
 
 function evaluateObject(
@@ -463,6 +509,7 @@ function evaluateObject(
     reason: "documented blockade absence and compatible, adequate EEG",
     scoreEligible: true,
     researchOnly: true,
+    evidenceKey: evidenceKeyOf(obj),
   };
 }
 

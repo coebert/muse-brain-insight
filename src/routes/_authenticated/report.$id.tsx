@@ -25,7 +25,7 @@ import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { computeCoebis } from "@/lib/eeg/depth";
-import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
+import { descriptorPolicy, researchContextEvidence } from "@/lib/eeg/descriptor-only";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
 import { TimeZoneControl } from "@/components/TimeZoneControl";
@@ -194,9 +194,9 @@ function CaseReport() {
   // withheld from this report; measured spectral, suppression and seizure
   // descriptors stay.
   const storedContext = s as { researchContext?: unknown; research_context?: unknown } | undefined;
-  const depthWithheld = descriptorPolicy({
-    researchContext: storedContext?.researchContext ?? storedContext?.research_context ?? null,
-  }).descriptorOnly;
+  // Both aliases are forwarded so a conflicting pair withholds rather than
+  // one silently deciding the report.
+  const depthWithheld = descriptorPolicy(researchContextEvidence(storedContext)).descriptorOnly;
   const loading = session.isLoading || epochs.isLoading;
 
   function printReport() {

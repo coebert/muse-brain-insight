@@ -68,6 +68,8 @@ export interface GuardInput<A extends GuardAlert = GuardAlert> {
   descriptorContext?: BlockadeContext;
   /** Why the context did or did not support a depth statement. */
   descriptorReason?: string;
+  /** Fingerprint of the evidence an eligible verdict was produced against. */
+  descriptorEvidenceKey?: string | null;
   /** Wording that must travel with any experimental score in an export. */
   researchScoreNote?: string;
   /** Short label for an experimental score; never a clinical depth label. */
@@ -285,6 +287,7 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
       descriptorOnly: true,
       descriptorContext: policy.context,
       descriptorReason: policy.reason,
+      descriptorEvidenceKey: null,
       researchScoreNote: RESEARCH_SCORE_NOTE,
       researchScoreLabel: RESEARCH_SCORE_LABEL,
     };
@@ -446,6 +449,7 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
     descriptorOnly: policy.descriptorOnly,
     descriptorContext: policy.context,
     descriptorReason: policy.reason,
+    descriptorEvidenceKey: policy.evidenceKey,
     researchScoreNote: RESEARCH_SCORE_NOTE,
     researchScoreLabel: RESEARCH_SCORE_LABEL,
   };
@@ -461,13 +465,37 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
 /**
  * Last line of defence for a stored or cached interpretation.
  *
- * A result is trusted only when it explicitly says descriptorOnly === false,
- * i.e. it was produced against a fully evidenced context. Anything else —
- * including a record written before this field existed — is replaced with the
+ * `descriptorOnly === false` alone is not enough: the verdict was made
+ * against the case/interval evidence of that moment, and a cached result can
+ * outlive it. A result is therefore reused only when the *current* evidence
+ * is still eligible AND carries the same fingerprint the result was produced
+ * with. Anything else — a missing context, a changed case or interval, or a
+ * record written before the fingerprint existed — is replaced with the
  * deterministic descriptor-only shape before it can be rendered.
  */
-export function sanitizeCachedInterpretation<T extends Partial<GuardInput>>(result: T): T {
-  if (result.descriptorOnly === false) return result;
+export function sanitizeCachedInterpretation<T extends Partial<GuardInput>>(
+  result: T,
+  evidence?: unknown,
+): T {
+  const policy = descriptorPolicy(evidence);
+  const storedKey =
+    typeof result.descriptorEvidenceKey === "string" ? result.descriptorEvidenceKey : null;
+  if (
+    result.descriptorOnly === false &&
+    !policy.descriptorOnly &&
+    storedKey === policy.evidenceKey
+  ) {
+    return result;
+  }
+
+  const reason = policy.descriptorOnly
+    ? policy.reason
+    : result.descriptorOnly !== false
+      ? "cached interpretation without a documented blockade-absence context"
+      : storedKey
+        ? "the case or interval evidence changed since this review"
+        : "cached interpretation without an evidence fingerprint";
+
   return {
     ...result,
     headline: DESCRIPTOR_ONLY_TEMPLATES.headline,
@@ -481,10 +509,9 @@ export function sanitizeCachedInterpretation<T extends Partial<GuardInput>>(resu
     limitations: [DESCRIPTOR_ONLY_TEMPLATES.awareness],
     dataQualityCaveat: "",
     descriptorOnly: true,
-    descriptorContext: result.descriptorContext ?? "missing",
-    descriptorReason:
-      result.descriptorReason ??
-      "cached interpretation without a documented blockade-absence context",
+    descriptorContext: policy.descriptorOnly ? policy.context : "insufficient",
+    descriptorReason: reason,
+    descriptorEvidenceKey: null,
     researchScoreNote: RESEARCH_SCORE_NOTE,
     researchScoreLabel: RESEARCH_SCORE_LABEL,
   } as T;

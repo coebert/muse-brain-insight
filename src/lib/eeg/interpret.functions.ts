@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AlertTuning, AlertTuningEffect, TuningFeedbackRow } from "@/lib/eeg/alert-tuning";
 import { guardInterpretation, type GuardReport } from "@/lib/eeg/interpret-guard";
-import type { BlockadeContext } from "@/lib/eeg/descriptor-only";
+import { descriptorPolicy, type BlockadeContext } from "@/lib/eeg/descriptor-only";
 
 export interface InterpretationFinding {
   title: string;
@@ -105,6 +105,8 @@ export interface Interpretation {
   descriptorContext?: BlockadeContext;
   /** Why the context did or did not support a depth statement. */
   descriptorReason?: string;
+  /** Fingerprint of the evidence an eligible verdict was produced against. */
+  descriptorEvidenceKey?: string | null;
   /** Wording that must travel with any experimental score. */
   researchScoreNote?: string;
   /** Short label for an experimental score; never a clinical depth label. */
@@ -278,6 +280,96 @@ async function streamText(body: unknown, apiKey: string): Promise<string> {
   return text;
 }
 
+/** Recorded as the model version when no provider was consulted. */
+export const DESCRIPTOR_ONLY_MODEL_VERSION = "deterministic-descriptor-only";
+
+/** The empty review the guard expands into the fixed descriptor-only shape. */
+const DETERMINISTIC_REVIEW: Interpretation = {
+  headline: "",
+  alerts: [],
+  depthOfAnaesthesia: "",
+  burstSuppression: "",
+  seizureRisk: "",
+  markerCorrelations: [],
+  pathologyIndicators: [],
+  recommendedChecks: [],
+  limitations: [],
+  dataQualityCaveat: "",
+};
+
+export interface ReviewDigestDeps {
+  apiKey?: string | undefined;
+  /** Feedback rows attached as plain history; never sent to the model. */
+  priorFeedback?: FeedbackRow[];
+  /** Injectable provider so the descriptor-only short-circuit is testable. */
+  provider?: (body: unknown, apiKey: string) => Promise<string>;
+}
+
+/**
+ * Review a digest.
+ *
+ * A descriptor-only digest never reaches the language model. The provider is
+ * not called at all and the deterministic, fixed-wording response is returned,
+ * so a context that cannot support a depth statement cannot be read by the
+ * model as if it could — and no free text is generated for it.
+ */
+export async function reviewDigest(
+  digest: unknown,
+  deps: ReviewDigestDeps = {},
+): Promise<Interpretation> {
+  const policy = descriptorPolicy(digest);
+  if (policy.descriptorOnly) {
+    const { output, report } = guardInterpretation<ClinicalAlert, Interpretation>(
+      DETERMINISTIC_REVIEW,
+      digest,
+    );
+    return {
+      ...output,
+      alerts: [],
+      alertTuning: null,
+      suppressedByTuning: 0,
+      guard: report,
+      role: "explanatory",
+      modelVersion: DESCRIPTOR_ONLY_MODEL_VERSION,
+    };
+  }
+
+  if (!deps.apiKey) throw new Error("AI is not configured for this project.");
+  const provider = deps.provider ?? streamText;
+  const text = await provider(
+    {
+      model: AI_MODEL_VERSION,
+      stream: true,
+      input: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Quantitative session digest (JSON):\n${JSON.stringify(digest)}`,
+        },
+      ],
+      reasoning: { effort: "medium", summary: "auto" },
+      include: ["reasoning.encrypted_content"],
+      store: false,
+    },
+    deps.apiKey,
+  );
+
+  if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
+  const parsed = extractJson(text);
+  // Enforce the output restrictions server-side; the prompt alone is not trusted.
+  const { output, report } = guardInterpretation<ClinicalAlert, Interpretation>(parsed, digest);
+  const rows = deps.priorFeedback ?? [];
+  return {
+    ...output,
+    alerts: output.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
+    alertTuning: null,
+    suppressedByTuning: 0,
+    guard: report,
+    role: "explanatory",
+    modelVersion: AI_MODEL_VERSION,
+  };
+}
+
 export const interpretSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { digest: unknown; sessionId?: string | null }) => {
@@ -287,8 +379,9 @@ export const interpretSession = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<Interpretation> => {
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) throw new Error("AI is not configured for this project.");
+    // Descriptor-only inputs are answered deterministically, before the
+    // provider or the feedback query is touched.
+    if (descriptorPolicy(data.digest).descriptorOnly) return reviewDigest(data.digest);
 
     // Feedback is stored for offline review only. It is NOT sent to the model
     // and does not tune alerts; the counts are attached as plain history.
@@ -299,40 +392,9 @@ export const interpretSession = createServerFn({ method: "POST" })
       )
       .order("created_at", { ascending: false })
       .limit(40);
-    const rows = (feedback ?? []) as FeedbackRow[];
 
-    const text = await streamText(
-      {
-        model: AI_MODEL_VERSION,
-        stream: true,
-        input: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `Quantitative session digest (JSON):\n${JSON.stringify(data.digest)}`,
-          },
-        ],
-        reasoning: { effort: "medium", summary: "auto" },
-        include: ["reasoning.encrypted_content"],
-        store: false,
-      },
-      apiKey,
-    );
-
-    if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
-    const parsed = extractJson(text);
-    // Enforce the output restrictions server-side; the prompt alone is not trusted.
-    const { output, report } = guardInterpretation<ClinicalAlert, Interpretation>(
-      parsed,
-      data.digest,
-    );
-    return {
-      ...output,
-      alerts: output.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
-      alertTuning: null,
-      suppressedByTuning: 0,
-      guard: report,
-      role: "explanatory",
-      modelVersion: AI_MODEL_VERSION,
-    };
+    return reviewDigest(data.digest, {
+      apiKey: process.env["LOVABLE_API_KEY"],
+      priorFeedback: (feedback ?? []) as FeedbackRow[],
+    });
   });

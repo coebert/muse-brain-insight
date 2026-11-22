@@ -46,6 +46,7 @@ import { detectGaps, totalGapSeconds, withGapRows } from "@/lib/eeg/gaps";
 import { buildStoredDigest } from "@/lib/eeg/stored-digest";
 import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
+import { researchContextEvidence } from "@/lib/eeg/descriptor-only";
 
 export const Route = createFileRoute("/_authenticated/_admin/trends")({
   // Deep links from case evidence: /trends?session=<id>&t=<seconds>
@@ -349,6 +350,12 @@ function Trends() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const runInterpretation = useServerFn(interpretSession);
+  // Current stored case/interval evidence for the selected session. A cached
+  // review is only shown while it still matches this.
+  const aiEvidence = useMemo(
+    () => ({ ...researchContextEvidence(selected), durationSeconds: summary.duration }),
+    [selected, summary.duration],
+  );
 
   async function reviewCase() {
     if (!selected || rows.length === 0) return;
@@ -522,6 +529,7 @@ function Trends() {
                 runLabel="Review this case"
                 sessionId={selected?.id ?? null}
                 feedbackContext={selected?.context ?? null}
+                evidence={aiEvidence}
               />
             </div>
 

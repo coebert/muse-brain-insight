@@ -1145,6 +1145,7 @@ function Monitor() {
             onWatchChange={ai.setWatchEnabled}
             lastRunAt={ai.lastRunAt}
             feedbackContext={mode}
+            evidence={ai.evidence}
           />
         ) : null}
 

@@ -277,9 +277,50 @@ describe("cached and exported text", () => {
     expect(JSON.stringify(clean)).not.toMatch(/sleeping peacefully|deepening anaesthesia/i);
   });
 
-  it("keeps an eligible cached result", () => {
-    const eligible = base({ descriptorOnly: false });
-    expect(sanitizeCachedInterpretation(eligible)).toBe(eligible);
+  it("reuses an eligible cached result only while the current evidence matches", () => {
+    const key = descriptorPolicy(digest).evidenceKey!;
+    const eligible = base({ descriptorOnly: false, descriptorEvidenceKey: key });
+    expect(sanitizeCachedInterpretation(eligible, digest)).toBe(eligible);
+  });
+
+  it("withholds an explicitly eligible old result when no current evidence is supplied", () => {
+    const key = descriptorPolicy(digest).evidenceKey!;
+    const eligible = base({
+      descriptorOnly: false,
+      descriptorEvidenceKey: key,
+      headline: "The patient is unconscious.",
+    });
+    const clean = sanitizeCachedInterpretation(eligible);
+    expect(clean.descriptorOnly).toBe(true);
+    expect(clean.headline).toBe(DESCRIPTOR_ONLY_TEMPLATES.headline);
+    expect(JSON.stringify(clean)).not.toMatch(/unconscious/i);
+  });
+
+  it("withholds an eligible old result when the case or interval evidence changed", () => {
+    const key = descriptorPolicy(digest).evidenceKey!;
+    const eligible = base({
+      descriptorOnly: false,
+      descriptorEvidenceKey: key,
+      headline: "The patient is unconscious.",
+    });
+    const changed = {
+      ...digest,
+      researchContext: { ...eligibleContext, caseId: "case-2" },
+    };
+    const clean = sanitizeCachedInterpretation(eligible, changed);
+    expect(clean.descriptorOnly).toBe(true);
+    expect(clean.descriptorReason).toMatch(/changed/i);
+    expect(JSON.stringify(clean)).not.toMatch(/unconscious/i);
+  });
+
+  it("withholds an eligible old result that carries no evidence fingerprint", () => {
+    const eligible = base({
+      descriptorOnly: false,
+      headline: "The patient is unconscious.",
+    });
+    const clean = sanitizeCachedInterpretation(eligible, digest);
+    expect(clean.descriptorOnly).toBe(true);
+    expect(JSON.stringify(clean)).not.toMatch(/unconscious/i);
   });
 
   it("sanitises stale cached prose before export", () => {

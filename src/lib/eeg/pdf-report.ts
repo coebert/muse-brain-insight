@@ -14,6 +14,7 @@ import type { EpochRow, EventRow } from "@/lib/eeg/db-rows";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { spansGap } from "@/lib/eeg/gaps";
 import { suppressedSecondsOrNull } from "@/lib/eeg/measured";
+import { descriptorOnlyText } from "@/lib/eeg/descriptor-only";
 
 export interface ReportSessionMeta {
   case_code?: string | null;
@@ -422,6 +423,9 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   const seizures = events.filter((e) => e.kind === "seizure");
   // Fail closed: an export built without the verdict withholds the depth index.
   const depthWithheld = input.descriptorOnly !== false;
+  // The model note is free text and can carry stale patient-state prose.
+  // Strip unsupported claims; when depth is withheld, drop depth mentions too.
+  const modelNote = descriptorOnlyText(input.modelNote, "CortexTrace", depthWithheld);
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -666,11 +670,7 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(130, 134, 146);
-    doc.text(
-      `${session.case_code ?? "case"} · ${input.modelNote ?? "CortexTrace"} · page ${p} of ${pages}`,
-      M,
-      pageH - 5,
-    );
+    doc.text(`${session.case_code ?? "case"} · ${modelNote} · page ${p} of ${pages}`, M, pageH - 5);
   }
   return doc;
 }

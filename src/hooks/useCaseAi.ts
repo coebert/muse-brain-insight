@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { DetectedEvent, Epoch } from "@/lib/eeg/analysis";
 import type { CaseMeta } from "@/lib/eeg/case-meta";
 import { buildFeatureDigest } from "@/lib/eeg/features";
+import { researchContextEvidence } from "@/lib/eeg/descriptor-only";
 import { interpretSession, type Interpretation } from "@/lib/eeg/interpret.functions";
 import { summariseInfusions, type TciInfusion } from "@/lib/eeg/tci";
 import { buildTciResponseDigest } from "@/lib/eeg/tci-response";
@@ -81,6 +82,15 @@ export function useCaseAi(options: UseCaseAiOptions) {
   const runInterpretation = useServerFn(interpretSession);
   const runTciInterpretation = useServerFn(interpretTciResponse);
   const runBisInterpretation = useServerFn(interpretBisAgreement);
+
+  /**
+   * Current case/interval evidence, re-evaluated on every render. The panel
+   * only reuses a cached review while this still matches its fingerprint.
+   */
+  const evidence = useMemo(
+    () => ({ ...researchContextEvidence(meta), durationSeconds: elapsed }),
+    [meta, elapsed],
+  );
 
   const analyse = useCallback(
     async (silent = false) => {
@@ -282,6 +292,7 @@ export function useCaseAi(options: UseCaseAiOptions) {
 
   return {
     result,
+    evidence,
     loading,
     error,
     watch,

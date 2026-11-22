@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { fetchEpochs, fetchEvents } from "@/lib/eeg/db-rows";
 import { downloadSessionReportPdf, type ReportSessionMeta } from "@/lib/eeg/pdf-report";
-import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
+import { descriptorPolicy, researchContextEvidence } from "@/lib/eeg/descriptor-only";
 
 interface Props {
   sessionId: string;
@@ -51,13 +51,9 @@ export function SessionPdfButton({
         meta = rows[0] as ReportSessionMeta;
       }
       const [epochs, events] = await Promise.all([fetchEpochs(sessionId), fetchEvents(sessionId)]);
-      const context = meta as {
-        researchContext?: unknown;
-        research_context?: unknown;
-      };
-      const descriptor = descriptorPolicy({
-        researchContext: context.researchContext ?? context.research_context ?? null,
-      });
+      // Forward every research-context alias. Collapsing them with `??`
+      // would hide a conflicting pair and let one of them decide the export.
+      const descriptor = descriptorPolicy(researchContextEvidence(meta));
       downloadSessionReportPdf({
         session: meta,
         epochs,

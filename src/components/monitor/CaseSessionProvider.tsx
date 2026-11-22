@@ -29,7 +29,7 @@ import {
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
-import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
+import { descriptorPolicy, researchContextEvidence } from "@/lib/eeg/descriptor-only";
 import type { EegSource } from "@/lib/eeg/muse";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
@@ -327,9 +327,7 @@ function useCaseSessionState() {
   // A live session carries no independent blockade record, so the descriptor
   // policy fails closed: the experimental depth index is withheld unless a
   // fully evidenced research context is attached to the case.
-  const descriptor = descriptorPolicy({
-    researchContext: (meta as { researchContext?: unknown }).researchContext ?? null,
-  });
+  const descriptor = descriptorPolicy(researchContextEvidence(meta));
 
   /**
    * Freeze every model, calibration and tuning for the length of the
