@@ -155,13 +155,78 @@ class VitalDbResamplingTest(unittest.TestCase):
         self.assertEqual(model["endpoint"], "device EMG in dB only")
 
 
-class LockedProtocolTest(unittest.TestCase):
-    def test_protocol_is_locked_and_covers_the_required_terms(self):
-        protocol = LEARNING / "external-validation-protocol.md"
-        lock = LEARNING / "external-validation-protocol.sha256"
-        digest = hashlib.sha256(protocol.read_bytes()).hexdigest()
-        self.assertEqual(lock.read_text().split()[0], digest)
-        text = protocol.read_text().lower()
+class ProtocolDraftTest(unittest.TestCase):
+    def setUp(self):
+        self.protocol = LEARNING / "external-validation-protocol.md"
+        self.lock = LEARNING / "external-validation-protocol.sha256"
+        self.text = " ".join(self.protocol.read_text().lower().split())
+
+    def test_draft_checksum_matches_the_versioned_text(self):
+        digest = hashlib.sha256(self.protocol.read_bytes()).hexdigest()
+        self.assertEqual(self.lock.read_text().split()[0], digest)
+
+    def test_draft_is_unapproved_and_unregistered(self):
+        for phrase in (
+            "draft, version 2",
+            "not approved",
+            "not registered",
+            "no independent statistical or clinical approval has been given",
+            "no registration has occurred",
+            "access to new outcomes is prohibited",
+        ):
+            self.assertIn(phrase, self.text, phrase)
+
+    def test_primary_inference_is_exact_binomial_with_a_nonzero_zero_event_bound(self):
+        for phrase in (
+            "exact binomial",
+            "clopper",
+            "independent participants",
+            "proportion among scored participants",
+            "coverage and abstention for all",
+            "upper bound is nonzero",
+            "1 - 0.025^(1/n)",
+            "participant-cluster",
+        ):
+            self.assertIn(phrase, self.text, phrase)
+
+    def test_sealed_evaluator_is_distinct_from_the_ordinary_replay(self):
+        for phrase in (
+            "ordinary replay",
+            "abstain on 100%",
+            "sealed evaluator",
+            "always-abstaining model has no discrimination estimate",
+            "false episodes",
+            "duration",
+            "time affected",
+        ):
+            self.assertIn(phrase, self.text, phrase)
+
+    def test_decision_parameters_are_frozen_before_outcome_access(self):
+        for phrase in (
+            "before any access to new outcomes",
+            "episode persistence",
+            "score threshold",
+            "minimum usable coverage",
+            "prospective sample size and precision targets",
+            "illustrative",
+            "no clinical-authorisation status",
+            "prespecified acceptance criteria",
+        ):
+            self.assertIn(phrase, self.text, phrase)
+
+    def test_arbitrary_error_cutoffs_and_zero_false_sedation_are_removed(self):
+        self.assertNotIn("at most 10%", self.text)
+        self.assertNotIn("at most 25%", self.text)
+        self.assertNotIn(
+            "no participant with a confirmed command response labelled sedated",
+            self.text,
+        )
+
+    def test_original_one_in_six_result_is_kept(self):
+        self.assertIn("1/6", self.text)
+        self.assertIn("one of six", self.text)
+
+    def test_required_protocol_terms_remain(self):
         for phrase in (
             "independent original voltages",
             "blinded",
@@ -170,10 +235,9 @@ class LockedProtocolTest(unittest.TestCase):
             "95%",
             "coverage",
             "abstention",
-            "prespecified acceptance criteria",
             "no clinical release",
         ):
-            self.assertIn(phrase, text, phrase)
+            self.assertIn(phrase, self.text, phrase)
 
 
 if __name__ == "__main__":

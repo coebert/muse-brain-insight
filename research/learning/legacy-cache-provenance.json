@@ -1,0 +1,4 @@
+{
+  "note": "Checksum-pinned source mapping for caches extracted before embedded provenance existed. The mapping is empty until an independent audit links a cache SHA-256 to one pinned source acquisition. Each entry must name site, subject, task, acq, run, condition and source. An unattested cache not listed here is quarantined; re-running the extractor rebuilds it from the pinned sources.",
+  "sessions": {}
+}

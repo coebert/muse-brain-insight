@@ -19,6 +19,7 @@ import requests
 from scipy import signal
 from scipy.io import loadmat
 from acquisitions import cache_name, parse_source_path
+import provenance
 from waveforms import PAIRS, features
 
 CAM_URL = "https://api.repository.cam.ac.uk/server/api/core/bitstreams/e94a6722-da5b-4e53-8673-5e8ec106e0f7/content"
@@ -85,8 +86,12 @@ def cambridge(out):
 
     def one(row):
         base, level, concentration, rt, correct = row
-        dest = out / f"{base[:2]}-{int(level)}.npz"
-        if dest.exists():
+        subject = base[:2]
+        level = int(level)
+        dest = out / f"{subject}-{level}.npz"
+        # Rebuild a cache only when its embedded provenance verifies. A legacy
+        # cache without provenance is re-extracted from the pinned archive.
+        if dest.exists() and provenance.cambridge_attested(dest, subject, level):
             return
         with h5py.File(io.BytesIO(member(base + ".set"))) as f:
             eeg = f["EEG"]
@@ -110,7 +115,15 @@ def cambridge(out):
                     signal.resample_poly(cropped, frac.numerator, frac.denominator, axis=1), 125
                 )[0]
             )
-        np.savez_compressed(dest, x=rows, correct=int(correct), concentration=float(concentration))
+        np.savez_compressed(
+            dest,
+            x=rows,
+            correct=int(correct),
+            concentration=float(concentration),
+            **provenance.cambridge_metadata(
+                subject, level, f"Sedation-RestingState/{base}.set"
+            ),
+        )
         print("Cambridge", dest.stem, len(rows), flush=True)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -150,7 +163,9 @@ def oslo(out, eyes_open_only=False):
     def one(row):
         entry, path = row
         dest = out / (cache_name(entry) + ".npz")
-        if dest.exists():
+        # Rebuild a cache only when its embedded provenance verifies. A legacy
+        # cache without provenance is re-extracted from the pinned release.
+        if dest.exists() and provenance.oslo_attested(dest, entry):
             return
         header = configparser.ConfigParser(
             interpolation=None, inline_comment_prefixes=(";",), strict=False
@@ -190,16 +205,7 @@ def oslo(out, eyes_open_only=False):
             for j, pair in enumerate(REGIONS):
                 if badch.intersection(pair):
                     x[:, j, :] = np.nan
-        np.savez_compressed(
-            dest,
-            x=x,
-            subject=entry["subject"],
-            task=entry["task"],
-            acq=entry["acq"],
-            run=-1 if entry["run"] is None else entry["run"],
-            condition=entry["condition"],
-            source=path,
-        )
+        np.savez_compressed(dest, x=x, **provenance.oslo_metadata(entry, path))
         print("Oslo", dest.stem, len(x), flush=True)
 
     with ThreadPoolExecutor(max_workers=4) as pool:

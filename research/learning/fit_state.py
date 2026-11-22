@@ -10,12 +10,8 @@ from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss
-from acquisitions import (
-    condition_from_metadata,
-    condition_stage,
-    manifest_problem,
-    parse_cache_name,
-)
+from acquisitions import condition_stage, manifest_problem, parse_cache_name
+import provenance
 from waveforms import MEASURES
 
 # Cambridge numbers its stages 1–4. Anything else is unknown, never sedated.
@@ -49,26 +45,6 @@ def stage_of(site, condition):
     return CAMBRIDGE_STAGES.get(str(condition), "unknown")
 
 
-def _embedded_condition(data):
-    """Return the acquisition condition stored by the extractor.
-
-    ``None`` when the cache predates the metadata (a legacy extract is still
-    accepted by filename). An empty string means metadata exists but cannot be
-    parsed, which is a reason to quarantine rather than to guess.
-    """
-    if "condition" in data.files:
-        return str(np.asarray(data["condition"]).item())
-    if not {"subject", "task", "acq"} <= set(data.files):
-        return None
-    condition = condition_from_metadata(
-        str(np.asarray(data["subject"]).item()),
-        str(np.asarray(data["task"]).item()),
-        str(np.asarray(data["acq"]).item()),
-        int(np.asarray(data["run"]).item()) if "run" in data.files else None,
-    )
-    return condition if condition is not None else ""
-
-
 def load(root, site, report=None):
     """Load cached sessions, quarantining anything the grammar does not accept.
 
@@ -86,12 +62,9 @@ def load(root, site, report=None):
     groups = {}
     seen = {}
 
-    def register(path, key, stage, x, correct, mismatch=None):
+    def register(path, key, stage, x, correct):
         if key in seen:
             reject(path, f"duplicate session; already loaded as {seen[key]}")
-            return
-        if mismatch is not None:
-            reject(path, mismatch)
             return
         seen[key] = path.name
         report["accepted"].append(path.name)
@@ -99,6 +72,11 @@ def load(root, site, report=None):
         group["runs"].append(x)
         if correct is not None:
             group["correct"] = correct
+
+    def record_problem(problem, origin):
+        if problem is not None and origin == "checksum-pinned":
+            return "checksum-pinned source mapping disagrees with cache name: " + problem
+        return problem
 
     for path in sorted((root / ("cache-" + site)).glob("*.npz")):
         if site == "oslo":
@@ -112,24 +90,31 @@ def load(root, site, report=None):
                 continue
             with np.load(path, allow_pickle=False) as data:
                 x = data["x"]
-                embedded = _embedded_condition(data)
-            if embedded == "":
-                reject(path, "embedded acquisition metadata cannot be parsed")
+                try:
+                    record = provenance.oslo_record(data)
+                except provenance.ProvenanceError as exc:
+                    reject(path, f"embedded provenance cannot be parsed: {exc}")
+                    continue
+            if record is None:
+                record = provenance.legacy_record(provenance.sha256_file(path), "oslo")
+                if record is None:
+                    reject(path, provenance.LEGACY_REASON)
+                    continue
+                origin = "checksum-pinned"
+            else:
+                origin = "embedded"
+            problem = record_problem(
+                provenance.oslo_record_problem(record, entry, origin), origin
+            )
+            if problem is not None:
+                reject(path, problem)
                 continue
-            condition = embedded if embedded is not None else entry["condition"]
-            mismatch = None
-            if embedded is not None and embedded != entry["condition"]:
-                mismatch = (
-                    "misfiled or renamed session: cache name says "
-                    f"{entry['condition']}, embedded metadata says {embedded}"
-                )
             register(
                 path,
-                (entry["subject"], condition),
-                condition_stage(condition),
+                (entry["subject"], entry["condition"]),
+                condition_stage(entry["condition"]),
                 x,
                 None,
-                mismatch,
             )
         else:
             match = CAMBRIDGE_CACHE.fullmatch(path.stem)
@@ -142,6 +127,28 @@ def load(root, site, report=None):
             with np.load(path, allow_pickle=False) as data:
                 x = data["x"]
                 correct = int(data["correct"]) if "correct" in data.files else None
+                try:
+                    record = provenance.cambridge_record(data)
+                except provenance.ProvenanceError as exc:
+                    reject(path, f"embedded provenance cannot be parsed: {exc}")
+                    continue
+            if record is None:
+                record = provenance.legacy_record(provenance.sha256_file(path), "cambridge")
+                if record is None:
+                    reject(path, provenance.LEGACY_REASON)
+                    continue
+                origin = "checksum-pinned"
+            else:
+                origin = "embedded"
+            problem = record_problem(
+                provenance.cambridge_record_problem(
+                    record, match["pid"], match["level"], origin
+                ),
+                origin,
+            )
+            if problem is not None:
+                reject(path, problem)
+                continue
             register(
                 path,
                 (match["pid"], match["level"]),
