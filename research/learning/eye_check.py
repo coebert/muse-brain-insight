@@ -22,7 +22,9 @@ def run(root, out):
     for montage in ("frontal", "broader"):
         training = summarize(sources["cambridge"], "cambridge", montage)
         model = train(training)
-        oslo = summarize(sources["oslo"], "oslo", montage)
+        oslo = summarize(
+            sources["oslo"], "oslo", montage, states=("baseline", "eyes_open", "sedated")
+        )
         paired = []
         for pid in sorted({r["pid"] for r in oslo}):
             conditions = {r["state"]: r for r in oslo if r["pid"] == pid}

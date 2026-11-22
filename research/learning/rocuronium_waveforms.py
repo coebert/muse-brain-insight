@@ -136,6 +136,33 @@ def windows(case, tracks, event):
     return rows, "ok" if rows else "insufficient_clean_EEG"
 
 
+def case_folds(groups):
+    """GroupKFold splits that keep every case wholly inside one fold."""
+    groups = np.asarray(groups)
+    return list(
+        GroupKFold(min(5, len(np.unique(groups)))).split(
+            np.zeros((len(groups), 1)), groups=groups
+        )
+    )
+
+
+def per_case(groups, values):
+    """One value per case: the case, not the window, is the unit of inference."""
+    groups = np.asarray(groups)
+    values = np.asarray(values, dtype=float)
+    cases = np.unique(groups)
+    return cases, np.array([float(np.mean(values[groups == case])) for case in cases])
+
+
+def case_bootstrap(diff, draws=2000, seed=684):
+    """Resample whole cases, never individual windows."""
+    diff = np.asarray(diff, dtype=float)
+    rng = np.random.default_rng(seed)
+    return np.quantile(
+        rng.choice(diff, (draws, len(diff)), replace=True).mean(axis=1), [0.025, 0.975]
+    ).tolist()
+
+
 def assess(rows):
     a = np.array(rows)
     g = a[:, 0]
@@ -143,7 +170,7 @@ def assess(rows):
     x = a[:, 3:]
     guess = np.empty(len(y))
     baseline = np.empty(len(y))
-    for tr, te in GroupKFold(min(5, len(np.unique(g)))).split(x, y, g):
+    for tr, te in case_folds(g):
         weights = np.array([1 / np.sum(g[tr] == i) for i in g[tr]])
         weights *= len(tr) / weights.sum()
         pipe = make_pipeline(StandardScaler(), Ridge(alpha=12))
@@ -153,9 +180,6 @@ def assess(rows):
         guess[te] = pipe.predict(x[te])
         baseline[te] = np.mean([np.mean(y[tr][g[tr] == i]) for i in set(g[tr])])
     cases = np.unique(g)
-
-    def per_case(v):
-        return np.array([np.mean(v[g == i]) for i in cases])
 
     changes = []
     for i in cases:
@@ -169,8 +193,9 @@ def assess(rows):
     def describe(a):
         return {"median": float(np.median(a)), "IQR": np.quantile(a, [0.25, 0.75]).tolist()}
 
-    diff = per_case(abs(baseline - y)) - per_case(abs(guess - y))
-    rng = np.random.default_rng(684)
+    _, baseline_error = per_case(g, abs(baseline - y))
+    _, model_error = per_case(g, abs(guess - y))
+    diff = baseline_error - model_error
     weights = np.array([1 / np.sum(g == i) for i in g])
     weights *= len(g) / weights.sum()
     sc = StandardScaler().fit(x, sample_weight=weights)
@@ -192,11 +217,9 @@ def assess(rows):
     return {
         "cases": len(cases),
         "valid_windows": len(y),
-        "case_mean_MAE_EMG_dB": float(np.mean(per_case(abs(guess - y)))),
-        "case_mean_baseline_MAE_dB": float(np.mean(per_case(abs(baseline - y)))),
-        "paired_MAE_gain_ci": np.quantile(
-            rng.choice(diff, (2000, len(diff)), replace=True).mean(axis=1), [0.025, 0.975]
-        ).tolist(),
+        "case_mean_MAE_EMG_dB": float(np.mean(model_error)),
+        "case_mean_baseline_MAE_dB": float(np.mean(baseline_error)),
+        "paired_MAE_gain_ci": case_bootstrap(diff),
         "pre_post_cases": len(changes),
         "post_minus_pre": (
             dict(

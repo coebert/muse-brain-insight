@@ -4,22 +4,41 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-import fitz
+
 import numpy as np
 import requests
 from scipy.special import expit
-from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
 URL = "https://media.springernature.com/full/springer-static/esm/art%3A10.1038%2Fs41598-026-50911-6/MediaObjects/41598_2026_50911_MOESM1_ESM.pdf"
+# Pinned before any fit: a different supplement must not silently replace the
+# source of the six-participant comparison.
+SOURCE_SHA256 = "a0a9131f04a66a89a0c5cbcee55ff40c3800abbc4f27ae3b6e6e34e0f67fc307"
 STATES = ["awake_unparalysed", "awake_cisatracurium", "propofol_sedation_blockade_protocol"]
+
+# The four published confusion-count tuples, as (awake pre-block, awake
+# paralysed, propofol protocol) out of six participants. The fit must reproduce
+# these exactly or refuse to write results.
+PUBLISHED_CONFUSION = {
+    ("absolute", "omit_awake_blockade"): (1, 1, 5),
+    ("absolute", "with_awake_blockade"): (0, 1, 5),
+    ("change_from_own_awake_baseline", "omit_awake_blockade"): (0, 1, 6),
+    ("change_from_own_awake_baseline", "with_awake_blockade"): (0, 1, 6),
+}
+
+
+def verify_source(path):
+    """Return the PDF digest, refusing anything but the pinned supplement."""
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != SOURCE_SHA256:
+        raise ValueError(f"unexpected source PDF SHA-256: {digest}")
+    return digest
 
 
 def extract(path):
-    if not path.exists():
-        r = requests.get(URL, timeout=90)
-        r.raise_for_status()
-        path.write_bytes(r.content)
+    import fitz
+
     page = fitz.open(path)[5]
     assert "Figure S3" in page.get_text() and "frontal" in page.get_text()
     draws = page.get_drawings()
@@ -61,7 +80,19 @@ def extract(path):
     return np.array(calibrated)
 
 
+def folds(n):
+    """Leave one participant out: (training indices, held-out index) pairs."""
+    index = np.arange(n)
+    return [(index[index != held], held) for held in range(n)]
+
+
+def change_from_baseline(x):
+    """Use each participant's own pre-block awake measurement as the reference."""
+    return x - x[:, [0]]
+
+
 def fit(x, y):
+    """Fit scaling and the comparator on the supplied rows only."""
     sc = StandardScaler().fit(x.reshape(-1, 1))
     lr = LogisticRegression(C=1, class_weight="balanced", solver="lbfgs", random_state=713).fit(
         sc.transform(x.reshape(-1, 1)), y
@@ -78,36 +109,60 @@ def predict(data, spec):
     return expit((data - spec["mean"]) / spec["scale"] * spec["coef"] + spec["intercept"])
 
 
+def grouped_leave_one_out(samples, cols):
+    """Predict every participant from a model that never saw them."""
+    labels = np.array([k == 2 for k in cols])
+    predictions = np.zeros((len(samples), len(STATES)))
+    for train, held in folds(len(samples)):
+        obs = samples[train][:, cols]
+        model = fit(obs.ravel(), np.tile(labels, len(train)))
+        predictions[held] = predict(samples[held], model)
+    return predictions
+
+
+def counts(predictions):
+    """The published confusion-count tuple: pre-block, paralysed, propofol."""
+    return tuple(int(sum(predictions[:, k] >= 0.5)) for k in range(len(STATES)))
+
+
 def main(root):
     path = root / "halder-sup.pdf"
+    if not path.exists():
+        r = requests.get(URL, timeout=90)
+        r.raise_for_status()
+        path.write_bytes(r.content)
+    digest = verify_source(path)
     x = extract(path)
     result = {}
     weights = {}
     for mode in ["absolute", "change_from_own_awake_baseline"]:
-        samples = x if mode == "absolute" else x - x[:, [0]]
+        samples = x if mode == "absolute" else change_from_baseline(x)
         result[mode] = {}
         for include in [False, True]:
             cols = [0, 1, 2] if include else [0, 2]
-            labels = np.array([k == 2 for k in cols])
-            predictions = []
-            for held in range(6):
-                obs = samples[np.arange(6) != held][:, cols]
-                model = fit(obs.ravel(), np.tile(labels, 5))
-                predictions.append(predict(samples[held], model))
-            p = np.array(predictions)
             name = "with_awake_blockade" if include else "omit_awake_blockade"
+            p = grouped_leave_one_out(samples, cols)
+            observed = counts(p)
+            expected = PUBLISHED_CONFUSION[(mode, name)]
+            if observed != expected:
+                raise ValueError(
+                    f"{mode}/{name} confusion counts {observed} != published {expected}"
+                )
             result[mode][name] = dict(
-                awake_pre_false_sedated=int(sum(p[:, 0] >= 0.5)),
-                awake_blockade_false_sedated=int(sum(p[:, 1] >= 0.5)),
-                propofol_protocol_detected=int(sum(p[:, 2] >= 0.5)),
+                awake_pre_false_sedated=observed[0],
+                awake_blockade_false_sedated=observed[1],
+                propofol_protocol_detected=observed[2],
             )
             if include:
-                weights[mode] = fit(samples[:, cols].ravel(), np.tile(labels, 6))
+                weights[mode] = fit(
+                    samples[:, cols].ravel(),
+                    np.tile(np.array([k == 2 for k in cols]), len(samples)),
+                )
     # The paper reports a reversal timing deviation for one participant. Count AP and SP separately for transparency.
     payload = dict(
         source="Halder et al. 2026, Supplementary Figure S3, CC BY 4.0",
         doi="10.1038/s41598-026-50911-6",
-        source_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        source_sha256=digest,
         units="paper's frontal FOOOF log alpha power",
         state_order=STATES,
         participants=6,
@@ -129,13 +184,7 @@ def main(root):
         )
     )
     for k, v in result.items():
-        print(
-            k,
-            {
-                name: {j: a for j, a in obj.items() if j != "held_out_scores"}
-                for name, obj in v.items()
-            },
-        )
+        print(k, v)
 
 
 if __name__ == "__main__":

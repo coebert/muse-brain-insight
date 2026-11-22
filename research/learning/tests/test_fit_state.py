@@ -1,4 +1,4 @@
-"""Executable regressions for stage allowlisting in the between-centre fit.
+"""Executable regressions for the pinned acquisition grammar and the state fitter.
 
 Run from the repository root:
     python -m unittest discover -s research/learning/tests -v
@@ -14,23 +14,60 @@ import numpy as np
 LEARNING = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LEARNING))
 
-from fit_state import (  # noqa: E402
-    OSLO_ACQUISITIONS,
-    load,
-    stage_of,
-    summarize,
+from acquisitions import (  # noqa: E402
+    cache_name,
+    manifest,
+    parse_cache_name,
+    parse_source_path,
 )
+from fit_state import load, load_report, stage_of, summarize  # noqa: E402
+
+EC = "sub-1010/eeg/sub-1010_task-awake_acq-EC_eeg.vhdr"
+EO = "sub-1010/eeg/sub-1010_task-awake_acq-EO_eeg.vhdr"
 
 
-def write_cache(root, site, name, windows=3):
+def sed2(subject="1010", run=1):
+    return f"sub-{subject}/eeg/sub-{subject}_task-sed2_acq-rest_run-{run}_eeg.vhdr"
+
+
+def write_cache(root, site, name, windows=3, **meta):
     folder = root / ("cache-" + site)
     folder.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(7)
     x = rng.normal(size=(windows, 2, 13)).astype("float64")
-    np.savez(folder / f"{name}.npz", x=x)
+    np.savez(folder / f"{name}.npz", x=x, **meta)
 
 
-class StageAllowlistTest(unittest.TestCase):
+def oslo_meta(entry):
+    return {
+        "subject": entry["subject"],
+        "task": entry["task"],
+        "acq": entry["acq"],
+        "run": -1 if entry["run"] is None else entry["run"],
+        "condition": entry["condition"],
+    }
+
+
+def write_source(root, path, windows=3):
+    entry = parse_source_path(path)
+    write_cache(root, "oslo", cache_name(entry), windows=windows, **oslo_meta(entry))
+    return entry
+
+
+class AcquisitionGrammarTest(unittest.TestCase):
+    def test_real_extractor_names_map_to_protocol_stages(self):
+        for condition, expected in (
+            ("awake_acq-EC", "baseline"),
+            ("awake_acq-EO", "eyes_open"),
+            ("sed2_acq-rest_run-1", "sedated"),
+            ("sed2_acq-rest_run-12", "sedated"),
+            ("sedated", "unknown"),
+            ("propofol", "unknown"),
+            ("pre_awakening", "unknown"),
+            ("awake_acq-EC_run-1", "unknown"),
+        ):
+            self.assertEqual(stage_of("oslo", condition), expected, condition)
+
     def test_cambridge_stages_are_allowlisted(self):
         for condition, expected in (
             ("1", "baseline"),
@@ -42,59 +79,136 @@ class StageAllowlistTest(unittest.TestCase):
         ):
             self.assertEqual(stage_of("cambridge", condition), expected)
 
-    def test_oslo_acquisitions_are_allowlisted(self):
-        for condition, expected in (
-            ("awake_acq-EC", "baseline"),
-            ("awake_acq-EO", "eyes_open"),
-            ("sedated", "sedated"),
-            ("pre_awakening", "sedated"),
-            ("pre-awakening", "sedated"),
-            ("mystery_acq", "unknown"),
+    def test_extractor_to_fitter_round_trip_uses_actual_filenames(self):
+        for path in (EC, EO, sed2(run=1), sed2(run=3)):
+            entry = parse_source_path(path)
+            self.assertIsNotNone(entry, path)
+            parsed = parse_cache_name(cache_name(entry))
+            self.assertIsNotNone(parsed, cache_name(entry))
+            self.assertEqual(parsed["subject"], entry["subject"])
+            self.assertEqual(parsed["condition"], entry["condition"])
+            self.assertEqual(parsed["stage"], entry["stage"])
+
+    def test_unrelated_protocol_arms_are_not_extracted(self):
+        for path in (
+            "sub-1010/eeg/sub-1010_task-sed_acq-rest_run-1_eeg.vhdr",
+            "sub-1010/eeg/sub-1010_task-awake_acq-tms_eeg.vhdr",
+            "sub-1010/eeg/sub-1010_task-sed2_acq-tms_run-1_eeg.vhdr",
+            "sub-1010/eeg/sub-1010_task-sed2_acq-rest_eeg.vhdr",
         ):
-            self.assertEqual(stage_of("oslo", condition), expected)
+            self.assertIsNone(parse_source_path(path), path)
 
-    def test_unknown_oslo_file_never_becomes_sedated(self):
+    def test_manifest_matches_the_published_accounting(self):
+        subjects = manifest()["subjects"]
+        eligible = {key: row for key, row in subjects.items() if not row["excluded"]}
+        self.assertEqual(len(eligible), 20)
+        self.assertEqual(sum(1 for row in eligible.values() if row["awake_acq-EC"]), 20)
+        self.assertEqual(sum(len(row["sed2_acq-rest"]) for row in eligible.values()), 51)
+        self.assertEqual(20 + 51, 71)
+        self.assertTrue(any(len(row["sed2_acq-rest"]) > 1 for row in eligible.values()))
+        self.assertEqual([key for key, row in subjects.items() if row["excluded"]], ["1037"])
+
+
+class FitterQuarantineTest(unittest.TestCase):
+    def test_eyes_closed_baseline_and_each_sedated_run_form_an_eligible_pair(self):
         with TemporaryDirectory() as td:
             root = Path(td)
-            write_cache(root, "oslo", "p1-awake_acq-EC")
-            write_cache(root, "oslo", "p1-awake_acq-EO")
-            write_cache(root, "oslo", "p1-sedated")
-            write_cache(root, "oslo", "p1-mystery_acq")
-            groups = load(root, "oslo")
-        stages = {stage for _, stage in groups}
-        self.assertEqual(stages, {"baseline", "eyes_open", "sedated", "unknown"})
-        self.assertIn(("p1", "unknown"), groups)
-        self.assertIn(("p1", "eyes_open"), groups)
-        # Only the allowlisted sedated acquisition contributes to the sedated group.
-        self.assertEqual(len(groups[("p1", "sedated")]["runs"]), 1)
-        self.assertEqual(len(groups[("p1", "unknown")]["runs"]), 1)
-
-    def test_unknown_cambridge_file_never_becomes_sedated(self):
-        with TemporaryDirectory() as td:
-            root = Path(td)
-            for condition in ("1", "2", "3", "4", "9"):
-                write_cache(root, "cambridge", f"p1-{condition}")
-            groups = load(root, "cambridge")
-        self.assertIn(("p1", "unknown"), groups)
-        self.assertEqual(
-            {stage for _, stage in groups},
-            {"baseline", "mild", "sedated", "recovery", "unknown"},
-        )
-
-    def test_summarize_excludes_unknown_acquisitions(self):
-        with TemporaryDirectory() as td:
-            root = Path(td)
-            write_cache(root, "oslo", "p1-awake_acq-EC")
-            write_cache(root, "oslo", "p1-sedated")
-            write_cache(root, "oslo", "p1-mystery_acq")
-            groups = load(root, "oslo")
+            write_source(root, EC)
+            for run in (1, 2, 3):
+                write_source(root, sed2(run=run))
+            groups, report = load_report(root, "oslo")
+        self.assertEqual(report["quarantined"], [])
+        self.assertEqual(len(report["accepted"]), 4)
+        self.assertEqual(len(groups[("1010", "baseline")]["runs"]), 1)
+        self.assertEqual(len(groups[("1010", "sedated")]["runs"]), 3)
         rows = summarize(groups, "oslo", "frontal")
         self.assertEqual({row["state"] for row in rows}, {"baseline", "sedated"})
-        self.assertTrue(all(row["pid"] == "p1" for row in rows))
+        self.assertEqual(len(rows), 2)
 
-    def test_eyes_open_control_is_not_a_sedated_stage(self):
-        self.assertEqual(OSLO_ACQUISITIONS["awake_acq-EO"], "eyes_open")
-        self.assertNotEqual(OSLO_ACQUISITIONS["awake_acq-EO"], "sedated")
+    def test_eye_control_is_separate_and_never_a_baseline_or_sedated_sample(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            write_source(root, EC)
+            write_source(root, EO)
+            write_source(root, sed2(run=1))
+            groups = load(root, "oslo")
+        self.assertIn(("1010", "eyes_open"), groups)
+        self.assertEqual(len(groups[("1010", "eyes_open")]["runs"]), 1)
+        default_rows = summarize(groups, "oslo", "frontal")
+        self.assertNotIn("eyes_open", {row["state"] for row in default_rows})
+        with_control = summarize(
+            groups, "oslo", "frontal", states=("baseline", "eyes_open", "sedated")
+        )
+        self.assertEqual(
+            {row["state"] for row in with_control}, {"baseline", "eyes_open", "sedated"}
+        )
+
+    def test_unknown_names_are_quarantined_and_reported(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            for name in ("1010-propofol", "1010-sedated", "1010-awake_acq-EC_run-1", "1010"):
+                write_cache(root, "oslo", name)
+            groups, report = load_report(root, "oslo")
+        self.assertEqual(groups, {})
+        self.assertEqual(len(report["quarantined"]), 4)
+        self.assertEqual(
+            {row["reason"] for row in report["quarantined"]},
+            {"unrecognised acquisition name"},
+        )
+
+    def test_renamed_copy_of_a_loaded_session_is_a_duplicate(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            first = write_source(root, sed2(run=1))
+            # A second file renamed to run 2 but still carrying run 1's identity.
+            write_cache(root, "oslo", cache_name(parse_source_path(sed2(run=2))), **oslo_meta(first))
+            groups, report = load_report(root, "oslo")
+        self.assertEqual(len(groups[("1010", "sedated")]["runs"]), 1)
+        self.assertEqual(len(report["accepted"]), 1)
+        self.assertIn("duplicate session", report["quarantined"][0]["reason"])
+
+    def test_misfiled_session_is_quarantined(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            run_one = parse_source_path(sed2(run=1))
+            write_cache(root, "oslo", cache_name(parse_source_path(sed2(run=2))), **oslo_meta(run_one))
+            groups, report = load_report(root, "oslo")
+        self.assertEqual(groups, {})
+        self.assertEqual(len(report["quarantined"]), 1)
+        self.assertIn("misfiled or renamed session", report["quarantined"][0]["reason"])
+
+    def test_excluded_subject_and_unlisted_run_are_quarantined(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            write_source(root, "sub-1037/eeg/sub-1037_task-awake_acq-EC_eeg.vhdr")
+            write_source(root, sed2(run=9))
+            groups, report = load_report(root, "oslo")
+        self.assertEqual(groups, {})
+        reasons = [row["reason"] for row in report["quarantined"]]
+        self.assertTrue(any("excluded" in reason for reason in reasons), reasons)
+        self.assertTrue(any("run 9" in reason for reason in reasons), reasons)
+
+    def test_cambridge_unrecognised_stage_is_quarantined(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            write_cache(root, "cambridge", "p1-9")
+            write_cache(root, "cambridge", "p1")
+            write_cache(root, "cambridge", "p1-3", correct=10)
+            groups, report = load_report(root, "cambridge")
+        self.assertEqual(set(groups), {("p1", "sedated")})
+        self.assertEqual(groups[("p1", "sedated")]["correct"], 10)
+        self.assertEqual(len(report["quarantined"]), 2)
+
+    def test_quarantined_files_never_reach_the_analysis(self):
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            write_source(root, EC)
+            write_source(root, sed2(run=1))
+            write_cache(root, "oslo", "1010-propofol")
+            groups, report = load_report(root, "oslo")
+        rows = summarize(groups, "oslo", "frontal")
+        self.assertEqual({row["state"] for row in rows}, {"baseline", "sedated"})
+        self.assertEqual(len(report["quarantined"]), 1)
 
 
 if __name__ == "__main__":

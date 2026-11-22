@@ -3,12 +3,19 @@
 from pathlib import Path
 import sys
 import json
+import re
 import numpy as np
 from scipy.stats import spearmanr
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss
+from acquisitions import (
+    condition_from_metadata,
+    condition_stage,
+    manifest_problem,
+    parse_cache_name,
+)
 from waveforms import MEASURES
 
 # Cambridge numbers its stages 1–4. Anything else is unknown, never sedated.
@@ -18,55 +25,142 @@ CAMBRIDGE_STAGES = {
     "3": "sedated",
     "4": "recovery",
 }
-# Oslo acquisition names are allowlisted. An unrecognised acquisition is
-# unknown: it must never inherit the sedated label by falling through.
+# The Oslo acquisitions the extractor writes. The run-numbered resting task is
+# matched by the shared grammar, not by a suffix guess; the eyes-open run is a
+# control and is never a baseline or a sedated sample.
 OSLO_ACQUISITIONS = {
     "awake_acq-EC": "baseline",
     "awake_acq-EO": "eyes_open",
-    "sedated": "sedated",
-    "pre_awakening": "sedated",
-    "pre-awakening": "sedated",
-    "propofol": "sedated",
-    "propofol_pre_awakening": "sedated",
+    "sed2_acq-rest_run-<n>": "sedated",
 }
 KNOWN_STAGES = {"baseline", "mild", "sedated", "recovery", "eyes_open"}
+# The eye-open run is a negative control, not an analysis condition: it is kept
+# out of the baseline/sedated comparison unless a caller asks for it.
+ANALYSIS_STAGES = {"baseline", "mild", "sedated", "recovery"}
 
-
-def _split_oslo(stem):
-    """Split ``<participant>-<acquisition>`` without guessing at dashes."""
-    for name in sorted(OSLO_ACQUISITIONS, key=len, reverse=True):
-        suffix = "-" + name
-        if stem.endswith(suffix):
-            return stem[: -len(suffix)], name
-    return stem.rsplit("-", 1)[0] if "-" in stem else None, None
+# ``sedation.py`` writes ``<subject>-<level>.npz`` for Cambridge.
+CAMBRIDGE_CACHE = re.compile(r"^(?P<pid>[^-]+)-(?P<level>\d+)$")
 
 
 def stage_of(site, condition):
     """Map a recording to a stage, or to ``unknown`` when it is not allowlisted."""
     if site == "oslo":
-        return OSLO_ACQUISITIONS.get(condition, "unknown")
+        return condition_stage(condition) or "unknown"
     return CAMBRIDGE_STAGES.get(str(condition), "unknown")
 
 
-def load(root, site):
+def _embedded_condition(data):
+    """Return the acquisition condition stored by the extractor.
+
+    ``None`` when the cache predates the metadata (a legacy extract is still
+    accepted by filename). An empty string means metadata exists but cannot be
+    parsed, which is a reason to quarantine rather than to guess.
+    """
+    if "condition" in data.files:
+        return str(np.asarray(data["condition"]).item())
+    if not {"subject", "task", "acq"} <= set(data.files):
+        return None
+    condition = condition_from_metadata(
+        str(np.asarray(data["subject"]).item()),
+        str(np.asarray(data["task"]).item()),
+        str(np.asarray(data["acq"]).item()),
+        int(np.asarray(data["run"]).item()) if "run" in data.files else None,
+    )
+    return condition if condition is not None else ""
+
+
+def load(root, site, report=None):
+    """Load cached sessions, quarantining anything the grammar does not accept.
+
+    ``report``, when a dict, receives the accepted files and every quarantine
+    decision with its reason, so the caller can publish what was excluded.
+    """
+    if report is None:
+        report = {}
+    report.setdefault("accepted", [])
+    report.setdefault("quarantined", [])
+
+    def reject(path, reason):
+        report["quarantined"].append({"file": path.name, "reason": reason})
+
     groups = {}
+    seen = {}
+
+    def register(path, key, stage, x, correct, mismatch=None):
+        if key in seen:
+            reject(path, f"duplicate session; already loaded as {seen[key]}")
+            return
+        if mismatch is not None:
+            reject(path, mismatch)
+            return
+        seen[key] = path.name
+        report["accepted"].append(path.name)
+        group = groups.setdefault((key[0], stage), {"runs": [], "correct": None})
+        group["runs"].append(x)
+        if correct is not None:
+            group["correct"] = correct
+
     for path in sorted((root / ("cache-" + site)).glob("*.npz")):
         if site == "oslo":
-            pid, condition = _split_oslo(path.stem)
+            entry = parse_cache_name(path.stem)
+            if entry is None:
+                reject(path, "unrecognised acquisition name")
+                continue
+            problem = manifest_problem(entry)
+            if problem is not None:
+                reject(path, problem)
+                continue
+            with np.load(path, allow_pickle=False) as data:
+                x = data["x"]
+                embedded = _embedded_condition(data)
+            if embedded == "":
+                reject(path, "embedded acquisition metadata cannot be parsed")
+                continue
+            condition = embedded if embedded is not None else entry["condition"]
+            mismatch = None
+            if embedded is not None and embedded != entry["condition"]:
+                mismatch = (
+                    "misfiled or renamed session: cache name says "
+                    f"{entry['condition']}, embedded metadata says {embedded}"
+                )
+            register(
+                path,
+                (entry["subject"], condition),
+                condition_stage(condition),
+                x,
+                None,
+                mismatch,
+            )
         else:
-            pid, condition = path.stem.split("-", 1)
-        if pid is None:
-            continue
-        stage = stage_of(site, condition)
-        with np.load(path) as d:
-            v = groups.setdefault((pid, stage), {"runs": [], "correct": None})
-            v["runs"].append(d["x"])
-            if "correct" in d:
-                v["correct"] = int(d["correct"])
+            match = CAMBRIDGE_CACHE.fullmatch(path.stem)
+            if match is None:
+                reject(path, "unrecognised acquisition name")
+                continue
+            if match["level"] not in CAMBRIDGE_STAGES:
+                reject(path, f"unrecognised Cambridge stage {match['level']}")
+                continue
+            with np.load(path, allow_pickle=False) as data:
+                x = data["x"]
+                correct = int(data["correct"]) if "correct" in data.files else None
+            register(
+                path,
+                (match["pid"], match["level"]),
+                CAMBRIDGE_STAGES[match["level"]],
+                x,
+                correct,
+            )
     return groups
 
 
-def summarize(groups, site, montage):
+def load_report(root, site):
+    """Load a site's caches and return ``(groups, report)``."""
+    report = {}
+    groups = load(root, site, report)
+    return groups, report
+
+
+def summarize(groups, site, montage, states=None):
+    allowed = set(ANALYSIS_STAGES if states is None else states)
     rows = []
     for (pid, state), v in groups.items():
         X = np.concatenate(v["runs"])
@@ -88,9 +182,9 @@ def summarize(groups, site, montage):
             )
         )
     # Unknown acquisitions never enter the analysis, even beside known stages.
-    rows = [r for r in rows if r["state"] in KNOWN_STAGES]
-    states = {p: {r["state"] for r in rows if r["pid"] == p} for p in {r["pid"] for r in rows}}
-    return [r for r in rows if states[r["pid"]] >= {"baseline", "sedated"}]
+    rows = [r for r in rows if r["state"] in allowed]
+    present = {p: {r["state"] for r in rows if r["pid"] == p} for p in {r["pid"] for r in rows}}
+    return [r for r in rows if present[r["pid"]] >= {"baseline", "sedated"}]
 
 
 def train(rows):
@@ -221,7 +315,12 @@ def behaviour(rows):
 
 
 def main(root, out):
-    sources = {site: load(root, site) for site in ("cambridge", "oslo")}
+    reports = {}
+    sources = {}
+    for site in ("cambridge", "oslo"):
+        report = {}
+        sources[site] = load(root, site, report)
+        reports[site] = report
     result = {}
     all_models = {}
     for montage in ("frontal", "broader"):
@@ -250,6 +349,8 @@ def main(root, out):
             "participants": len({k[0] for k in v}),
             "recordings": sum(len(a["runs"]) for a in v.values()),
             "candidate_windows": sum(len(x) for a in v.values() for x in a["runs"]),
+            "accepted_files": len(reports[site]["accepted"]),
+            "quarantined": reports[site]["quarantined"],
         }
         for site, v in sources.items()
     }

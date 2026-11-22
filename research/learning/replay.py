@@ -9,6 +9,9 @@ A depth-like number is produced only when all of the following hold:
 * the caller passes the explicit offline opt-in ``--allow-research-score``;
 * the recording carries an acquisition case identity and acquisition time that
   match an independently recorded context;
+* the recording's own reference electrode agrees with the documented reference,
+  or a provenance manifest bound to the recording's SHA-256 supplies the same
+  identity;
 * that context documents the *absence* of neuromuscular blockade for every
   second of the recording, using a qualified reference and physical
   microvolt calibration;
@@ -32,9 +35,11 @@ validated anaesthetic endpoint.
 import argparse
 from datetime import datetime, timezone
 from fractions import Fraction
+import hashlib
 import json
 import math
 from pathlib import Path
+import re
 
 import joblib
 import numpy as np
@@ -115,7 +120,22 @@ QUALIFIED_REFERENCES = {
 
 EMBEDDED_CASE_KEYS = ("case_id", "caseId")
 EMBEDDED_BLOCKADE_KEYS = ("blockade_context", "blockade", "blockadeContext")
+EMBEDDED_TIME_KEYS = ("acquired_at", "acquiredAt", "acquisition_time", "acquisitionTime")
+EMBEDDED_REFERENCE_KEYS = ("reference", "reference_electrode", "referenceElectrode")
 SEGMENT_OFFSET_KEYS = ("segment_offsets", "segment_start_seconds", "segment_starts")
+
+# A provenance manifest is a fixed record bound to the recording bytes. It may
+# stand in for metadata inside the file only when its SHA-256 matches the file.
+PROVENANCE_KEYS = {
+    "recording_sha256",
+    "case_id",
+    "acquired_at",
+    "reference",
+    "montage",
+    "calibration",
+    "created_at",
+    "note",
+}
 
 
 class ContextError(ValueError):
@@ -163,6 +183,122 @@ def _normalise_reference(value):
         return ""
     text = value.strip().lower().replace("-", " ").replace("_", " ")
     return " ".join(text.split())
+
+
+def _file_sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def normalize_provenance(raw, recording_sha256):
+    """Validate a provenance manifest and bind it to the recording's bytes.
+
+    The manifest is only a recording-side record when its ``recording_sha256``
+    matches the file actually replayed. It never widens the evidence: the
+    acquisition identity it carries must still agree with the independent
+    context before a score is possible.
+    """
+    if not isinstance(raw, dict):
+        raise ContextError("provenance manifest must be a JSON object")
+    unknown = set(raw) - PROVENANCE_KEYS
+    if unknown:
+        raise ContextError(f"unknown provenance keys: {sorted(unknown)}")
+    digest = raw.get("recording_sha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest.strip()):
+        raise ContextError("provenance manifest needs a hexadecimal SHA-256 recording hash")
+    if digest.strip().lower() != recording_sha256:
+        raise ContextError("the provenance manifest does not match the recording's SHA-256")
+    case_id = raw.get("case_id")
+    if not isinstance(case_id, str) or not case_id.strip():
+        raise ContextError("provenance manifest needs an acquisition case identity")
+    reference = raw.get("reference")
+    if not isinstance(reference, str) or not reference.strip():
+        raise ContextError("provenance manifest needs a reference electrode")
+    return {
+        "case_id": case_id.strip(),
+        "acquired_at": _parse_time(raw.get("acquired_at"), "acquired_at"),
+        "reference": reference.strip(),
+        "montage": raw.get("montage") if isinstance(raw.get("montage"), str) else None,
+        "calibration": (
+            raw.get("calibration") if isinstance(raw.get("calibration"), str) else None
+        ),
+        "recording_sha256": digest.strip().lower(),
+    }
+
+
+def _embedded_values(embedded, keys):
+    values = {
+        str(embedded[key]).strip()
+        for key in keys
+        if key in embedded and embedded[key] not in (None, "")
+    }
+    if len(values) > 1:
+        return None, True
+    return (next(iter(values)) if values else None), False
+
+
+def _recording_identity(embedded, provenance):
+    """Return the record that travels with the recording, independent of the sidecar."""
+    if provenance is not None:
+        # A verified manifest is bound to the recording's hash. Any metadata
+        # inside the file must agree with it rather than quietly replace it.
+        for field, keys, label in (
+            ("case_id", EMBEDDED_CASE_KEYS, "case identity"),
+            ("acquired_at", EMBEDDED_TIME_KEYS, "acquisition time"),
+            ("reference", EMBEDDED_REFERENCE_KEYS, "reference"),
+        ):
+            value, conflict = _embedded_values(embedded, keys)
+            if conflict:
+                return None, f"the recording carries conflicting embedded {label} values"
+            if value is None:
+                continue
+            if field == "acquired_at":
+                try:
+                    value = _parse_time(value, "embedded acquired_at")
+                except ContextError:
+                    return None, "the recording's embedded acquisition time is not a timestamp"
+                if value != provenance["acquired_at"]:
+                    return (
+                        None,
+                        "the recording's embedded acquisition time does not match the provenance manifest",
+                    )
+            elif field == "reference":
+                if _normalise_reference(value) != _normalise_reference(provenance["reference"]):
+                    return (
+                        None,
+                        "the recording's embedded reference does not match the provenance manifest",
+                    )
+            elif value != provenance["case_id"]:
+                return (
+                    None,
+                    "the recording's embedded case identity does not match the provenance manifest",
+                )
+        return dict(provenance, source="manifest"), None
+
+    case_id, case_conflict = _embedded_case_id(embedded)
+    if case_conflict:
+        return None, "the recording carries conflicting acquisition case identities"
+    stamp, time_conflict = _embedded_values(embedded, EMBEDDED_TIME_KEYS)
+    if time_conflict:
+        return None, "the recording carries conflicting acquisition times"
+    reference, reference_conflict = _embedded_values(embedded, EMBEDDED_REFERENCE_KEYS)
+    if reference_conflict:
+        return None, "the recording carries conflicting reference electrodes"
+    acquired = None
+    if stamp is not None:
+        try:
+            acquired = _parse_time(stamp, "embedded acquired_at")
+        except ContextError:
+            return None, "the recording's embedded acquisition time is not a timestamp"
+    return {
+        "case_id": case_id,
+        "acquired_at": acquired,
+        "reference": reference,
+        "source": "embedded",
+    }, None
 
 
 def normalize_context(raw):
@@ -393,7 +529,12 @@ def read_session(file, mode):
         names = [str(v).upper().replace("–", "-") for v in data["derivations"]]
         x = np.asarray(data["waveforms"], dtype="float64")
         embedded = {}
-        for key in EMBEDDED_CASE_KEYS + EMBEDDED_BLOCKADE_KEYS:
+        for key in (
+            EMBEDDED_CASE_KEYS
+            + EMBEDDED_BLOCKADE_KEYS
+            + EMBEDDED_TIME_KEYS
+            + EMBEDDED_REFERENCE_KEYS
+        ):
             if key in data.files:
                 embedded[key] = _scalar(data[key])
         offsets = None
@@ -582,11 +723,14 @@ def score(
     *,
     context=None,
     allow_research_score=False,
+    provenance=None,
 ):
     """Run one offline research replay.
 
     ``context`` is the normalised context dict (or ``None``). ``blockade`` is a
     legacy single-word flag; when both are supplied they must agree.
+    ``provenance`` is a raw provenance manifest; it is accepted only when its
+    SHA-256 matches the recording file.
     """
     try:
         resolved_blockade = merge_blockade(blockade, context)
@@ -594,6 +738,13 @@ def score(
         return _error_result(str(exc), blockade, context)
     if task == "neonatal":
         return _neonatal(montage, file, model_dir)
+    if provenance is not None:
+        try:
+            provenance = normalize_provenance(provenance, _file_sha256(file))
+        except ContextError as exc:
+            return _error_result(str(exc), resolved_blockade, context)
+        except OSError as exc:
+            return _error_result(f"the recording could not be read: {exc}", resolved_blockade, context)
 
     pairs = 2 if montage == "frontal" else 6
     segments, hz, embedded = read_session(file, pairs)
@@ -670,19 +821,22 @@ def score(
             descriptors=descriptors,
         )
 
-    # Embedded recording metadata is never independent evidence, and it is
-    # never allowed to contradict the sidecar silently.
-    embedded_case, case_conflict = _embedded_case_id(embedded)
-    embedded_blockade, blockade_conflict = _embedded_blockade(embedded)
-    if case_conflict:
+    # Without the explicit offline opt-in the result is a descriptor report and
+    # the recording is never bound to a score, so a legacy capture still yields
+    # its descriptors.
+    if not allow_research_score:
         return _payload(
-            ABSTAINED_STATUS,
-            "the recording carries conflicting acquisition case identities",
+            DESCRIPTOR_STATUS,
+            "research score requires the explicit offline --allow-research-score opt-in",
             context=context,
             blockade=resolved_blockade,
             coverage=coverage,
             descriptors=descriptors,
         )
+
+    # Embedded recording metadata is never independent evidence, and it is
+    # never allowed to contradict the sidecar silently.
+    embedded_blockade, blockade_conflict = _embedded_blockade(embedded)
     if blockade_conflict:
         return _payload(
             ABSTAINED_STATUS,
@@ -720,10 +874,42 @@ def score(
             coverage=coverage,
             descriptors=descriptors,
         )
-    if embedded_case is None:
+    # The recording-side record must be independently bound to the recording:
+    # either the file's own acquisition identity, or a provenance manifest whose
+    # hash matches the bytes replayed. A sidecar that merely agrees with itself
+    # is not enough.
+    identity, identity_error = _recording_identity(embedded, provenance)
+    if identity_error:
+        return _payload(
+            ABSTAINED_STATUS,
+            identity_error,
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if identity["case_id"] is None:
         return _payload(
             ABSTAINED_STATUS,
             "the recording carries no acquisition case identity",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if identity["acquired_at"] is None:
+        return _payload(
+            ABSTAINED_STATUS,
+            "the recording carries no acquisition time; depth interpretation is withheld",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if identity["reference"] is None:
+        return _payload(
+            ABSTAINED_STATUS,
+            "the recording carries no reference electrode; depth interpretation is withheld",
             context=context,
             blockade=resolved_blockade,
             coverage=coverage,
@@ -738,10 +924,62 @@ def score(
             coverage=coverage,
             descriptors=descriptors,
         )
-    if embedded_case != context["case_id"]:
+    if identity["case_id"] != context["case_id"]:
         return _payload(
             ABSTAINED_STATUS,
             "the recording's acquisition case identity does not match the supplied context",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if context["acquired_at"] is None:
+        return _payload(
+            ABSTAINED_STATUS,
+            "the context carries no acquisition time",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if identity["acquired_at"] != context["acquired_at"]:
+        return _payload(
+            ABSTAINED_STATUS,
+            "the recording's acquisition time does not match the supplied context",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    recording_reference = _normalise_reference(identity["reference"])
+    if recording_reference not in QUALIFIED_REFERENCES:
+        return _payload(
+            ABSTAINED_STATUS,
+            f"the recording's reference {identity['reference']!r} is not a qualified "
+            "acquisition reference",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    documented_references = {
+        _normalise_reference(row["reference"])
+        for row in context["intervals"]
+        if row["absence_documented"]
+    }
+    if recording_reference not in documented_references:
+        return _payload(
+            ABSTAINED_STATUS,
+            "the recording's reference does not match the documented reference",
+            context=context,
+            blockade=resolved_blockade,
+            coverage=coverage,
+            descriptors=descriptors,
+        )
+    if provenance is not None and provenance["montage"] not in (None, montage):
+        return _payload(
+            ABSTAINED_STATUS,
+            "the provenance manifest's montage does not match the replay montage",
             context=context,
             blockade=resolved_blockade,
             coverage=coverage,
@@ -767,16 +1005,6 @@ def score(
         return _payload(
             status,
             verdict,
-            context=context,
-            blockade=resolved_blockade,
-            coverage=coverage,
-            descriptors=descriptors,
-        )
-
-    if not allow_research_score:
-        return _payload(
-            DESCRIPTOR_STATUS,
-            "research score requires the explicit offline --allow-research-score opt-in",
             context=context,
             blockade=resolved_blockade,
             coverage=coverage,
@@ -888,10 +1116,21 @@ def main(argv=None):
         action="store_true",
         help="Explicit offline opt-in for the research propofol protocol-state score",
     )
+    parser.add_argument(
+        "--provenance",
+        type=Path,
+        help=(
+            "JSON manifest bound to the recording's SHA-256, used only when the "
+            "recording carries no acquisition identity of its own"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
         context = normalize_context(json.loads(args.context.read_text())) if args.context else None
+        provenance = (
+            json.loads(args.provenance.read_text()) if args.provenance is not None else None
+        )
         result = score(
             args.task,
             args.montage,
@@ -900,8 +1139,9 @@ def main(argv=None):
             args.blockade,
             context=context,
             allow_research_score=args.allow_research_score,
+            provenance=provenance,
         )
-    except ContextError as exc:
+    except (ContextError, json.JSONDecodeError) as exc:
         # Input and conflict errors still produce the same structured,
         # non-scoring shape rather than an unstructured crash.
         result = _error_result(str(exc), args.blockade)

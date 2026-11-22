@@ -6,6 +6,7 @@ Run from the repository root:
 
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -72,6 +73,8 @@ def write_session(
     blockade=None,
     offsets=True,
     perturbation_hz=None,
+    acquired_at=ACQUIRED,
+    reference="mastoid",
 ):
     time = np.arange(hz * seconds) / hz
     waves = []
@@ -90,6 +93,12 @@ def write_session(
         extra["case_id"] = case_id
     if blockade is not None:
         extra["blockade_context"] = blockade
+    if acquired_at is not None:
+        extra["acquired_at"] = (
+            acquired_at.isoformat() if hasattr(acquired_at, "isoformat") else str(acquired_at)
+        )
+    if reference is not None:
+        extra["reference"] = reference
     if offsets:
         extra["segment_offsets"] = [i * seconds for i in range(segments)]
     np.savez(
@@ -289,6 +298,132 @@ class ReplayPolicyTest(unittest.TestCase):
         )
         self.assert_non_scoring(out, ABSTAINED_STATUS)
         self.assertIn("does not match", out["reason"])
+
+    def test_recording_timestamp_disagreement_abstains(self):
+        path = self.root / "old-stamp.npz"
+        write_session(path, acquired_at=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc))
+        out = score(
+            "propofol", "frontal", path, RESULTS, context=context(), allow_research_score=True
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("acquisition time", out["reason"])
+
+    def test_recording_reference_disagreement_abstains(self):
+        path = self.root / "nose.npz"
+        write_session(path, reference="nose")
+        out = score(
+            "propofol", "frontal", path, RESULTS, context=context(), allow_research_score=True
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("reference", out["reason"])
+
+    def test_reported_timestamp_and_reference_mismatch_never_scores(self):
+        """The reported 0.924: same case, 15 Nov recording against a 21 Nov sidecar, nose vs mastoid."""
+        path = self.root / "reported.npz"
+        write_session(
+            path,
+            acquired_at=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc),
+            reference="nose",
+        )
+        out = score(
+            "propofol", "frontal", path, RESULTS, context=context(), allow_research_score=True
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIsNone(out[SCORE_NAME])
+
+    def test_missing_recording_acquisition_time_abstains(self):
+        path = self.root / "no-stamp.npz"
+        write_session(path, acquired_at=None)
+        out = score(
+            "propofol", "frontal", path, RESULTS, context=context(), allow_research_score=True
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("no acquisition time", out["reason"])
+
+    def test_missing_recording_reference_abstains(self):
+        path = self.root / "no-reference.npz"
+        write_session(path, reference=None)
+        out = score(
+            "propofol", "frontal", path, RESULTS, context=context(), allow_research_score=True
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("no reference electrode", out["reason"])
+
+    def test_legacy_capture_still_yields_descriptors(self):
+        path = self.root / "legacy.npz"
+        write_session(path, acquired_at=None, reference=None)
+        out = score("propofol", "frontal", path, RESULTS)
+        self.assert_non_scoring(out, DESCRIPTOR_STATUS)
+        self.assertIsNotNone(out["descriptors"])
+        self.assertEqual(out["coverage"]["usable_windows"], 10)
+        # A context alone does not turn a legacy capture into a score.
+        with_context = score("propofol", "frontal", path, RESULTS, context=context())
+        self.assert_non_scoring(with_context, DESCRIPTOR_STATUS)
+        self.assertIn("opt-in", with_context["reason"])
+        self.assertIsNotNone(with_context["descriptors"])
+
+    def _manifest(self, path, **overrides):
+        payload = {
+            "recording_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "case_id": "case-1",
+            "acquired_at": ACQUIRED.isoformat(),
+            "reference": "mastoid",
+            "montage": "frontal",
+            "calibration": "uV",
+            "created_at": RECORDED,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_verified_provenance_manifest_supplies_recording_identity(self):
+        path = self.root / "manifest.npz"
+        write_session(path, acquired_at=None, reference=None)
+        out = score(
+            "propofol",
+            "frontal",
+            path,
+            RESULTS,
+            context=context(),
+            allow_research_score=True,
+            provenance=self._manifest(path),
+        )
+        self.assertEqual(out["status"], SCORE_STATUS, out["reason"])
+        self.assertIsInstance(out[SCORE_NAME], float)
+        self.assertIsNone(out["consciousness_inference"])
+
+    def test_provenance_hash_mismatch_abstains(self):
+        path = self.root / "tampered.npz"
+        write_session(path, acquired_at=None, reference=None)
+        manifest = self._manifest(path, recording_sha256="0" * 64)
+        out = score(
+            "propofol",
+            "frontal",
+            path,
+            RESULTS,
+            context=context(),
+            allow_research_score=True,
+            provenance=manifest,
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("SHA-256", out["reason"])
+
+    def test_provenance_conflicting_with_embedded_identity_abstains(self):
+        path = self.root / "conflict.npz"
+        write_session(path, acquired_at=ACQUIRED, reference="mastoid")
+        manifest = self._manifest(
+            path, acquired_at=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc).isoformat()
+        )
+        out = score(
+            "propofol",
+            "frontal",
+            path,
+            RESULTS,
+            context=context(),
+            allow_research_score=True,
+            provenance=manifest,
+        )
+        self.assert_non_scoring(out, ABSTAINED_STATUS)
+        self.assertIn("does not match the provenance manifest", out["reason"])
 
     def test_missing_acquisition_time_never_falls_back_to_wall_clock(self):
         no_time = normalize_context(

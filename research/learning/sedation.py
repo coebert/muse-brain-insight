@@ -6,7 +6,6 @@ from fractions import Fraction
 import io
 import json
 from pathlib import Path
-import re
 import struct
 import sys
 import time
@@ -19,6 +18,7 @@ import pandas as pd
 import requests
 from scipy import signal
 from scipy.io import loadmat
+from acquisitions import cache_name, parse_source_path
 from waveforms import PAIRS, features
 
 CAM_URL = "https://api.repository.cam.ac.uk/server/api/core/bitstreams/e94a6722-da5b-4e53-8673-5e8ec106e0f7/content"
@@ -133,17 +133,23 @@ def oslo(out, eyes_open_only=False):
     )
     chosen = []
     for path in paths:
-        if eyes_open_only and "_task-awake_acq-EO_" not in path:
+        # Anchored against the pinned release grammar: only the three extracted
+        # acquisitions are selected, and an unrecognised name is skipped rather
+        # than assigned a stage by suffix.
+        entry = parse_source_path(path)
+        if entry is None:
             continue
-        if not eyes_open_only and "_task-awake_acq-EO_" in path:
+        if eyes_open_only != (entry["stage"] == "eyes_open"):
             continue
-        m = re.search(r"/sub-(\d+)_task-(awake_acq-E[CO]|sed2_acq-rest_run-\d+)_eeg\.vhdr$", path)
-        if m and m[1] not in excluded and ("task-" + m[2]) not in bad.get(m[1], ""):
-            chosen.append((m[1], m[2], path))
+        if entry["subject"] in excluded:
+            continue
+        if ("task-" + entry["condition"]) in bad.get(entry["subject"], ""):
+            continue
+        chosen.append((entry, path))
 
     def one(row):
-        pid, state, path = row
-        dest = out / f"{pid}-{state}.npz"
+        entry, path = row
+        dest = out / (cache_name(entry) + ".npz")
         if dest.exists():
             return
         header = configparser.ConfigParser(
@@ -184,7 +190,16 @@ def oslo(out, eyes_open_only=False):
             for j, pair in enumerate(REGIONS):
                 if badch.intersection(pair):
                     x[:, j, :] = np.nan
-        np.savez_compressed(dest, x=x)
+        np.savez_compressed(
+            dest,
+            x=x,
+            subject=entry["subject"],
+            task=entry["task"],
+            acq=entry["acq"],
+            run=-1 if entry["run"] is None else entry["run"],
+            condition=entry["condition"],
+            source=path,
+        )
         print("Oslo", dest.stem, len(x), flush=True)
 
     with ThreadPoolExecutor(max_workers=4) as pool:

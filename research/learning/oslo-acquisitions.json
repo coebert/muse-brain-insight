@@ -1,0 +1,140 @@
+{
+  "dataset": "OpenNeuro ds005620",
+  "release": "1.0.0",
+  "source": "https://github.com/OpenNeuroDatasets/ds005620/tree/1.0.0",
+  "grammar": "sub-<subject>_task-<awake|sed2>_acq-<EC|EO|rest>[_run-<n>]_eeg.vhdr",
+  "extracted": [
+    "awake_acq-EC",
+    "awake_acq-EO",
+    "sed2_acq-rest"
+  ],
+  "note": "Only the acquisitions sedation.py extracts. task-sed/acq-tms is a different protocol arm and is not part of the protocol-state comparison.",
+  "subjects": {
+    "1010": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1016": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2]
+    },
+    "1017": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2]
+    },
+    "1022": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1024": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1033": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1036": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1]
+    },
+    "1037": {
+      "excluded": true,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": []
+    },
+    "1045": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1046": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2]
+    },
+    "1054": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2]
+    },
+    "1055": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2]
+    },
+    "1057": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1060": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1061": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1062": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1064": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1067": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1068": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1]
+    },
+    "1071": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    },
+    "1074": {
+      "excluded": false,
+      "awake_acq-EC": true,
+      "awake_acq-EO": true,
+      "sed2_acq-rest": [1, 2, 3]
+    }
+  }
+}
