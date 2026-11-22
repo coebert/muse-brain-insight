@@ -1,0 +1,244 @@
+{
+  "downloaded": 88,
+  "eligible": 87,
+  "valid_windows": [
+    503,
+    507
+  ],
+  "contrasts": {
+    "A_vs_F": {
+      "positive": 36,
+      "negative": 22,
+      "models": {
+        "spectrum": {
+          "early_auroc": 0.21843434343434345,
+          "late": {
+            "auroc": 0.3282828282828283,
+            "sensitivity": 0.6666666666666666,
+            "specificity": 0.22727272727272727,
+            "brier": 0.27395652697030015
+          },
+          "recording_end_agreement": 0.7586206896551724
+        },
+        "combined": {
+          "early_auroc": 0.22727272727272727,
+          "late": {
+            "auroc": 0.39141414141414144,
+            "sensitivity": 0.6111111111111112,
+            "specificity": 0.22727272727272727,
+            "brier": 0.27816131456618576
+          },
+          "recording_end_agreement": 0.6724137931034483
+        },
+        "timing_only": {
+          "early_auroc": 0.2904040404040404,
+          "late": {
+            "auroc": 0.46212121212121215,
+            "sensitivity": 0.75,
+            "specificity": 0.22727272727272727,
+            "brier": 0.2538571049230868
+          },
+          "recording_end_agreement": 0.5689655172413793
+        },
+        "age_sex": {
+          "early_auroc": 0.5808080808080808,
+          "late": {
+            "auroc": 0.5808080808080808,
+            "sensitivity": 0.6388888888888888,
+            "specificity": 0.5454545454545454,
+            "brier": 0.24443976866979425
+          },
+          "recording_end_agreement": 1.0
+        },
+        "age_sex_mmse": {
+          "early_auroc": 0.7689393939393939,
+          "late": {
+            "auroc": 0.7689393939393939,
+            "sensitivity": 0.6666666666666666,
+            "specificity": 0.5909090909090909,
+            "brier": 0.1999153664359761
+          },
+          "recording_end_agreement": 1.0
+        },
+        "clinical_plus_spectrum": {
+          "early_auroc": 0.6464646464646465,
+          "late": {
+            "auroc": 0.6780303030303031,
+            "sensitivity": 0.75,
+            "specificity": 0.5,
+            "brier": 0.21661554785427364
+          },
+          "recording_end_agreement": 0.9310344827586207
+        },
+        "clinical_plus_combined": {
+          "early_auroc": 0.5277777777777778,
+          "late": {
+            "auroc": 0.6603535353535354,
+            "sensitivity": 0.75,
+            "specificity": 0.4090909090909091,
+            "brier": 0.21988679850252218
+          },
+          "recording_end_agreement": 0.7413793103448276
+        }
+      },
+      "contrasts": {
+        "combined_vs_spectrum": {
+          "combined_interval": [
+            0.23075980392156864,
+            0.5517892743221691
+          ],
+          "spectrum_interval": [
+            0.18988095238095237,
+            0.4800665620978121
+          ],
+          "delta": 0.06313131313131315,
+          "delta_interval": [
+            -0.034218358395989974,
+            0.1595488721804511
+          ]
+        },
+        "adding_timing_to_clinical_and_spectrum": {
+          "combined_interval": [
+            0.5104079455395245,
+            0.8083752860411899
+          ],
+          "spectrum_interval": [
+            0.5301580598455599,
+            0.8147087460130938
+          ],
+          "delta": -0.017676767676767735,
+          "delta_interval": [
+            -0.09584040747028864,
+            0.05139835858585862
+          ]
+        }
+      }
+    },
+    "A_vs_C": {
+      "positive": 36,
+      "negative": 29,
+      "models": {
+        "spectrum": {
+          "early_auroc": 0.8563218390804598,
+          "late": {
+            "auroc": 0.8687739463601531,
+            "sensitivity": 0.6666666666666666,
+            "specificity": 0.9310344827586207,
+            "brier": 0.14837414365229107
+          },
+          "recording_end_agreement": 0.8307692307692308
+        },
+        "combined": {
+          "early_auroc": 0.8697318007662835,
+          "late": {
+            "auroc": 0.9147509578544061,
+            "sensitivity": 0.8055555555555556,
+            "specificity": 0.7931034482758621,
+            "brier": 0.127474070647907
+          },
+          "recording_end_agreement": 0.7384615384615385
+        },
+        "timing_only": {
+          "early_auroc": 0.5134099616858238,
+          "late": {
+            "auroc": 0.6273946360153256,
+            "sensitivity": 0.7222222222222222,
+            "specificity": 0.3448275862068966,
+            "brier": 0.22972115063513873
+          },
+          "recording_end_agreement": 0.676923076923077
+        },
+        "age_sex": {
+          "early_auroc": 0.592911877394636,
+          "late": {
+            "auroc": 0.592911877394636,
+            "sensitivity": 0.5833333333333334,
+            "specificity": 0.5862068965517241,
+            "brier": 0.24282241546066918
+          },
+          "recording_end_agreement": 1.0
+        }
+      },
+      "contrasts": {
+        "combined_vs_spectrum": {
+          "combined_interval": [
+            0.8390711902113459,
+            0.9733343195266273
+          ],
+          "spectrum_interval": [
+            0.773927089709583,
+            0.9438095238095238
+          ],
+          "delta": 0.04597701149425293,
+          "delta_interval": [
+            -0.0029208249602985835,
+            0.10606060606060597
+          ]
+        }
+      }
+    },
+    "F_vs_C": {
+      "positive": 22,
+      "negative": 29,
+      "models": {
+        "spectrum": {
+          "early_auroc": 0.7758620689655173,
+          "late": {
+            "auroc": 0.8197492163009404,
+            "sensitivity": 0.5454545454545454,
+            "specificity": 0.8620689655172413,
+            "brier": 0.17683153841048618
+          },
+          "recording_end_agreement": 0.8235294117647058
+        },
+        "combined": {
+          "early_auroc": 0.7586206896551725,
+          "late": {
+            "auroc": 0.7852664576802508,
+            "sensitivity": 0.5,
+            "specificity": 0.8620689655172413,
+            "brier": 0.18302886858828074
+          },
+          "recording_end_agreement": 0.7254901960784313
+        },
+        "timing_only": {
+          "early_auroc": 0.5235109717868338,
+          "late": {
+            "auroc": 0.5266457680250783,
+            "sensitivity": 0.36363636363636365,
+            "specificity": 0.5517241379310345,
+            "brier": 0.2554046665747281
+          },
+          "recording_end_agreement": 0.6666666666666666
+        },
+        "age_sex": {
+          "early_auroc": 0.5564263322884012,
+          "late": {
+            "auroc": 0.5564263322884012,
+            "sensitivity": 0.45454545454545453,
+            "specificity": 0.5862068965517241,
+            "brier": 0.24508263582288095
+          },
+          "recording_end_agreement": 1.0
+        }
+      },
+      "contrasts": {
+        "combined_vs_spectrum": {
+          "combined_interval": [
+            0.6506055900621118,
+            0.9032272256728778
+          ],
+          "spectrum_interval": [
+            0.6912187919838781,
+            0.9342348927875244
+          ],
+          "delta": -0.03448275862068961,
+          "delta_interval": [
+            -0.10871395110525549,
+            0.026192041522491355
+          ]
+        }
+      }
+    }
+  }
+}

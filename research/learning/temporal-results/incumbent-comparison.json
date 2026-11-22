@@ -1,0 +1,62 @@
+{
+  "cambridge_to_oslo": {
+    "people": 20,
+    "incumbent": {
+      "auroc": 0.985,
+      "sensitivity": 1.0,
+      "specificity": 0.65,
+      "brier": 0.11296646200026053
+    },
+    "augmented": {
+      "auroc": 0.9750000000000001,
+      "sensitivity": 1.0,
+      "specificity": 0.6,
+      "brier": 0.12363383641541678
+    },
+    "contrast": {
+      "combined_interval": [
+        0.9199375000000001,
+        1.0
+      ],
+      "spectrum_interval": [
+        0.9475,
+        1.0
+      ],
+      "delta": -0.009999999999999898,
+      "delta_interval": [
+        -0.032562499999999966,
+        0.0
+      ]
+    }
+  },
+  "oslo_to_cambridge": {
+    "people": 20,
+    "incumbent": {
+      "auroc": 0.9125000000000001,
+      "sensitivity": 0.5,
+      "specificity": 0.95,
+      "brier": 0.18253369702081498
+    },
+    "augmented": {
+      "auroc": 0.8875000000000001,
+      "sensitivity": 0.45,
+      "specificity": 0.95,
+      "brier": 0.19869440940862154
+    },
+    "contrast": {
+      "combined_interval": [
+        0.81,
+        0.965
+      ],
+      "spectrum_interval": [
+        0.8325,
+        0.9775625
+      ],
+      "delta": -0.025000000000000022,
+      "delta_interval": [
+        -0.0675,
+        0.02749999999999997
+      ]
+    }
+  }
+}
