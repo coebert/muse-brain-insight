@@ -389,6 +389,12 @@ export interface SessionReportInput {
   events: EventRow[];
   /** Extra footer note, e.g. active COEBIS model description. */
   modelNote?: string;
+  /**
+   * True when the evidence does not support a depth statement. The depth
+   * index is then withheld from the export; measured suppression, spectral
+   * and seizure descriptors stay.
+   */
+  descriptorOnly?: boolean;
 }
 
 /** Build the report and return the jsPDF document. */
@@ -402,6 +408,7 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   const s = summarise(rows);
   const episodes = suppressionEpisodes(rows, s.cadence);
   const seizures = events.filter((e) => e.kind === "seizure");
+  const depthWithheld = input.descriptorOnly === true;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -433,6 +440,14 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
     M + 11,
     8,
   );
+  if (depthWithheld) {
+    body(
+      "Depth index withheld: experimental research descriptor only — not a clinical depth measurement. Measured suppression, spectral and seizure descriptors are reported.",
+      M,
+      M + 15.5,
+      7.5,
+    );
+  }
 
   const started = session.started_at ?? session.created_at ?? null;
   const meta: [string, string][] = [
@@ -448,7 +463,7 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
     ["Ended", session.ended_at ? new Date(session.ended_at).toLocaleString() : "—"],
     ["Monitored time", formatClock(s.duration)],
   ];
-  let y = M + 20;
+  let y = M + (depthWithheld ? 24 : 20);
   const colW = contentW / 3;
   meta.forEach(([label, value], i) => {
     const x = M + (i % 3) * colW;
@@ -473,8 +488,22 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
         : `${formatDuration(s.suppressedSeconds)} (${(s.suppressedFraction * 100).toFixed(1)} % of case)`,
     ],
     ["Suppression episodes", String(episodes.length)],
-    ["Mean depth index", s.meanDepth == null ? "—" : s.meanDepth.toFixed(0)],
-    ["Lowest depth index", s.minDepth == null ? "—" : s.minDepth.toFixed(0)],
+    [
+      "Mean depth index",
+      depthWithheld
+        ? "Withheld (research descriptor only)"
+        : s.meanDepth == null
+          ? "—"
+          : s.meanDepth.toFixed(0),
+    ],
+    [
+      "Lowest depth index",
+      depthWithheld
+        ? "Withheld (research descriptor only)"
+        : s.minDepth == null
+          ? "—"
+          : s.minDepth.toFixed(0),
+    ],
     ["Mean SEF95", s.meanSef == null ? "—" : `${s.meanSef.toFixed(1)} Hz`],
     ["Seizure detections", `${seizures.length} (peak score ${s.maxSeizure?.toFixed(2) ?? "—"})`],
   ];

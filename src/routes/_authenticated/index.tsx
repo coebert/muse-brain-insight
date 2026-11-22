@@ -221,6 +221,7 @@ function Monitor() {
     uncertainty,
     srTone,
     seizureAlert,
+    descriptor,
     sessionStartedAtMs,
     usedCaseCodes,
     dsaMarkerRail,
@@ -906,18 +907,24 @@ function Monitor() {
                 onChange={setBisReadings}
                 running={caseRunning}
                 elapsed={monitor.elapsed}
-                depthIndex={derived.live.depthIndex}
+                depthIndex={descriptor.descriptorOnly ? null : derived.live.depthIndex}
                 suppressionRatio={derived.live.suppressionRatio}
                 sef95={derived.live.sef95}
-                trend={monitor.epochs.map((e) => ({ t: e.t, index: e.depth?.index ?? null }))}
-                coebisSeries={monitor.epochs.map((e) => e.depth?.coebis ?? null)}
+                trend={
+                  descriptor.descriptorOnly
+                    ? []
+                    : monitor.epochs.map((e) => ({ t: e.t, index: e.depth?.index ?? null }))
+                }
+                coebisSeries={
+                  descriptor.descriptorOnly ? [] : monitor.epochs.map((e) => e.depth?.coebis ?? null)
+                }
                 onMark={addMarker}
               />
               {/* Tiered patient-adjusted COEBIS beside the monitor's own number. */}
               <CoebisVsBisPanel
                 epochs={monitor.epochs}
                 readings={bisReadings}
-                openIbis={latest?.depth.index ?? null}
+                openIbis={descriptor.descriptorOnly ? null : (latest?.depth.index ?? null)}
                 model={coebisModel}
                 covariates={depthTargetInputs}
                 entropy={latest?.depth.entropy ?? null}
@@ -976,7 +983,7 @@ function Monitor() {
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {/* Full derivation of the COEBIS number on screen. */}
                 <CoebisExplainPanel
-                  openIbis={latest?.depth.index ?? null}
+                  openIbis={descriptor.descriptorOnly ? null : (latest?.depth.index ?? null)}
                   covariates={depthTargetInputs}
                   adjunct={latest?.depth.adjunct ?? null}
                   ketamine={latest?.depth.ketamine ?? null}
@@ -995,11 +1002,12 @@ function Monitor() {
               seizureAlert={seizureAlert}
               icuMode={icuMode}
               depthWindow={depthWindow}
+              descriptorOnly={descriptor.descriptorOnly}
             />
 
             </div>
 
-            {caseState !== "idle" ? (
+            {caseState !== "idle" && !descriptor.descriptorOnly ? (
               <CoebisTrend
                 epochs={monitor.epochs}
                 elapsed={monitor.elapsed}
@@ -1014,8 +1022,9 @@ function Monitor() {
 
             <DepthWindowPanel
               depthWindow={depthWindow}
-              depthIndex={latest?.depth.index}
+              depthIndex={descriptor.descriptorOnly ? null : latest?.depth.index}
               targetInputs={depthTargetInputs}
+              descriptorOnly={descriptor.descriptorOnly}
             />
 
             {caseState !== "idle" ? (

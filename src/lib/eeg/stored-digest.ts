@@ -34,6 +34,11 @@ export interface StoredSessionMeta {
   notes: string | null;
   /** Clinician's free-text case summary, if one was written. */
   caseSummary?: string | null;
+  /**
+   * Independent blockade/research context, when one exists. Absent means the
+   * descriptor policy fails closed and withholds depth statements.
+   */
+  researchContext?: unknown;
   durationSeconds: number;
 }
 
@@ -166,6 +171,9 @@ export function buildStoredDigest(
   return {
     source: "saved_session",
     mode: meta.context,
+    // A stored session carries no blockade record of its own, so this is null
+    // unless an independent context was attached. The policy fails closed.
+    researchContext: meta.researchContext ?? null,
     durationSeconds: Math.round(meta.durationSeconds),
     epochCount: rows.length,
     epochCadenceSeconds: round(cadence, 2),

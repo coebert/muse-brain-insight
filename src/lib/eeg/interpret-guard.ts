@@ -21,6 +21,7 @@
 
 import {
   DESCRIPTOR_ONLY_TEMPLATES,
+  RESEARCH_SCORE_LABEL,
   RESEARCH_SCORE_NOTE,
   descriptorOnlyText,
   descriptorPolicy,
@@ -69,6 +70,8 @@ export interface GuardInput<A extends GuardAlert = GuardAlert> {
   descriptorReason?: string;
   /** Wording that must travel with any experimental score in an export. */
   researchScoreNote?: string;
+  /** Short label for an experimental score; never a clinical depth label. */
+  researchScoreLabel?: string;
 }
 
 export interface GuardReport {
@@ -259,6 +262,43 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
   const pool = digestNumbers(digest);
   const policy = descriptorPolicy(digest);
 
+  /*
+   * Descriptor-only is a deterministic structured output, not a sentence
+   * filter. Every free-text field is replaced with a fixed template and every
+   * alert is dropped, so a model cannot phrase a patient-state claim in a way
+   * the regular expressions miss. The same shape is applied to cached results
+   * by sanitizeCachedInterpretation.
+   */
+  if (policy.descriptorOnly) {
+    const output: T = {
+      ...parsed,
+      headline: DESCRIPTOR_ONLY_TEMPLATES.headline,
+      alerts: [],
+      depthOfAnaesthesia: DESCRIPTOR_ONLY_TEMPLATES.depth,
+      burstSuppression: DESCRIPTOR_ONLY_TEMPLATES.measured,
+      seizureRisk: DESCRIPTOR_ONLY_TEMPLATES.measured,
+      markerCorrelations: [],
+      pathologyIndicators: [],
+      recommendedChecks: [DESCRIPTOR_ONLY_TEMPLATES.recommendation],
+      limitations: [DESCRIPTOR_ONLY_TEMPLATES.awareness],
+      dataQualityCaveat: "",
+      descriptorOnly: true,
+      descriptorContext: policy.context,
+      descriptorReason: policy.reason,
+      researchScoreNote: RESEARCH_SCORE_NOTE,
+      researchScoreLabel: RESEARCH_SCORE_LABEL,
+    };
+    return {
+      output,
+      report: {
+        removedStatements: 1,
+        droppedAlerts: Array.isArray(parsed.alerts) ? parsed.alerts.length : 0,
+        droppedEvidence: 0,
+        rules: ["descriptor-only"],
+      },
+    };
+  }
+
   const clean = (text: unknown, fallback: string, allowAwarenessLimitation = false): string => {
     if (typeof text !== "string") return fallback;
     const kept: string[] = [];
@@ -407,6 +447,7 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
     descriptorContext: policy.context,
     descriptorReason: policy.reason,
     researchScoreNote: RESEARCH_SCORE_NOTE,
+    researchScoreLabel: RESEARCH_SCORE_LABEL,
   };
   if (policy.descriptorOnly) rules.add("descriptor-only");
   if (output.pathologyIndicators.length) rules.add("pathology-low-confidence");
@@ -415,4 +456,36 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
     output,
     report: { removedStatements, droppedAlerts, droppedEvidence, rules: [...rules].sort() },
   };
+}
+
+/**
+ * Last line of defence for a stored or cached interpretation.
+ *
+ * A result is trusted only when it explicitly says descriptorOnly === false,
+ * i.e. it was produced against a fully evidenced context. Anything else —
+ * including a record written before this field existed — is replaced with the
+ * deterministic descriptor-only shape before it can be rendered.
+ */
+export function sanitizeCachedInterpretation<T extends Partial<GuardInput>>(result: T): T {
+  if (result.descriptorOnly === false) return result;
+  return {
+    ...result,
+    headline: DESCRIPTOR_ONLY_TEMPLATES.headline,
+    alerts: [],
+    depthOfAnaesthesia: DESCRIPTOR_ONLY_TEMPLATES.depth,
+    burstSuppression: DESCRIPTOR_ONLY_TEMPLATES.measured,
+    seizureRisk: DESCRIPTOR_ONLY_TEMPLATES.measured,
+    markerCorrelations: [],
+    pathologyIndicators: [],
+    recommendedChecks: [DESCRIPTOR_ONLY_TEMPLATES.recommendation],
+    limitations: [DESCRIPTOR_ONLY_TEMPLATES.awareness],
+    dataQualityCaveat: "",
+    descriptorOnly: true,
+    descriptorContext: result.descriptorContext ?? "missing",
+    descriptorReason:
+      result.descriptorReason ??
+      "cached interpretation without a documented blockade-absence context",
+    researchScoreNote: RESEARCH_SCORE_NOTE,
+    researchScoreLabel: RESEARCH_SCORE_LABEL,
+  } as T;
 }

@@ -8,9 +8,36 @@ import {
   impliesDepthOrSedation,
   sanitizeDescriptorOnlyExport,
 } from "./descriptor-only";
-import { guardInterpretation, type GuardAlert, type GuardInput } from "./interpret-guard";
+import {
+  guardInterpretation,
+  sanitizeCachedInterpretation,
+  type GuardAlert,
+  type GuardInput,
+} from "./interpret-guard";
+
+const eligibleContext = {
+  blockade: "reported-absent",
+  caseId: "case-1",
+  acquiredAt: "2026-11-21T12:00:00Z",
+  reference: "mastoid",
+  absenceDocumented: true,
+  montageCompatible: true,
+  referenceCompatible: true,
+  calibrationCompatible: true,
+  coverageAdequate: true,
+  status: "research score",
+};
 
 const digest = {
+  durationSeconds: 1800,
+  researchContext: eligibleContext,
+  suppression: { available: true, meanRatioPct: 38.2, maxRatioPct: 61.4 },
+  spectral: { meanSef95Hz: 9.4 },
+  quality: { usableFraction: 0.92 },
+  depthIndex: { reliableFraction: 0.85, latestIsReliable: true, meanWhenReliable: 31 },
+};
+
+const noContextDigest = {
   durationSeconds: 1800,
   suppression: { available: true, meanRatioPct: 38.2, maxRatioPct: 61.4 },
   spectral: { meanSef95Hz: 9.4 },
@@ -48,6 +75,119 @@ function base(over: Partial<GuardInput> = {}): GuardInput {
   };
 }
 
+describe("fail-closed context resolution", () => {
+  it("withholds every absent or unknown context", () => {
+    for (const digest of [
+      {},
+      { durationSeconds: 1800 },
+      { researchContext: null },
+      { blockade_context: "documented" },
+      { blockade_context: "suspected" },
+      { blockade_context: "unknown" },
+      { researchContext: "reported-absent" },
+      { researchContext: { blockade: "reported-absent" } },
+    ]) {
+      const policy = descriptorPolicy(digest);
+      expect(policy.descriptorOnly, JSON.stringify(digest)).toBe(true);
+      expect(policy.scoreEligible).toBe(false);
+    }
+  });
+
+  it("treats disagreeing camelCase and snake_case aliases as a conflict", () => {
+    const policy = descriptorPolicy({
+      ...digest,
+      researchContext: { ...eligibleContext, blockade: "reported-absent" },
+      blockade_context: "documented",
+    });
+    expect(policy.descriptorOnly).toBe(true);
+    expect(policy.context).toBe("conflicting");
+  });
+
+  it("rejects non-boolean safety flags and unqualified references", () => {
+    expect(
+      descriptorPolicy({
+        ...digest,
+        researchContext: { ...eligibleContext, absenceDocumented: "yes" },
+      }).descriptorOnly,
+    ).toBe(true);
+    expect(
+      descriptorPolicy({
+        ...digest,
+        researchContext: { ...eligibleContext, reference: "arbitrary" },
+      }).descriptorOnly,
+    ).toBe(true);
+  });
+
+  it("requires acquisition identity, time and full coverage", () => {
+    expect(
+      descriptorPolicy({ ...digest, researchContext: { ...eligibleContext, caseId: "" } })
+        .descriptorOnly,
+    ).toBe(true);
+    expect(
+      descriptorPolicy({ ...digest, researchContext: { ...eligibleContext, acquiredAt: "" } })
+        .descriptorOnly,
+    ).toBe(true);
+    expect(
+      descriptorPolicy({
+        ...digest,
+        researchContext: {
+          ...eligibleContext,
+          intervals: [
+            {
+              start: 0,
+              end: 1,
+              absenceDocumented: true,
+              reference: "mastoid",
+              calibration: "uV",
+              recordedAt: "2026-11-21T10:00:00Z",
+            },
+          ],
+        },
+      }).descriptorOnly,
+    ).toBe(true);
+  });
+
+  it("rejects a caller-increased evidence lifetime", () => {
+    expect(
+      descriptorPolicy({
+        ...digest,
+        researchContext: { ...eligibleContext, maxContextAgeHours: 240 },
+      }).descriptorOnly,
+    ).toBe(true);
+  });
+
+  it("accepts a fully evidenced reported-absent context as the positive control", () => {
+    const policy = descriptorPolicy(digest);
+    expect(policy.descriptorOnly).toBe(false);
+    expect(policy.scoreEligible).toBe(true);
+    expect(policy.context).toBe("reported-absent");
+    expect(policy.researchOnly).toBe(true);
+  });
+
+  it("accepts a fully evidenced interval context", () => {
+    const policy = descriptorPolicy({
+      ...digest,
+      researchContext: {
+        blockade: "reported-absent",
+        caseId: "case-1",
+        acquiredAt: "2026-11-21T12:00:00Z",
+        reference: "mastoid",
+        intervals: [
+          {
+            start: 0,
+            end: 1800,
+            absenceDocumented: true,
+            reference: "mastoid",
+            calibration: "uV",
+            recordedAt: "2026-11-21T10:00:00Z",
+          },
+        ],
+      },
+    });
+    expect(policy.descriptorOnly).toBe(false);
+  });
+});
+
 describe("depth and sedation assertions", () => {
   it.each([
     "The patient is unconscious.",
@@ -73,8 +213,34 @@ describe("depth and sedation assertions", () => {
     expect(impliesDepthOrSedation(sentence)).toBe(false);
   });
 
-  it("removes patient-state claims even without a research context", () => {
+  it("uses deterministic templates for every free-text field without a context", () => {
     const { output, report } = guardInterpretation(
+      base({
+        headline: "They appear to be sleeping peacefully.",
+        depthOfAnaesthesia: "Consistent with deepening anaesthesia.",
+        burstSuppression: "The patient is adequately sedated.",
+        seizureRisk: "Consistent with deepening anaesthesia.",
+        alerts: [alert({ title: "They appear to be sleeping peacefully" })],
+      }),
+      noContextDigest,
+    );
+    expect(output.descriptorOnly).toBe(true);
+    expect(output.descriptorContext).toBe("missing");
+    expect(output.headline).toBe(DESCRIPTOR_ONLY_TEMPLATES.headline);
+    expect(output.depthOfAnaesthesia).toBe(DESCRIPTOR_ONLY_TEMPLATES.depth);
+    expect(output.burstSuppression).toBe(DESCRIPTOR_ONLY_TEMPLATES.measured);
+    expect(output.seizureRisk).toBe(DESCRIPTOR_ONLY_TEMPLATES.measured);
+    expect(output.alerts).toHaveLength(0);
+    expect(output.recommendedChecks).toEqual([DESCRIPTOR_ONLY_TEMPLATES.recommendation]);
+    expect(output.limitations).toContain(DESCRIPTOR_ONLY_TEMPLATES.awareness);
+    expect(output.researchScoreNote).toBe(DESCRIPTOR_ONLY_TEMPLATES.exportNote);
+    const text = JSON.stringify(output);
+    expect(text).not.toMatch(/sleeping peacefully|deepening anaesthesia|adequately sedated/i);
+    expect(report.rules).toContain("descriptor-only");
+  });
+
+  it("still strips patient-state claims under an eligible context", () => {
+    const { output } = guardInterpretation(
       base({
         headline: "The patient is unconscious.",
         depthOfAnaesthesia: "The patient is adequately sedated.",
@@ -85,87 +251,37 @@ describe("depth and sedation assertions", () => {
     expect(output.headline).not.toMatch(/unconscious/i);
     expect(output.depthOfAnaesthesia).not.toMatch(/adequately sedated/i);
     expect(output.alerts[0]!.title).not.toMatch(/unconscious/i);
-    expect(report.rules).toContain("descriptor-only");
   });
 
-  it("does not restore the assertion after an unreliable-depth warning", () => {
-    const unreliable = {
-      ...digest,
-      depthIndex: { reliableFraction: 0.2, latestIsReliable: false },
-    };
-    const { output } = guardInterpretation(
-      base({ depthOfAnaesthesia: "The patient is unconscious." }),
-      unreliable,
-    );
-    expect(output.depthOfAnaesthesia).toMatch(/unreliable/i);
-    expect(output.depthOfAnaesthesia).not.toMatch(/unconscious/i);
-  });
-});
-
-describe("withheld context", () => {
-  const withheld = { ...digest, blockadeContext: null };
-
-  it("replaces headline, depth, alerts and recommendations with fixed templates", () => {
-    const { output, report } = guardInterpretation(
-      base({
-        headline: "The patient is unconscious.",
-        depthOfAnaesthesia: "The patient is adequately sedated.",
-        alerts: [alert({ category: "excessive_depth" })],
-        recommendedChecks: ["Confirm the patient is unconscious.", "Check electrode contact."],
-      }),
-      withheld,
-    );
-    expect(output.descriptorOnly).toBe(true);
-    expect(output.descriptorContext).toBe("missing");
-    expect(output.headline).toBe(DESCRIPTOR_ONLY_TEMPLATES.headline);
-    expect(output.depthOfAnaesthesia).toBe(DESCRIPTOR_ONLY_TEMPLATES.depth);
-    expect(output.alerts).toHaveLength(0);
-    expect(output.recommendedChecks).toEqual([DESCRIPTOR_ONLY_TEMPLATES.recommendation]);
-    expect(output.limitations).toContain(DESCRIPTOR_ONLY_TEMPLATES.awareness);
+  it("labels every experimental score as a research descriptor", () => {
+    expect(RESEARCH_SCORE_LABEL).toMatch(/research/i);
+    expect(RESEARCH_SCORE_LABEL).not.toMatch(/depth|sedat/i);
+    const { output } = guardInterpretation(base(), digest);
+    expect(output.researchScoreLabel).toBe(RESEARCH_SCORE_LABEL);
     expect(output.researchScoreNote).toBe(DESCRIPTOR_ONLY_TEMPLATES.exportNote);
-    expect(report.rules).toContain("descriptor-only");
-  });
-
-  it("treats documented or suspected blockade as descriptor-only", () => {
-    for (const blockade of ["documented", "suspected"]) {
-      const policy = descriptorPolicy({
-        ...digest,
-        blockadeContext: { blockade, absenceDocumented: false },
-      });
-      expect(policy.descriptorOnly).toBe(true);
-      expect(policy.context).toBe(blockade);
-    }
-  });
-
-  it("only accepts a fully evidenced reported-absent context", () => {
-    const supported = descriptorPolicy({
-      ...digest,
-      researchContext: {
-        blockade: "reported-absent",
-        absenceDocumented: true,
-        montageCompatible: true,
-        referenceCompatible: true,
-        calibrationCompatible: true,
-        coverageAdequate: true,
-        status: "research score",
-      },
-    });
-    expect(supported.descriptorOnly).toBe(false);
-    const bare = descriptorPolicy({ ...digest, researchContext: "reported-absent" });
-    expect(bare.descriptorOnly).toBe(true);
-  });
-
-  it("leaves the legacy depth index alone when no research context is attached", () => {
-    const { output } = guardInterpretation(
-      base({ depthOfAnaesthesia: "Depth index mean 31, indicating deepening anaesthesia." }),
-      digest,
-    );
-    expect(output.descriptorOnly).toBe(false);
-    expect(output.depthOfAnaesthesia).toMatch(/Depth index mean 31/);
   });
 });
 
-describe("exports and clinical surfaces", () => {
+describe("cached and exported text", () => {
+  it("sanitises a cached result that does not explicitly say descriptorOnly:false", () => {
+    const cached = {
+      headline: "They appear to be sleeping peacefully.",
+      depthOfAnaesthesia: "Consistent with deepening anaesthesia.",
+      alerts: [alert()],
+    } as unknown as GuardInput;
+    const clean = sanitizeCachedInterpretation(cached);
+    expect(clean.descriptorOnly).toBe(true);
+    expect(clean.headline).toBe(DESCRIPTOR_ONLY_TEMPLATES.headline);
+    expect(clean.depthOfAnaesthesia).toBe(DESCRIPTOR_ONLY_TEMPLATES.depth);
+    expect(clean.alerts).toHaveLength(0);
+    expect(JSON.stringify(clean)).not.toMatch(/sleeping peacefully|deepening anaesthesia/i);
+  });
+
+  it("keeps an eligible cached result", () => {
+    const eligible = base({ descriptorOnly: false });
+    expect(sanitizeCachedInterpretation(eligible)).toBe(eligible);
+  });
+
   it("sanitises stale cached prose before export", () => {
     const stale = {
       headline: "The patient is unconscious.",
@@ -176,11 +292,6 @@ describe("exports and clinical surfaces", () => {
     const text = JSON.stringify(clean);
     expect(text).not.toMatch(/unconscious|adequately sedated|depth is adequate|sedation is sufficient/i);
     expect(text).toContain(DESCRIPTOR_ONLY_TEMPLATES.exportNote);
-  });
-
-  it("labels an experimental score as a research descriptor, not a depth", () => {
-    expect(RESEARCH_SCORE_LABEL).toMatch(/research/i);
-    expect(RESEARCH_SCORE_LABEL).not.toMatch(/depth|sedat/i);
   });
 
   it("drops unsupported prose from a descriptor-only string", () => {

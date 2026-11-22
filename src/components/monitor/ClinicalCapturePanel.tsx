@@ -24,6 +24,7 @@ import {
   RESPONSE_METHOD_LABEL,
   ROUTES,
   ROUTE_LABEL,
+  USABLE_RESPONSE_METHODS,
   captureGaps,
   describeObservation,
   sortObservations,
@@ -94,10 +95,13 @@ export function ClinicalCapturePanel({
   const [dose, setDose] = useState("");
   const [doseUnit, setDoseUnit] = useState<string>("mg");
   const [route, setRoute] = useState<string>("iv-bolus");
-  // A stimulus response is only usable when the motor pathway was assessable
-  // and the eliciting channel is named. Both travel with the observation.
-  const [motorAssessable, setMotorAssessable] = useState(true);
-  const [responseMethod, setResponseMethod] = useState<ResponseMethod>("clinical_observation");
+  // A response is only usable when the motor pathway was assessable and the
+  // eliciting channel is named. Both travel with every score and observation.
+  // They start unassessed/unknown, so nothing is assumed about the patient.
+  const [motorAssessable, setMotorAssessable] = useState<boolean | null>(null);
+  const [responseMethod, setResponseMethod] = useState<ResponseMethod>("unknown");
+  const responseUsable =
+    motorAssessable === true && USABLE_RESPONSE_METHODS.has(responseMethod);
 
   const active = running && !testing && Boolean(caseCode.trim());
 
@@ -109,6 +113,10 @@ export function ClinicalCapturePanel({
   // Reload whenever the case identity changes, so a second case never shows
   // the first one's entries.
   useEffect(() => {
+    // A new case starts unassessed: the previous case's motor status must
+    // never be carried across.
+    setMotorAssessable(null);
+    setResponseMethod("unknown");
     if (!caseCode.trim() || testing) {
       setRows([]);
       return;
@@ -144,11 +152,19 @@ export function ClinicalCapturePanel({
   );
 
   async function scoreTapped(score: number) {
+    if (!responseUsable) {
+      toast.error(
+        "Say whether the motor response was assessable and choose a usable channel first.",
+      );
+      return;
+    }
     const saved = await file({
       kind: "responsiveness",
       atSeconds: Math.round(elapsed),
       moaas: score,
       stimulus: STIMULUS_FOR_SCORE[score]!,
+      motorAssessable,
+      responseMethod,
     });
     if (saved) toast.success(`MOAA/S ${score} recorded at ${formatClock(elapsed)}`);
   }
@@ -190,6 +206,12 @@ export function ClinicalCapturePanel({
    * pair and a later fit can read both sides of the moment.
    */
   async function stimulusResponseMarked(moved: boolean) {
+    if (!responseUsable) {
+      toast.error(
+        "Say whether the motor response was assessable and choose a usable channel first.",
+      );
+      return;
+    }
     const at = Math.round(elapsed);
     const stimulus = await file({ kind: "event", atSeconds: at, eventType: "noxious_stimulus" });
     if (!stimulus) return;
@@ -248,9 +270,13 @@ export function ClinicalCapturePanel({
               <button
                 key={step.score}
                 type="button"
-                disabled={!active || busy}
+                disabled={!active || busy || !responseUsable}
                 onClick={() => void scoreTapped(step.score)}
-                title={step.detail}
+                title={
+                  responseUsable
+                    ? step.detail
+                    : `${step.detail} — first say whether the motor response was assessable and choose a usable channel`
+                }
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center rounded-lg border bg-background/40 px-1 py-1.5 transition-colors hover:bg-background disabled:opacity-40",
                   TONE_FOR_SCORE[step.score],
@@ -328,15 +354,23 @@ export function ClinicalCapturePanel({
         <div>
           <p className="instrument-label">Response to noxious stimulus</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs text-foreground">
-              <input
-                type="checkbox"
-                checked={motorAssessable}
-                onChange={(event) => setMotorAssessable(event.target.checked)}
-                className="size-3.5 accent-signal"
-              />
-              Motor response assessable (no relaxant)
-            </label>
+            <Select
+              value={
+                motorAssessable === null ? "unassessed" : motorAssessable ? "assessable" : "blocked"
+              }
+              onValueChange={(value) =>
+                setMotorAssessable(value === "unassessed" ? null : value === "assessable")
+              }
+            >
+              <SelectTrigger className="h-8 w-[210px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassessed">Motor response: not assessed</SelectItem>
+                <SelectItem value="assessable">Motor response assessable</SelectItem>
+                <SelectItem value="blocked">Motor pathway blocked (relaxant)</SelectItem>
+              </SelectContent>
+            </Select>
             <Select
               value={responseMethod}
               onValueChange={(value) => setResponseMethod(value as ResponseMethod)}
@@ -356,7 +390,7 @@ export function ClinicalCapturePanel({
           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
             <button
               type="button"
-              disabled={!active || busy}
+              disabled={!active || busy || !responseUsable}
               onClick={() => void stimulusResponseMarked(true)}
               title="A noxious stimulus was applied and the patient moved — the moment and the movement are stamped together"
               className="min-h-14 rounded-lg border border-caution/60 bg-background/40 px-3 text-sm font-medium text-caution transition-colors hover:bg-background disabled:opacity-40"
@@ -365,7 +399,7 @@ export function ClinicalCapturePanel({
             </button>
             <button
               type="button"
-              disabled={!active || busy}
+              disabled={!active || busy || !responseUsable}
               onClick={() => void stimulusResponseMarked(false)}
               title="A noxious stimulus was applied and the patient did not move — recorded as an observation, not as depth or sedation adequacy"
               className="min-h-14 rounded-lg border border-border bg-background/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-background disabled:opacity-40"
@@ -374,9 +408,11 @@ export function ClinicalCapturePanel({
             </button>
           </div>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            A paralysed patient cannot move, so say whether the motor response was assessable
-            and how it was elicited. No movement is stored as an observation only; it is not a
-            depth or sedation-adequacy label.
+            A paralysed patient cannot move, so scores and observations stay disabled until you
+            say whether the motor response was assessable and how it was elicited. Only a
+            verified command response (squeeze / nod) drives a responsiveness transition; a
+            reflex or EMG alone does not. No movement is stored as an observation only; it is
+            not a depth or sedation-adequacy label.
           </p>
         </div>
 

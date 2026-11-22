@@ -85,6 +85,9 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
     const drug = draft.kind === "drug" ? draft : null;
     const state = draft.kind === "state" ? draft : null;
     const phase = draft.kind === "phase" ? draft : null;
+    const responseEvent =
+      draft.kind === "event" &&
+      (draft.eventType === "movement_response" || draft.eventType === "still_response");
     const payload = {
       user_id: context.userId,
       case_code: caseCode,
@@ -99,14 +102,17 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
       dose_unit: drug && drug.dose != null ? (drug.doseUnit ?? null) : null,
       route: drug ? (drug.route ?? null) : null,
       event_type: draft.kind === "event" ? draft.eventType : null,
-      motor_assessable:
-        draft.kind === "event" &&
-        (draft.eventType === "movement_response" || draft.eventType === "still_response")
+      // Assessability and method travel with both responsiveness scores and
+      // stimulus-response events, and default to null (unassessed) when the
+      // caller did not supply them.
+      motor_assessable: responsiveness
+        ? (responsiveness.motorAssessable ?? null)
+        : draft.kind === "event" && responseEvent
           ? (draft.motorAssessable ?? null)
           : null,
-      response_method:
-        draft.kind === "event" &&
-        (draft.eventType === "movement_response" || draft.eventType === "still_response")
+      response_method: responsiveness
+        ? (responsiveness.responseMethod ?? null)
+        : draft.kind === "event" && responseEvent
           ? (draft.responseMethod ?? null)
           : null,
       state_label: state ? state.stateLabel : null,

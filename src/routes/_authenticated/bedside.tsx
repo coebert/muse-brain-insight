@@ -115,6 +115,7 @@ function BedsidePage() {
     derived,
     latest,
     summary,
+    descriptor,
     alarms,
     depthWindow,
     startCase,
@@ -141,13 +142,18 @@ function BedsidePage() {
   const unit = calibrated ? "µV" : "a.u.";
   const { rms, peak } = useAmplitude(monitor.waveformStore);
 
-  const index = derived.live.depthIndex;
-  const state = latest?.depth.state ?? null;
+  // The experimental index is a research descriptor, not a clinical depth.
+  // Without independently documented blockade absence it is withheld, together
+  // with its target band, trend and alerts. Measured suppression and signal
+  // quality stay available.
+  const depthWithheld = descriptor.descriptorOnly;
+  const index = depthWithheld ? null : derived.live.depthIndex;
+  const state = depthWithheld ? null : (latest?.depth.state ?? null);
   const tone = state ? depthTone(state) : "default";
   const sr = derived.live.suppressionRatio;
-  const trend = monitor.epochs.map((e) => e.depth?.index ?? null);
+  const trend = depthWithheld ? [] : monitor.epochs.map((e) => e.depth?.index ?? null);
   const band: [number, number] = [depthWindow.prefs.low, depthWindow.prefs.high];
-  const inBand = index != null && index >= band[0] && index <= band[1];
+  const inBand = !depthWithheld && index != null && index >= band[0] && index <= band[1];
 
   return (
     <div className={cn("min-h-dvh bg-background transition-[filter]", dim && "brightness-[0.55]")}>
@@ -218,7 +224,7 @@ function BedsidePage() {
         {/* The number, as the one dominant object on the screen. */}
         <section className="signal-halo relative rounded-xl border border-border bg-card/40 px-4 py-6 text-center">
           <p className="instrument-label">
-            Depth index · target {band[0]}–{band[1]}
+            {depthWithheld ? "Depth index · withheld" : `Depth index · target ${band[0]}–${band[1]}`}
           </p>
           <p
             className={cn(
@@ -235,21 +241,27 @@ function BedsidePage() {
             {index == null ? "—" : Math.round(index)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {state ? DEPTH_STATE_LABEL[state] : "Waiting for signal"}
+            {depthWithheld
+              ? "Research descriptor only — no supported depth or awareness statement. Suppression, amplitude and signal quality remain measured."
+              : state
+                ? DEPTH_STATE_LABEL[state]
+                : "Waiting for signal"}
             {index != null && !inBand ? " · outside target" : ""}
           </p>
-          <div className="mt-4">
-            <TrendLine
-              values={trend}
-              min={0}
-              max={100}
-              color="var(--signal)"
-              band={band}
-              height={78}
-              unit=""
-              precision={0}
-            />
-          </div>
+          {!depthWithheld ? (
+            <div className="mt-4">
+              <TrendLine
+                values={trend}
+                min={0}
+                max={100}
+                color="var(--signal)"
+                band={band}
+                height={78}
+                unit=""
+                precision={0}
+              />
+            </div>
+          ) : null}
         </section>
 
         {/* Instrument tiles: the three readings that qualify the number. */}

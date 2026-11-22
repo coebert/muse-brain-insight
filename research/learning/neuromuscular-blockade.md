@@ -2,7 +2,7 @@
 
 MindGuard research analysis, 21 November 2026
 
-A depth monitor must cope with a conscious person losing skeletal muscle activity. We evaluated a documented awake-paralysed condition directly. In participant-held-out testing, the model still labelled one of six awake, paralysed volunteers as sedated. The research replay now abstains from interpreting depth when given documented or suspected blockade. These models have no established clinical awareness sensitivity.
+A depth monitor must cope with a conscious person losing skeletal muscle activity. We evaluated a documented awake-paralysed condition directly. In participant-held-out testing, the model still labelled one of six awake, paralysed volunteers as sedated. The research replay fails closed: documented, suspected, unknown, omitted, conflicting, mixed or expired blockade evidence — and any recording without matched acquisition identity, acquisition time and full documented coverage — returns a non-scoring result. These models have no established clinical awareness sensitivity, and no score they produce is a clinical depth.
 
 ## Training on published awake-paralysed measurements
 
@@ -47,7 +47,7 @@ A [draft investigator request](blockade-data-access.md) covers both research gro
 
 ## Replay and verification
 
-The propofol research replay accepts an independently supplied blockade context. With documented or suspected blockade it returns interpretable spectral descriptors and an explicit abstention. All contexts leave consciousness inference unset. It never infers drug administration from EEG. Published alpha models accept the study's frontal spectral feature only; applying their coefficients to arbitrary headband alpha power is unsupported.
+The propofol research replay accepts an independently supplied blockade context. Its default is descriptor-only and it never loads model weights. A score is produced only with the explicit `--allow-research-score` opt-in *and* a context that matches the recording's acquisition case identity and time, documents blockade absence for the whole recording with a qualified reference and physical microvolt calibration, and covers every recorded segment. Multiple segments need real acquisition offsets; without them the replay abstains rather than assuming contiguity. Embedded recording metadata never overrides absent evidence, and a recording labelled documented, suspected or unknown is withheld even when the sidecar claims absence. Documented, suspected, unknown, omitted, conflicting, mixed, expired or insufficiently evidenced contexts all return a structured non-scoring result with the resolved context and the low-band descriptors that are still available. All results leave consciousness inference unset, and every eligible score carries research-only provenance. It never infers drug administration from EEG. Published alpha models accept the study's frontal spectral feature only; applying their coefficients to arbitrary headband alpha power is unsupported.
 
 ```sh
 cd research/learning
@@ -55,7 +55,13 @@ python awake_blockade_fit.py .
 python blockade_challenge.py .
 python rocuronium_waveforms.py .
 python check_blockade.py
+# Default: descriptor-only, no weights loaded, no depth statement.
+python replay.py propofol frontal session.npz
+# Withheld: documented exposure.
 python replay.py propofol frontal session.npz --blockade documented
+# Research score: only with matched identity/time, full documented absence
+# and an explicit offline opt-in.
+python replay.py propofol frontal session.npz --context context.json --allow-research-score
 ```
 
 For the other required cohort caches, see the [waveform training report](README.md). Model results and source hashes are included with the [research artifacts](results/SHA256SUMS). The public volunteer images were used locally for analysis and are linked at source.

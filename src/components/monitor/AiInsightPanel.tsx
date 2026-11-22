@@ -18,6 +18,8 @@ import { AlertActionLog, AlertActions } from "@/components/monitor/AlertActions"
 import { AlertEvidencePanel } from "@/components/monitor/AlertEvidencePanel";
 import type { ClinicalAlert, Interpretation } from "@/lib/eeg/interpret.functions";
 import { tuningSummary } from "@/lib/eeg/alert-tuning";
+import { RESEARCH_SCORE_LABEL, RESEARCH_SCORE_NOTE } from "@/lib/eeg/descriptor-only";
+import { sanitizeCachedInterpretation } from "@/lib/eeg/interpret-guard";
 
 const CONFIDENCE_TONE: Record<string, string> = {
   high: "bg-critical/15 text-critical",
@@ -67,7 +69,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export function AiInsightPanel({
-  result,
+  result: rawResult,
   loading,
   error,
   epochCount,
@@ -80,6 +82,10 @@ export function AiInsightPanel({
   feedbackContext,
 }: Props) {
   const enoughData = epochCount >= 30;
+  // A cached result written before the policy changed (or without an explicit
+  // eligible context) is replaced with the deterministic descriptor-only
+  // shape before any of its prose can reach the screen.
+  const result = rawResult ? sanitizeCachedInterpretation(rawResult) : null;
 
   return (
     <section className="panel overflow-hidden">
@@ -147,6 +153,13 @@ export function AiInsightPanel({
                 ? ` The server safety check removed ${result.guard.removedStatements} statement${result.guard.removedStatements === 1 ? "" : "s"} and ${result.guard.droppedAlerts} alert${result.guard.droppedAlerts === 1 ? "" : "s"} that cited unverifiable numbers, unavailable data or treatment advice.`
                 : ""}
             </p>
+
+            {result.descriptorOnly ? (
+              <p className="rounded-md border border-caution/40 bg-caution/10 px-3 py-2 text-xs text-caution">
+                {result.researchScoreLabel ?? RESEARCH_SCORE_LABEL}:{" "}
+                {result.researchScoreNote ?? RESEARCH_SCORE_NOTE}
+              </p>
+            ) : null}
 
             {result.alertTuning && tuningSummary(result.alertTuning) ? (
               <div className="rounded-md border border-border bg-muted/30 px-3 py-2">

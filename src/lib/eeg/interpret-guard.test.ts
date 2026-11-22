@@ -8,8 +8,24 @@ import {
   type GuardInput,
 } from "./interpret-guard";
 
+// A fully evidenced context keeps the non-descriptor guard paths under test.
+// Absent/unknown contexts are covered in descriptor-only.test.ts.
+const researchContext = {
+  blockade: "reported-absent",
+  caseId: "case-1",
+  acquiredAt: "2026-11-21T12:00:00Z",
+  reference: "mastoid",
+  absenceDocumented: true,
+  montageCompatible: true,
+  referenceCompatible: true,
+  calibrationCompatible: true,
+  coverageAdequate: true,
+  status: "research score",
+};
+
 const digest = {
   durationSeconds: 1800,
+  researchContext,
   suppression: { available: true, meanRatioPct: 38.2, maxRatioPct: 61.4 },
   spectral: { meanSef95Hz: 9.4 },
   quality: { usableFraction: 0.92 },

@@ -98,6 +98,16 @@ export interface Interpretation {
   guard?: GuardReport | null;
   /** The reviewer explains supplied metrics; it does not decide treatment. */
   role?: "explanatory";
+  /** True when all depth/awareness prose was replaced with fixed templates. */
+  descriptorOnly?: boolean;
+  /** The blockade context that decided the policy. */
+  descriptorContext?: string;
+  /** Why the context did or did not support a depth statement. */
+  descriptorReason?: string;
+  /** Wording that must travel with any experimental score. */
+  researchScoreNote?: string;
+  /** Short label for an experimental score; never a clinical depth label. */
+  researchScoreLabel?: string;
 }
 
 const SYSTEM_PROMPT = `You are a clinical neurophysiology decision-support assistant reviewing quantitative EEG derived from a 4-channel consumer Muse 2 headband (frontal/temporal electrodes: TP9, AF7, AF8, TP10) used during general anaesthesia or ICU sedation.

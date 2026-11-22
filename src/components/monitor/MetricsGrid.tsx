@@ -29,6 +29,8 @@ export interface MetricsGridProps {
   depthWindow: { status: DepthWindowStatus; prefs: DepthWindowPrefs };
   /** Confidence intervals for the spectral, suppression and seizure tiles. */
   uncertainty?: UncertaintyReport | undefined;
+  /** True when the experimental depth index must not be presented as depth. */
+  descriptorOnly?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function MetricsGrid({
   icuMode,
   depthWindow,
   uncertainty,
+  descriptorOnly = false,
 }: MetricsGridProps) {
   // The active COEBIS fit, refreshed while the case runs so the tile always
   // shows the number from the latest model.
@@ -62,27 +65,33 @@ export function MetricsGrid({
             <MetricTile
               key="depth"
               info="depth"
-              label="Depth index (OpenIBIS)"
-              value={latest?.depth.index != null ? String(latest.depth.index) : "—"}
+              label={descriptorOnly ? "Depth index (withheld)" : "Depth index (OpenIBIS)"}
+              value={
+                descriptorOnly || latest?.depth.index == null ? "—" : String(latest.depth.index)
+              }
               hint={
-                latest
-                  ? latest.depth.held
-                    ? `Held ${latest.depth.heldSeconds.toFixed(0)}s — ${
-                        latest.depth.gateReasons[0] ?? "artefact"
-                      }`
-                    : DEPTH_STATE_LABEL[latest.depth.state]
-                  : "OpenIBIS algorithm · ±10 units vs reference"
+                descriptorOnly
+                  ? "Research descriptor only — no supported depth or awareness statement"
+                  : latest
+                    ? latest.depth.held
+                      ? `Held ${latest.depth.heldSeconds.toFixed(0)}s — ${
+                          latest.depth.gateReasons[0] ?? "artefact"
+                        }`
+                      : DEPTH_STATE_LABEL[latest.depth.state]
+                    : "OpenIBIS algorithm · ±10 units vs reference"
               }
               tone={
-                depthWindow.status === "below"
-                  ? "critical"
-                  : depthWindow.status === "above"
-                    ? "caution"
-                    : latest && !latest.depth.held
-                      ? depthTone(latest.depth.state)
-                      : "default"
+                descriptorOnly
+                  ? "default"
+                  : depthWindow.status === "below"
+                    ? "critical"
+                    : depthWindow.status === "above"
+                      ? "caution"
+                      : latest && !latest.depth.held
+                        ? depthTone(latest.depth.state)
+                        : "default"
               }
-              pulse={depthWindow.prefs.enabled && depthWindow.status === "below"}
+              pulse={!descriptorOnly && depthWindow.prefs.enabled && depthWindow.status === "below"}
               confidence={latest?.confidence.depth}
               unreliable={latest ? !latest.depthReliability.reliable : false}
               degraded={latest?.depthReliability.level === "degraded"}
@@ -93,25 +102,35 @@ export function MetricsGrid({
             <MetricTile
               key="coebis"
               info="coebis"
-              label="COEBIS"
-              value={latest?.depth.coebis != null ? String(latest.depth.coebis) : "—"}
-              hint={[
-                latest?.depth.coebis != null
-                  ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
-                  : `${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`,
-                ketamineHint(latest?.depth.ketamine),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-              badge={<CoebisFitBadge model={coebisModel} compact />}
+              label={descriptorOnly ? "COEBIS (withheld)" : "COEBIS"}
+              value={
+                descriptorOnly || latest?.depth.coebis == null
+                  ? "—"
+                  : String(latest.depth.coebis)
+              }
+              hint={
+                descriptorOnly
+                  ? "Research descriptor only — no supported depth or awareness statement"
+                  : [
+                      latest?.depth.coebis != null
+                        ? `OpenIBIS ${latest.depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
+                        : `${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`,
+                      ketamineHint(latest?.depth.ketamine),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+              }
+              badge={descriptorOnly ? null : <CoebisFitBadge model={coebisModel} compact />}
               tone={
-                latest?.depth.coebis == null || latest.depth.held
+                descriptorOnly
                   ? "default"
-                  : latest.depth.coebis < 40
-                    ? "caution"
-                    : latest.depth.coebis > 60
+                  : latest?.depth.coebis == null || latest.depth.held
+                    ? "default"
+                    : latest.depth.coebis < 40
                       ? "caution"
-                      : "signal"
+                      : latest.depth.coebis > 60
+                        ? "caution"
+                        : "signal"
               }
               confidence={latest?.confidence.depth}
               unreliable={latest ? !latest.depthReliability.reliable : false}

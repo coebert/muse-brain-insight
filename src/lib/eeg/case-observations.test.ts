@@ -26,6 +26,8 @@ function score(atSeconds: number, moaas: number): CaseObservation {
     doseUnit: null,
     route: null,
     eventType: null,
+    motorAssessable: true,
+    responseMethod: "voluntary_command",
     note: null,
   };
 }
@@ -74,6 +76,59 @@ describe("transitionsOf", () => {
     const t = transitionsOf([score(900, 4), score(120, 1), score(0, 5)]);
     expect(t.lossOfResponsivenessAt).toBe(120);
     expect(t.returnOfResponsivenessAt).toBe(900);
+  });
+
+  it("excludes legacy, blocked and unknown nonresponses", () => {
+    const rows = [
+      score(0, 5),
+      { ...score(60, 1), motorAssessable: null, responseMethod: null },
+      { ...score(120, 0), responseMethod: "blocked" as const },
+      { ...score(180, 0), responseMethod: "unknown" as const },
+    ];
+    const t = transitionsOf(rows);
+    expect(t.scoreCount).toBe(1);
+    expect(t.lossOfResponsivenessAt).toBeNull();
+    expect(t.lowestScore).toBe(5);
+  });
+
+  it("separates a verified command response from a reflex or EMG alone", () => {
+    const emg = transitionsOf([
+      score(0, 5),
+      { ...score(60, 1), responseMethod: "emg" as const },
+      { ...score(120, 4), responseMethod: "emg" as const },
+    ]);
+    expect(emg.lossOfResponsivenessAt).toBeNull();
+    expect(emg.returnOfResponsivenessAt).toBeNull();
+    expect(emg.scoreCount).toBe(3);
+
+    const command = transitionsOf([
+      score(0, 5),
+      { ...score(60, 1), responseMethod: "voluntary_command" as const },
+      { ...score(120, 4), responseMethod: "voluntary_command" as const },
+    ]);
+    expect(command.lossOfResponsivenessAt).toBe(60);
+    expect(command.returnOfResponsivenessAt).toBe(120);
+  });
+
+  it("requires assessability and a usable method on a responsiveness draft", () => {
+    const missing = validateDraft({
+      kind: "responsiveness",
+      atSeconds: 10,
+      moaas: 4,
+      stimulus: "name",
+    });
+    expect(missing.ok).toBe(false);
+    expect(missing.errors.join(" ")).toMatch(/assessable/i);
+
+    const ok = validateDraft({
+      kind: "responsiveness",
+      atSeconds: 10,
+      moaas: 4,
+      stimulus: "name",
+      motorAssessable: true,
+      responseMethod: "voluntary_command",
+    });
+    expect(ok.ok).toBe(true);
   });
 });
 

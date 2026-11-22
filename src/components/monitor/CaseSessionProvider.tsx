@@ -29,6 +29,7 @@ import {
 import type { DetectedEvent } from "@/lib/eeg/analysis";
 import { DETECTION_PRESETS } from "@/lib/eeg/analysis";
 import { EMPTY_CASE_META, type CaseMeta } from "@/lib/eeg/case-meta";
+import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
 import type { EegSource } from "@/lib/eeg/muse";
 import { setActiveDepthCalibration } from "@/lib/eeg/depth";
 import { loadStoredCalibration } from "@/lib/eeg/calibration";
@@ -323,6 +324,13 @@ function useCaseSessionState() {
 
   const { summary, status } = monitor;
 
+  // A live session carries no independent blockade record, so the descriptor
+  // policy fails closed: the experimental depth index is withheld unless a
+  // fully evidenced research context is attached to the case.
+  const descriptor = descriptorPolicy({
+    researchContext: (meta as { researchContext?: unknown }).researchContext ?? null,
+  });
+
   /**
    * Freeze every model, calibration and tuning for the length of the
    * recording; refits that land meanwhile wait for the next one. The final
@@ -447,7 +455,8 @@ function useCaseSessionState() {
     index: latest?.depth.index ?? null,
     t: latest?.t ?? monitor.elapsed,
     reliable: latest ? latest.depthReliability.reliable && !latest.depth.held : false,
-    enabled: caseRunning,
+    // A depth-window alert asserts a depth state the evidence cannot support.
+    enabled: caseRunning && !descriptor.descriptorOnly,
     // Record every confirmed crossing in the session timeline so the case can
     // be reviewed later: when the depth index left the window and why.
     onTransition: useCallback(
@@ -1088,6 +1097,7 @@ function useCaseSessionState() {
     uncertainty,
     srTone,
     seizureAlert,
+    descriptor,
     sessionStartedAtMs,
     dsaMarkerRail,
     ai,

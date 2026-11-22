@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { unseal } from "@/lib/privacy";
 import { fetchEpochs, fetchEvents } from "@/lib/eeg/db-rows";
 import { downloadSessionReportPdf, type ReportSessionMeta } from "@/lib/eeg/pdf-report";
+import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
 
 interface Props {
   sessionId: string;
@@ -50,10 +51,18 @@ export function SessionPdfButton({
         meta = rows[0] as ReportSessionMeta;
       }
       const [epochs, events] = await Promise.all([fetchEpochs(sessionId), fetchEvents(sessionId)]);
+      const context = meta as {
+        researchContext?: unknown;
+        research_context?: unknown;
+      };
+      const descriptor = descriptorPolicy({
+        researchContext: context.researchContext ?? context.research_context ?? null,
+      });
       downloadSessionReportPdf({
         session: meta,
         epochs,
         events,
+        descriptorOnly: descriptor.descriptorOnly,
         ...(modelNote ? { modelNote } : {}),
       });
       toast.success("Session report downloaded", { id: toastId });

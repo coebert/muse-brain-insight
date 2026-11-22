@@ -19,7 +19,7 @@ export function ResearchLearningPanel() {
         <section className="space-y-2">
           <h3 className="font-medium">Awake during neuromuscular blockade</h3>
           <p>One participant at a time was held out while a model learned from the other five. The model used frontal alpha power relative to each person’s awake baseline. It classified {blockade.falseSedated} of {blockade.volunteers} awake, paralysed volunteers as sedated.</p>
-          <p>This is a frontal-alpha comparator, distinct from the propofol protocol-state classifier below and from the surgical EMG model. None of the three is a consciousness monitor, and the offline replay withholds a depth interpretation when blockade is documented or suspected.</p>
+          <p>This is a frontal-alpha comparator, distinct from the propofol protocol-state classifier below and from the surgical EMG model. None of the three is a consciousness monitor. The offline replay fails closed: absent, unknown, conflicting, mixed, expired or incompletely evidenced blockade context withholds the depth statement, and the app withholds the experimental depth index, target and alerts unless a matched, fully documented absence of blockade is attached.</p>
           <p>In a separate surgical dataset, {blockade.surgicalCases} cases contributed {blockade.windows} usable EEG windows around a volume-confirmed rocuronium infusion change. Awareness was unlabelled, and the monitor EMG target shares the EEG electrodes.</p>
           <p className="text-muted-foreground">Independent validation requires native waveform EEG from a different cohort, with montage, reference, calibration and medication timing available for reprocessing. Published summary figures, screenshots and repeated playbacks of one volunteer are not independent validation. No independent clinical validation is claimed.</p>
           <a className="underline" href="https://github.com/coebert/muse-brain-insight/blob/research/eeg-baselines/research/learning/neuromuscular-blockade.md" target="_blank" rel="noreferrer">Blockade studies, waveform access and failure analysis</a>
@@ -35,7 +35,7 @@ export function ResearchLearningPanel() {
               ))}</tbody>
             </table>
           </div>
-          <p className="text-muted-foreground">Behavioural task performance and reported awareness are different endpoints. The report includes a separate analysis of correct responses.</p>
+          <p className="text-muted-foreground">Behavioural task performance and reported awareness are different endpoints. The report includes a separate analysis of correct responses. An eligible offline replay score names its model (propofol-protocol-state, version 1) and marks itself research-only; it is never a clinical depth.</p>
         </section>
         <section className="space-y-2">
           <h3 className="font-medium">Seizure events on held-out Helsinki neonates</h3>

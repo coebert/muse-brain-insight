@@ -7,6 +7,7 @@ import {
   describeObservation,
   isEligibleResponseObservation,
   isPositiveResponseObservation,
+  researchResponseLabels,
   responseObservationSummary,
   trainingTargetOf,
   validateDraft,
@@ -87,6 +88,16 @@ describe("still_response is an observation, not a depth label", () => {
     expect(isEligibleResponseObservation(row)).toBe(false);
     expect(trainingTargetOf(row)).toBeNull();
   });
+
+  it("never treats an EMG or reflex alone as a verified command response", () => {
+    for (const method of ["emg", "clinical_observation"] as ResponseMethod[]) {
+      const row = event(30, "movement_response", { responseMethod: method });
+      expect(isEligibleResponseObservation(row)).toBe(true);
+      expect(isPositiveResponseObservation(row)).toBe(false);
+      expect(trainingTargetOf(row)).toBeNull();
+      expect(derivedResponseTransitions([row])).toEqual([]);
+    }
+  });
 });
 
 describe("derived transitions and summary", () => {
@@ -94,7 +105,7 @@ describe("derived transitions and summary", () => {
     const rows = [
       event(90, "movement_response", { responseMethod: "voluntary_command" }),
       event(30, "still_response", { motorAssessable: null, responseMethod: null }),
-      event(60, "still_response"),
+      event(60, "still_response", { responseMethod: "voluntary_command" }),
       event(120, "still_response", { responseMethod: "blocked" }),
     ];
     expect(derivedResponseTransitions(rows)).toEqual([
@@ -118,6 +129,21 @@ describe("derived transitions and summary", () => {
       ineligibleBlocked: 1,
       negativeObserved: 3,
     });
+  });
+});
+
+describe("research label export", () => {
+  it("labels only verified command observations", () => {
+    const rows = [
+      event(30, "movement_response", { responseMethod: "voluntary_command" }),
+      event(60, "still_response", { responseMethod: "emg" }),
+      event(90, "still_response", { responseMethod: "voluntary_command" }),
+      event(120, "still_response", { motorAssessable: null, responseMethod: null }),
+    ];
+    expect(researchResponseLabels(rows)).toEqual([
+      { caseCode: "C1", atSeconds: 30, label: "responsive", method: "voluntary_command", source: "stimulus_response" },
+      { caseCode: "C1", atSeconds: 90, label: "not-responsive", method: "voluntary_command", source: "stimulus_response" },
+    ]);
   });
 });
 

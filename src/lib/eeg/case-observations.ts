@@ -138,12 +138,22 @@ export const RESPONSE_METHOD_LABEL: Record<ResponseMethod, string> = {
   unknown: "Method not recorded",
 };
 
-/** Channels that can verify a positive response. */
+/** Channels that can verify an observed response at all. */
 export const USABLE_RESPONSE_METHODS: ReadonlySet<ResponseMethod> = new Set([
   "voluntary_command",
   "isolated_forearm",
   "emg",
   "clinical_observation",
+]);
+
+/**
+ * Channels that verify a *command* response. A reflex or an EMG trace alone
+ * never establishes responsiveness, so it never drives a derived transition
+ * or a training label.
+ */
+export const COMMAND_RESPONSE_METHODS: ReadonlySet<ResponseMethod> = new Set([
+  "voluntary_command",
+  "isolated_forearm",
 ]);
 
 /**
@@ -239,6 +249,10 @@ export interface ResponsivenessDraft {
   atSeconds: number;
   moaas: number;
   stimulus: Stimulus;
+  /** Required: whether the motor pathway could be assessed when scored. */
+  motorAssessable?: boolean | null;
+  /** Required: how the response was elicited or observed. */
+  responseMethod?: ResponseMethod | null;
   note?: string | null;
 }
 
@@ -323,6 +337,12 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
       errors.push("The responsiveness score must be a whole number from 0 to 5.");
     }
     if (!STIMULI.includes(draft.stimulus)) errors.push("Choose how the score was elicited.");
+    if (typeof draft.motorAssessable !== "boolean") {
+      errors.push("Say whether the motor response was assessable.");
+    }
+    if (!draft.responseMethod || !RESPONSE_METHODS.includes(draft.responseMethod)) {
+      errors.push("Choose how the response was assessed.");
+    }
   } else if (draft.kind === "drug") {
     if (!draft.drugName.trim()) errors.push("Name the drug given.");
     if (draft.dose != null) {
@@ -374,15 +394,17 @@ export interface ResponsivenessTransitions {
  * than typed separately, so they cannot disagree with the scores.
  */
 export function transitionsOf(rows: CaseObservation[]): ResponsivenessTransitions {
-  const scores = sortObservations(rows).filter(
-    (r) => r.kind === "responsiveness" && r.moaas != null,
-  );
+  const eligible = sortObservations(rows).filter(isEligibleResponsiveness);
+  const command = eligible.filter(isCommandResponsiveness);
   let lor: number | null = null;
   let ror: number | null = null;
   let lowest: number | null = null;
-  for (const row of scores) {
+  for (const row of eligible) {
     const score = row.moaas!;
     lowest = lowest == null ? score : Math.min(lowest, score);
+  }
+  for (const row of command) {
+    const score = row.moaas!;
     if (lor == null && score < 2) lor = row.atSeconds;
     else if (lor != null && ror == null && score >= 2) ror = row.atSeconds;
   }
@@ -390,8 +412,31 @@ export function transitionsOf(rows: CaseObservation[]): ResponsivenessTransition
     lossOfResponsivenessAt: lor,
     returnOfResponsivenessAt: ror,
     lowestScore: lowest,
-    scoreCount: scores.length,
+    scoreCount: eligible.length,
   };
+}
+
+/**
+ * A responsiveness score is usable only when the motor pathway was assessable
+ * and the eliciting channel is named. Legacy rows with no recorded
+ * assessability, and blocked or unknown channels, cannot support a transition.
+ */
+export function isEligibleResponsiveness(row: CaseObservation): boolean {
+  if (row.kind !== "responsiveness" || row.moaas == null) return false;
+  if (row.motorAssessable !== true) return false;
+  const method = row.responseMethod;
+  return !!method && method !== "blocked" && method !== "unknown";
+}
+
+/**
+ * Only a verified command response (squeeze/nod, including isolated forearm)
+ * establishes a change in responsiveness. A reflex or EMG alone does not.
+ */
+export function isCommandResponsiveness(row: CaseObservation): boolean {
+  return (
+    isEligibleResponsiveness(row) &&
+    COMMAND_RESPONSE_METHODS.has(row.responseMethod as ResponseMethod)
+  );
 }
 
 /** One line per drug: how many times it was given, and when it was first given. */
@@ -462,13 +507,24 @@ export function isEligibleResponseObservation(row: CaseObservation): boolean {
   return !!method && method !== "blocked" && method !== "unknown";
 }
 
-/** A verified positive response through a usable channel. */
+/**
+ * A verified positive command response. A reflex or an EMG trace alone is not
+ * a command response, so it is never a training target.
+ */
 export function isPositiveResponseObservation(row: CaseObservation): boolean {
   return (
     row.kind === "event" &&
     row.eventType === "movement_response" &&
     isEligibleResponseObservation(row) &&
-    USABLE_RESPONSE_METHODS.has(row.responseMethod as ResponseMethod)
+    COMMAND_RESPONSE_METHODS.has(row.responseMethod as ResponseMethod)
+  );
+}
+
+/** An eligible observation that came through a verified command channel. */
+export function isCommandResponseObservation(row: CaseObservation): boolean {
+  return (
+    isEligibleResponseObservation(row) &&
+    COMMAND_RESPONSE_METHODS.has(row.responseMethod as ResponseMethod)
   );
 }
 
@@ -494,7 +550,7 @@ export interface ResponseTransition {
  */
 export function derivedResponseTransitions(rows: CaseObservation[]): ResponseTransition[] {
   return sortObservations(rows)
-    .filter((row) => isEligibleResponseObservation(row))
+    .filter((row) => isCommandResponseObservation(row))
     .map((row) => ({
       atSeconds: row.atSeconds,
       direction: row.eventType === "movement_response" ? "positive" : "negative",
@@ -525,10 +581,65 @@ export function responseObservationSummary(rows: CaseObservation[]): ResponseObs
   };
 }
 
+/** One research label per verified command observation. */
+export interface ResearchResponseLabel {
+  caseCode: string;
+  atSeconds: number;
+  label: "responsive" | "not-responsive";
+  method: ResponseMethod;
+  source: "moaas" | "stimulus_response";
+}
+
+/**
+ * The actual research label export. Only verified command observations are
+ * labelled; a reflex, an EMG trace alone, a blocked pathway or a legacy row
+ * with no recorded assessability never becomes a research label.
+ */
+export function researchResponseLabels(rows: CaseObservation[]): ResearchResponseLabel[] {
+  return sortObservations(rows).flatMap((row) => {
+    if (isCommandResponsiveness(row)) {
+      return [
+        {
+          caseCode: row.caseCode,
+          atSeconds: row.atSeconds,
+          label: (row.moaas! >= 2 ? "responsive" : "not-responsive") as
+            | "responsive"
+            | "not-responsive",
+          method: row.responseMethod as ResponseMethod,
+          source: "moaas" as const,
+        },
+      ];
+    }
+    if (isCommandResponseObservation(row)) {
+      return [
+        {
+          caseCode: row.caseCode,
+          atSeconds: row.atSeconds,
+          label: (row.eventType === "movement_response" ? "responsive" : "not-responsive") as
+            | "responsive"
+            | "not-responsive",
+          method: row.responseMethod as ResponseMethod,
+          source: "stimulus_response" as const,
+        },
+      ];
+    }
+    return [];
+  });
+}
+
 export function describeObservation(row: CaseObservation): string {
   if (row.kind === "responsiveness") {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
-    return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""}`;
+    const assess =
+      row.motorAssessable == null
+        ? "assessability not recorded"
+        : row.motorAssessable
+          ? "motor assessable"
+          : "motor blocked";
+    const method = row.responseMethod
+      ? RESPONSE_METHOD_LABEL[row.responseMethod]
+      : "method not recorded";
+    return `MOAA/S ${row.moaas} · ${moaasLabel(row.moaas ?? -1)}${stim ? ` · ${stim}` : ""} · ${assess} · ${method}`;
   }
   if (row.kind === "note") {
     return row.note ?? "Note";

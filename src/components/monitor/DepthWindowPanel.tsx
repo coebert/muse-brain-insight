@@ -20,6 +20,8 @@ export interface DepthWindowPanelProps {
   depthIndex: number | null | undefined;
   /** Case covariates used to suggest a patient-adjusted target window. */
   targetInputs?: DepthTargetInputs;
+  /** True when the evidence does not support a depth target or alert. */
+  descriptorOnly?: boolean;
 }
 
 /**
@@ -30,7 +32,22 @@ export function DepthWindowPanel({
   depthWindow,
   depthIndex,
   targetInputs,
+  descriptorOnly = false,
 }: DepthWindowPanelProps) {
+  if (descriptorOnly) {
+    return (
+      <Alert className="border-caution/40 bg-caution/10">
+        <Info className="size-4 text-caution" />
+        <AlertTitle className="text-foreground">Depth target and alerts withheld</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
+          The experimental depth index is a research descriptor, not a clinical depth. No target
+          window, green &ldquo;in target&rdquo; colour or depth alert is shown without an
+          independently documented absence of neuromuscular blockade for this recording. Measured
+          suppression, spectral and signal-quality descriptors remain available.
+        </AlertDescription>
+      </Alert>
+    );
+  }
   return (
     <>
       {targetInputs ? (
