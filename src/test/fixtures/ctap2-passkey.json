@@ -1,0 +1,43 @@
+{
+  "origin": "http://localhost:52294",
+  "email": "positive-ceremony@example.invalid",
+  "userId": "00e0bce3-049c-429a-8597-c146d1b6b680",
+  "registrationChallenge": "yXgMmk4m3W3EWK9oLkQLth1_NC86nT7BLbrr79ZgCxY",
+  "authenticationChallenge": "_0AaNuhZR4pNHWlz5MuIr8CfTnWyVRe7r3NMcRmz8Jg",
+  "registration": {
+    "id": "VoNNXW0HsvjoFRKg9KEHL-GDpGbjKV1Lj_DotuVODms",
+    "rawId": "VoNNXW0HsvjoFRKg9KEHL-GDpGbjKV1Lj_DotuVODms",
+    "response": {
+      "clientDataJSON": "eyJjaGFsbGVuZ2UiOiJ5WGdNbWs0bTNXM0VXSzlvTGtRTHRoMV9OQzg2blQ3QkxicnI3OVpnQ3hZIiwib3JpZ2luIjoiaHR0cDovL2xvY2FsaG9zdDo1MjI5NCIsInR5cGUiOiJ3ZWJhdXRobi5jcmVhdGUiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+      "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAE5JRC1BVVRILTMxNDE1OTIAIFaDTV1tB7L46BUSoPShBy_hg6Rm4yldS4_w6LblTg5rpQECAyYgASFYIEJgAwhaTM5eH2FO-RiZ6oDaxL1ywcaYrFTv8rXedAYNIlgg1JOr18OL8zoy2lMZTaxQZUOt7SWaSZW3U_zmVoT4WHo",
+      "transports": [
+        "internal"
+      ],
+      "publicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQmADCFpMzl4fYU75GJnqgNrEvXLBxpisVO_ytd50Bg3Uk6vXw4vzOjLaUxlNrFBlQ63tJZpJlbdT_OZWhPhYeg",
+      "publicKeyAlgorithm": -7,
+      "attestationObject": "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YVikSZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAE5JRC1BVVRILTMxNDE1OTIAIFaDTV1tB7L46BUSoPShBy_hg6Rm4yldS4_w6LblTg5rpQECAyYgASFYIEJgAwhaTM5eH2FO-RiZ6oDaxL1ywcaYrFTv8rXedAYNIlgg1JOr18OL8zoy2lMZTaxQZUOt7SWaSZW3U_zmVoT4WHo"
+    },
+    "clientExtensionResults": {
+      "credProps": {
+        "rk": true
+      }
+    },
+    "type": "public-key"
+  },
+  "authentication": {
+    "id": "VoNNXW0HsvjoFRKg9KEHL-GDpGbjKV1Lj_DotuVODms",
+    "rawId": "VoNNXW0HsvjoFRKg9KEHL-GDpGbjKV1Lj_DotuVODms",
+    "response": {
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiXzBBYU51aFpSNHBOSFdsejVNdUlyOENmVG5XeVZSZTdyM05NY1JtejhKZyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTIyOTQiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+      "authenticatorData": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAQ",
+      "signature": "MEUCIA7o8YVneOo0DnWr9CAYhbudPKTTWslYac2ZjVk_bWSPAiEAvX2cppn39ZEQMCyML5X-UbAYDy0kjKLWcsh2G3ZwIE4",
+      "userHandle": "MDBlMGJjZTMtMDQ5Yy00MjlhLTg1OTctYzE0NmQxYjZiNjgw"
+    },
+    "clientExtensionResults": {
+      "credProps": {
+        "rk": true
+      }
+    },
+    "type": "public-key"
+  }
+}

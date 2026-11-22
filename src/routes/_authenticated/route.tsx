@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated")({
     if (error || !data.user) {
       throw redirect({
         to: "/auth",
-        search: location.pathname === "/settings" ? { setup: "passkey" } : {},
+        hash: location.pathname === "/settings" ? "add-passkey" : "",
       });
     }
     return { user: data.user };

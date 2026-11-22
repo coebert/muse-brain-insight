@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowRight, ScanFace } from "lucide-react";
 import { toast } from "sonner";
@@ -22,8 +22,6 @@ import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
 import { startPasskeyLogin, finishPasskeyLogin } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>): { setup?: "passkey" } =>
-    search["setup"] === "passkey" ? { setup: "passkey" } : {},
   head: () => ({
     meta: [
       { title: "Clinician sign in — CortexTrace EEG monitor" },
@@ -46,7 +44,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const { user } = useAuth();
-  const { setup } = useSearch({ strict: false });
+  const setup = useLocation({ select: (location) => location.hash === "add-passkey" });
   const emailInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -68,7 +66,7 @@ function AuthPage() {
   }, []);
 
   useEffect(() => {
-    if (user) void navigate({ to: setup === "passkey" ? "/settings" : "/sessions" });
+    if (user) void navigate({ to: setup ? "/settings" : "/sessions" });
   }, [user, navigate, setup]);
 
   async function signIn() {
@@ -129,7 +127,7 @@ function AuthPage() {
 
   async function google() {
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: setup ? window.location.origin + "/settings" : window.location.origin,
     });
     if (result.error) toast.error("Google sign-in failed.");
   }
@@ -254,9 +252,9 @@ function AuthPage() {
               />
             )}
             <p className="text-xs text-muted-foreground">
-              {setup === "passkey"
+              {setup
                 ? "Sign in to open Settings and add a passkey."
-                : "First time using a passkey? Sign in with your usual method, then choose Settings → Biometric sign-in → Add passkey."}
+                : "First time using a passkey? Sign in with your usual method, then choose Account → Settings → Biometric sign-in → Add passkey."}
             </p>
           </div>
         )}

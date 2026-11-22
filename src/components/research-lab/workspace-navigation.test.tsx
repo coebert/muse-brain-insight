@@ -198,13 +198,13 @@ describe("research entry and clinical workspace navigation", { timeout: 60_000 }
     const adminGate = AdminRoute.options.beforeLoad!;
     state.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
     await expect(clinicianGate({ location: { pathname: "/" } } as never)).rejects.toMatchObject({
-      options: { to: "/auth" },
+      options: { to: "/auth", hash: "" },
     });
     state.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
     await expect(
       clinicianGate({ location: { pathname: "/settings" } } as never),
     ).rejects.toMatchObject({
-      options: { to: "/auth", search: { setup: "passkey" } },
+      options: { to: "/auth", hash: "add-passkey" },
     });
     state.getUser.mockResolvedValueOnce({ data: { user: { id: "researcher" } }, error: null });
     await expect(clinicianGate({ location: { pathname: "/" } } as never)).resolves.toEqual({

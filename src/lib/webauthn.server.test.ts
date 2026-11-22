@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import virtualPasskey from "../test/fixtures/ctap2-passkey.json";
 
 import {
   buildAuthenticationOptions,
@@ -141,6 +142,35 @@ describe("passkey relying party", () => {
 });
 
 describe("passkey ceremonies", () => {
+  it("verifies an enrolled virtual credential and its signed assertion with the real verifier", async () => {
+    // These public test responses came from one isolated NID CTAP2 ceremony.
+    // The signing key existed only in the virtual authenticator's memory.
+    const real = await vi.importActual<typeof import("@simplewebauthn/server")>("@simplewebauthn/server");
+    mocks.verifyRegistration.mockImplementationOnce(real.verifyRegistrationResponse);
+    mocks.verifyAuthentication.mockImplementationOnce(real.verifyAuthenticationResponse);
+    const { origin, userId, email } = virtualPasskey;
+    mocks.request.mockReturnValue(new Request(origin + "/auth", { headers: { Origin: origin } }));
+
+    query({ challenge: virtualPasskey.registrationChallenge });
+    const enrollment = query();
+    await saveRegistration(userId, email, virtualPasskey.registration, "Virtual platform test");
+    const stored = enrollment.insert.mock.calls[0]![0];
+    expect(stored).toMatchObject({ user_id: userId, credential_id: virtualPasskey.registration.id });
+
+    query({ challenge: virtualPasskey.authenticationChallenge });
+    query({ ...stored, id: "test-credential-row" });
+    const saved = query({ id: "test-credential-row" });
+    mocks.getUserById.mockResolvedValue({ data: { user: { id: userId, email } } });
+    mocks.generateLink.mockResolvedValue({
+      data: { user: { id: userId }, properties: { hashed_token: "test-session-handoff" } },
+    });
+    await expect(verifyAuthenticationAndMint(email, virtualPasskey.authentication)).resolves.toEqual({
+      tokenHash: "test-session-handoff",
+    });
+    expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ last_used_at: expect.any(String) }));
+    expect(mocks.generateLink).toHaveBeenCalledWith({ type: "magiclink", email });
+  });
+
   it("finds enrolled credentials beyond the first account page without invalidating other tabs", async () => {
     mocks.listUsers
       .mockResolvedValueOnce({
