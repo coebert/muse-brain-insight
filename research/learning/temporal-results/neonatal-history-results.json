@@ -1,0 +1,112 @@
+{
+  "current_window": {
+    "window_AUROC": 0.6575077229568336,
+    "window_average_precision": 0.30314490267274846,
+    "AUROC_patient_bootstrap_95": [
+      0.5959213718626528,
+      0.7344361497774913
+    ],
+    "average_precision_patient_bootstrap_95": [
+      0.20335795326427902,
+      0.39279657137750046
+    ],
+    "window_seizure_prevalence": 0.13002656124529002,
+    "window_Brier": 0.10476712554191989,
+    "scored_windows": 48567,
+    "coverage_known_windows": 0.9651821379598163,
+    "majority_seizures_at_least_10s": 483,
+    "events_with_alarm_start": 81,
+    "event_sensitivity": 0.16770186335403728,
+    "event_sensitivity_patient_bootstrap_95": [
+      0.08501548786783686,
+      0.2565144692677536
+    ],
+    "false_alarm_starts": 99,
+    "background_hours": 97.76138888888889,
+    "false_alarm_starts_per_background_hour": 1.012669737257097,
+    "false_alarms_per_hour_patient_bootstrap_95": [
+      0.25319422040636347,
+      2.175476284635826
+    ],
+    "background_fraction_alarm_active": 0.004281967716179701,
+    "median_latency_seconds_detected": 42.0,
+    "window_sensitivity_at_threshold": 0.13174980205859066,
+    "window_specificity_at_threshold": 0.9859888289311749
+  },
+  "past_and_current": {
+    "window_AUROC": 0.7249791976939779,
+    "window_average_precision": 0.36981302364172375,
+    "AUROC_patient_bootstrap_95": [
+      0.6694045652379561,
+      0.77991938859789
+    ],
+    "average_precision_patient_bootstrap_95": [
+      0.271016145549771,
+      0.460239334646162
+    ],
+    "window_seizure_prevalence": 0.13002656124529002,
+    "window_Brier": 0.09892508309117287,
+    "scored_windows": 48567,
+    "coverage_known_windows": 0.9651821379598163,
+    "majority_seizures_at_least_10s": 483,
+    "events_with_alarm_start": 84,
+    "event_sensitivity": 0.17391304347826086,
+    "event_sensitivity_patient_bootstrap_95": [
+      0.08466140466317384,
+      0.26546893778311914
+    ],
+    "false_alarm_starts": 87,
+    "background_hours": 97.76138888888889,
+    "false_alarm_starts_per_background_hour": 0.8899218903168429,
+    "false_alarms_per_hour_patient_bootstrap_95": [
+      0.15543571367667022,
+      2.0970638151725347
+    ],
+    "background_fraction_alarm_active": 0.009609565239628233,
+    "median_latency_seconds_detected": 43.5,
+    "window_sensitivity_at_threshold": 0.13032462391132224,
+    "window_specificity_at_threshold": 0.9864385117864243
+  },
+  "reader_comparisons": [
+    {
+      "reference_positive": 5097,
+      "reference_negative": 39352,
+      "reader_sensitivity": 0.9046497939964685,
+      "reader_specificity": 0.9935708477332791,
+      "model_sensitivity": 0.13419658622719247,
+      "model_specificity": 0.9918682659077048,
+      "model_alone_agrees_with_reference": 322,
+      "reader_alone_agrees_with_reference": 4316
+    },
+    {
+      "reference_positive": 4808,
+      "reference_negative": 40844,
+      "reader_sensitivity": 0.9488352745424293,
+      "reader_specificity": 0.9605572421897953,
+      "model_sensitivity": 0.13082362728785357,
+      "model_specificity": 0.9873420820683576,
+      "model_alone_agrees_with_reference": 1444,
+      "reader_alone_agrees_with_reference": 4283
+    },
+    {
+      "reference_positive": 5013,
+      "reference_negative": 39821,
+      "reader_sensitivity": 0.9293836026331538,
+      "reader_specificity": 0.9821702116973456,
+      "model_sensitivity": 0.1258727308996609,
+      "model_specificity": 0.9922151628537706,
+      "model_alone_agrees_with_reference": 733,
+      "reader_alone_agrees_with_reference": 4361
+    }
+  ],
+  "paired_interval": {
+    "event_sensitivity_change": [
+      -0.03158198088882148,
+      0.04109677078564637
+    ],
+    "false_starts_per_hour_change": [
+      -0.5023364302765276,
+      0.27088353803523246
+    ]
+  }
+}

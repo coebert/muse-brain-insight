@@ -1,0 +1,374 @@
+{
+  "counts": {
+    "cambridge": {
+      "recordings": 80,
+      "candidate_windows": 320,
+      "valid_windows": 320,
+      "valid_states": 80
+    },
+    "oslo": {
+      "recordings": 71,
+      "candidate_windows": 284,
+      "valid_windows": 229,
+      "valid_states": 40
+    },
+    "oslo-eyes-open": {
+      "recordings": 20,
+      "candidate_windows": 80,
+      "valid_windows": 70,
+      "valid_states": 20
+    }
+  },
+  "cross_site": {
+    "cambridge_to_oslo": {
+      "spectrum": {
+        "auroc": 1.0,
+        "sensitivity": 0.95,
+        "specificity": 1.0,
+        "brier": 0.059577623121492285,
+        "eyes_open_check": {
+          "pairs": 20,
+          "closed_false_sedated": 0,
+          "open_false_sedated": 1
+        }
+      },
+      "timing_only": {
+        "auroc": 0.6825,
+        "sensitivity": 0.75,
+        "specificity": 0.5,
+        "brier": 0.22729245618497035
+      },
+      "combined": {
+        "auroc": 0.975,
+        "sensitivity": 0.8,
+        "specificity": 1.0,
+        "brier": 0.08605295209445454,
+        "eyes_open_check": {
+          "pairs": 20,
+          "closed_false_sedated": 0,
+          "open_false_sedated": 1
+        }
+      },
+      "frontal_combined": {
+        "auroc": 0.9424999999999999,
+        "sensitivity": 0.8,
+        "specificity": 0.85,
+        "brier": 0.13242181744429612
+      },
+      "paired_bootstrap": {
+        "combined_interval": [
+          0.9324375,
+          1.0
+        ],
+        "spectrum_interval": [
+          1.0,
+          1.0
+        ],
+        "delta": -0.025000000000000022,
+        "delta_interval": [
+          -0.0675625,
+          0.0
+        ]
+      },
+      "held_out_people": 20
+    },
+    "oslo_to_cambridge": {
+      "spectrum": {
+        "auroc": 0.7875,
+        "sensitivity": 0.7,
+        "specificity": 0.75,
+        "brier": 0.18880357481486132
+      },
+      "timing_only": {
+        "auroc": 0.665,
+        "sensitivity": 0.55,
+        "specificity": 0.75,
+        "brier": 0.2423204775031434
+      },
+      "combined": {
+        "auroc": 0.7875,
+        "sensitivity": 0.65,
+        "specificity": 0.9,
+        "brier": 0.19080190703848546
+      },
+      "frontal_combined": {
+        "auroc": 0.7725000000000001,
+        "sensitivity": 0.7,
+        "specificity": 0.8,
+        "brier": 0.18864823767171904
+      },
+      "paired_bootstrap": {
+        "combined_interval": [
+          0.675,
+          0.9
+        ],
+        "spectrum_interval": [
+          0.6825,
+          0.8950625
+        ],
+        "delta": 0.0,
+        "delta_interval": [
+          -0.0625,
+          0.057562500000000044
+        ]
+      },
+      "held_out_people": 20
+    }
+  },
+  "features": [
+    {
+      "feature": "frontal.log_delta",
+      "cambridge_dz": -0.0882790191161647,
+      "oslo_dz": 1.4399816465416864,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.log_theta",
+      "cambridge_dz": -0.20134340973795586,
+      "oslo_dz": 1.5291393294854616,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.log_alpha",
+      "cambridge_dz": 0.5392462930277768,
+      "oslo_dz": 2.73257342564658,
+      "joint_p": 0.0221977802219778,
+      "joint_q": 0.42787915211004535
+    },
+    {
+      "feature": "frontal.log_beta",
+      "cambridge_dz": 1.8103743640196128,
+      "oslo_dz": 2.8664772698267234,
+      "joint_p": 9.999000099990002e-05,
+      "joint_q": 0.004497228325480958
+    },
+    {
+      "feature": "frontal.log_high_beta",
+      "cambridge_dz": 1.1552250985342385,
+      "oslo_dz": 1.07608461837926,
+      "joint_p": 0.00029997000299970003,
+      "joint_q": 0.008095010985865722
+    },
+    {
+      "feature": "central.log_delta",
+      "cambridge_dz": 0.46598654921227567,
+      "oslo_dz": 3.2558236033687376,
+      "joint_p": 0.0542945705429457,
+      "joint_q": 0.9157481177760598
+    },
+    {
+      "feature": "central.log_theta",
+      "cambridge_dz": -0.052585515133130714,
+      "oslo_dz": 1.7260305785048924,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.log_alpha",
+      "cambridge_dz": 0.3303369798108292,
+      "oslo_dz": 1.6551757154143159,
+      "joint_p": 0.15628437156284372,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.log_beta",
+      "cambridge_dz": 1.8950296539542417,
+      "oslo_dz": 2.5072445061211384,
+      "joint_p": 9.999000099990002e-05,
+      "joint_q": 0.004497228325480958
+    },
+    {
+      "feature": "central.log_high_beta",
+      "cambridge_dz": 1.0844936400954523,
+      "oslo_dz": 1.2370978736430829,
+      "joint_p": 0.00019998000199980003,
+      "joint_q": 0.0067458424882214365
+    },
+    {
+      "feature": "posterior.log_delta",
+      "cambridge_dz": 1.6118436051197138,
+      "oslo_dz": 1.9341673854072179,
+      "joint_p": 9.999000099990002e-05,
+      "joint_q": 0.004497228325480958
+    },
+    {
+      "feature": "posterior.log_theta",
+      "cambridge_dz": 0.19406675403141163,
+      "oslo_dz": 0.3798548820766142,
+      "joint_p": 0.401959804019598,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.log_alpha",
+      "cambridge_dz": -0.8253692467472228,
+      "oslo_dz": -0.19258453964987693,
+      "joint_p": 0.44565543445655437,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.log_beta",
+      "cambridge_dz": 1.1853612366636141,
+      "oslo_dz": 0.7589575695199902,
+      "joint_p": 0.0029997000299970002,
+      "joint_q": 0.06745842488221436
+    },
+    {
+      "feature": "posterior.log_high_beta",
+      "cambridge_dz": 0.3635641708608205,
+      "oslo_dz": 0.30740261948754816,
+      "joint_p": 0.19318068193180682,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.alpha_burst_cv",
+      "cambridge_dz": 0.8108012649335549,
+      "oslo_dz": 0.3308107457163739,
+      "joint_p": 0.15648435156484353,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.slow_alpha_coupling",
+      "cambridge_dz": 0.27230406702151316,
+      "oslo_dz": 0.7929762076587663,
+      "joint_p": 0.22427757224277572,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.ordinal_fast_excess",
+      "cambridge_dz": 0.05557153569153342,
+      "oslo_dz": -0.3227392916070636,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.ordinal_slow_excess",
+      "cambridge_dz": -0.4737479495181768,
+      "oslo_dz": -0.3042574530994032,
+      "joint_p": 0.1982801719828017,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "frontal.alpha_left_right_imaginary_coherence",
+      "cambridge_dz": -0.08737002507055384,
+      "oslo_dz": -0.2823414957068525,
+      "joint_p": 0.6979302069793021,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.alpha_burst_cv",
+      "cambridge_dz": 0.42568021143387386,
+      "oslo_dz": 0.28581629220244187,
+      "joint_p": 0.20957904209579042,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.slow_alpha_coupling",
+      "cambridge_dz": 0.1074483745825177,
+      "oslo_dz": 0.2643662192859286,
+      "joint_p": 0.6416358364163584,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.ordinal_fast_excess",
+      "cambridge_dz": 0.2437284455847841,
+      "oslo_dz": -0.12812526890765838,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.ordinal_slow_excess",
+      "cambridge_dz": -0.27794579029795874,
+      "oslo_dz": -0.30428918273937344,
+      "joint_p": 0.23667633236676333,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "central.alpha_left_right_imaginary_coherence",
+      "cambridge_dz": 0.22008397712981848,
+      "oslo_dz": -0.7323589144887339,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.alpha_burst_cv",
+      "cambridge_dz": 0.2377633962140162,
+      "oslo_dz": 0.32681546053788196,
+      "joint_p": 0.29287071292870714,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.slow_alpha_coupling",
+      "cambridge_dz": 0.27499344031938094,
+      "oslo_dz": 0.3611933574238247,
+      "joint_p": 0.23537646235376464,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.ordinal_fast_excess",
+      "cambridge_dz": 0.30153353898275015,
+      "oslo_dz": 0.31286687537842284,
+      "joint_p": 0.19638036196380362,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.ordinal_slow_excess",
+      "cambridge_dz": -0.21168165449903306,
+      "oslo_dz": 0.3831810731769907,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "posterior.alpha_left_right_imaginary_coherence",
+      "cambridge_dz": 0.29002470693168975,
+      "oslo_dz": -0.04580866019825807,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "front_back.alpha_imaginary_coherence",
+      "cambridge_dz": 0.0030563746784958495,
+      "oslo_dz": 0.18286628052467185,
+      "joint_p": 0.9897010298970103,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "front_back.theta_imaginary_coherence",
+      "cambridge_dz": 0.05270082911139854,
+      "oslo_dz": -0.07010189654897193,
+      "joint_p": 1.0,
+      "joint_q": 1.0
+    },
+    {
+      "feature": "front_back.alpha_envelope_correlation",
+      "cambridge_dz": 0.08464082767469176,
+      "oslo_dz": 0.7235732589817113,
+      "joint_p": 0.7097290270972902,
+      "joint_q": 1.0
+    }
+  ],
+  "behaviour": {
+    "sessions": 80,
+    "participants": 20,
+    "MAE": {
+      "stage": 5.864473684210526,
+      "stage_spectrum": 4.78246399211734,
+      "stage_combined": 5.077795297334279
+    },
+    "gain_over_stage": {
+      "mean": 0.786678386876246,
+      "interval": [
+        -0.08686999426270185,
+        1.6620450514150213
+      ]
+    },
+    "gain_over_spectrum": {
+      "mean": -0.29533130521693995,
+      "interval": [
+        -1.0908933804603866,
+        0.46360684375653344
+      ]
+    }
+  }
+}

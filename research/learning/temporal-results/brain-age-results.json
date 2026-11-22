@@ -1,0 +1,757 @@
+{
+  "development": {
+    "n": 490,
+    "age_range": [
+      20.0,
+      70.0
+    ],
+    "mae": 9.987586626379066,
+    "mae_ci95": [
+      9.43830007786723,
+      10.572252159701156
+    ],
+    "median_baseline_mae": 12.879591836734694,
+    "gain_ci95": [
+      2.2778431534400063,
+      3.510474870519053
+    ],
+    "bias": -0.008588649164031912,
+    "r2": 0.3398708347695789,
+    "rank_r": 0.5893049478243447,
+    "predicted_on_observed_slope": 0.3373924468892839,
+    "strata": {
+      "20-29": {
+        "n": 110,
+        "bias": 12.31767700335512,
+        "mae": 12.334432229528245
+      },
+      "30-39": {
+        "n": 92,
+        "bias": 7.422644574466909,
+        "mae": 8.290128674506644
+      },
+      "40-49": {
+        "n": 92,
+        "bias": -0.8873629385310146,
+        "mae": 6.045070541333397
+      },
+      "50-59": {
+        "n": 103,
+        "bias": -6.412010742141724,
+        "mae": 8.516072326196817
+      },
+      "60-69": {
+        "n": 81,
+        "bias": -13.093072441912947,
+        "mae": 13.601398512247956
+      },
+      "70-79": {
+        "n": 12,
+        "bias": -19.951903727499598,
+        "mae": 19.951903727499598
+      },
+      "F": {
+        "n": 316,
+        "bias": 0.9813406849610353,
+        "mae": 10.086355677920517
+      },
+      "M": {
+        "n": 174,
+        "bias": -1.806391347919901,
+        "mae": 9.808212946568148
+      }
+    }
+  },
+  "associations_dortmund": {
+    "frontal.log_delta_fraction": {
+      "n": 490,
+      "rho": -0.0807927354690797,
+      "p": 0.07397343787796559,
+      "slope_per_decade": -0.019657956896495143,
+      "q": 0.35328816948045594
+    },
+    "frontal.log_theta_fraction": {
+      "n": 490,
+      "rho": -0.05388790825350024,
+      "p": 0.23377986184184046,
+      "slope_per_decade": -0.014326200925914835,
+      "q": 1.0
+    },
+    "frontal.log_alpha_fraction": {
+      "n": 490,
+      "rho": -0.02462852861028873,
+      "p": 0.5865338028797409,
+      "slope_per_decade": -0.019966430994611057,
+      "q": 1.0
+    },
+    "frontal.log_low_beta_fraction": {
+      "n": 490,
+      "rho": 0.16726560676361105,
+      "p": 0.00019972786467805138,
+      "slope_per_decade": 0.0785403217999402,
+      "q": 0.0011658485217210318
+    },
+    "frontal.log_high_beta_fraction": {
+      "n": 490,
+      "rho": 0.1992781538069288,
+      "p": 8.80558414344241e-06,
+      "slope_per_decade": 0.1081222171123797,
+      "q": 7.709973723298895e-05
+    },
+    "frontal.log_total_power": {
+      "n": 490,
+      "rho": -0.07324353719462871,
+      "p": 0.10537208246941375,
+      "slope_per_decade": -0.03711733826918216,
+      "q": 0.48136410226545917
+    },
+    "frontal.spectral_slope": {
+      "n": 490,
+      "rho": 0.18662210292441345,
+      "p": 3.223383129153698e-05,
+      "slope_per_decade": 0.058300581232777406,
+      "q": 0.00022578580883275177
+    },
+    "frontal.alpha_peak_hz": {
+      "n": 456,
+      "rho": -0.1430512808768353,
+      "p": 0.002197767251302161,
+      "slope_per_decade": -0.10024255363354288,
+      "q": 0.011545896886410684
+    },
+    "frontal.alpha_prominence_db": {
+      "n": 490,
+      "rho": -0.14612379111857324,
+      "p": 0.0011796551727357065,
+      "slope_per_decade": -0.24426357078175231,
+      "q": 0.006523451652009482
+    },
+    "central.log_delta_fraction": {
+      "n": 490,
+      "rho": 0.011752816085660039,
+      "p": 0.7952462539610211,
+      "slope_per_decade": -0.005014633366051329,
+      "q": 1.0
+    },
+    "central.log_theta_fraction": {
+      "n": 490,
+      "rho": -0.17240393434454673,
+      "p": 0.00012539464203643901,
+      "slope_per_decade": -0.046985838934206776,
+      "q": 0.0007750077245592269
+    },
+    "central.log_alpha_fraction": {
+      "n": 490,
+      "rho": -0.2398060838672955,
+      "p": 7.727481871383611e-08,
+      "slope_per_decade": -0.11591892833849507,
+      "q": 1.1598876583982537e-06
+    },
+    "central.log_low_beta_fraction": {
+      "n": 490,
+      "rho": 0.38438037773340333,
+      "p": 1.0625286138592736e-18,
+      "slope_per_decade": 0.13388504680540234,
+      "q": 1.116391720480086e-16
+    },
+    "central.log_high_beta_fraction": {
+      "n": 490,
+      "rho": 0.3313738707461442,
+      "p": 5.060829483872635e-14,
+      "slope_per_decade": 0.13099748957186746,
+      "q": 1.772459916486608e-12
+    },
+    "central.log_total_power": {
+      "n": 490,
+      "rho": -0.1890959235636714,
+      "p": 2.517822402987253e-05,
+      "slope_per_decade": -0.07267503823198751,
+      "q": 0.000188961370590744
+    },
+    "central.spectral_slope": {
+      "n": 490,
+      "rho": 0.33587754656453184,
+      "p": 2.188919467245352e-14,
+      "slope_per_decade": 0.09422138557814183,
+      "q": 1.1499415348234781e-12
+    },
+    "central.alpha_peak_hz": {
+      "n": 479,
+      "rho": -0.19617564463914652,
+      "p": 1.529573518913693e-05,
+      "slope_per_decade": -0.1488227062034414,
+      "q": 0.00012362405261065427
+    },
+    "central.alpha_prominence_db": {
+      "n": 490,
+      "rho": -0.22202152110360318,
+      "p": 6.898711403191839e-07,
+      "slope_per_decade": -0.6912063041655601,
+      "q": 6.589481828405245e-06
+    },
+    "posterior.log_delta_fraction": {
+      "n": 490,
+      "rho": 0.0952992290840659,
+      "p": 0.03494868436198036,
+      "slope_per_decade": 0.04379328668213236,
+      "q": 0.17485880628561934
+    },
+    "posterior.log_theta_fraction": {
+      "n": 490,
+      "rho": 0.05180892763048878,
+      "p": 0.25234202500911274,
+      "slope_per_decade": 0.025370816256989098,
+      "q": 1.0
+    },
+    "posterior.log_alpha_fraction": {
+      "n": 490,
+      "rho": -0.2313617108376645,
+      "p": 2.2336775573790408e-07,
+      "slope_per_decade": -0.09278988560162361,
+      "q": 2.6076778845750857e-06
+    },
+    "posterior.log_low_beta_fraction": {
+      "n": 490,
+      "rho": 0.2730124863240778,
+      "p": 7.992576911524828e-10,
+      "slope_per_decade": 0.10409480303258471,
+      "q": 1.6795494395049583e-08
+    },
+    "posterior.log_high_beta_fraction": {
+      "n": 490,
+      "rho": 0.24748301849842358,
+      "p": 2.842708210534886e-08,
+      "slope_per_decade": 0.11221025430084458,
+      "q": 4.978024228535006e-07
+    },
+    "posterior.log_total_power": {
+      "n": 490,
+      "rho": -0.2912563396432327,
+      "p": 4.903980788050806e-11,
+      "slope_per_decade": -0.1694386242279699,
+      "q": 1.2881449679948177e-09
+    },
+    "posterior.spectral_slope": {
+      "n": 490,
+      "rho": 0.23750953313197246,
+      "p": 1.0354620575654715e-07,
+      "slope_per_decade": 0.0550473914771181,
+      "q": 1.3599413381191897e-06
+    },
+    "posterior.alpha_peak_hz": {
+      "n": 477,
+      "rho": -0.22729491407511823,
+      "p": 5.24885963937522e-07,
+      "slope_per_decade": -0.14071897382654563,
+      "q": 5.514941778440128e-06
+    },
+    "posterior.alpha_prominence_db": {
+      "n": 490,
+      "rho": -0.17434598213837327,
+      "p": 0.00010479822712614845,
+      "slope_per_decade": -0.6562879971516339,
+      "q": 0.0006881924846456369
+    }
+  },
+  "training_n": 392,
+  "calibration_n": 98,
+  "interval_half_width": 20.17928273166411,
+  "longitudinal": {
+    "n": 157,
+    "mean_change": 2.484839979122517,
+    "mean_change_ci95": [
+      1.608677481776194,
+      3.395579439267539
+    ],
+    "mean_elapsed_calendar_years": 5.210191082802548,
+    "mean_absolute_change_error": 4.797388956336751,
+    "median_change": 2.961857620684569,
+    "change_middle_80pct": [
+      -4.012618456256956,
+      8.996775363155034
+    ],
+    "fraction_increased": 0.6878980891719745
+  },
+  "dortmund_comparators": {
+    "frontal_only": {
+      "mae": 12.153904211901752,
+      "full_model_gain_ci95": [
+        1.6440203249526126,
+        2.6963864846691665
+      ]
+    },
+    "band_power_only": {
+      "mae": 10.405560797332422,
+      "full_model_gain_ci95": [
+        0.09762757253287743,
+        0.7376233738854329
+      ]
+    }
+  },
+  "decade_medians": {
+    "20-29": {
+      "frontal.log_delta_fraction": -0.4069749675834785,
+      "frontal.log_theta_fraction": -2.1430368169750746,
+      "frontal.log_alpha_fraction": -2.4957444449532558,
+      "frontal.log_low_beta_fraction": -3.031230596567565,
+      "frontal.log_high_beta_fraction": -3.0193897200574886,
+      "frontal.log_total_power": 3.521769011078793,
+      "frontal.spectral_slope": -1.346974738890089,
+      "frontal.alpha_peak_hz": 9.75,
+      "frontal.alpha_prominence_db": 4.498629399655243,
+      "central.log_delta_fraction": -1.0926154582013239,
+      "central.log_theta_fraction": -2.027497595663048,
+      "central.log_alpha_fraction": -1.152584910311951,
+      "central.log_low_beta_fraction": -2.4819480638387423,
+      "central.log_high_beta_fraction": -2.590396695929379,
+      "central.log_total_power": 3.4635693016477234,
+      "central.spectral_slope": -0.8678225496558651,
+      "central.alpha_peak_hz": 10.25,
+      "central.alpha_prominence_db": 8.6980861355602,
+      "posterior.log_delta_fraction": -1.858214476076125,
+      "posterior.log_theta_fraction": -2.273744891491236,
+      "posterior.log_alpha_fraction": -0.7512539539719099,
+      "posterior.log_low_beta_fraction": -2.265057106653175,
+      "posterior.log_high_beta_fraction": -2.8480574909478937,
+      "posterior.log_total_power": 3.7193857442540894,
+      "posterior.spectral_slope": -0.7030659343633268,
+      "posterior.alpha_peak_hz": 10.0,
+      "posterior.alpha_prominence_db": 9.947379946216696
+    },
+    "30-39": {
+      "frontal.log_delta_fraction": -0.3730524594245446,
+      "frontal.log_theta_fraction": -2.273226311429395,
+      "frontal.log_alpha_fraction": -2.5507840262916006,
+      "frontal.log_low_beta_fraction": -3.0213249663120383,
+      "frontal.log_high_beta_fraction": -3.0024425028384645,
+      "frontal.log_total_power": 3.5035770602380882,
+      "frontal.spectral_slope": -1.335789121672002,
+      "frontal.alpha_peak_hz": 9.75,
+      "frontal.alpha_prominence_db": 3.9616772273211556,
+      "central.log_delta_fraction": -0.8755311822179717,
+      "central.log_theta_fraction": -2.1019272461711944,
+      "central.log_alpha_fraction": -1.5188028224814125,
+      "central.log_low_beta_fraction": -2.37698305749222,
+      "central.log_high_beta_fraction": -2.4722327813374254,
+      "central.log_total_power": 3.1706287079488016,
+      "central.spectral_slope": -0.8103361644517106,
+      "central.alpha_peak_hz": 10.25,
+      "central.alpha_prominence_db": 7.3639192294373235,
+      "posterior.log_delta_fraction": -1.675402780143319,
+      "posterior.log_theta_fraction": -2.2695688191501135,
+      "posterior.log_alpha_fraction": -0.7026302924542092,
+      "posterior.log_low_beta_fraction": -2.14844355735187,
+      "posterior.log_high_beta_fraction": -2.6097704211471484,
+      "posterior.log_total_power": 3.068197248497567,
+      "posterior.spectral_slope": -0.6389662411353907,
+      "posterior.alpha_peak_hz": 10.25,
+      "posterior.alpha_prominence_db": 10.039176685830313
+    },
+    "40-49": {
+      "frontal.log_delta_fraction": -0.4289241097547396,
+      "frontal.log_theta_fraction": -2.190989084673853,
+      "frontal.log_alpha_fraction": -2.5281337823695518,
+      "frontal.log_low_beta_fraction": -2.8504466590754167,
+      "frontal.log_high_beta_fraction": -2.762872301330826,
+      "frontal.log_total_power": 3.54473499247246,
+      "frontal.spectral_slope": -1.2409898743487835,
+      "frontal.alpha_peak_hz": 9.875,
+      "frontal.alpha_prominence_db": 4.013386405028174,
+      "central.log_delta_fraction": -0.9912900239169095,
+      "central.log_theta_fraction": -2.1887357956148943,
+      "central.log_alpha_fraction": -1.6328307230069745,
+      "central.log_low_beta_fraction": -2.2091572921457336,
+      "central.log_high_beta_fraction": -2.339281747366198,
+      "central.log_total_power": 3.1065662478683658,
+      "central.spectral_slope": -0.6891643853199502,
+      "central.alpha_peak_hz": 10.0,
+      "central.alpha_prominence_db": 7.001473871424449,
+      "posterior.log_delta_fraction": -1.7171681878183687,
+      "posterior.log_theta_fraction": -2.326828608577805,
+      "posterior.log_alpha_fraction": -0.8663769729428106,
+      "posterior.log_low_beta_fraction": -1.9545420868585421,
+      "posterior.log_high_beta_fraction": -2.625358740203658,
+      "posterior.log_total_power": 3.013030537420947,
+      "posterior.spectral_slope": -0.5053295863991103,
+      "posterior.alpha_peak_hz": 9.75,
+      "posterior.alpha_prominence_db": 9.32933470015954
+    },
+    "50-59": {
+      "frontal.log_delta_fraction": -0.44522894424830556,
+      "frontal.log_theta_fraction": -2.2152659669325,
+      "frontal.log_alpha_fraction": -2.4031012402596046,
+      "frontal.log_low_beta_fraction": -2.7852857595363845,
+      "frontal.log_high_beta_fraction": -2.7436773693669156,
+      "frontal.log_total_power": 3.322770789335136,
+      "frontal.spectral_slope": -1.142498149590963,
+      "frontal.alpha_peak_hz": 9.25,
+      "frontal.alpha_prominence_db": 3.735005755671892,
+      "central.log_delta_fraction": -1.0084088445292667,
+      "central.log_theta_fraction": -2.1222866050684823,
+      "central.log_alpha_fraction": -1.7402756334942004,
+      "central.log_low_beta_fraction": -2.0892387952100155,
+      "central.log_high_beta_fraction": -2.175622643372116,
+      "central.log_total_power": 3.033955946521295,
+      "central.spectral_slope": -0.6359850211052945,
+      "central.alpha_peak_hz": 9.5,
+      "central.alpha_prominence_db": 5.513514940660512,
+      "posterior.log_delta_fraction": -1.7073653686938086,
+      "posterior.log_theta_fraction": -2.2948140773280032,
+      "posterior.log_alpha_fraction": -0.9042492968802819,
+      "posterior.log_low_beta_fraction": -2.0004080607000083,
+      "posterior.log_high_beta_fraction": -2.4325638832917345,
+      "posterior.log_total_power": 2.862205378192744,
+      "posterior.spectral_slope": -0.4825575200188912,
+      "posterior.alpha_peak_hz": 9.75,
+      "posterior.alpha_prominence_db": 8.66902917156983
+    },
+    "60-70": {
+      "frontal.log_delta_fraction": -0.41787315627526916,
+      "frontal.log_theta_fraction": -2.219741867026266,
+      "frontal.log_alpha_fraction": -2.468867492448849,
+      "frontal.log_low_beta_fraction": -2.7047591724246773,
+      "frontal.log_high_beta_fraction": -2.6311212589841206,
+      "frontal.log_total_power": 3.4654713721331682,
+      "frontal.spectral_slope": -1.1287953555588501,
+      "frontal.alpha_peak_hz": 9.25,
+      "frontal.alpha_prominence_db": 3.3249010326880533,
+      "central.log_delta_fraction": -0.9327836563043193,
+      "central.log_theta_fraction": -2.2554947631472144,
+      "central.log_alpha_fraction": -1.8112059477969327,
+      "central.log_low_beta_fraction": -1.8915959646843925,
+      "central.log_high_beta_fraction": -2.0947331735331454,
+      "central.log_total_power": 3.1299719890868167,
+      "central.spectral_slope": -0.4957165817625169,
+      "central.alpha_peak_hz": 9.625,
+      "central.alpha_prominence_db": 4.750364442219478,
+      "posterior.log_delta_fraction": -1.5146663367300224,
+      "posterior.log_theta_fraction": -2.1482739646201083,
+      "posterior.log_alpha_fraction": -1.1604759183848787,
+      "posterior.log_low_beta_fraction": -1.8306502732512264,
+      "posterior.log_high_beta_fraction": -2.3615806050869406,
+      "posterior.log_total_power": 2.854430837524163,
+      "posterior.spectral_slope": -0.5371949008313667,
+      "posterior.alpha_peak_hz": 9.5,
+      "posterior.alpha_prominence_db": 7.385707243447475
+    }
+  },
+  "oslo": {
+    "n": 76,
+    "age_range": [
+      20.0,
+      69.0
+    ],
+    "mae": 8.736581238008272,
+    "mae_ci95": [
+      7.235700634474199,
+      10.491813371408039
+    ],
+    "median_baseline_mae": 12.5,
+    "gain_ci95": [
+      1.7664844625561267,
+      5.685025118594572
+    ],
+    "bias": -0.8686023869421912,
+    "r2": 0.20478622843767957,
+    "rank_r": 0.4435187984930597,
+    "predicted_on_observed_slope": 0.25986409180884756,
+    "strata": {
+      "20-29": {
+        "n": 20,
+        "bias": 9.7743936870191,
+        "mae": 10.106006026484934
+      },
+      "30-39": {
+        "n": 24,
+        "bias": 1.122983617728959,
+        "mae": 4.2212570443299215
+      },
+      "40-49": {
+        "n": 14,
+        "bias": -1.607854446979474,
+        "mae": 6.757613198517199
+      },
+      "50-59": {
+        "n": 12,
+        "bias": -11.774709396423601,
+        "mae": 11.774709396423601
+      },
+      "60-69": {
+        "n": 6,
+        "bias": -20.774464493114618,
+        "mae": 20.774464493114618
+      },
+      "F": {
+        "n": 48,
+        "bias": -1.0093991900324042,
+        "mae": 7.643172554575014
+      },
+      "M": {
+        "n": 28,
+        "bias": -0.6272364387875405,
+        "mae": 10.610996123893852
+      }
+    },
+    "outside_reference_age": 10,
+    "interval_coverage": 0.9078947368421053,
+    "local_leave_one_out_median_mae": 11.5,
+    "comparators": {
+      "frontal_only": 11.676048911281464,
+      "band_power_only": 8.911024676167376
+    }
+  },
+  "associations_oslo": {
+    "frontal.log_delta_fraction": {
+      "n": 76,
+      "rho": -0.13736399842275102,
+      "p": 0.23669669536540586,
+      "slope_per_decade": -0.03232647388183214,
+      "q": 1.0
+    },
+    "frontal.log_theta_fraction": {
+      "n": 76,
+      "rho": -0.15014268114454876,
+      "p": 0.1954675887259179,
+      "slope_per_decade": -0.019221322898107605,
+      "q": 1.0
+    },
+    "frontal.log_alpha_fraction": {
+      "n": 76,
+      "rho": 0.2088917856492592,
+      "p": 0.07015166019438064,
+      "slope_per_decade": 0.06120097990437533,
+      "q": 1.0
+    },
+    "frontal.log_low_beta_fraction": {
+      "n": 76,
+      "rho": 0.07050166174028247,
+      "p": 0.5450548874166994,
+      "slope_per_decade": 0.030393825018614592,
+      "q": 1.0
+    },
+    "frontal.log_high_beta_fraction": {
+      "n": 76,
+      "rho": -0.0034888266531674806,
+      "p": 0.9761381168007518,
+      "slope_per_decade": 0.014495174101553022,
+      "q": 1.0
+    },
+    "frontal.log_total_power": {
+      "n": 76,
+      "rho": 0.035175581667818014,
+      "p": 0.762907654075354,
+      "slope_per_decade": -0.0034690528330106815,
+      "q": 1.0
+    },
+    "frontal.spectral_slope": {
+      "n": 76,
+      "rho": 0.15837904838065395,
+      "p": 0.17178971351636582,
+      "slope_per_decade": 0.045364878304612194,
+      "q": 1.0
+    },
+    "frontal.alpha_peak_hz": {
+      "n": 75,
+      "rho": -0.2569171660199225,
+      "p": 0.026075173455956883,
+      "slope_per_decade": -0.19593221924716814,
+      "q": 0.7583878156276577
+    },
+    "frontal.alpha_prominence_db": {
+      "n": 76,
+      "rho": 0.16034920931420735,
+      "p": 0.16645151514880938,
+      "slope_per_decade": 0.2298677683042043,
+      "q": 1.0
+    },
+    "central.log_delta_fraction": {
+      "n": 76,
+      "rho": -0.21321519436455696,
+      "p": 0.06441624859647398,
+      "slope_per_decade": -0.049728760169272884,
+      "q": 1.0
+    },
+    "central.log_theta_fraction": {
+      "n": 76,
+      "rho": -0.3484722151222578,
+      "p": 0.002036384605135324,
+      "slope_per_decade": -0.07107352463899322,
+      "q": 0.10698078542227783
+    },
+    "central.log_alpha_fraction": {
+      "n": 76,
+      "rho": 0.11369470387381084,
+      "p": 0.32811579134295316,
+      "slope_per_decade": 0.015397625177909482,
+      "q": 1.0
+    },
+    "central.log_low_beta_fraction": {
+      "n": 76,
+      "rho": 0.250798750506718,
+      "p": 0.02887190005888229,
+      "slope_per_decade": 0.08993509403812994,
+      "q": 0.7583878156276577
+    },
+    "central.log_high_beta_fraction": {
+      "n": 76,
+      "rho": 0.16645123553896302,
+      "p": 0.1506936774138437,
+      "slope_per_decade": 0.05020844509890831,
+      "q": 1.0
+    },
+    "central.log_total_power": {
+      "n": 76,
+      "rho": -0.09038113282676227,
+      "p": 0.4374791813944002,
+      "slope_per_decade": -0.05154796506305766,
+      "q": 1.0
+    },
+    "central.spectral_slope": {
+      "n": 76,
+      "rho": 0.4409466439409206,
+      "p": 6.699944597197362e-05,
+      "slope_per_decade": 0.10215281246045037,
+      "q": 0.00703958705527819
+    },
+    "central.alpha_peak_hz": {
+      "n": 75,
+      "rho": -0.21843423871471565,
+      "p": 0.059737316245179216,
+      "slope_per_decade": -0.19025746350112935,
+      "q": 1.0
+    },
+    "central.alpha_prominence_db": {
+      "n": 76,
+      "rho": 0.13015375667287155,
+      "p": 0.26244801345205593,
+      "slope_per_decade": 0.2810456565807341,
+      "q": 1.0
+    },
+    "posterior.log_delta_fraction": {
+      "n": 76,
+      "rho": -0.09891849687216034,
+      "p": 0.3952432320347548,
+      "slope_per_decade": -0.02055511123526013,
+      "q": 1.0
+    },
+    "posterior.log_theta_fraction": {
+      "n": 76,
+      "rho": -0.06854518247987874,
+      "p": 0.5562959542117277,
+      "slope_per_decade": -0.003683411814082451,
+      "q": 1.0
+    },
+    "posterior.log_alpha_fraction": {
+      "n": 76,
+      "rho": 0.06107498894015543,
+      "p": 0.6002056162468472,
+      "slope_per_decade": -0.019726044394264876,
+      "q": 1.0
+    },
+    "posterior.log_low_beta_fraction": {
+      "n": 76,
+      "rho": 0.09983516897318864,
+      "p": 0.3908565974222842,
+      "slope_per_decade": 0.0513464455392441,
+      "q": 1.0
+    },
+    "posterior.log_high_beta_fraction": {
+      "n": 76,
+      "rho": -0.0634145550487501,
+      "p": 0.5862892344558208,
+      "slope_per_decade": -0.003143026114846403,
+      "q": 1.0
+    },
+    "posterior.log_total_power": {
+      "n": 76,
+      "rho": -0.09729037776734883,
+      "p": 0.40310590284401326,
+      "slope_per_decade": -0.05853892993521625,
+      "q": 1.0
+    },
+    "posterior.spectral_slope": {
+      "n": 76,
+      "rho": 0.11700566877603254,
+      "p": 0.31413224378030674,
+      "slope_per_decade": 0.034558027688013186,
+      "q": 1.0
+    },
+    "posterior.alpha_peak_hz": {
+      "n": 75,
+      "rho": -0.0717125976574826,
+      "p": 0.540930710909455,
+      "slope_per_decade": -0.0857359829131785,
+      "q": 1.0
+    },
+    "posterior.alpha_prominence_db": {
+      "n": 76,
+      "rho": -0.05794188578887953,
+      "p": 0.6190676902826678,
+      "slope_per_decade": -0.33675325333940354,
+      "q": 1.0
+    }
+  },
+  "oslo_exploratory_cognition": {
+    "ravlt_del": {
+      "n": 76,
+      "partial_r": -0.06199824487197953,
+      "p": 0.6023164694409723,
+      "q": 0.9034747041614584
+    },
+    "tmt_3": {
+      "n": 73,
+      "partial_r": 0.17985817944871882,
+      "p": 0.13625427749520974,
+      "q": 0.4087628324856292
+    }
+  },
+  "athens": {
+    "n": 14,
+    "age_range": [
+      57.0,
+      70.0
+    ],
+    "mae": 18.60693250008526,
+    "mae_ci95": [
+      14.497439749695477,
+      23.332233090905678
+    ],
+    "median_baseline_mae": 18.642857142857142,
+    "gain_ci95": [
+      -4.025246397792676,
+      3.938979773854316
+    ],
+    "bias": -18.60693250008526,
+    "r2": -32.570169430022574,
+    "rank_r": -0.1806209764917243,
+    "predicted_on_observed_slope": -0.011488801377840452,
+    "strata": {
+      "60-69": {
+        "n": 10,
+        "bias": -18.139796848666023,
+        "mae": 18.139796848666023
+      },
+      "M": {
+        "n": 10,
+        "bias": -15.743563162558155,
+        "mae": 15.743563162558155
+      }
+    },
+    "outside_reference_age": 8,
+    "interval_coverage": 0.5714285714285714,
+    "local_leave_one_out_median_mae": 2.642857142857143,
+    "comparators": {
+      "frontal_only": 21.6409116183093,
+      "band_power_only": 20.265097281786243
+    }
+  },
+  "propofol_challenge": {
+    "n": 20,
+    "mean_shift": 11.376157388266359,
+    "mean_shift_ci95": [
+      7.050042448693277,
+      15.628230421177438
+    ],
+    "median_absolute_shift": 14.379812929079641
+  }
+}

@@ -8,10 +8,21 @@ export function ResearchLearningPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Anaesthesia, neuromuscular blockade and seizure research</CardTitle>
-        <CardDescription>Retrospective tests on recorded EEG, 21 November 2026.</CardDescription>
+        <CardTitle className="text-base">EEG age, anaesthesia and diagnostic research</CardTitle>
+        <CardDescription>Retrospective tests on recorded EEG, 22 November 2026.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 text-sm">
+        <section className="space-y-2">
+          <h3 className="font-medium">EEG age in awake, eyes-closed adults</h3>
+          <p>The research model estimates chronological age from 48 seconds of EEG. Mean absolute error was 10.0 years in 490 held-out Dortmund participants, 8.7 years in 76 independent Oslo participants and 18.6 years in 14 older Athens controls.</p>
+          <p>Central background spectral slope flattened with age at both German and Norwegian sites. The model underestimated ageing at follow-up. Its reference interval spans about 40 years, and a physiological interpretation remains unvalidated.</p>
+          <a className="underline" href={report.replace("README.md", "brain-age.md")} target="_blank" rel="noreferrer">Brain-age results, calibration and offline replay</a>
+        </section>
+        <section className="space-y-2">
+          <h3 className="font-medium">Timing and coordination across electrodes</h3>
+          <p>Adding timing features gave no reproducible improvement in propofol classification across centres. The dementia model distinguished Alzheimer’s recordings from controls, but performed poorly for Alzheimer’s versus frontotemporal dementia.</p>
+          <a className="underline" href={report.replace("README.md", "temporal-patterns.md")} target="_blank" rel="noreferrer">Dementia, propofol and seizure findings</a>
+        </section>
         <section className="space-y-2">
           <h3 className="font-medium">Awake during neuromuscular blockade</h3>
           <p>One participant at a time was held out while a model learned from the other five. The model used frontal alpha power relative to each person’s awake baseline. It classified {blockade.falseSedated} of {blockade.volunteers} awake, paralysed volunteers as sedated.</p>
