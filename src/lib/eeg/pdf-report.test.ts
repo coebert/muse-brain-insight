@@ -94,9 +94,18 @@ describe("buildSessionReportPdf depth eligibility", () => {
     const doc = buildSessionReportPdf({ session: { case_code: "CASE-1" }, epochs, events });
     const drawn = readPdfText(doc);
 
-    expect(drawn.join("\n")).toContain("Withheld (research descriptor only)");
+    const text = drawn.join("\n");
+    expect(text).toContain("Withheld (research descriptor only)");
     expect(drawn).not.toContain("23");
     expect(doc.getNumberOfPages()).toBeGreaterThan(1);
+    // The restricted export carries research-only framing instead of the
+    // ordinary decision-support header, and keeps its measured descriptors.
+    expect(text).toContain("Retrospective research only. No clinical depth or awareness assessment.");
+    expect(text).not.toContain("decision support only, not a diagnostic device");
+    expect(text).toContain("MEAN SUPPRESSION RATIO");
+    expect(text).toContain("12.0 %");
+    expect(text).toContain("MEAN SEF95");
+    expect(text).toContain("9.4 Hz");
   });
 
   it("withholds synthetic stored depths when the verdict is explicitly true", () => {
@@ -126,7 +135,10 @@ describe("buildSessionReportPdf depth eligibility", () => {
     const drawn = readPdfText(doc);
 
     expect(drawn).toContain("23");
-    expect(drawn.join("\n")).not.toContain("Withheld (research descriptor only)");
+    const text = drawn.join("\n");
+    expect(text).not.toContain("Withheld (research descriptor only)");
+    expect(text).toContain("decision support only, not a diagnostic device.");
+    expect(text).not.toContain("Retrospective research only");
   });
 });
 

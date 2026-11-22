@@ -452,7 +452,11 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   doc.setTextColor(15, 20, 40);
   doc.text(`EEG session report — ${session.case_code ?? "unlabelled case"}`, M, M + 5);
   body(
-    `Anonymised record · ${session.device_name ?? "Muse 2"} frontal EEG · generated ${new Date().toLocaleString()} · decision support only, not a diagnostic device.`,
+    `Anonymised record · ${session.device_name ?? "Muse 2"} frontal EEG · generated ${new Date().toLocaleString()} · ${
+      depthWithheld
+        ? "Retrospective research only. No clinical depth or awareness assessment."
+        : "decision support only, not a diagnostic device."
+    }`,
     M,
     M + 11,
     8,
