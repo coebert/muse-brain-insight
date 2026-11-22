@@ -4,6 +4,8 @@ import {
   getPasskeyEnvironment,
   describePasskeyFailure,
   summarisePasskeyFailure,
+  passkeyPreflight,
+  PUBLISHED_PASSKEY_ORIGIN,
 } from "./webauthn-support";
 
 function setEmbedded(embedded: boolean) {
@@ -62,6 +64,51 @@ describe("getPasskeyEnvironment", () => {
     expect(getPasskeyEnvironment().allowedToCreate).toBe(true);
   });
 
+  it("checks sign-in and registration permission separately, even on the top-level page", () => {
+    Object.defineProperty(document, "featurePolicy", {
+      value: { allowsFeature: (name: string) => name === "publickey-credentials-get" },
+      configurable: true,
+    });
+    const env = getPasskeyEnvironment("get");
+    expect(passkeyPreflight(env, "get")).toBeNull();
+    expect(passkeyPreflight(env, "create")?.code).toBe("blocked");
+  });
+
+  it("uses only a published route when an embedded page opens a new tab", () => {
+    setEmbedded(true);
+    const previous = window.location.href;
+    window.history.replaceState(null, "", "/auth?private=1#state");
+    try {
+      expect(getPasskeyEnvironment("get").standaloneUrl).toBe(PUBLISHED_PASSKEY_ORIGIN + "/auth");
+      expect(getPasskeyEnvironment("create").standaloneUrl).toBe(
+        PUBLISHED_PASSKEY_ORIGIN + "/settings",
+      );
+    } finally {
+      window.history.replaceState(null, "", previous);
+    }
+  });
+
+  it("uses only a trusted HTTPS origin from deployment configuration", () => {
+    vi.stubEnv("VITE_PASSKEY_APP_ORIGIN", "https://example.test");
+    try {
+      expect(getPasskeyEnvironment("get").standaloneUrl).toBe("https://example.test/auth");
+      expect(getPasskeyEnvironment().usePublishedOrigin).toBe(true);
+      vi.stubEnv("VITE_PASSKEY_APP_ORIGIN", "https://user:secret@example.test/path?private=one");
+      expect(getPasskeyEnvironment("get").standaloneUrl).toBe(window.location.origin + "/auth");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("blocks ceremonies on insecure pages", () => {
+    vi.stubGlobal("isSecureContext", false);
+    try {
+      expect(passkeyPreflight(getPasskeyEnvironment(), "create")?.code).toBe("insecure-origin");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("reports unsupported when the WebAuthn API is missing", () => {
     Reflect.deleteProperty(window as object, "PublicKeyCredential");
     expect(getPasskeyEnvironment().supported).toBe(false);
@@ -72,7 +119,13 @@ describe("describePasskeyFailure", () => {
   it("explains the blocked-iframe case with an open-in-new-tab step", () => {
     const failure = describePasskeyFailure(
       new DOMException("blocked by permissions policy", "NotAllowedError"),
-      { supported: true, embedded: true, allowedToCreate: false, standaloneUrl: "https://x.test" },
+      {
+        ...getPasskeyEnvironment(),
+        supported: true,
+        embedded: true,
+        allowedToCreate: false,
+        standaloneUrl: "https://x.test",
+      },
     );
     expect(failure.code).toBe("blocked");
     expect(failure.suggestNewTab).toBe(true);
@@ -85,7 +138,13 @@ describe("describePasskeyFailure", () => {
   it("distinguishes a dismissed prompt outside an iframe", () => {
     const failure = describePasskeyFailure(
       new DOMException("The operation either timed out or was not allowed.", "NotAllowedError"),
-      { supported: true, embedded: false, allowedToCreate: true, standaloneUrl: "https://x.test" },
+      {
+        ...getPasskeyEnvironment(),
+        supported: true,
+        embedded: false,
+        allowedToCreate: true,
+        standaloneUrl: "https://x.test",
+      },
     );
     expect(failure.code).toBe("blocked");
     expect(failure.explanation).not.toMatch(/embedded preview frame/i);
