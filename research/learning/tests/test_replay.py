@@ -4,7 +4,9 @@ Run from the repository root:
     python -m unittest discover -s research/learning/tests -v
 """
 
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
+import io
 import json
 from pathlib import Path
 import sys
@@ -23,6 +25,7 @@ from replay import (  # noqa: E402
     SCORE_NAME,
     SCORE_STATUS,
     ContextError,
+    main,
     normalize_context,
     score,
 )
@@ -158,6 +161,51 @@ class ReplayPolicyTest(unittest.TestCase):
         self.assertTrue(out["model"]["research_only"])
         self.assertFalse(out["model"]["clinical_depth"])
         self.assertEqual(out["model"]["version"], 1)
+
+    def _context_file(self):
+        path = self.root / "context.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "blockade": "reported-absent",
+                    "case_id": "case-1",
+                    "acquired_at": ACQUIRED.isoformat(),
+                    "max_context_age_hours": 24,
+                    "intervals": raw_intervals(),
+                }
+            )
+        )
+        return path
+
+    def _run_cli(self, *extra):
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            main(
+                [
+                    "propofol",
+                    "frontal",
+                    str(self.file),
+                    "--models",
+                    str(RESULTS),
+                    "--context",
+                    str(self._context_file()),
+                    *extra,
+                ]
+            )
+        return json.loads(buffer.getvalue())
+
+    def test_cli_eligible_control_scores_with_the_explicit_opt_in(self):
+        out = self._run_cli("--allow-research-score")
+        self.assertEqual(out["status"], SCORE_STATUS, out["reason"])
+        self.assertIsInstance(out[SCORE_NAME], float)
+        self.assertTrue(0.0 <= out[SCORE_NAME] <= 1.0)
+        self.assertIsNone(out["consciousness_inference"])
+        self.assertEqual(out["blockade_context"], "reported-absent")
+
+    def test_cli_eligible_control_without_the_opt_in_stays_descriptor_only(self):
+        out = self._run_cli()
+        self.assert_non_scoring(out, DESCRIPTOR_STATUS)
+        self.assertIn("opt-in", out["reason"])
 
     def test_elapsed_35hz_masking_does_not_move_descriptors_or_the_score(self):
         masked = self.root / "masked.npz"

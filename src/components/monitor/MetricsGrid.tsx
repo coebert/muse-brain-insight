@@ -13,6 +13,7 @@ import type { MetricTone } from "@/components/monitor/MetricCard";
 import type { DepthWindowStatus, DepthWindowPrefs } from "@/hooks/useDepthWindowAlerts";
 import type { UncertaintyReport } from "@/lib/eeg/uncertainty";
 import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
+import { depthIsWithheld } from "@/lib/eeg/descriptor-only";
 
 export interface MetricsGridProps {
   latest: Epoch | null;
@@ -29,7 +30,10 @@ export interface MetricsGridProps {
   depthWindow: { status: DepthWindowStatus; prefs: DepthWindowPrefs };
   /** Confidence intervals for the spectral, suppression and seizure tiles. */
   uncertainty?: UncertaintyReport | undefined;
-  /** True when the experimental depth index must not be presented as depth. */
+  /**
+   * The descriptor policy's verdict. Only an explicit `false` shows a depth or
+   * COEBIS tile as a number; omitting it withholds both.
+   */
   descriptorOnly?: boolean;
 }
 
@@ -46,8 +50,11 @@ export function MetricsGrid({
   icuMode,
   depthWindow,
   uncertainty,
-  descriptorOnly = false,
+  descriptorOnly,
 }: MetricsGridProps) {
+  // Fail closed: a caller that omits the verdict must not receive a depth or
+  // COEBIS tile, a target tone or a breach pulse.
+  const withheld = depthIsWithheld(descriptorOnly);
   // The active COEBIS fit, refreshed while the case runs so the tile always
   // shows the number from the latest model.
   const coebisModel = useCoebisModel();
@@ -65,12 +72,10 @@ export function MetricsGrid({
             <MetricTile
               key="depth"
               info="depth"
-              label={descriptorOnly ? "Depth index (withheld)" : "Depth index (OpenIBIS)"}
-              value={
-                descriptorOnly || latest?.depth.index == null ? "—" : String(latest.depth.index)
-              }
+              label={withheld ? "Depth index (withheld)" : "Depth index (OpenIBIS)"}
+              value={withheld || latest?.depth.index == null ? "—" : String(latest.depth.index)}
               hint={
-                descriptorOnly
+                withheld
                   ? "Research descriptor only — no supported depth or awareness statement"
                   : latest
                     ? latest.depth.held
@@ -81,7 +86,7 @@ export function MetricsGrid({
                     : "OpenIBIS algorithm · ±10 units vs reference"
               }
               tone={
-                descriptorOnly
+                withheld
                   ? "default"
                   : depthWindow.status === "below"
                     ? "critical"
@@ -91,7 +96,7 @@ export function MetricsGrid({
                         ? depthTone(latest.depth.state)
                         : "default"
               }
-              pulse={!descriptorOnly && depthWindow.prefs.enabled && depthWindow.status === "below"}
+              pulse={!withheld && depthWindow.prefs.enabled && depthWindow.status === "below"}
               confidence={latest?.confidence.depth}
               unreliable={latest ? !latest.depthReliability.reliable : false}
               degraded={latest?.depthReliability.level === "degraded"}
@@ -102,14 +107,10 @@ export function MetricsGrid({
             <MetricTile
               key="coebis"
               info="coebis"
-              label={descriptorOnly ? "COEBIS (withheld)" : "COEBIS"}
-              value={
-                descriptorOnly || latest?.depth.coebis == null
-                  ? "—"
-                  : String(latest.depth.coebis)
-              }
+              label={withheld ? "COEBIS (withheld)" : "COEBIS"}
+              value={withheld || latest?.depth.coebis == null ? "—" : String(latest.depth.coebis)}
               hint={
-                descriptorOnly
+                withheld
                   ? "Research descriptor only — no supported depth or awareness statement"
                   : [
                       latest?.depth.coebis != null
@@ -120,9 +121,9 @@ export function MetricsGrid({
                       .filter(Boolean)
                       .join(" · ")
               }
-              badge={descriptorOnly ? null : <CoebisFitBadge model={coebisModel} compact />}
+              badge={withheld ? null : <CoebisFitBadge model={coebisModel} compact />}
               tone={
-                descriptorOnly
+                withheld
                   ? "default"
                   : latest?.depth.coebis == null || latest.depth.held
                     ? "default"
@@ -169,7 +170,11 @@ export function MetricsGrid({
                   : (formatDuration(summary.suppressionSeconds).split(" ")[0] ?? "0")
               }
               unit={
-                summary.suppressionSeconds == null ? "" : summary.suppressionSeconds < 60 ? "s" : "min"
+                summary.suppressionSeconds == null
+                  ? ""
+                  : summary.suppressionSeconds < 60
+                    ? "s"
+                    : "min"
               }
               hint={
                 summary.suppressionSeconds == null

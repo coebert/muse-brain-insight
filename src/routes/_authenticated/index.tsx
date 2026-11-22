@@ -316,6 +316,7 @@ function Monitor() {
           controls={caseState !== "idle" ? caseControls : undefined}
           archive={monitor.rawArchive}
           profile={monitor.deviceProfile}
+          descriptorOnly={descriptor.descriptorOnly}
           onExit={() => setFullscreen(false)}
         />
       ) : null}
@@ -329,11 +330,11 @@ function Monitor() {
           </div>
           <ConnectionStatusBadge status={connection} />
           {tuning.showBattery ? (
-          <BatteryIndicator
-            percent={batteryHealth.display}
-            connected={streaming || reconnecting}
-            health={batteryHealth}
-          />
+            <BatteryIndicator
+              percent={batteryHealth.display}
+              connected={streaming || reconnecting}
+              health={batteryHealth}
+            />
           ) : null}
           {caseState !== "idle" ? (
             <span className="metric-value text-sm text-muted-foreground">
@@ -400,7 +401,12 @@ function Monitor() {
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-9" aria-label="More case actions">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-11 sm:min-h-9"
+                      aria-label="More case actions"
+                    >
                       <MoreVertical className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -421,78 +427,78 @@ function Monitor() {
                 </DropdownMenu>
               </>
             ) : (
-            <>
-              {caseState === "ended" ? (
-                <Button
-                  size="sm"
-                  className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                  onClick={() => requestNewCase()}
-                >
-                  <Plus className="size-4" /> New case
-                </Button>
-              ) : (
-                <>
+              <>
+                {caseState === "ended" ? (
                   <Button
                     size="sm"
                     className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                    // Goes through requestNewCase so the intent resets to a
-                    // filed case even if the test dialog was opened and closed
-                    // beforehand.
                     onClick={() => requestNewCase()}
                   >
-                    <Bluetooth className="size-4" /> Start case
+                    <Plus className="size-4" /> New case
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                    onClick={() => requestTestSession()}
-                  >
-                    <FlaskConical className="size-4" /> Testing mode
-                  </Button>
-                </>
-              )}
-              {caseState === "ended" && monitor.epochs.length ? (
-                <>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
-                    onClick={() => setSaveOpen(true)}
-                  >
-                    <Save className="size-4" /> File case
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hidden flex-1 text-critical hover:text-critical sm:inline-flex sm:flex-none"
-                    onClick={() => setDiscardOpen(true)}
-                  >
-                    <Trash2 className="size-4" /> Exit without saving
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="min-h-11 sm:hidden"
-                        aria-label="More case actions"
-                      >
-                        <MoreVertical className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        className="text-critical"
-                        onSelect={() => setDiscardOpen(true)}
-                      >
-                        <Trash2 className="size-4" /> Exit without saving
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : null}
-            </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                      // Goes through requestNewCase so the intent resets to a
+                      // filed case even if the test dialog was opened and closed
+                      // beforehand.
+                      onClick={() => requestNewCase()}
+                    >
+                      <Bluetooth className="size-4" /> Start case
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                      onClick={() => requestTestSession()}
+                    >
+                      <FlaskConical className="size-4" /> Testing mode
+                    </Button>
+                  </>
+                )}
+                {caseState === "ended" && monitor.epochs.length ? (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="min-h-11 flex-1 sm:min-h-9 sm:flex-none"
+                      onClick={() => setSaveOpen(true)}
+                    >
+                      <Save className="size-4" /> File case
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hidden flex-1 text-critical hover:text-critical sm:inline-flex sm:flex-none"
+                      onClick={() => setDiscardOpen(true)}
+                    >
+                      <Trash2 className="size-4" /> Exit without saving
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-11 sm:hidden"
+                          aria-label="More case actions"
+                        >
+                          <MoreVertical className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-critical"
+                          onSelect={() => setDiscardOpen(true)}
+                        >
+                          <Trash2 className="size-4" /> Exit without saving
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                ) : null}
+              </>
             )}
             {user ? (
               <AppNav showBrand={false} compact />
@@ -615,23 +621,23 @@ function Monitor() {
         {tab === "monitor" ? (
           <>
             <div id="mon-status" className="scroll-mt-24 rounded-lg transition-shadow">
-            <CaseStatusWidget
-              onJump={jumpTo}
-              onRecordNote={(text) => addMarkerAt(text, monitor.elapsed)}
-              caseState={caseState}
-              elapsedSeconds={monitor.elapsed}
-              epochs={monitor.epochs}
-              caseCode={meta.caseCode}
-              sourceName={monitor.sourceName}
-              streaming={streaming}
-              reconnecting={reconnecting}
-              analysisSource={monitor.analysisSource?.side ?? null}
-              connectionError={monitor.error}
-              reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
-              dataGapSeconds={monitor.dataGapSeconds}
-              channelCompleteness={monitor.channelCompleteness}
-              channelStateHistory={monitor.channelStateHistory}
-            />
+              <CaseStatusWidget
+                onJump={jumpTo}
+                onRecordNote={(text) => addMarkerAt(text, monitor.elapsed)}
+                caseState={caseState}
+                elapsedSeconds={monitor.elapsed}
+                epochs={monitor.epochs}
+                caseCode={meta.caseCode}
+                sourceName={monitor.sourceName}
+                streaming={streaming}
+                reconnecting={reconnecting}
+                analysisSource={monitor.analysisSource?.side ?? null}
+                connectionError={monitor.error}
+                reconnectAttempt={monitor.reconnectAttempt?.attempt ?? 0}
+                dataGapSeconds={monitor.dataGapSeconds}
+                channelCompleteness={monitor.channelCompleteness}
+                channelStateHistory={monitor.channelStateHistory}
+              />
             </div>
 
             {/* Density spectral array */}
@@ -916,7 +922,9 @@ function Monitor() {
                     : monitor.epochs.map((e) => ({ t: e.t, index: e.depth?.index ?? null }))
                 }
                 coebisSeries={
-                  descriptor.descriptorOnly ? [] : monitor.epochs.map((e) => e.depth?.coebis ?? null)
+                  descriptor.descriptorOnly
+                    ? []
+                    : monitor.epochs.map((e) => e.depth?.coebis ?? null)
                 }
                 onMark={addMarker}
               />
@@ -929,12 +937,14 @@ function Monitor() {
                 covariates={depthTargetInputs}
                 entropy={latest?.depth.entropy ?? null}
                 adjunct={latest?.depth.adjunct ?? null}
+                descriptorOnly={descriptor.descriptorOnly}
               />
               {/* The rebuilt engine, read on the band actually streaming. */}
               <CoebisV2LivePanel
-                reading={monitor.coebisV2}
+                reading={descriptor.descriptorOnly ? null : monitor.coebisV2}
                 setup={monitor.coebisV2Setup}
                 profile={monitor.deviceProfile}
+                descriptorOnly={descriptor.descriptorOnly}
               />
               <TciPanel
                 infusions={infusions}
@@ -963,7 +973,6 @@ function Monitor() {
               }
             />
 
-
             {/* Real-time seizure alert cards, newest first */}
             {caseState !== "idle" ? (
               <SeizureAlertCards
@@ -976,35 +985,34 @@ function Monitor() {
 
             {/* Metrics */}
             <div id="mon-metrics" className="scroll-mt-24 rounded-lg transition-shadow">
-            {/* Names the missing inputs when no COEBIS correction is in force. */}
-            <CoebisUnavailableBanner className="mb-2" />
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                {/* Full derivation of the COEBIS number on screen. */}
-                <CoebisExplainPanel
-                  openIbis={descriptor.descriptorOnly ? null : (latest?.depth.index ?? null)}
-                  covariates={depthTargetInputs}
-                  adjunct={latest?.depth.adjunct ?? null}
-                  ketamine={latest?.depth.ketamine ?? null}
-                  drugs={latest?.depth.drugs ?? null}
-                />
-                {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
-                <CoebisModelPicker />
+              {/* Names the missing inputs when no COEBIS correction is in force. */}
+              <CoebisUnavailableBanner className="mb-2" />
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs tracking-wide text-muted-foreground uppercase">Metrics</p>
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                  {/* Full derivation of the COEBIS number on screen. */}
+                  <CoebisExplainPanel
+                    openIbis={descriptor.descriptorOnly ? null : (latest?.depth.index ?? null)}
+                    covariates={depthTargetInputs}
+                    adjunct={latest?.depth.adjunct ?? null}
+                    ketamine={latest?.depth.ketamine ?? null}
+                    drugs={latest?.depth.drugs ?? null}
+                  />
+                  {/* Which COEBIS fit the tiles are showing, and a way back to older fits. */}
+                  <CoebisModelPicker />
+                </div>
               </div>
-            </div>
-            <MetricsGrid
-              uncertainty={uncertainty}
-              latest={latest}
-              summary={summary}
-              srWindowSeconds={monitor.settings.srWindowSeconds}
-              srTone={srTone}
-              seizureAlert={seizureAlert}
-              icuMode={icuMode}
-              depthWindow={depthWindow}
-              descriptorOnly={descriptor.descriptorOnly}
-            />
-
+              <MetricsGrid
+                uncertainty={uncertainty}
+                latest={latest}
+                summary={summary}
+                srWindowSeconds={monitor.settings.srWindowSeconds}
+                srTone={srTone}
+                seizureAlert={seizureAlert}
+                icuMode={icuMode}
+                depthWindow={depthWindow}
+                descriptorOnly={descriptor.descriptorOnly}
+              />
             </div>
 
             {caseState !== "idle" && !descriptor.descriptorOnly ? (
@@ -1042,7 +1050,10 @@ function Monitor() {
 
             {/* Event rail — the last few entries stay visible beside the trace. */}
             {caseState !== "idle" ? (
-              <div id="mon-events" className="panel scroll-mt-24 px-3 py-2.5 transition-shadow sm:px-4">
+              <div
+                id="mon-events"
+                className="panel scroll-mt-24 px-3 py-2.5 transition-shadow sm:px-4"
+              >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Recent events
@@ -1081,15 +1092,15 @@ function Monitor() {
         {tab === "signal" ? (
           <div className="space-y-4">
             <div id="mon-signal-quality" className="scroll-mt-24 rounded-lg transition-shadow">
-            <SignalQualityPanel
-              quality={latest?.quality ?? null}
-              channels={deviceProfile.channels}
-              channelQuality={monitor.channelQuality}
-              usableFraction={summary.usableFraction}
-              depthArtifact={latest?.depthArtifact ?? null}
-              depthGatedFraction={latest?.depth.gatedFraction}
-              analysisSource={monitor.analysisSource}
-            />
+              <SignalQualityPanel
+                quality={latest?.quality ?? null}
+                channels={deviceProfile.channels}
+                channelQuality={monitor.channelQuality}
+                usableFraction={summary.usableFraction}
+                depthArtifact={latest?.depthArtifact ?? null}
+                depthGatedFraction={latest?.depth.gatedFraction}
+                analysisSource={monitor.analysisSource}
+              />
             </div>
             <LiveSpectrumPanel latest={latest} epochs={monitor.epochs} />
             <DeviceOptimisationPanel profile={deviceProfile} tuning={tuning} />
@@ -1104,10 +1115,7 @@ function Monitor() {
               guard={monitor.seizureGuard}
               profile={deviceProfile}
             />
-            <StreamIntegrityPanel
-              integrity={monitor.integrity}
-              clock={monitor.suppressionClock}
-            />
+            <StreamIntegrityPanel integrity={monitor.integrity} clock={monitor.suppressionClock} />
             <BleIdentifyPanel />
             <BleDiagnosticsPanel
               epochs={monitor.epochs}
@@ -1197,36 +1205,36 @@ function Monitor() {
 
                 {/* Per-electrode raw EEG — live and scrubbable in review */}
                 <div id="mon-raw" className="scroll-mt-24 rounded-lg transition-shadow">
-                <RawChannelViewer
-                  archive={monitor.rawArchive}
-                  streaming={streaming}
-                  contactOk={monitor.contactOk}
-                  channelQuality={monitor.channelQuality}
-                  epochs={monitor.epochs}
-                  events={derived.allEvents}
-                  markers={markers}
-                  onAnnotateChannel={(channel, t, text) =>
-                    addMarkerAt(`${channel} · ${text}`, t)
-                  }
-                />
-
+                  <RawChannelViewer
+                    archive={monitor.rawArchive}
+                    streaming={streaming}
+                    contactOk={monitor.contactOk}
+                    channelQuality={monitor.channelQuality}
+                    epochs={monitor.epochs}
+                    events={derived.allEvents}
+                    markers={markers}
+                    onAnnotateChannel={(channel, t, text) => addMarkerAt(`${channel} · ${text}`, t)}
+                  />
                 </div>
 
                 <div id="mon-thresholds" className="scroll-mt-24 rounded-lg transition-shadow">
-                <DetectionThresholds
-                  settings={monitor.settings}
-                  suppression={{
-                    ratio: measuredSuppressionRatio(latest),
-                    maxRatio: summary.maxSr,
-                    seconds: summary.suppressionSeconds,
-                  }}
-                  onApply={applySettings}
-                />
+                  <DetectionThresholds
+                    settings={monitor.settings}
+                    suppression={{
+                      ratio: measuredSuppressionRatio(latest),
+                      maxRatio: summary.maxSr,
+                      seconds: summary.suppressionSeconds,
+                    }}
+                    onApply={applySettings}
+                  />
                 </div>
               </div>
             ) : null}
 
-            <div id="mon-event-log" className="panel scroll-mt-24 overflow-hidden transition-shadow">
+            <div
+              id="mon-event-log"
+              className="panel scroll-mt-24 overflow-hidden transition-shadow"
+            >
               <div className="border-b border-border px-4 py-2.5">
                 <h2 className="text-sm font-semibold">Event log</h2>
               </div>

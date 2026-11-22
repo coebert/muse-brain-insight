@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { DepthWindowPrefs, DepthWindowStatus } from "@/hooks/useDepthWindowAlerts";
 import { DepthTargetCard } from "@/components/monitor/DepthTargetCard";
 import type { DepthTargetInputs } from "@/lib/eeg/depth-targets";
+import { depthIsWithheld } from "@/lib/eeg/descriptor-only";
 
 export interface DepthWindowPanelProps {
   depthWindow: {
@@ -20,7 +21,11 @@ export interface DepthWindowPanelProps {
   depthIndex: number | null | undefined;
   /** Case covariates used to suggest a patient-adjusted target window. */
   targetInputs?: DepthTargetInputs;
-  /** True when the evidence does not support a depth target or alert. */
+  /**
+   * The descriptor policy's verdict. Only an explicit `false` (a documented,
+   * eligible recording) shows the target, breach banner or green/amber colour;
+   * omitting it withholds them.
+   */
   descriptorOnly?: boolean;
 }
 
@@ -32,9 +37,11 @@ export function DepthWindowPanel({
   depthWindow,
   depthIndex,
   targetInputs,
-  descriptorOnly = false,
+  descriptorOnly,
 }: DepthWindowPanelProps) {
-  if (descriptorOnly) {
+  // Fail closed: a caller that omits the verdict must not receive a target
+  // window, a stale breach banner or an awareness-risk statement.
+  if (depthIsWithheld(descriptorOnly)) {
     return (
       <Alert className="border-caution/40 bg-caution/10">
         <Info className="size-4 text-caution" />

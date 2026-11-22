@@ -34,6 +34,7 @@ import { DEPTH_STATE_LABEL, depthTone } from "@/lib/eeg/depth";
 import { formatClock, formatDuration } from "@/lib/eeg/format";
 import { cn } from "@/lib/utils";
 import { measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
+import { depthIsWithheld } from "@/lib/eeg/descriptor-only";
 
 interface Props {
   epochs: Epoch[];
@@ -62,6 +63,12 @@ interface Props {
   /** Raw headband signal, shown in the depth trend when no valid depth is available. */
   archive?: import("@/lib/eeg/raw-archive").RawArchive | null;
   profile?: import("@/lib/eeg/device-profile").DeviceProfile | null;
+  /**
+   * The descriptor policy's verdict. Only an explicit `false` shows the depth
+   * index, the COEBIS tile or the depth trend with its target band; omitting
+   * it withholds them.
+   */
+  descriptorOnly?: boolean;
   onExit: () => void;
 }
 
@@ -88,8 +95,12 @@ export function FullscreenMonitor({
   controls,
   archive = null,
   profile = null,
+  descriptorOnly,
   onExit,
 }: Props) {
+  // Fail closed: a caller that omits the verdict must not receive a depth
+  // number, a COEBIS tile or a target band on the bedside screen.
+  const depthWithheld = depthIsWithheld(descriptorOnly);
   // Latest COEBIS fit, so the bedside tile names the model it is showing.
   const coebisModel = useCoebisModel();
   // Only offer the layouts the connected montage can actually draw.
@@ -131,12 +142,14 @@ export function FullscreenMonitor({
   // null so the line breaks over a dropout instead of joining across it.
   const depthTrend = useMemo(
     () =>
-      alignSeries<Epoch, number>(
-        visible,
-        (e) => e.t,
-        (e) => e.depth.index,
-      ),
-    [visible],
+      depthWithheld
+        ? []
+        : alignSeries<Epoch, number>(
+            visible,
+            (e) => e.t,
+            (e) => e.depth.index,
+          ),
+    [visible, depthWithheld],
   );
   const srTrend = useMemo(
     () =>
@@ -157,7 +170,7 @@ export function FullscreenMonitor({
     [visible],
   );
 
-  const depth = latest?.depth;
+  const depth = depthWithheld ? null : latest?.depth;
   const dTone: MetricTone = depth ? (depthTone(depth.state) as MetricTone) : "default";
   // Withheld suppression stays null — the tile reads "—", never 0 %.
   const srValue = measuredSuppressionRatio(latest);
@@ -293,24 +306,39 @@ export function FullscreenMonitor({
           </div>
 
           <div className="grid min-h-[110px] grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 short:hidden!">
-            <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
-              <div className="flex items-center justify-between px-2 pt-1">
-                <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-                  Depth trend (0–100)
+            {depthWithheld ? (
+              <div
+                role="status"
+                className="overflow-hidden rounded-lg border border-caution/40 bg-caution/10 px-2 py-1"
+              >
+                <span className="text-xs tracking-[0.16em] text-caution uppercase">
+                  Depth trend withheld
                 </span>
-                <span className="metric-value text-xs text-signal">{depth?.index ?? "—"}</span>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Research descriptor only — no depth trend, target band or awareness statement is
+                  shown without a documented absence of neuromuscular blockade.
+                </p>
               </div>
-              <div className="h-[calc(100%-18px)] min-h-[70px]">
-                <TrendLine
-                  values={depthTrend}
-                  min={0}
-                  max={100}
-                  band={[40, 60]}
-                  color="rgb(56,214,175)"
-                  unit=""
-                />
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
+                <div className="flex items-center justify-between px-2 pt-1">
+                  <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                    Depth trend (0–100)
+                  </span>
+                  <span className="metric-value text-xs text-signal">{depth?.index ?? "—"}</span>
+                </div>
+                <div className="h-[calc(100%-18px)] min-h-[70px]">
+                  <TrendLine
+                    values={depthTrend}
+                    min={0}
+                    max={100}
+                    band={[40, 60]}
+                    color="rgb(56,214,175)"
+                    unit=""
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <div className="overflow-hidden rounded-lg border border-border bg-[rgb(8,16,34)]">
               <div className="flex items-center justify-between px-2 pt-1">
                 <span className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
@@ -343,15 +371,17 @@ export function FullscreenMonitor({
                 </div>
               </div>
             </div>
-            <CoebisTrend
-              epochs={epochs}
-              elapsed={elapsed}
-              windowMinutes={windowMinutes}
-              startedAtMs={startedAtMs ?? null}
-              compact
-              archive={archive}
-              profile={profile}
-            />
+            {depthWithheld ? null : (
+              <CoebisTrend
+                epochs={epochs}
+                elapsed={elapsed}
+                windowMinutes={windowMinutes}
+                startedAtMs={startedAtMs ?? null}
+                compact
+                archive={archive}
+                profile={profile}
+              />
+            )}
           </div>
         </div>
 
@@ -360,15 +390,17 @@ export function FullscreenMonitor({
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <MetricCard
               size="bedside"
-              label="Depth index (OpenIBIS)"
+              label={depthWithheld ? "Depth index (withheld)" : "Depth index (OpenIBIS)"}
               info="depth"
               value={depth?.index != null ? String(depth.index) : "—"}
               hint={
-                depth
-                  ? depth.held
-                    ? `Held ${depth.heldSeconds.toFixed(0)} s`
-                    : DEPTH_STATE_LABEL[depth.state]
-                  : "Awaiting data"
+                depthWithheld
+                  ? "Research descriptor only — no supported depth or awareness statement"
+                  : depth
+                    ? depth.held
+                      ? `Held ${depth.heldSeconds.toFixed(0)} s`
+                      : DEPTH_STATE_LABEL[depth.state]
+                    : "Awaiting data"
               }
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
@@ -377,15 +409,17 @@ export function FullscreenMonitor({
           <div className="col-span-2 lg:col-span-1 short:col-span-1!">
             <MetricCard
               size="bedside"
-              label="COEBIS"
+              label={depthWithheld ? "COEBIS (withheld)" : "COEBIS"}
               info="coebis"
               value={depth?.coebis != null ? String(depth.coebis) : "—"}
               hint={
-                depth?.coebis != null
-                  ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
-                  : describeCoebisModel(coebisModel)
+                depthWithheld
+                  ? "Research descriptor only — no supported depth or awareness statement"
+                  : depth?.coebis != null
+                    ? `OpenIBIS ${depth.index ?? "—"} · ${describeCoebisModel(coebisModel)} · ${coebisFitHint(coebisModel)}`
+                    : describeCoebisModel(coebisModel)
               }
-              badge={<CoebisFitBadge model={coebisModel} compact />}
+              badge={depthWithheld ? null : <CoebisFitBadge model={coebisModel} compact />}
               tone={dTone}
               unreliable={latest ? !latest.depthReliability.reliable : false}
             />

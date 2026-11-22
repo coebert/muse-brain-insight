@@ -25,6 +25,7 @@ import type { DeidFinding } from "@/lib/eeg/deid";
 import { formatCaseDuration, formatClock, formatDuration } from "@/lib/eeg/format";
 import { suppressedSecondsOrNull, withheldOr } from "@/lib/eeg/measured";
 import { computeCoebis } from "@/lib/eeg/depth";
+import { descriptorPolicy } from "@/lib/eeg/descriptor-only";
 import { describeCoebisModel, useCoebisModel } from "@/hooks/useCoebisModel";
 import { formatStampInZone, useTimeZonePreference } from "@/lib/eeg/timezone";
 import { TimeZoneControl } from "@/components/TimeZoneControl";
@@ -188,6 +189,14 @@ function CaseReport() {
   const criticalEvents = markers.filter((m) => m.severity === "critical").length;
 
   const s = session.data;
+  // A stored case carries no independent blockade record unless it was saved
+  // with one. Without it the depth index, its target band and COEBIS are
+  // withheld from this report; measured spectral, suppression and seizure
+  // descriptors stay.
+  const storedContext = s as { researchContext?: unknown; research_context?: unknown } | undefined;
+  const depthWithheld = descriptorPolicy({
+    researchContext: storedContext?.researchContext ?? storedContext?.research_context ?? null,
+  }).descriptorOnly;
   const loading = session.isLoading || epochs.isLoading;
 
   function printReport() {
@@ -302,19 +311,25 @@ function CaseReport() {
                 <Stat label="Monitored time" value={formatClock(summary.duration)} />
                 <Stat
                   label="Mean depth index"
-                  value={summary.meanDepth == null ? "—" : summary.meanDepth.toFixed(0)}
-                  {...(summary.minDepth == null
+                  value={
+                    depthWithheld
+                      ? "Withheld"
+                      : summary.meanDepth == null
+                        ? "—"
+                        : summary.meanDepth.toFixed(0)
+                  }
+                  {...(depthWithheld || summary.minDepth == null
                     ? {}
                     : { sub: `lowest ${summary.minDepth.toFixed(0)}` })}
                 />
                 <Stat
                   label="Time depth < 40"
-                  value={formatDuration(summary.deepSeconds)}
-                  {...(summary.duration
-                    ? {
+                  value={depthWithheld ? "Withheld" : formatDuration(summary.deepSeconds)}
+                  {...(depthWithheld || !summary.duration
+                    ? {}
+                    : {
                         sub: `${((summary.deepSeconds / summary.duration) * 100).toFixed(0)} % of case`,
-                      }
-                    : {})}
+                      })}
                 />
                 <Stat
                   label="Mean SEF95"
@@ -322,15 +337,26 @@ function CaseReport() {
                 />
                 <Stat
                   label="Mean COEBIS"
-                  value={summary.meanCoebis == null ? "—" : summary.meanCoebis.toFixed(0)}
-                  sub={describeCoebisModel(coebisModel)}
+                  value={
+                    depthWithheld
+                      ? "Withheld"
+                      : summary.meanCoebis == null
+                        ? "—"
+                        : summary.meanCoebis.toFixed(0)
+                  }
+                  {...(depthWithheld
+                    ? { sub: "research descriptor only" }
+                    : { sub: describeCoebisModel(coebisModel) })}
                 />
                 <Stat
                   label="Mean suppression ratio"
                   value={summary.meanSr == null ? "—" : `${summary.meanSr.toFixed(1)} %`}
                   {...(summary.maxSr == null ? {} : { sub: `peak ${summary.maxSr.toFixed(0)} %` })}
                 />
-                <Stat label="Suppression time" value={withheldOr(summary.suppressedSeconds, formatDuration)} />
+                <Stat
+                  label="Suppression time"
+                  value={withheldOr(summary.suppressedSeconds, formatDuration)}
+                />
                 <Stat
                   label="Peak seizure score"
                   value={summary.maxSeizure == null ? "—" : summary.maxSeizure.toFixed(2)}
@@ -358,7 +384,9 @@ function CaseReport() {
             </section>
 
             <section className="print-block mt-5">
-              <h2 className="text-sm font-semibold">Depth index and SEF95</h2>
+              <h2 className="text-sm font-semibold">
+                {depthWithheld ? "SEF95 (measured spectral descriptor)" : "Depth index and SEF95"}
+              </h2>
               <div className="panel mt-2 h-40 px-2 py-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={rows} margin={{ top: 6, right: 12, bottom: 4, left: -18 }}>
@@ -374,26 +402,30 @@ function CaseReport() {
                       tick={{ fontSize: 10 }}
                       stroke="var(--muted-foreground)"
                     />
-                    <ReferenceLine y={40} stroke="var(--chart-4)" strokeDasharray="4 4" />
-                    <ReferenceLine y={60} stroke="var(--chart-4)" strokeDasharray="4 4" />
-                    <Line
-                      type="monotone"
-                      dataKey="depth"
-                      stroke="var(--chart-1)"
-                      dot={false}
-                      strokeWidth={1.6}
-                      isAnimationActive={false}
-                      connectNulls
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="coebis"
-                      stroke="var(--chart-3)"
-                      dot={false}
-                      strokeWidth={1.6}
-                      isAnimationActive={false}
-                      connectNulls
-                    />
+                    {depthWithheld ? null : (
+                      <>
+                        <ReferenceLine y={40} stroke="var(--chart-4)" strokeDasharray="4 4" />
+                        <ReferenceLine y={60} stroke="var(--chart-4)" strokeDasharray="4 4" />
+                        <Line
+                          type="monotone"
+                          dataKey="depth"
+                          stroke="var(--chart-1)"
+                          dot={false}
+                          strokeWidth={1.6}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="coebis"
+                          stroke="var(--chart-3)"
+                          dot={false}
+                          strokeWidth={1.6}
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                      </>
+                    )}
                     <Line
                       type="monotone"
                       dataKey="sef95"
@@ -407,8 +439,9 @@ function CaseReport() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Depth index (0–100) with the 40–60 surgical band marked, COEBIS back-calculated
-                from the same recording with the current model, and SEF95 in Hz on the same axis.
+                {depthWithheld
+                  ? "SEF95 in Hz. The experimental depth index, its 40–60 target band and COEBIS are withheld: the research descriptor is not a clinical depth measurement and this case carries no documented absence of neuromuscular blockade."
+                  : "Depth index (0–100) with the 40–60 surgical band marked, COEBIS back-calculated from the same recording with the current model, and SEF95 in Hz on the same axis."}
               </p>
             </section>
 
@@ -472,36 +505,39 @@ function CaseReport() {
                 </p>
               ) : (
                 <div className="mt-2 -mx-1 overflow-x-auto px-1">
-                <table className="w-full min-w-[420px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-xs tracking-wide text-muted-foreground uppercase">
-                      <th className="py-1.5 pr-2">Time</th>
-                      <th className="py-1.5 pr-2">Kind</th>
-                      <th className="py-1.5 pr-2">Severity</th>
-                      <th className="py-1.5 pr-2">Duration</th>
-                      <th className="py-1.5">Detail</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {markers.map((m, i) => (
-                      <tr key={`${m.t_offset_seconds}-${i}`} className="border-b border-border/60">
-                        <td className="metric-value py-1.5 pr-2 whitespace-nowrap">
-                          {formatClock(Number(m.t_offset_seconds) || 0)}
-                        </td>
-                        <td className="py-1.5 pr-2">{m.kind.replace(/_/g, " ")}</td>
-                        <td className="py-1.5 pr-2">
-                          {SEVERITY_LABEL[m.severity ?? "info"] ?? m.severity}
-                        </td>
-                        <td className="metric-value py-1.5 pr-2 whitespace-nowrap">
-                          {Number(m.duration_seconds ?? 0) > 0
-                            ? formatDuration(Number(m.duration_seconds))
-                            : "—"}
-                        </td>
-                        <td className="py-1.5">{m.detail ?? "—"}</td>
+                  <table className="w-full min-w-[420px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs tracking-wide text-muted-foreground uppercase">
+                        <th className="py-1.5 pr-2">Time</th>
+                        <th className="py-1.5 pr-2">Kind</th>
+                        <th className="py-1.5 pr-2">Severity</th>
+                        <th className="py-1.5 pr-2">Duration</th>
+                        <th className="py-1.5">Detail</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {markers.map((m, i) => (
+                        <tr
+                          key={`${m.t_offset_seconds}-${i}`}
+                          className="border-b border-border/60"
+                        >
+                          <td className="metric-value py-1.5 pr-2 whitespace-nowrap">
+                            {formatClock(Number(m.t_offset_seconds) || 0)}
+                          </td>
+                          <td className="py-1.5 pr-2">{m.kind.replace(/_/g, " ")}</td>
+                          <td className="py-1.5 pr-2">
+                            {SEVERITY_LABEL[m.severity ?? "info"] ?? m.severity}
+                          </td>
+                          <td className="metric-value py-1.5 pr-2 whitespace-nowrap">
+                            {Number(m.duration_seconds ?? 0) > 0
+                              ? formatDuration(Number(m.duration_seconds))
+                              : "—"}
+                          </td>
+                          <td className="py-1.5">{m.detail ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </section>

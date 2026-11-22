@@ -11,14 +11,20 @@ import type { MonitorEntropy } from "@/lib/eeg/entropy-monitor";
 import { ADJUNCT_COMPONENTS, type AdjunctCorrection } from "@/lib/eeg/coebis-adjuncts";
 import { calibrationReport, predictionInterval } from "@/lib/eeg/coebis-uncertainty";
 import { cn } from "@/lib/utils";
-import { measuredEpochSuppression, measuredSeizureScore, measuredSuppressionRatio } from "@/lib/eeg/measured";
+import {
+  measuredEpochSuppression,
+  measuredSeizureScore,
+  measuredSuppressionRatio,
+} from "@/lib/eeg/measured";
+import { depthIsWithheld } from "@/lib/eeg/descriptor-only";
 
 /** Which tier of the COEBIS hierarchy the live model represents. */
 function tierOf(model: BisAlignment | null): { tier: "A" | "B" | "C"; label: string } {
   const family = (model?.family ?? "affine").toLowerCase();
   const hasTerms = Boolean(model?.terms?.length);
   if (family.includes("mixed")) return { tier: "C", label: "Tier C · mixed effects" };
-  if (hasTerms || family.includes("covariate")) return { tier: "B", label: "Tier B · patient-adjusted" };
+  if (hasTerms || family.includes("covariate"))
+    return { tier: "B", label: "Tier B · patient-adjusted" };
   return { tier: "A", label: "Tier A · pooled" };
 }
 
@@ -60,6 +66,7 @@ export function CoebisVsBisPanel({
   covariates,
   entropy,
   adjunct,
+  descriptorOnly,
   className,
 }: {
   epochs: Epoch[];
@@ -72,6 +79,12 @@ export function CoebisVsBisPanel({
   entropy?: MonitorEntropy | null;
   /** Entropy/PSI-informed adjunct folded into the live COEBIS value. */
   adjunct?: AdjunctCorrection | null;
+  /**
+   * The descriptor policy's verdict. Only an explicit `false` shows the COEBIS
+   * number, its agreement, its entropy/adjunct breakdown and the paired BIS
+   * comparison; omitting it withholds them.
+   */
+  descriptorOnly?: boolean;
   className?: string;
 }) {
   const tier = tierOf(model);
@@ -107,7 +120,8 @@ export function CoebisVsBisPanel({
   );
 
   const lastReading = useMemo(
-    () => (readings.length ? [...readings].sort((a, b) => a.at - b.at)[readings.length - 1]! : null),
+    () =>
+      readings.length ? [...readings].sort((a, b) => a.at - b.at)[readings.length - 1]! : null,
     [readings],
   );
 
@@ -156,8 +170,7 @@ export function CoebisVsBisPanel({
     return calibrationReport(samples);
   }, [pairs, model, covariates]);
 
-  const liveDelta =
-    live.tiered != null && lastReading ? live.tiered - lastReading.bis : null;
+  const liveDelta = live.tiered != null && lastReading ? live.tiered - lastReading.bis : null;
   const deltaTone =
     liveDelta == null
       ? "text-muted-foreground"
@@ -166,6 +179,30 @@ export function CoebisVsBisPanel({
         : Math.abs(liveDelta) <= 10
           ? "text-amber-400"
           : "text-destructive";
+
+  // Fail closed: a caller that omits the verdict must not receive a COEBIS
+  // number, an agreement table or a patient-adjusted comparison.
+  if (depthIsWithheld(descriptorOnly)) {
+    return (
+      <section
+        className={cn("rounded-lg border border-caution/40 bg-caution/10 p-3", className)}
+        aria-label="COEBIS versus commercial BIS withheld"
+      >
+        <div className="flex items-center gap-2">
+          <GitCompareArrows className="size-4 text-caution" />
+          <h3 className="text-xs tracking-wide text-caution uppercase">
+            COEBIS vs commercial BIS withheld
+          </h3>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          The patient-adjusted COEBIS number, its agreement with the commercial monitor and its
+          entropy/adjunct breakdown are not shown without an independently documented absence of
+          neuromuscular blockade for this recording. Measured suppression, spectral and
+          signal-quality descriptors remain available.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -209,9 +246,7 @@ export function CoebisVsBisPanel({
         </div>
         <div className="text-center">
           <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Difference</p>
-          <p className={cn("metric-value text-2xl leading-none", deltaTone)}>
-            {signed(liveDelta)}
-          </p>
+          <p className={cn("metric-value text-2xl leading-none", deltaTone)}>{signed(liveDelta)}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {lastReading ? `vs reading at ${formatClock(lastReading.at)}` : "no BIS reading yet"}
           </p>
@@ -222,7 +257,9 @@ export function CoebisVsBisPanel({
           </p>
           <p className="metric-value text-3xl leading-none">{fmt(lastReading?.bis ?? null)}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {lastReading ? `${lastReading.device ?? "BIS"} · ${bisBandLabel(lastReading.bis)}` : "—"}
+            {lastReading
+              ? `${lastReading.device ?? "BIS"} · ${bisBandLabel(lastReading.bis)}`
+              : "—"}
           </p>
         </div>
       </div>
@@ -257,8 +294,8 @@ export function CoebisVsBisPanel({
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Log a commercial BIS reading while the index is reliable to start the
-          case-level comparison.
+          Log a commercial BIS reading while the index is reliable to start the case-level
+          comparison.
         </p>
       )}
 
@@ -277,9 +314,8 @@ export function CoebisVsBisPanel({
             <p className="metric-value">{signed(adjunct?.total ?? 0)}</p>
           </div>
           <p className="col-span-3 text-[11px] text-muted-foreground">
-            RE−SE {signed(entropy.emgGap)} points of frontal EMG/arousal margin.
-            COEBIS folds this, the suppression ceiling and the bilateral
-            spectral pattern into the adjunct above.
+            RE−SE {signed(entropy.emgGap)} points of frontal EMG/arousal margin. COEBIS folds this,
+            the suppression ceiling and the bilateral spectral pattern into the adjunct above.
           </p>
         </div>
       ) : null}
@@ -292,15 +328,11 @@ export function CoebisVsBisPanel({
         </p>
         <ul className="mt-1.5 space-y-2">
           {ADJUNCT_COMPONENTS.map((c) => {
-            const applied = adjunct?.parts.find(
-              (p) => p.vsCommercial === c.vsCommercial,
-            );
+            const applied = adjunct?.parts.find((p) => p.vsCommercial === c.vsCommercial);
             return (
               <li key={c.label} className="border-l-2 border-border pl-2">
                 <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
-                  <span className="min-w-0 text-[11px] font-medium text-foreground">
-                    {c.label}
-                  </span>
+                  <span className="min-w-0 text-[11px] font-medium text-foreground">{c.label}</span>
                   <span className="metric-value shrink-0 text-[11px] text-muted-foreground">
                     {applied ? signed(applied.delta) : `idle · ±${c.limit} max`}
                   </span>

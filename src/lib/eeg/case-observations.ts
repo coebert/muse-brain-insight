@@ -13,7 +13,11 @@
 export const MOAAS_SCALE = [
   { score: 5, short: "Awake", detail: "Responds readily to name spoken in a normal tone" },
   { score: 4, short: "Drowsy", detail: "Lethargic response to name spoken in a normal tone" },
-  { score: 3, short: "Sluggish", detail: "Responds only after name is called loudly or repeatedly" },
+  {
+    score: 3,
+    short: "Sluggish",
+    detail: "Responds only after name is called loudly or repeatedly",
+  },
   { score: 2, short: "Needs shake", detail: "Responds only after mild prodding or shaking" },
   { score: 1, short: "Deep", detail: "Responds only after painful trapezius squeeze" },
   { score: 0, short: "No response", detail: "No response to painful trapezius squeeze" },
@@ -310,13 +314,7 @@ export interface PhaseDraft {
 }
 
 export type ObservationDraft =
-  | ResponsivenessDraft
-  | DrugDraft
-  | EventDraft
-  | TimelineNoteDraft
-  | StateDraft
-  | PhaseDraft;
-
+  ResponsivenessDraft | DrugDraft | EventDraft | TimelineNoteDraft | StateDraft | PhaseDraft;
 
 export interface ValidationResult {
   ok: boolean;
@@ -596,15 +594,14 @@ export interface ResearchResponseLabel {
  * with no recorded assessability never becomes a research label.
  */
 export function researchResponseLabels(rows: CaseObservation[]): ResearchResponseLabel[] {
-  return sortObservations(rows).flatMap((row) => {
+  return sortObservations(rows).flatMap((row): ResearchResponseLabel[] => {
     if (isCommandResponsiveness(row)) {
       return [
         {
           caseCode: row.caseCode,
           atSeconds: row.atSeconds,
           label: (row.moaas! >= 2 ? "responsive" : "not-responsive") as
-            | "responsive"
-            | "not-responsive",
+            "responsive" | "not-responsive",
           method: row.responseMethod as ResponseMethod,
           source: "moaas" as const,
         },
@@ -616,8 +613,7 @@ export function researchResponseLabels(rows: CaseObservation[]): ResearchRespons
           caseCode: row.caseCode,
           atSeconds: row.atSeconds,
           label: (row.eventType === "movement_response" ? "responsive" : "not-responsive") as
-            | "responsive"
-            | "not-responsive",
+            "responsive" | "not-responsive",
           method: row.responseMethod as ResponseMethod,
           source: "stimulus_response" as const,
         },
@@ -654,8 +650,7 @@ export function describeObservation(row: CaseObservation): string {
   }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
-    const isResponse =
-      row.eventType === "movement_response" || row.eventType === "still_response";
+    const isResponse = row.eventType === "movement_response" || row.eventType === "still_response";
     if (isResponse) {
       const assess =
         row.motorAssessable == null
@@ -673,7 +668,6 @@ export function describeObservation(row: CaseObservation): string {
   const dose = row.dose != null ? ` ${row.dose}${row.doseUnit ? ` ${row.doseUnit}` : ""}` : "";
   const route = row.route ? ` · ${ROUTE_LABEL[row.route as Route] ?? row.route}` : "";
   return `${row.drugName}${dose}${route}`;
-
 }
 
 export interface StateSpan {

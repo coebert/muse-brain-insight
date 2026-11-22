@@ -62,6 +62,18 @@ export const DESCRIPTOR_ONLY_TEMPLATES = {
 export const RESEARCH_SCORE_LABEL = "Research descriptor";
 export const RESEARCH_SCORE_NOTE = DESCRIPTOR_ONLY_TEMPLATES.exportNote;
 
+/**
+ * Read a display's `descriptorOnly` flag, failing closed on omission.
+ *
+ * A component that forgets to pass the flag must not fall back to presenting a
+ * depth number, target window or depth alert. Only an explicit `false` — the
+ * policy's own verdict for a fully documented, eligible recording — allows
+ * them; a missing, `undefined` or `null` flag withholds them.
+ */
+export function depthIsWithheld(descriptorOnly: boolean | undefined | null): boolean {
+  return descriptorOnly !== false;
+}
+
 const RECOGNISED: ReadonlySet<string> = new Set([
   "reported-absent",
   "documented",
@@ -160,11 +172,7 @@ function readBoolean(
 
 function normaliseReference(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
 }
 
 function qualifiedReference(value: unknown): boolean {
@@ -284,7 +292,10 @@ function evidenceOf(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-function evaluateObject(obj: Record<string, unknown>, digest: Record<string, unknown>): DescriptorPolicy {
+function evaluateObject(
+  obj: Record<string, unknown>,
+  digest: Record<string, unknown>,
+): DescriptorPolicy {
   const blockade = readAlias(obj, BLOCKADE_KEYS);
   if (blockade.conflict) return blocked();
   const context = normalise(blockade.value);
@@ -357,12 +368,18 @@ function evaluateObject(obj: Record<string, unknown>, digest: Record<string, unk
     return withhold("insufficient", "montage, reference or calibration is not compatible");
   }
   if (!hasIntervals && !qualifiedReference(obj["reference"])) {
-    return withhold("insufficient", "the documented reference is not a qualified acquisition reference");
+    return withhold(
+      "insufficient",
+      "the documented reference is not a qualified acquisition reference",
+    );
   }
 
   if (intervals !== undefined && intervals !== null) {
     if (!Array.isArray(intervals) || intervals.length === 0) {
-      return withhold("insufficient", "no documented blockade-absence interval covers the recording");
+      return withhold(
+        "insufficient",
+        "no documented blockade-absence interval covers the recording",
+      );
     }
     const rows: { start: number; end: number; recordedAt: Date | null }[] = [];
     for (const item of intervals) {
@@ -377,9 +394,17 @@ function evaluateObject(obj: Record<string, unknown>, digest: Record<string, unk
       }
       const documented = row["absenceDocumented"] ?? row["absence_documented"];
       if (documented !== true) {
-        return withhold("insufficient", "a contributing interval lacks documented blockade absence");
+        return withhold(
+          "insufficient",
+          "a contributing interval lacks documented blockade absence",
+        );
       }
-      for (const flag of ["gap_before", "bolus_within_interval", "reversal_uncertain", "case_changed"]) {
+      for (const flag of [
+        "gap_before",
+        "bolus_within_interval",
+        "reversal_uncertain",
+        "case_changed",
+      ]) {
         if (hasOwn(row, flag) && typeof row[flag] !== "boolean") {
           return withhold("unknown", `the safety flag ${flag} is not a true/false value`);
         }
@@ -390,7 +415,8 @@ function evaluateObject(obj: Record<string, unknown>, digest: Record<string, unk
       if (!qualifiedReference(row["reference"])) {
         return withhold("insufficient", "a documented interval has no qualified reference");
       }
-      const calibration = typeof row["calibration"] === "string" ? row["calibration"].trim().toLowerCase() : "";
+      const calibration =
+        typeof row["calibration"] === "string" ? row["calibration"].trim().toLowerCase() : "";
       if (!["uv", "µv", "μv", "microvolt", "microvolts"].includes(calibration)) {
         return withhold("insufficient", "a documented interval is not in physical microvolts");
       }
@@ -404,10 +430,16 @@ function evaluateObject(obj: Record<string, unknown>, digest: Record<string, unk
     }
     const duration = numberValue(digest["durationSeconds"]);
     if (duration == null) {
-      return withhold("insufficient", "the recording duration is unknown, so coverage cannot be matched");
+      return withhold(
+        "insufficient",
+        "the recording duration is unknown, so coverage cannot be matched",
+      );
     }
     if (rows[0]!.start > 0 || rows[rows.length - 1]!.end < duration) {
-      return withhold("insufficient", "documented blockade absence does not cover the whole recording");
+      return withhold(
+        "insufficient",
+        "documented blockade absence does not cover the whole recording",
+      );
     }
     for (const row of rows) {
       if (!row.recordedAt) {
@@ -447,7 +479,8 @@ const ASSERTIONS: RegExp[] = [
   /\b(?:the\s+)?patient\s+(?:is|was|are|were)\s+(?:comfortable|settled|calm)\b/i,
 ];
 
-const MENTIONS_DEPTH = /\b(depth|sedat\w*|anaesthe\w*|anesthe\w*|awareness|conscious\w*|unconscious)\b/i;
+const MENTIONS_DEPTH =
+  /\b(depth|sedat\w*|anaesthe\w*|anesthe\w*|awareness|conscious\w*|unconscious)\b/i;
 
 /** True when a sentence asserts a patient state, sedation adequacy or a current depth. */
 export function impliesDepthOrSedation(sentence: string): boolean {
@@ -465,11 +498,7 @@ function isLimitation(sentence: string): boolean {
  * that mentions depth, sedation or consciousness is replaced, not only one
  * that states a patient state outright.
  */
-export function descriptorOnlyText(
-  text: unknown,
-  fallback: string,
-  strict = false,
-): string {
+export function descriptorOnlyText(text: unknown, fallback: string, strict = false): string {
   if (typeof text !== "string") return fallback;
   const kept = text
     .split(/(?<=[.!?])\s+/)

@@ -238,7 +238,11 @@ function renderSuppression(rows: Row[], w: number, h: number): string {
   for (let i = 0; i <= 6; i++) {
     const frac = i / 6;
     ctx.textAlign = i === 0 ? "left" : i === 6 ? "right" : "center";
-    ctx.fillText(formatClock(tStart + frac * span), margin.left + frac * plotW, margin.top + plotH + 8);
+    ctx.fillText(
+      formatClock(tStart + frac * span),
+      margin.left + frac * plotW,
+      margin.top + plotH + 8,
+    );
   }
   return canvas.toDataURL("image/png");
 }
@@ -256,7 +260,8 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
   const tStart = rows[0]?.t ?? 0;
   const tEnd = rows[rows.length - 1]?.t ?? tStart + 1;
   const span = Math.max(1, tEnd - tStart);
-  const xFor = (t: number) => margin.left + ((Math.max(tStart, Math.min(tEnd, t)) - tStart) / span) * plotW;
+  const xFor = (t: number) =>
+    margin.left + ((Math.max(tStart, Math.min(tEnd, t)) - tStart) / span) * plotW;
   const yFor = (v: number) => margin.top + plotH - Math.max(0, Math.min(1, v)) * plotH;
 
   ctx.fillStyle = "rgba(220,45,55,0.35)";
@@ -321,7 +326,11 @@ function renderSeizure(rows: Row[], events: EventRow[], w: number, h: number): s
   for (let i = 0; i <= 6; i++) {
     const frac = i / 6;
     ctx.textAlign = i === 0 ? "left" : i === 6 ? "right" : "center";
-    ctx.fillText(formatClock(tStart + frac * span), margin.left + frac * plotW, margin.top + plotH + 8);
+    ctx.fillText(
+      formatClock(tStart + frac * span),
+      margin.left + frac * plotW,
+      margin.top + plotH + 8,
+    );
   }
   return canvas.toDataURL("image/png");
 }
@@ -340,7 +349,9 @@ function renderPalette(w: number, h: number): string {
 
 function summarise(rows: Row[]) {
   const cadence =
-    rows.length > 1 ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1)) : 1;
+    rows.length > 1
+      ? Math.max(0.1, (rows[rows.length - 1]!.t - rows[0]!.t) / (rows.length - 1))
+      : 1;
   const srVals = rows.map((r) => r.sr).filter((v): v is number => v != null);
   const depth = rows.map((r) => r.depth).filter((v): v is number => v != null);
   const sef = rows.map((r) => r.sef95).filter((v): v is number => v != null);
@@ -379,7 +390,8 @@ export function suppressionEpisodes(rows: Row[], cadence: number) {
       run = null;
     }
   }
-  if (run) out.push({ start: run.start, end: run.end, duration: run.end - run.start, peakSr: run.peak });
+  if (run)
+    out.push({ start: run.start, end: run.end, duration: run.end - run.start, peakSr: run.peak });
   return out;
 }
 
@@ -390,9 +402,9 @@ export interface SessionReportInput {
   /** Extra footer note, e.g. active COEBIS model description. */
   modelNote?: string;
   /**
-   * True when the evidence does not support a depth statement. The depth
-   * index is then withheld from the export; measured suppression, spectral
-   * and seizure descriptors stay.
+   * The descriptor policy's verdict. Only an explicit `false` exports the
+   * depth index; omitting the flag withholds it. Measured suppression,
+   * spectral and seizure descriptors stay either way.
    */
   descriptorOnly?: boolean;
 }
@@ -408,7 +420,8 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   const s = summarise(rows);
   const episodes = suppressionEpisodes(rows, s.cadence);
   const seizures = events.filter((e) => e.kind === "seizure");
-  const depthWithheld = input.descriptorOnly === true;
+  // Fail closed: an export built without the verdict withholds the depth index.
+  const depthWithheld = input.descriptorOnly !== false;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -537,7 +550,6 @@ export function buildSessionReportPdf(input: SessionReportInput): jsPDF {
   doc.addImage(renderPalette(400, 12), "PNG", pageW - M - paletteW, y - 3.4, paletteW, 2.2);
   body("power  low", pageW - M - paletteW - 20, y - 1.9, 6.5);
   body("high", pageW - M + 0.5, y - 1.9, 6.5);
-
 
   // ---- Page 2: suppression + seizure ------------------------------------
   doc.addPage();

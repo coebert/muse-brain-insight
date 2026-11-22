@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AlertTuning, AlertTuningEffect, TuningFeedbackRow } from "@/lib/eeg/alert-tuning";
 import { guardInterpretation, type GuardReport } from "@/lib/eeg/interpret-guard";
+import type { BlockadeContext } from "@/lib/eeg/descriptor-only";
 
 export interface InterpretationFinding {
   title: string;
@@ -101,7 +102,7 @@ export interface Interpretation {
   /** True when all depth/awareness prose was replaced with fixed templates. */
   descriptorOnly?: boolean;
   /** The blockade context that decided the policy. */
-  descriptorContext?: string;
+  descriptorContext?: BlockadeContext;
   /** Why the context did or did not support a depth statement. */
   descriptorReason?: string;
   /** Wording that must travel with any experimental score. */
@@ -321,7 +322,10 @@ export const interpretSession = createServerFn({ method: "POST" })
     if (!text.trim()) throw new Error("The AI returned an empty analysis. Please try again.");
     const parsed = extractJson(text);
     // Enforce the output restrictions server-side; the prompt alone is not trusted.
-    const { output, report } = guardInterpretation(parsed, data.digest);
+    const { output, report } = guardInterpretation<ClinicalAlert, Interpretation>(
+      parsed,
+      data.digest,
+    );
     return {
       ...output,
       alerts: output.alerts.map((a) => ({ ...a, priorFeedback: priorFeedbackFor(a, rows) })),
