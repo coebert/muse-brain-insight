@@ -76,7 +76,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Typecheck
-        run: bunx tsgo --noEmit -p tsconfig.json
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
 
       - name: Test suite
         run: bun run test
