@@ -57,13 +57,56 @@ jobs:
             src/lib/eeg/dropout-seizure-grid.e2e.test.ts \
             src/lib/eeg/long-duration-session.e2e.test.ts \
             src/lib/eeg/threshold-sweep.e2e.test.ts \
-            src/lib/eeg/storage-integrity.e2e.test.ts
+            src/lib/eeg/storage-integrity.e2e.test.ts \
+            src/lib/eeg/descriptor-only.test.ts \
+            src/lib/eeg/interpret-guard.test.ts \
+            src/lib/eeg/case-observations.test.ts \
+            src/lib/eeg/case-observations.response.test.ts \
+            src/components/admin/ResearchLearningPanel.test.tsx \
+            src/lib/eeg/research-eeg-baseline.test.ts
+
+  research-guardrails:
+    name: Research guardrails (descriptor-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install research dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            numpy==2.0.2 scipy==1.13.1 scikit-learn==1.6.1 joblib==1.5.3 \
+            pandas==2.2.3 requests==2.32.5
+
+      - name: Research replay, allowlist and aggregate tests
+        run: python -m unittest discover -s research/learning/tests -v
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install app dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Descriptor-only guard, observation and export tests
+        run: |
+          bunx vitest run --reporter=verbose \
+            src/lib/eeg/descriptor-only.test.ts \
+            src/lib/eeg/interpret-guard.test.ts \
+            src/lib/eeg/case-observations.test.ts \
+            src/lib/eeg/case-observations.response.test.ts \
+            src/components/admin/ResearchLearningPanel.test.tsx \
+            src/lib/eeg/research-eeg-baseline.test.ts
 
   full-suite:
     name: Types and full test suite
     runs-on: ubuntu-latest
     # Only worth running once the gating checks are green.
-    needs: lineage-gating
+    needs: [lineage-gating, research-guardrails]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

@@ -20,6 +20,8 @@ import {
   EVENT_LABEL,
   EVENT_TYPES,
   MOAAS_SCALE,
+  RESPONSE_METHODS,
+  RESPONSE_METHOD_LABEL,
   ROUTES,
   ROUTE_LABEL,
   captureGaps,
@@ -29,6 +31,7 @@ import {
   type CaseObservation,
   type EventType,
   type ObservationDraft,
+  type ResponseMethod,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
 import {
@@ -91,6 +94,10 @@ export function ClinicalCapturePanel({
   const [dose, setDose] = useState("");
   const [doseUnit, setDoseUnit] = useState<string>("mg");
   const [route, setRoute] = useState<string>("iv-bolus");
+  // A stimulus response is only usable when the motor pathway was assessable
+  // and the eliciting channel is named. Both travel with the observation.
+  const [motorAssessable, setMotorAssessable] = useState(true);
+  const [responseMethod, setResponseMethod] = useState<ResponseMethod>("clinical_observation");
 
   const active = running && !testing && Boolean(caseCode.trim());
 
@@ -190,6 +197,8 @@ export function ClinicalCapturePanel({
       kind: "event",
       atSeconds: at,
       eventType: moved ? "movement_response" : "still_response",
+      motorAssessable,
+      responseMethod,
     });
     if (response) {
       toast.success(
@@ -315,9 +324,35 @@ export function ClinicalCapturePanel({
           </div>
         </div>
 
-        {/* Paired stimulus/response: only meaningful when the patient is not paralysed. */}
+        {/* Paired stimulus/response: an observation, never a depth statement. */}
         <div>
           <p className="instrument-label">Response to noxious stimulus</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-foreground">
+              <input
+                type="checkbox"
+                checked={motorAssessable}
+                onChange={(event) => setMotorAssessable(event.target.checked)}
+                className="size-3.5 accent-signal"
+              />
+              Motor response assessable (no relaxant)
+            </label>
+            <Select
+              value={responseMethod}
+              onValueChange={(value) => setResponseMethod(value as ResponseMethod)}
+            >
+              <SelectTrigger className="h-8 w-[230px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RESPONSE_METHODS.map((method) => (
+                  <SelectItem key={method} value={method}>
+                    {RESPONSE_METHOD_LABEL[method]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
             <button
               type="button"
@@ -332,16 +367,16 @@ export function ClinicalCapturePanel({
               type="button"
               disabled={!active || busy}
               onClick={() => void stimulusResponseMarked(false)}
-              title="A noxious stimulus was applied and the patient did not move — the moment and the absence of movement are stamped together"
-              className="min-h-14 rounded-lg border border-signal/50 bg-background/40 px-3 text-sm font-medium text-signal transition-colors hover:bg-background disabled:opacity-40"
+              title="A noxious stimulus was applied and the patient did not move — recorded as an observation, not as depth or sedation adequacy"
+              className="min-h-14 rounded-lg border border-border bg-background/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-background disabled:opacity-40"
             >
               No movement to stimulus
             </button>
           </div>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-            Only mark these when the patient is not paralysed (no rocuronium or other muscle
-            relaxant on board) — a paralysed patient cannot move, so the mark would be
-            meaningless.
+            A paralysed patient cannot move, so say whether the motor response was assessable
+            and how it was elicited. No movement is stored as an observation only; it is not a
+            depth or sedation-adequacy label.
           </p>
         </div>
 

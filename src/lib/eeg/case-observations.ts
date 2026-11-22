@@ -109,9 +109,42 @@ export const EVENT_DETAIL: Record<EventType, string> = {
   artefact: "Diathermy, handling or other contamination",
   noxious_stimulus: "A painful stimulus was applied (incision, trapezius squeeze, tetanic)",
   movement_response: "Patient moved purposefully in response to a noxious stimulus",
-  still_response: "No movement in response to a noxious stimulus — depth adequate",
+  still_response: "No movement in response to a noxious stimulus (observation only)",
   other: "Anything else worth revisiting on the trace",
 };
+
+/**
+ * How a response was elicited or observed. A negative observation is only
+ * usable when the motor pathway was assessable and the channel is named.
+ * ``blocked`` and ``unknown`` are deliberately ineligible: a paralysed or
+ * unmonitored patient cannot supply a trustworthy negative.
+ */
+export const RESPONSE_METHODS = [
+  "voluntary_command",
+  "isolated_forearm",
+  "emg",
+  "clinical_observation",
+  "blocked",
+  "unknown",
+] as const;
+export type ResponseMethod = (typeof RESPONSE_METHODS)[number];
+
+export const RESPONSE_METHOD_LABEL: Record<ResponseMethod, string> = {
+  voluntary_command: "Verified command (squeeze / nod)",
+  isolated_forearm: "Isolated forearm response",
+  emg: "EMG / neuromuscular monitor",
+  clinical_observation: "Clinical observation",
+  blocked: "Motor pathway blocked (relaxant)",
+  unknown: "Method not recorded",
+};
+
+/** Channels that can verify a positive response. */
+export const USABLE_RESPONSE_METHODS: ReadonlySet<ResponseMethod> = new Set([
+  "voluntary_command",
+  "isolated_forearm",
+  "emg",
+  "clinical_observation",
+]);
 
 /**
  * Clinical states a patient can be tagged as being in from this moment on.
@@ -192,6 +225,10 @@ export interface CaseObservation {
   doseUnit: string | null;
   route: string | null;
   eventType: EventType | null;
+  /** Whether the motor pathway could be assessed when the event was marked. */
+  motorAssessable?: boolean | null;
+  /** How the response was elicited or observed. */
+  responseMethod?: ResponseMethod | null;
   stateLabel?: StateLabel | null;
   phase?: CasePhase | null;
   note: string | null;
@@ -219,6 +256,10 @@ export interface EventDraft {
   kind: "event";
   atSeconds: number;
   eventType: EventType;
+  /** Required for movement_response / still_response. */
+  motorAssessable?: boolean | null;
+  /** Required for movement_response / still_response. */
+  responseMethod?: ResponseMethod | null;
   note?: string | null;
 }
 
@@ -299,6 +340,14 @@ export function validateDraft(draft: ObservationDraft): ValidationResult {
     if (!CASE_PHASES.includes(draft.phase)) errors.push("Choose the phase to tag.");
   } else {
     if (!EVENT_TYPES.includes(draft.eventType)) errors.push("Choose the kind of event.");
+    if (draft.eventType === "movement_response" || draft.eventType === "still_response") {
+      if (typeof draft.motorAssessable !== "boolean") {
+        errors.push("Say whether the motor response was assessable.");
+      }
+      if (!draft.responseMethod || !RESPONSE_METHODS.includes(draft.responseMethod)) {
+        errors.push("Choose how the response was assessed.");
+      }
+    }
   }
 
   return { ok: errors.length === 0, errors };
@@ -389,6 +438,93 @@ export function captureGaps(rows: CaseObservation[]): string[] {
   return gaps;
 }
 
+export interface ResponseObservationSummary {
+  /** Stimulus-response observations recorded, positive and negative. */
+  observed: number;
+  /** Observations with an assessable motor pathway and a named method. */
+  eligible: number;
+  /** Verified positive responses through a usable channel. */
+  positive: number;
+  /** Historical rows with no recorded assessability or method. */
+  ineligibleUnspecified: number;
+  /** Rows marked blocked, or with an unknown/blocked method. */
+  ineligibleBlocked: number;
+  /** Negative observations kept as observations, never as a depth signal. */
+  negativeObserved: number;
+}
+
+/** A response observation is usable only with an assessable motor pathway and a named channel. */
+export function isEligibleResponseObservation(row: CaseObservation): boolean {
+  if (row.kind !== "event") return false;
+  if (row.eventType !== "movement_response" && row.eventType !== "still_response") return false;
+  if (row.motorAssessable !== true) return false;
+  const method = row.responseMethod;
+  return !!method && method !== "blocked" && method !== "unknown";
+}
+
+/** A verified positive response through a usable channel. */
+export function isPositiveResponseObservation(row: CaseObservation): boolean {
+  return (
+    row.kind === "event" &&
+    row.eventType === "movement_response" &&
+    isEligibleResponseObservation(row) &&
+    USABLE_RESPONSE_METHODS.has(row.responseMethod as ResponseMethod)
+  );
+}
+
+/**
+ * Only a verified positive command is a training target. A negative
+ * observation is stored and can inform a transition, but it is never a
+ * "depth adequate" label.
+ */
+export function trainingTargetOf(row: CaseObservation): "responsive" | null {
+  return isPositiveResponseObservation(row) ? "responsive" : null;
+}
+
+export interface ResponseTransition {
+  atSeconds: number;
+  direction: "positive" | "negative";
+}
+
+/**
+ * Transitions derived from stimulus-response observations.
+ *
+ * Historical rows with unspecified assessability, and blocked or unknown
+ * negatives, are excluded: they cannot support a derived transition.
+ */
+export function derivedResponseTransitions(rows: CaseObservation[]): ResponseTransition[] {
+  return sortObservations(rows)
+    .filter((row) => isEligibleResponseObservation(row))
+    .map((row) => ({
+      atSeconds: row.atSeconds,
+      direction: row.eventType === "movement_response" ? "positive" : "negative",
+    }));
+}
+
+export function responseObservationSummary(rows: CaseObservation[]): ResponseObservationSummary {
+  const responses = rows.filter(
+    (row) =>
+      row.kind === "event" &&
+      (row.eventType === "movement_response" || row.eventType === "still_response"),
+  );
+  const eligible = responses.filter(isEligibleResponseObservation);
+  return {
+    observed: responses.length,
+    eligible: eligible.length,
+    positive: responses.filter(isPositiveResponseObservation).length,
+    ineligibleUnspecified: responses.filter(
+      (row) => row.motorAssessable == null || row.responseMethod == null,
+    ).length,
+    ineligibleBlocked: responses.filter(
+      (row) =>
+        row.motorAssessable === false ||
+        row.responseMethod === "blocked" ||
+        row.responseMethod === "unknown",
+    ).length,
+    negativeObserved: responses.filter((row) => row.eventType === "still_response").length,
+  };
+}
+
 export function describeObservation(row: CaseObservation): string {
   if (row.kind === "responsiveness") {
     const stim = row.stimulus ? STIMULUS_LABEL[row.stimulus] : null;
@@ -407,6 +543,20 @@ export function describeObservation(row: CaseObservation): string {
   }
   if (row.kind === "event") {
     const label = row.eventType ? EVENT_LABEL[row.eventType] : "Event";
+    const isResponse =
+      row.eventType === "movement_response" || row.eventType === "still_response";
+    if (isResponse) {
+      const assess =
+        row.motorAssessable == null
+          ? "assessability not recorded"
+          : row.motorAssessable
+            ? "motor assessable"
+            : "motor blocked";
+      const method = row.responseMethod
+        ? RESPONSE_METHOD_LABEL[row.responseMethod]
+        : "method not recorded";
+      return `${label} · ${assess} · ${method}${row.note ? ` · ${row.note}` : ""}`;
+    }
     return `${label}${row.note ? ` · ${row.note}` : ""}`;
   }
   const dose = row.dose != null ? ` ${row.dose}${row.doseUnit ? ` ${row.doseUnit}` : ""}` : "";

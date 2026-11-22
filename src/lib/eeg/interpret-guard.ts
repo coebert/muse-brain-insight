@@ -19,6 +19,15 @@
  *     Deterministic research alarms are computed and labelled separately.
  */
 
+import {
+  DESCRIPTOR_ONLY_TEMPLATES,
+  RESEARCH_SCORE_NOTE,
+  descriptorOnlyText,
+  descriptorPolicy,
+  impliesDepthOrSedation,
+  type BlockadeContext,
+} from "@/lib/eeg/descriptor-only";
+
 export type AlertSeverity = "critical" | "warning" | "advisory";
 export type AlertConfidence = "low" | "moderate" | "high";
 
@@ -52,6 +61,14 @@ export interface GuardInput<A extends GuardAlert = GuardAlert> {
   recommendedChecks: string[];
   limitations: string[];
   dataQualityCaveat: string;
+  /** True when depth/awareness prose was replaced by the descriptor-only templates. */
+  descriptorOnly?: boolean;
+  /** The blockade context that decided the policy. */
+  descriptorContext?: BlockadeContext;
+  /** Why the context did or did not support a depth statement. */
+  descriptorReason?: string;
+  /** Wording that must travel with any experimental score in an export. */
+  researchScoreNote?: string;
 }
 
 export interface GuardReport {
@@ -240,6 +257,7 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
   let droppedEvidence = 0;
   const avail = readAvailability(digest);
   const pool = digestNumbers(digest);
+  const policy = descriptorPolicy(digest);
 
   const clean = (text: unknown, fallback: string, allowAwarenessLimitation = false): string => {
     if (typeof text !== "string") return fallback;
@@ -249,9 +267,20 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
       if (rule) {
         rules.add(rule);
         removedStatements++;
+      } else if (impliesDepthOrSedation(s)) {
+        // Patient-state and sedation-adequacy assertions are never supported
+        // by this signal, whether or not the depth index looked reliable.
+        rules.add("descriptor-only");
+        removedStatements++;
       } else kept.push(s);
     }
-    return kept.length ? kept.join(" ") : fallback;
+    const joined = kept.join(" ");
+    const cleaned = descriptorOnlyText(joined, "", policy.descriptorOnly);
+    if (cleaned !== joined) {
+      rules.add("descriptor-only");
+      removedStatements++;
+    }
+    return cleaned || fallback;
   };
   const cleanList = (list: unknown, allowAwarenessLimitation = false): string[] =>
     (Array.isArray(list) ? list : [])
@@ -263,6 +292,19 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
     if (!raw || typeof raw !== "object") continue;
     if (avail.suppressionWithheld && raw.category === "burst_suppression") {
       rules.add("suppression-withheld");
+      droppedAlerts++;
+      continue;
+    }
+    // A withheld context cannot support an alert about the depth plane or
+    // awareness, however confidently the model phrased it.
+    if (
+      policy.descriptorOnly &&
+      (DEPTH_CATEGORIES.has(raw.category) ||
+        impliesDepthOrSedation(raw.title) ||
+        impliesDepthOrSedation(raw.detail) ||
+        impliesDepthOrSedation(raw.action))
+    ) {
+      rules.add("descriptor-only");
       droppedAlerts++;
       continue;
     }
@@ -309,7 +351,10 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
       severity,
       confidence,
       title: clean(raw.title, "Pattern in the measured metrics"),
-      detail: clean(raw.detail, "See the cited evidence."),
+      detail: clean(
+        raw.detail,
+        policy.descriptorOnly ? DESCRIPTOR_ONLY_TEMPLATES.alertDetail : "See the cited evidence.",
+      ),
       action,
       evidence,
       // Feedback no longer shapes alerts; any model-reported influence is void.
@@ -319,13 +364,25 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
     } as A);
   }
 
+  const limitations = cleanList(parsed.limitations, true);
+  if (
+    policy.descriptorOnly &&
+    !limitations.some((line) => /awareness cannot be assessed/i.test(line))
+  ) {
+    limitations.push(DESCRIPTOR_ONLY_TEMPLATES.awareness);
+  }
+
   const output: T = {
     ...parsed,
-    headline: clean(parsed.headline, "AI explanation of the measured metrics."),
+    headline: policy.descriptorOnly
+      ? DESCRIPTOR_ONLY_TEMPLATES.headline
+      : clean(parsed.headline, "AI explanation of the measured metrics."),
     alerts,
-    depthOfAnaesthesia: avail.depthUnreliable
-      ? `Depth index unreliable in this window (reliability gating); not interpreted. ${clean(parsed.depthOfAnaesthesia, "")}`.trim()
-      : clean(parsed.depthOfAnaesthesia, "Not interpreted."),
+    depthOfAnaesthesia: policy.descriptorOnly
+      ? DESCRIPTOR_ONLY_TEMPLATES.depth
+      : avail.depthUnreliable
+        ? `Depth index unreliable in this window (reliability gating); not interpreted. ${clean(parsed.depthOfAnaesthesia, "")}`.trim()
+        : clean(parsed.depthOfAnaesthesia, "Not interpreted."),
     burstSuppression: avail.suppressionWithheld
       ? "Suppression was withheld (device amplitude scale not calibrated); it is not interpreted."
       : clean(parsed.burstSuppression, "Not interpreted."),
@@ -341,10 +398,17 @@ export function guardInterpretation<A extends GuardAlert, T extends GuardInput<A
         confidence: "low" as const,
         supporting: cleanList(p.supporting),
       })),
-    recommendedChecks: cleanList(parsed.recommendedChecks),
-    limitations: cleanList(parsed.limitations, true),
+    recommendedChecks: policy.descriptorOnly
+      ? [DESCRIPTOR_ONLY_TEMPLATES.recommendation]
+      : cleanList(parsed.recommendedChecks),
+    limitations,
     dataQualityCaveat: clean(parsed.dataQualityCaveat, "", true),
+    descriptorOnly: policy.descriptorOnly,
+    descriptorContext: policy.context,
+    descriptorReason: policy.reason,
+    researchScoreNote: RESEARCH_SCORE_NOTE,
   };
+  if (policy.descriptorOnly) rules.add("descriptor-only");
   if (output.pathologyIndicators.length) rules.add("pathology-low-confidence");
 
   return {

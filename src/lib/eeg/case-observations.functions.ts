@@ -7,6 +7,7 @@ import {
   type EventType,
   type CasePhase,
   type ObservationDraft,
+  type ResponseMethod,
   type StateLabel,
   type Stimulus,
 } from "@/lib/eeg/case-observations";
@@ -24,6 +25,8 @@ interface Row {
   dose_unit: string | null;
   route: string | null;
   event_type: string | null;
+  motor_assessable: boolean | null;
+  response_method: string | null;
   state_label: string | null;
   phase: string | null;
   note: string | null;
@@ -54,6 +57,8 @@ function toObservation(row: Row): CaseObservation {
     doseUnit: row.dose_unit,
     route: row.route,
     eventType: (row.event_type as EventType | null) ?? null,
+    motorAssessable: row.motor_assessable == null ? null : Boolean(row.motor_assessable),
+    responseMethod: (row.response_method as ResponseMethod | null) ?? null,
     stateLabel: (row.state_label as StateLabel | null) ?? null,
     phase: (row.phase as CasePhase | null) ?? null,
     note: row.note,
@@ -61,7 +66,7 @@ function toObservation(row: Row): CaseObservation {
 }
 
 const SELECT =
-  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, state_label, phase, note";
+  "id, case_code, session_id, kind, at_seconds, moaas, stimulus, drug_name, dose, dose_unit, route, event_type, motor_assessable, response_method, state_label, phase, note";
 
 
 /** File one bedside observation immediately, so a closed app cannot lose it. */
@@ -94,6 +99,16 @@ export const recordCaseObservation = createServerFn({ method: "POST" })
       dose_unit: drug && drug.dose != null ? (drug.doseUnit ?? null) : null,
       route: drug ? (drug.route ?? null) : null,
       event_type: draft.kind === "event" ? draft.eventType : null,
+      motor_assessable:
+        draft.kind === "event" &&
+        (draft.eventType === "movement_response" || draft.eventType === "still_response")
+          ? (draft.motorAssessable ?? null)
+          : null,
+      response_method:
+        draft.kind === "event" &&
+        (draft.eventType === "movement_response" || draft.eventType === "still_response")
+          ? (draft.responseMethod ?? null)
+          : null,
       state_label: state ? state.stateLabel : null,
       phase: phase ? phase.phase : null,
     };

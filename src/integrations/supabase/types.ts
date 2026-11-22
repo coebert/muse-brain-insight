@@ -558,9 +558,11 @@ export type Database = {
           id: string
           kind: string
           moaas: number | null
+          motor_assessable: boolean | null
           note: string | null
           observed_at: string
           phase: string | null
+          response_method: string | null
           route: string | null
           session_id: string | null
           state_label: string | null
@@ -578,9 +580,11 @@ export type Database = {
           id?: string
           kind: string
           moaas?: number | null
+          motor_assessable?: boolean | null
           note?: string | null
           observed_at?: string
           phase?: string | null
+          response_method?: string | null
           route?: string | null
           session_id?: string | null
           state_label?: string | null
@@ -598,9 +602,11 @@ export type Database = {
           id?: string
           kind?: string
           moaas?: number | null
+          motor_assessable?: boolean | null
           note?: string | null
           observed_at?: string
           phase?: string | null
+          response_method?: string | null
           route?: string | null
           session_id?: string | null
           state_label?: string | null
