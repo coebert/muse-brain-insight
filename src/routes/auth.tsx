@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowRight, ScanFace } from "lucide-react";
 import { toast } from "sonner";
 import { startAuthentication } from "@simplewebauthn/browser";
@@ -13,6 +13,8 @@ import { lovable } from "@/integrations/lovable/index";
 import {
   getPasskeyEnvironment,
   describePasskeyFailure,
+  passkeyPreflight,
+  type PasskeyEnvironment,
   summarisePasskeyFailure,
   type PasskeyFailure,
 } from "@/lib/webauthn-support";
@@ -20,6 +22,8 @@ import { PasskeyErrorNotice } from "@/components/PasskeyErrorNotice";
 import { startPasskeyLogin, finishPasskeyLogin } from "@/lib/webauthn.functions";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>): { setup?: "passkey" } =>
+    search["setup"] === "passkey" ? { setup: "passkey" } : {},
   head: () => ({
     meta: [
       { title: "Clinician sign in — CortexTrace EEG monitor" },
@@ -42,24 +46,33 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const { user } = useAuth();
+  const { setup } = useSearch({ strict: false });
+  const emailInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<PasskeyFailure | null>(null);
-  const [standaloneUrl, setStandaloneUrl] = useState<string | undefined>(undefined);
+  const [environment, setEnvironment] = useState<PasskeyEnvironment | null>(null);
+  const [pending, setPending] = useState<
+    Parameters<typeof startAuthentication>[0]["optionsJSON"] | null
+  >(null);
+  const preflight = environment && passkeyPreflight(environment, "get");
+  const openPublished = preflight?.suggestNewTab && environment;
   // Keep the public sample entry available while the session controls hydrate.
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setEnvironment(getPasskeyEnvironment("get"));
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (user) void navigate({ to: "/sessions" });
-  }, [user, navigate]);
+    if (user) void navigate({ to: setup === "passkey" ? "/settings" : "/sessions" });
+  }, [user, navigate, setup]);
 
   async function signIn() {
+    setPending(null);
     setBusy(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -73,47 +86,40 @@ function AuthPage() {
 
   async function biometricSignIn() {
     setFailure(null);
-    if (!email.trim()) {
-      toast.error("Enter your email address first.");
+    const env = getPasskeyEnvironment("get");
+    const unavailable = passkeyPreflight(env, "get");
+    if (unavailable) {
+      setFailure(unavailable);
       return;
     }
-    const env = getPasskeyEnvironment();
-    setStandaloneUrl(env.standaloneUrl);
-    if (!env.supported) {
-      setFailure(
-        describePasskeyFailure(
-          new DOMException("WebAuthn API is unavailable in this browser.", "NotSupportedError"),
-          env,
-        ),
-      );
-      return;
-    }
-    if (env.embedded) {
-      setFailure(
-        describePasskeyFailure(
-          new DOMException(
-            "publickey-credentials-get is blocked by the embedding frame's permissions policy.",
-            "NotAllowedError",
-          ),
-          env,
-        ),
-      );
+    const account = email.trim().toLowerCase();
+    if (!account || !emailInput.current?.checkValidity()) {
+      emailInput.current?.focus();
+      emailInput.current?.reportValidity();
+      toast.error("Enter the email address used to register your passkey.");
       return;
     }
     setBusy(true);
     try {
-      const options = await startPasskeyLogin({ data: { email } });
-      const response = await startAuthentication({ optionsJSON: options as never });
+      const options = pending ?? (await startPasskeyLogin({ data: { email: account } }));
+      if (!pending && navigator.userActivation?.isActive === false) {
+        // Cross-origin frames and some browsers need a fresh user gesture for the native sheet.
+        setPending(options);
+        return;
+      }
+      setPending(null);
+      const response = await startAuthentication({ optionsJSON: options });
       const { tokenHash } = await finishPasskeyLogin({
-        data: { email, response: response as unknown as Record<string, unknown> },
+        data: { email: account, response: response as unknown as Record<string, unknown> },
       });
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: "magiclink",
       });
       if (error) throw new Error(error.message);
+      if (!data.session) throw new Error("Sign-in did not create an account session.");
     } catch (err) {
-      const detail = describePasskeyFailure(err, getPasskeyEnvironment());
+      const detail = describePasskeyFailure(err, getPasskeyEnvironment("get"), "get");
       setFailure(detail);
       toast.error(summarisePasskeyFailure(detail));
     } finally {
@@ -135,14 +141,21 @@ function AuthPage() {
           <Activity className="size-5 text-signal" />
           <span className="text-sm font-semibold tracking-[0.18em] uppercase">CortexTrace</span>
         </Link>
-        <section className="my-6 rounded-lg border border-border bg-muted/35 p-4" aria-labelledby="sample-heading">
-          <h1 id="sample-heading" className="text-lg font-semibold">EEG research lab</h1>
+        <section
+          className="my-6 rounded-lg border border-border bg-muted/35 p-4"
+          aria-labelledby="sample-heading"
+        >
+          <h1 id="sample-heading" className="text-lg font-semibold">
+            EEG research lab
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Explore seizure detection, brain age, depth of anaesthesia and stroke research with sample signals.
-            You can try the lab without an account or headset.
+            Explore seizure detection, brain age, depth of anaesthesia and stroke research with
+            sample signals. You can try the lab without an account or headset.
           </p>
           <Button asChild variant="outline" className="mt-3 min-h-11">
-            <Link to="/research-lab">Try sample EEG <ArrowRight aria-hidden="true" className="size-4" /></Link>
+            <Link to="/research-lab">
+              Try sample EEG <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
           </Button>
         </section>
 
@@ -165,12 +178,49 @@ function AuthPage() {
                   id="email"
                   type="email"
                   required
-                  autoComplete="username webauthn"
+                  ref={emailInput}
+                  disabled={busy}
+                  autoComplete="username"
                   className="mt-1.5"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setPending(null);
+                    setFailure(null);
+                  }}
                 />
               </div>
+              {openPublished ? (
+                <div>
+                  <Button asChild variant="secondary" className="min-h-11 w-full">
+                    <a href={openPublished.standaloneUrl} target="_blank" rel="noopener noreferrer">
+                      <ScanFace aria-hidden="true" className="size-4" /> Open published app for Face
+                      ID or passkey
+                    </a>
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Use the published app in its own tab for passkeys.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-11 w-full"
+                    disabled={busy}
+                    onClick={() => void biometricSignIn()}
+                  >
+                    <ScanFace aria-hidden="true" className="size-4" />{" "}
+                    {pending ? "Continue with passkey" : "Sign in with a passkey"}
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+                    {pending
+                      ? "Your passkey request is ready. Continue to open the device prompt."
+                      : "Use Face ID, Touch ID or your device’s screen lock."}
+                  </p>
+                </div>
+              )}
               <div>
                 <Label htmlFor="pw">Password</Label>
                 <Input
@@ -184,31 +234,29 @@ function AuthPage() {
                 />
               </div>
               <Button type="submit" className="min-h-11 w-full" disabled={busy}>
-                Sign in
+                Sign in with password
               </Button>
             </form>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               className="min-h-11 w-full"
               disabled={busy}
-              onClick={() => void biometricSignIn()}
+              onClick={() => void google()}
             >
-              <ScanFace className="size-4" /> Face ID / Touch ID
-            </Button>
-            <Button type="button" variant="outline" className="min-h-11 w-full" onClick={() => void google()}>
               Continue with Google
             </Button>
             {failure && (
               <PasskeyErrorNotice
                 failure={failure}
-                standaloneUrl={standaloneUrl}
+                standaloneUrl={environment?.standaloneUrl}
                 onDismiss={() => setFailure(null)}
               />
             )}
             <p className="text-xs text-muted-foreground">
-              Biometric sign-in works once you have added a passkey from the Sessions page on this
-              device.
+              {setup === "passkey"
+                ? "Sign in to open Settings and add a passkey."
+                : "First time using a passkey? Sign in with your usual method, then choose Settings → Biometric sign-in → Add passkey."}
             </p>
           </div>
         )}

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getPasskeyEnvironment,
   describePasskeyFailure,
+  passkeyPreflight,
   summarisePasskeyFailure,
   type PasskeyEnvironment,
   type PasskeyFailure,
@@ -26,6 +27,9 @@ export function PasskeyManager() {
   const [keys, setKeys] = useState<Passkey[]>([]);
   const [busy, setBusy] = useState(false);
   const [env, setEnv] = useState<PasskeyEnvironment | null>(null);
+  const [pending, setPending] = useState<
+    Parameters<typeof startRegistration>[0]["optionsJSON"] | null
+  >(null);
   const [failure, setFailure] = useState<PasskeyFailure | null>(null);
 
   async function load() {
@@ -45,31 +49,20 @@ export function PasskeyManager() {
     const current = getPasskeyEnvironment();
     setEnv(current);
     setFailure(null);
-    if (!current.supported) {
-      setFailure(
-        describePasskeyFailure(
-          new DOMException("WebAuthn API is unavailable in this browser.", "NotSupportedError"),
-          current,
-        ),
-      );
-      return;
-    }
-    if (!current.allowedToCreate) {
-      setFailure(
-        describePasskeyFailure(
-          new DOMException(
-            "publickey-credentials-create is blocked by the embedding frame's permissions policy.",
-            "NotAllowedError",
-          ),
-          current,
-        ),
-      );
+    const unavailable = passkeyPreflight(current, "create");
+    if (unavailable) {
+      setFailure(unavailable);
       return;
     }
     setBusy(true);
     try {
-      const options = await startPasskeyRegistration({});
-      const response = await startRegistration({ optionsJSON: options as never });
+      const options = pending ?? (await startPasskeyRegistration({}));
+      if (!pending && navigator.userActivation?.isActive === false) {
+        setPending(options);
+        return;
+      }
+      setPending(null);
+      const response = await startRegistration({ optionsJSON: options });
       await finishPasskeyRegistration({
         data: {
           response: response as unknown as Record<string, unknown>,
@@ -77,7 +70,7 @@ export function PasskeyManager() {
         },
       });
       setFailure(null);
-      toast.success("Passkey added — you can now sign in with Face ID / Touch ID.");
+      toast.success("Passkey added. You can use it the next time you sign in.");
       await load();
     } catch (err) {
       const detail = describePasskeyFailure(err, getPasskeyEnvironment());
@@ -94,34 +87,38 @@ export function PasskeyManager() {
     else await load();
   }
 
+  const preflight = env && passkeyPreflight(env, "create");
   return (
-    <section className="panel mt-6 px-4 py-4">
+    <section id="passkeys" className="panel mt-6 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Biometric sign-in</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Register this device so you can unlock CortexTrace with Face ID, Touch ID or Windows
-            Hello instead of your password.
+            Add a passkey for this account. Your device can confirm it with Face ID, Touch ID,
+            Windows Hello or a screen lock.
           </p>
         </div>
         <Button size="sm" disabled={busy} onClick={() => void addPasskey()}>
-          <ScanFace className="size-4" /> Add passkey
+          <ScanFace aria-hidden="true" className="size-4" />{" "}
+          {pending ? "Continue adding passkey" : "Add passkey"}
         </Button>
       </div>
 
-      {env && env.supported && !env.allowedToCreate && (
+      {pending && (
+        <p role="status" className="mt-2 text-xs text-muted-foreground">
+          Your request is ready. Continue to open the device prompt.
+        </p>
+      )}
+      {env && preflight?.suggestNewTab && !failure && (
         <div className="mt-3 flex items-start gap-2 rounded-md border border-caution/40 bg-caution/10 px-3 py-2 text-xs">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-caution" />
           <div>
-            <p>
-              Passkey registration is blocked while the app runs inside the preview frame. Open
-              CortexTrace in its own browser tab to add a passkey.
-            </p>
+            <p>Open the published app in its own browser tab to add a passkey under Settings.</p>
             <a
               className="mt-1 inline-flex items-center gap-1 font-medium underline"
               href={env.standaloneUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               Open in a new tab <ExternalLink className="size-3" />
             </a>
@@ -159,7 +156,12 @@ export function PasskeyManager() {
                     : ""}
                 </span>
               </span>
-              <Button variant="ghost" size="sm" onClick={() => void remove(k.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={"Remove " + (k.label ?? "passkey")}
+                onClick={() => void remove(k.id)}
+              >
                 <Trash2 className="size-4" />
               </Button>
             </li>

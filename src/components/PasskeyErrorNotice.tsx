@@ -20,7 +20,7 @@ export function PasskeyErrorNotice({ failure, standaloneUrl, onDismiss }: Props)
     try {
       await navigator.clipboard.writeText(
         `${failure.title}\n[${failure.code}] ${failure.reason}\nURL: ${
-          typeof window !== "undefined" ? window.location.href : ""
+          typeof window !== "undefined" ? window.location.origin + window.location.pathname : ""
         }\nUser agent: ${typeof navigator !== "undefined" ? navigator.userAgent : ""}`,
       );
       toast.success("Failure details copied.");
@@ -53,7 +53,7 @@ export function PasskeyErrorNotice({ failure, standaloneUrl, onDismiss }: Props)
                 className="inline-flex items-center gap-1 font-medium underline"
                 href={standaloneUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 Open in a new tab <ExternalLink className="size-3" />
               </a>

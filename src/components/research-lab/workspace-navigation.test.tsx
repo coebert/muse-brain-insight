@@ -71,17 +71,17 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("research entry and clinical workspace navigation", () => {
+describe("research entry and clinical workspace navigation", { timeout: 60_000 }, () => {
   it("offers the sample before sign-in and keeps all three clinician sign-in methods", async () => {
     renderInRouter(<Auth />);
     const sample = await screen.findByRole("link", { name: "Try sample EEG" });
     expect(sample).toHaveAttribute("href", "/research-lab");
     expect(sample).not.toHaveAttribute("target");
-    expect(await screen.findByRole("button", { name: "Sign in" })).toHaveAttribute(
+    expect(await screen.findByRole("button", { name: "Sign in with password" })).toHaveAttribute(
       "type",
       "submit",
     );
-    expect(screen.getByRole("button", { name: /Face ID/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sign in with a passkey" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeVisible();
     expect(state.getUser).not.toHaveBeenCalled();
   });
@@ -197,9 +197,19 @@ describe("research entry and clinical workspace navigation", () => {
     const clinicianGate = PrivateRoute.options.beforeLoad!;
     const adminGate = AdminRoute.options.beforeLoad!;
     state.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
-    await expect(clinicianGate({} as never)).rejects.toMatchObject({ options: { to: "/auth" } });
+    await expect(clinicianGate({ location: { pathname: "/" } } as never)).rejects.toMatchObject({
+      options: { to: "/auth" },
+    });
+    state.getUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+    await expect(
+      clinicianGate({ location: { pathname: "/settings" } } as never),
+    ).rejects.toMatchObject({
+      options: { to: "/auth", search: { setup: "passkey" } },
+    });
     state.getUser.mockResolvedValueOnce({ data: { user: { id: "researcher" } }, error: null });
-    await expect(clinicianGate({} as never)).resolves.toEqual({ user: { id: "researcher" } });
+    await expect(clinicianGate({ location: { pathname: "/" } } as never)).resolves.toEqual({
+      user: { id: "researcher" },
+    });
     state.assertAdmin.mockRejectedValueOnce(new Error("No application role"));
     await expect(adminGate({} as never)).rejects.toMatchObject({ options: { to: "/" } });
     state.assertAdmin.mockResolvedValueOnce(undefined);

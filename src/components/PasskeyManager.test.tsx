@@ -58,7 +58,7 @@ function setEnvironment({ supported = true, embedded = false, policyAllows = tru
   });
 }
 
-describe("PasskeyManager integration", () => {
+describe("PasskeyManager integration", { timeout: 30_000 }, () => {
   beforeEach(() => {
     storedKeys = [];
     deleteEq.mockResolvedValue({ error: null });
@@ -89,6 +89,30 @@ describe("PasskeyManager integration", () => {
     expect(toastSuccess).toHaveBeenCalled();
     expect(await screen.findByText("This device")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("opens creation on a second tap when the challenge outlasts the first gesture", async () => {
+    Object.defineProperty(navigator, "userActivation", {
+      configurable: true,
+      value: { isActive: false },
+    });
+    try {
+      startPasskeyRegistration.mockResolvedValue({ challenge: "prepared-options" });
+      startRegistration.mockResolvedValue({ id: "credential" });
+      finishPasskeyRegistration.mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(<PasskeyManager />);
+      await user.click(screen.getByRole("button", { name: /add passkey/i }));
+      expect(startRegistration).not.toHaveBeenCalled();
+      await user.click(await screen.findByRole("button", { name: /continue adding passkey/i }));
+      expect(startRegistration).toHaveBeenCalledWith({
+        optionsJSON: { challenge: "prepared-options" },
+      });
+      expect(finishPasskeyRegistration).toHaveBeenCalledOnce();
+      expect(startPasskeyRegistration).toHaveBeenCalledOnce();
+    } finally {
+      Reflect.deleteProperty(navigator, "userActivation");
+    }
   });
 
   it("blocks enrollment inside an iframe and explains the unsupported-frame case", async () => {

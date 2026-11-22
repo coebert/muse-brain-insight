@@ -1,34 +1,100 @@
+export type PasskeyOperation = "create" | "get";
+
 export type PasskeyEnvironment = {
-  /** Browser exposes the WebAuthn API at all. */
   supported: boolean;
-  /** Page is running inside an iframe (Lovable preview) — WebAuthn is usually blocked. */
+  secure: boolean;
   embedded: boolean;
-  /** Permissions-Policy actually allows creating a credential here. */
   allowedToCreate: boolean;
-  /** Standalone URL the user should open to register a passkey. */
+  allowedToGet: boolean;
+  usePublishedOrigin: boolean;
   standaloneUrl: string;
 };
 
-function permissionAllowed(feature: string): boolean {
-  const fp = (document as unknown as { featurePolicy?: { allowsFeature: (f: string) => boolean } })
-    .featurePolicy;
+export const PUBLISHED_PASSKEY_ORIGIN = "https://muse-brain-insight.lovable.app";
+
+function allowsCredential(operation: PasskeyOperation) {
+  type Policy = { allowsFeature: (name: string) => boolean };
+  const page = document as Document & { permissionsPolicy?: Policy; featurePolicy?: Policy };
   try {
-    return fp ? fp.allowsFeature(feature) : true;
+    const policy = page.permissionsPolicy ?? page.featurePolicy;
+    return policy?.allowsFeature("publickey-credentials-" + operation) ?? true;
   } catch {
+    // Browsers without policy introspection report any denial at the actual ceremony.
     return true;
   }
 }
 
-export function getPasskeyEnvironment(): PasskeyEnvironment {
-  const supported = typeof window !== "undefined" && !!window.PublicKeyCredential;
-  const embedded = typeof window !== "undefined" && window.self !== window.top;
-  const allowedToCreate = !embedded || permissionAllowed("publickey-credentials-create");
+function configuredOrigin(value: unknown) {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      url.pathname === "/" &&
+      !url.search &&
+      !url.hash
+      ? url.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPasskeyEnvironment(operation: PasskeyOperation = "create"): PasskeyEnvironment {
+  const browser = typeof window !== "undefined";
+  const secure = browser && window.isSecureContext !== false;
+  const embedded = browser && window.self !== window.top;
+  const preview = browser && window.location.hostname.endsWith(".imported.base44-preview.app");
+  const host = browser ? window.location.origin : PUBLISHED_PASSKEY_ORIGIN;
+  const configured = configuredOrigin(import.meta.env["VITE_PASSKEY_APP_ORIGIN"]);
+  const destination =
+    configured ?? (preview || embedded || !secure ? PUBLISHED_PASSKEY_ORIGIN : host);
   return {
-    supported,
+    supported: secure && !!window.PublicKeyCredential,
+    secure,
     embedded,
-    allowedToCreate,
-    standaloneUrl: typeof window !== "undefined" ? window.location.href : "",
+    allowedToCreate: browser && allowsCredential("create"),
+    allowedToGet: browser && allowsCredential("get"),
+    usePublishedOrigin: host !== destination && (preview || !!configured),
+    standaloneUrl: destination + (operation === "create" ? "/settings" : "/auth"),
   };
+}
+
+export function passkeyPreflight(env: PasskeyEnvironment, operation: PasskeyOperation) {
+  if (!env.secure)
+    return describePasskeyFailure(
+      new DOMException("A secure HTTPS origin is required.", "SecurityError"),
+      env,
+      operation,
+    );
+  const allowed = operation === "create" ? env.allowedToCreate : env.allowedToGet;
+  if (!allowed)
+    return describePasskeyFailure(
+      new DOMException(
+        "The page permissions policy blocks publickey-credentials-" + operation + ".",
+        "NotAllowedError",
+      ),
+      env,
+      operation,
+    );
+  if (env.usePublishedOrigin)
+    return {
+      title: "Open the published app for passkeys",
+      explanation:
+        "Passkeys use the app's sign-in domain. This address is separate from the published app.",
+      steps: ["Open the published app in its own browser tab and continue there."],
+      code: "insecure-origin" as const,
+      reason: "The current address differs from the published passkey origin.",
+      suggestNewTab: true,
+    };
+  if (!env.supported)
+    return describePasskeyFailure(
+      new DOMException("WebAuthn is unavailable in this browser.", "NotSupportedError"),
+      env,
+      operation,
+    );
+  return null;
 }
 
 export interface PasskeyFailure {
@@ -71,26 +137,47 @@ function exactReason(err: unknown): string {
 }
 
 /** Classify a WebAuthn/registration error into an actionable notice. */
-export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): PasskeyFailure {
+export function describePasskeyFailure(
+  err: unknown,
+  env?: PasskeyEnvironment,
+  operation: PasskeyOperation = "create",
+): PasskeyFailure {
   const reason = exactReason(err);
-  const name = (err as { name?: string })?.name ?? "";
+  const exception = err as { name?: string; cause?: { name?: string }; code?: string } | null;
+  const name = exception?.cause?.name ?? exception?.name ?? "";
   const message = err instanceof Error ? err.message : String(err);
   const embedded = env?.embedded ?? false;
+  const action = operation === "create" ? "setup" : "sign-in";
+  const retry =
+    operation === "create" ? "Choose Add passkey again." : "Choose Sign in with a passkey again.";
 
   if (/NotAllowedError/i.test(name) || /permissions policy|not allowed/i.test(message)) {
+    const denied = env && !(operation === "create" ? env.allowedToCreate : env.allowedToGet);
     return {
-      title: "The browser blocked the passkey prompt",
-      explanation: embedded
-        ? "Passkey creation is disabled inside the embedded preview frame, so the prompt never reached your device."
-        : "The prompt was refused or dismissed before your device could confirm it. This is also what you see if the page lost focus, or if the browser's permissions policy disallows passkeys here.",
+      title: denied
+        ? "The browser blocked the passkey prompt"
+        : "The passkey prompt did not complete",
+      explanation: denied
+        ? (embedded ? "The embedded preview frame" : "This page") +
+          " has a permissions policy that blocks passkey " +
+          action +
+          "."
+        : "The prompt may have been dismissed, timed out or could not find a matching passkey.",
       reason,
-      steps: [
-        "Open CortexTrace in its own browser tab (not inside an embedded frame).",
-        "Keep the tab focused while the Face ID / Touch ID / Windows Hello prompt is showing.",
-        "Confirm your device has a screen lock or biometric enrolled in the operating system.",
-        "Try again — if the prompt still never appears, check your browser's site permissions for this domain.",
-      ],
-      suggestNewTab: true,
+      steps:
+        embedded || env?.usePublishedOrigin
+          ? ["Open CortexTrace in its own browser tab and try again."]
+          : denied
+            ? [
+                "Use your usual sign-in method. The site administrator can enable passkeys in the permissions policy.",
+              ]
+            : [
+                retry,
+                operation === "get"
+                  ? "Use the same email and app domain where you added your passkey, or sign in with your password."
+                  : "Keep the tab focused while your device asks for confirmation.",
+              ],
+      suggestNewTab: embedded || !!env?.usePublishedOrigin,
       code: "blocked",
     };
   }
@@ -101,11 +188,7 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
       explanation:
         "The authenticator refused to create a second credential because one for this account already exists on it.",
       reason,
-      steps: [
-        "Go back to sign-in and use Face ID / Touch ID with the existing passkey.",
-        "If you want a fresh one, delete the existing passkey from the list below, then add it again.",
-        "Also remove the stale entry from your device or password manager's passkey list.",
-      ],
+      steps: ["Go back to sign-in and use Face ID / Touch ID with the existing passkey."],
       suggestNewTab: false,
       code: "duplicate",
     };
@@ -117,11 +200,7 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
       explanation:
         "Passkeys are bound to one domain over HTTPS. The current address does not satisfy that, so the browser refused the request.",
       reason,
-      steps: [
-        "Open the published app URL directly (https://muse-brain-insight.lovable.app) rather than a preview or proxy address.",
-        "Do not use an IP address or a non-HTTPS URL.",
-        "Passkeys added on one domain cannot be used on another — re-register on the domain you sign in from.",
-      ],
+      steps: ["Open the published HTTPS app and use the same app domain for setup and sign-in."],
       suggestNewTab: true,
       code: "insecure-origin",
     };
@@ -129,12 +208,10 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
 
   if (/AbortError/i.test(name)) {
     return {
-      title: "Passkey setup was cancelled",
+      title: "Passkey " + action + " was cancelled",
       explanation: "The request was aborted — usually by dismissing the prompt or navigating away.",
       reason,
-      steps: [
-        "Click Add passkey again and complete the device prompt without switching tabs or apps.",
-      ],
+      steps: [retry],
       suggestNewTab: false,
       code: "cancelled",
     };
@@ -168,7 +245,7 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
         "Use a current version of Safari, Chrome or Edge.",
         "Otherwise sign in with your email and password — passkeys are optional.",
       ],
-      suggestNewTab: false,
+      suggestNewTab: embedded,
       code: "unsupported",
     };
   }
@@ -191,10 +268,9 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
   if (/challenge expired/i.test(message)) {
     return {
       title: "The passkey challenge expired",
-      explanation:
-        "Registration challenges are single-use and short-lived; this one was already used or timed out.",
+      explanation: "The single-use challenge has expired or has already been used.",
       reason,
-      steps: ["Click Add passkey again and complete the prompt within a minute."],
+      steps: [retry],
       suggestNewTab: false,
       code: "server",
     };
@@ -211,7 +287,6 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
       reason,
       steps: [
         "Make sure you are signing in with the same email the passkey was registered to.",
-        "Delete the passkey and register it again from this device.",
         "If it keeps failing, sign in with your password and report the exact reason below.",
       ],
       suggestNewTab: false,
@@ -220,7 +295,7 @@ export function describePasskeyFailure(err: unknown, env?: PasskeyEnvironment): 
   }
 
   return {
-    title: "Passkey setup did not complete",
+    title: "Passkey " + action + " did not complete",
     explanation: "The browser returned an unexpected error.",
     reason,
     steps: [

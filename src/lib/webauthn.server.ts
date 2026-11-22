@@ -6,13 +6,34 @@ import {
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 
+import { decodeClientDataJSON, isoBase64URL } from "@simplewebauthn/server/helpers";
+
 export function getRelyingParty() {
   const request = getRequest();
-  const origin =
-    request?.headers.get("origin") ?? (request?.url ? new URL(request.url).origin : undefined);
-  if (!origin) throw new Error("Unable to determine request origin");
-  const rpID = new URL(origin).hostname;
-  return { origin, rpID };
+  if (!request?.url) throw new Error("Unable to determine the passkey origin.");
+  const destination = new URL(request.url).origin;
+  const origin = request.headers.get("origin") ?? destination;
+  // A reverse proxy can expose its internal URL to the server. The published
+  // app origin is stable; custom deployments can supply their own exact allowlist.
+  const configured = (process.env["WEBAUTHN_ORIGINS"] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const allowed = configured.length
+    ? configured
+    : [destination, "https://muse-brain-insight.lovable.app"];
+  if (!allowed.includes(origin)) {
+    throw new Error("Open the app at its registered passkey address.");
+  }
+  const url = new URL(origin);
+  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (
+    url.origin !== origin ||
+    !(url.protocol === "https:" || (url.protocol === "http:" && loopback))
+  ) {
+    throw new Error("Passkeys require the app's secure origin.");
+  }
+  return { origin, rpID: url.hostname };
 }
 
 async function admin() {
@@ -26,41 +47,52 @@ function normaliseEmail(email: string) {
 
 async function storeChallenge(email: string, challenge: string, purpose: string) {
   const db = await admin();
-  await db.from("webauthn_challenges").delete().eq("email", email).eq("purpose", purpose);
+  const { error: cleanupError } = await db
+    .from("webauthn_challenges")
+    .delete()
+    .eq("email", email)
+    .eq("purpose", purpose)
+    .lt("expires_at", new Date().toISOString());
+  if (cleanupError) throw cleanupError;
   const { error } = await db.from("webauthn_challenges").insert({ email, challenge, purpose });
   if (error) throw error;
 }
 
-async function takeChallenge(email: string, purpose: string) {
+async function takeChallenge(email: string, purpose: string, response: Record<string, unknown>) {
+  const clientData = (response["response"] as { clientDataJSON?: unknown } | null)?.clientDataJSON;
+  if (typeof clientData !== "string") throw new Error("Missing passkey response.");
+  // This value only selects a server-generated challenge. The verifier below
+  // independently checks the signed browser response and the expected challenge.
+  const { challenge } = decodeClientDataJSON(clientData);
+  if (typeof challenge !== "string" || !challenge) throw new Error("Missing passkey challenge.");
   const db = await admin();
   const { data, error } = await db
     .from("webauthn_challenges")
-    .select("id, challenge, expires_at")
+    .delete()
     .eq("email", email)
     .eq("purpose", purpose)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("challenge", challenge)
+    .gt("expires_at", new Date().toISOString())
+    .select("challenge")
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("Challenge expired - please try again.");
-  await db.from("webauthn_challenges").delete().eq("id", data.id);
-  if (new Date(data.expires_at).getTime() < Date.now()) {
-    throw new Error("Challenge expired - please try again.");
-  }
+  if (!data) throw new Error("Challenge expired or already used. Please try again.");
   return data.challenge;
 }
 
 export async function buildRegistrationOptions(userId: string, email: string) {
   const { rpID } = getRelyingParty();
   const db = await admin();
-  const { data: existing } = await db
+  const { data: existing, error } = await db
     .from("webauthn_credentials")
     .select("credential_id, transports")
     .eq("user_id", userId);
+  if (error) throw error;
 
   const options = await generateRegistrationOptions({
     rpName: "CortexTrace",
     rpID,
+    userID: new TextEncoder().encode(userId),
     userName: email,
     userDisplayName: email,
     attestationType: "none",
@@ -83,7 +115,7 @@ export async function saveRegistration(
   label: string,
 ) {
   const { origin, rpID } = getRelyingParty();
-  const expectedChallenge = await takeChallenge(normaliseEmail(email), "register");
+  const expectedChallenge = await takeChallenge(normaliseEmail(email), "register", response);
 
   const verification = await verifyRegistrationResponse({
     response: response as never,
@@ -103,7 +135,7 @@ export async function saveRegistration(
   const { error } = await db.from("webauthn_credentials").insert({
     user_id: userId,
     credential_id: credential.id,
-    public_key: Buffer.from(credential.publicKey).toString("base64url"),
+    public_key: isoBase64URL.fromBuffer(credential.publicKey),
     counter: credential.counter,
     transports: credential.transports ?? [],
     device_type: credentialDeviceType,
@@ -118,15 +150,23 @@ export async function buildAuthenticationOptions(rawEmail: string) {
   const email = normaliseEmail(rawEmail);
   const { rpID } = getRelyingParty();
   const db = await admin();
-  const { data: users } = await db.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const user = users?.users.find((u) => u.email?.toLowerCase() === email);
+  let userId: string | undefined;
+  const perPage = 200;
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    userId = data.users.find((user) => user.email?.toLowerCase() === email)?.id;
+    if (userId || data.users.length < perPage || (data.total > 0 && page * perPage >= data.total))
+      break;
+  }
 
   let allow: { id: string; transports?: string[] }[] = [];
-  if (user) {
-    const { data } = await db
+  if (userId) {
+    const { data, error } = await db
       .from("webauthn_credentials")
       .select("credential_id, transports")
-      .eq("user_id", user.id);
+      .eq("user_id", userId);
+    if (error) throw error;
     allow = (data ?? []).map((c) => ({ id: c.credential_id, transports: c.transports }));
   }
 
@@ -146,15 +186,16 @@ export async function verifyAuthenticationAndMint(
 ) {
   const email = normaliseEmail(rawEmail);
   const { origin, rpID } = getRelyingParty();
-  const expectedChallenge = await takeChallenge(email, "authenticate");
+  const expectedChallenge = await takeChallenge(email, "authenticate", response);
 
   const db = await admin();
   const credentialId = String((response as { id?: string }).id ?? "");
-  const { data: stored } = await db
+  const { data: stored, error: lookupError } = await db
     .from("webauthn_credentials")
     .select("*")
     .eq("credential_id", credentialId)
     .maybeSingle();
+  if (lookupError) throw lookupError;
   if (!stored) throw new Error("This passkey is not registered.");
 
   const { data: userLookup } = await db.auth.admin.getUserById(stored.user_id);
@@ -170,7 +211,7 @@ export async function verifyAuthenticationAndMint(
     requireUserVerification: true,
     credential: {
       id: stored.credential_id,
-      publicKey: new Uint8Array(Buffer.from(stored.public_key, "base64url")),
+      publicKey: isoBase64URL.toBuffer(stored.public_key),
       counter: Number(stored.counter),
       transports: (stored.transports ?? []) as never,
     },
@@ -178,19 +219,24 @@ export async function verifyAuthenticationAndMint(
 
   if (!verification.verified) throw new Error("Passkey verification failed.");
 
-  await db
+  const { data: updated, error: updateError } = await db
     .from("webauthn_credentials")
     .update({
       counter: verification.authenticationInfo.newCounter,
       last_used_at: new Date().toISOString(),
     })
-    .eq("id", stored.id);
+    .eq("id", stored.id)
+    .eq("counter", stored.counter)
+    .select("id")
+    .maybeSingle();
+  if (updateError) throw updateError;
+  if (!updated) throw new Error("The passkey changed during sign-in. Please try again.");
 
   const { data: link, error: linkError } = await db.auth.admin.generateLink({
     type: "magiclink",
     email,
   });
-  if (linkError || !link?.properties?.hashed_token) {
+  if (linkError || !link?.properties?.hashed_token || link.user?.id !== stored.user_id) {
     throw new Error("Could not start a session for this passkey.");
   }
 
