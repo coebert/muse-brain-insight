@@ -1,0 +1,232 @@
+{
+  "studies": [
+    {
+      "task": "dementia",
+      "run": "https://github.com/coebert/muse-brain-insight/actions/runs/44912732282/job/136871777423",
+      "contrasts": [
+        {
+          "target": "Alzheimer's vs controls",
+          "evaluation": "external technical check",
+          "discovery_n": 65,
+          "models": {
+            "all_standard": {
+              "internal_oof": {
+                "auroc": 0.8093869731800766,
+                "auroc_interval": [
+                  0.696360153256705,
+                  0.9109434865900382
+                ],
+                "average_precision": 0.8770560253954475,
+                "positive": 36,
+                "negative": 29
+              },
+              "external": {
+                "auroc": 0.7122093023255814,
+                "auroc_interval": [
+                  0.5580813953488372,
+                  0.8337354651162789
+                ],
+                "average_precision": 0.5606133267921781,
+                "positive": 20,
+                "negative": 86
+              }
+            },
+            "all_extended": {
+              "internal_oof": {
+                "auroc": 0.8218390804597702,
+                "auroc_interval": [
+                  0.7173850574712644,
+                  0.9157088122605364
+                ],
+                "average_precision": 0.8762951480578427,
+                "positive": 36,
+                "negative": 29
+              },
+              "external": {
+                "auroc": 0.6238372093023256,
+                "auroc_interval": [
+                  0.45988372093023255,
+                  0.7709738372093021
+                ],
+                "average_precision": 0.4885252317476565,
+                "positive": 20,
+                "negative": 86
+              }
+            }
+          },
+          "replication": {
+            "features": [
+              {
+                "feature": "posterior.aperiodic_slope_proxy",
+                "replicated": false
+              },
+              {
+                "feature": "posterior.theta",
+                "replicated": false
+              },
+              {
+                "feature": "posterior.slowing",
+                "replicated": false
+              },
+              {
+                "feature": "frontal.alpha_peak_hz",
+                "replicated": false
+              },
+              {
+                "feature": "central.theta",
+                "replicated": false
+              },
+              {
+                "feature": "central.aperiodic_slope_proxy",
+                "replicated": false
+              },
+              {
+                "feature": "central.slowing",
+                "replicated": false
+              },
+              {
+                "feature": "central.ordinal_entropy",
+                "replicated": false
+              }
+            ]
+          }
+        },
+        {
+          "target": "Frontotemporal dementia vs controls",
+          "evaluation": "discovery cohort only",
+          "discovery_n": 52,
+          "models": {
+            "all_standard": {
+              "internal_oof": {
+                "auroc": 0.7061469265367317,
+                "auroc_interval": [
+                  0.5531859070464767,
+                  0.853110944527736
+                ],
+                "average_precision": 0.7374909114595783,
+                "positive": 23,
+                "negative": 29
+              }
+            },
+            "all_extended": {
+              "internal_oof": {
+                "auroc": 0.7031484257871065,
+                "auroc_interval": [
+                  0.545727136431784,
+                  0.8441529235382305
+                ],
+                "average_precision": 0.7441675786415735,
+                "positive": 23,
+                "negative": 29
+              }
+            }
+          }
+        },
+        {
+          "target": "Alzheimer's vs frontotemporal dementia",
+          "evaluation": "discovery cohort only",
+          "discovery_n": 59,
+          "models": {
+            "all_standard": {
+              "internal_oof": {
+                "auroc": 0.463768115942029,
+                "auroc_interval": [
+                  0.32001811594202895,
+                  0.6087258454106279
+                ],
+                "average_precision": 0.6369425189986638,
+                "positive": 36,
+                "negative": 23
+              }
+            },
+            "all_extended": {
+              "internal_oof": {
+                "auroc": 0.6364734299516909,
+                "auroc_interval": [
+                  0.4830615942028985,
+                  0.7717391304347826
+                ],
+                "average_precision": 0.7241851626237982,
+                "positive": 36,
+                "negative": 23
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "task": "parkinson",
+      "run": "https://github.com/coebert/muse-brain-insight/actions/runs/44912732282/job/136871777853",
+      "contrasts": [
+        {
+          "target": "Parkinson's vs controls",
+          "evaluation": "independent cohort",
+          "discovery_n": 50,
+          "models": {
+            "all_standard": {
+              "internal_oof": {
+                "auroc": 0.6912,
+                "auroc_interval": [
+                  0.5344,
+                  0.8432
+                ],
+                "average_precision": 0.7363913942655362,
+                "positive": 25,
+                "negative": 25
+              },
+              "external": {
+                "auroc": 0.45320197044334976,
+                "auroc_interval": [
+                  0.32450738916256155,
+                  0.5905326354679803
+                ],
+                "average_precision": 0.7728474855263248,
+                "positive": 116,
+                "negative": 28
+              }
+            },
+            "all_extended": {
+              "internal_oof": {
+                "auroc": 0.6848000000000001,
+                "auroc_interval": [
+                  0.53916,
+                  0.8288
+                ],
+                "average_precision": 0.7305205198294877,
+                "positive": 25,
+                "negative": 25
+              },
+              "external": {
+                "auroc": 0.49014778325123154,
+                "auroc_interval": [
+                  0.36883466748768473,
+                  0.6235144704433494
+                ],
+                "average_precision": 0.7991268983969493,
+                "positive": 116,
+                "negative": 28
+              }
+            }
+          },
+          "replication": {
+            "features": [
+              {
+                "feature": "central.alpha",
+                "replicated": false
+              },
+              {
+                "feature": "posterior.theta",
+                "replicated": false
+              },
+              {
+                "feature": "posterior.delta",
+                "replicated": false
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "propofol": [
+    {
+      "direction": "Cambridge \u2192 Oslo",
+      "frontal": 0.87,
+      "broader": 1.0
+    },
+    {
+      "direction": "Oslo \u2192 Cambridge",
+      "frontal": 0.79,
+      "broader": 0.8825000000000001
+    }
+  ],
+  "neonates": 79,
+  "hours": 111.82,
+  "seizures": [
+    {
+      "montage": "Two frontal derivations",
+      "detected": 41,
+      "events": 483,
+      "falseRate": 0.2352667066354872
+    },
+    {
+      "montage": "Broader montage",
+      "detected": 62,
+      "events": 483,
+      "falseRate": 0.337556579085699
+    }
+  ]
+}

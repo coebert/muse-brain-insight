@@ -1,0 +1,37 @@
+name: EEG disease discovery
+on:
+  push:
+    branches: [research/eeg-baselines]
+    paths:
+      - 'research/discovery/**'
+      - '.github/workflows/eeg-disease-discovery.yml'
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [dementia, parkinson]
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+      PYTHONUNBUFFERED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research dependencies
+        run: python -m pip install numpy==2.2.6 scipy==1.15.3 scikit-learn==1.6.1 requests==2.32.5 pandas==2.2.3
+      - name: Fit, screen and test with an independent source
+        run: python research/discovery/discover.py ${{ matrix.task }} --cache "${RUNNER_TEMP}/eeg-discovery" --output "discovery-results/${{ matrix.task }}.json"
+      - name: Record aggregate results
+        run: cat discovery-results/*.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eeg-discovery-${{ matrix.task }}
+          path: discovery-results/*.json
+          if-no-files-found: error

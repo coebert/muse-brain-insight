@@ -1,0 +1,25 @@
+name: Verify EEG repository listings
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/eeg-baselines]
+    paths: ['research/sources/repository_sweep.py', '.github/workflows/eeg-source-sweep.yml']
+permissions:
+  contents: read
+jobs:
+  catalogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect provider file listings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python research/sources/repository_sweep.py --emit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eeg-repository-index
+          path: eeg-repository-index.csv

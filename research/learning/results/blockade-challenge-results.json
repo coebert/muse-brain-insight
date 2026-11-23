@@ -1,0 +1,48 @@
+{
+  "heldout_protocol": {
+    "frontal": {
+      "cambridge_to_oslo": {
+        "pairs": 20,
+        "auroc": 0.8175,
+        "participant_bootstrap_95": [
+          0.715,
+          0.9199999999999999
+        ],
+        "sensitivity_at_half": 0.75,
+        "specificity_at_half": 0.8
+      },
+      "oslo_to_cambridge": {
+        "pairs": 20,
+        "auroc": 0.8,
+        "participant_bootstrap_95": [
+          0.725,
+          0.9
+        ],
+        "sensitivity_at_half": 0.7,
+        "specificity_at_half": 0.65
+      }
+    },
+    "broader": {
+      "cambridge_to_oslo": {
+        "pairs": 20,
+        "auroc": 1.0,
+        "participant_bootstrap_95": [
+          1.0,
+          1.0
+        ],
+        "sensitivity_at_half": 1.0,
+        "specificity_at_half": 0.85
+      },
+      "oslo_to_cambridge": {
+        "pairs": 20,
+        "auroc": 0.895,
+        "participant_bootstrap_95": [
+          0.8275,
+          0.965
+        ],
+        "sensitivity_at_half": 0.35,
+        "specificity_at_half": 1.0
+      }
+    }
+  }
+}

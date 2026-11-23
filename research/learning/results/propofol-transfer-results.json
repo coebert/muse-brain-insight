@@ -1,0 +1,336 @@
+{
+  "frontal": {
+    "correct_response_prediction": {
+      "sessions": 80,
+      "participants": 20,
+      "metrics": {
+        "training_median": {
+          "mean_absolute_error_correct_responses": 5.2375,
+          "moderate_stage_mean_absolute_error": 11.625,
+          "moderate_stage_spearman": null
+        },
+        "protocol_stage": {
+          "mean_absolute_error_correct_responses": 5.864473684210526,
+          "moderate_stage_mean_absolute_error": 13.678947368421055,
+          "moderate_stage_spearman": null
+        },
+        "EEG": {
+          "mean_absolute_error_correct_responses": 6.049226427078247,
+          "moderate_stage_mean_absolute_error": 9.96242389678955,
+          "moderate_stage_spearman": 0.6211364979616177
+        },
+        "EEG_plus_stage": {
+          "mean_absolute_error_correct_responses": 5.869459620080039,
+          "moderate_stage_mean_absolute_error": 10.716275691799035,
+          "moderate_stage_spearman": 0.6467970580232155
+        },
+        "patient_mean_MAE_gain_EEG_plus_stage_vs_stage": {
+          "value": -0.004985935869512748,
+          "interval": [
+            -2.1345562309770503,
+            1.4018412922991146
+          ]
+        }
+      }
+    },
+    "cambridge_to_oslo": {
+      "AUROC": {
+        "value": 0.87,
+        "interval": [
+          0.79,
+          0.9500000000000001
+        ]
+      },
+      "average_precision": {
+        "value": 0.8862654284713107,
+        "interval": [
+          0.8216409313090408,
+          0.9559588557993731
+        ]
+      },
+      "paired_ordering": {
+        "value": 0.95,
+        "interval": [
+          0.85,
+          1.0
+        ]
+      },
+      "Brier": {
+        "value": 0.15405085772015464,
+        "interval": [
+          0.1188180990447913,
+          0.1899167537526898
+        ]
+      },
+      "sensitivity_at_half": {
+        "value": 0.7,
+        "interval": [
+          0.5,
+          0.9
+        ]
+      },
+      "specificity_at_half": {
+        "value": 0.85,
+        "interval": [
+          0.7,
+          1.0
+        ]
+      },
+      "frontal_delta_baseline_AUROC": 0.34,
+      "paired_participants": 20,
+      "per_stage": {
+        "baseline": {
+          "participants": 20,
+          "median_score": 0.24289616571033373
+        },
+        "sedated": {
+          "participants": 20,
+          "median_score": 0.6207041497225744
+        }
+      }
+    },
+    "oslo_to_cambridge": {
+      "AUROC": {
+        "value": 0.79,
+        "interval": [
+          0.645,
+          0.9088125
+        ]
+      },
+      "average_precision": {
+        "value": 0.8522351708748768,
+        "interval": [
+          0.7513430613504143,
+          0.9381480324292825
+        ]
+      },
+      "paired_ordering": {
+        "value": 0.65,
+        "interval": [
+          0.45,
+          0.85
+        ]
+      },
+      "Brier": {
+        "value": 0.1773151185688382,
+        "interval": [
+          0.1287403986659771,
+          0.22136269713557158
+        ]
+      },
+      "sensitivity_at_half": {
+        "value": 0.65,
+        "interval": [
+          0.45,
+          0.85
+        ]
+      },
+      "specificity_at_half": {
+        "value": 0.85,
+        "interval": [
+          0.65,
+          1.0
+        ]
+      },
+      "frontal_delta_baseline_AUROC": 0.2425,
+      "paired_participants": 20,
+      "per_stage": {
+        "baseline": {
+          "participants": 20,
+          "median_score": 0.35271025662064504
+        },
+        "mild": {
+          "participants": 20,
+          "median_score": 0.3402724507116558
+        },
+        "recovery": {
+          "participants": 20,
+          "median_score": 0.30474055471494765
+        },
+        "sedated": {
+          "participants": 20,
+          "median_score": 0.6987850585322496
+        }
+      },
+      "moderate_sedation_score_vs_correct_responses": {
+        "spearman": -0.5471737071958358,
+        "p_unadjusted": 0.012527876515870288,
+        "n": 20
+      }
+    }
+  },
+  "broader": {
+    "correct_response_prediction": {
+      "sessions": 80,
+      "participants": 20,
+      "metrics": {
+        "training_median": {
+          "mean_absolute_error_correct_responses": 5.2375,
+          "moderate_stage_mean_absolute_error": 11.625,
+          "moderate_stage_spearman": null
+        },
+        "protocol_stage": {
+          "mean_absolute_error_correct_responses": 5.864473684210526,
+          "moderate_stage_mean_absolute_error": 13.678947368421055,
+          "moderate_stage_spearman": null
+        },
+        "EEG": {
+          "mean_absolute_error_correct_responses": 5.276070404052734,
+          "moderate_stage_mean_absolute_error": 9.13207197189331,
+          "moderate_stage_spearman": 0.6549679175895362
+        },
+        "EEG_plus_stage": {
+          "mean_absolute_error_correct_responses": 5.20236725159883,
+          "moderate_stage_mean_absolute_error": 9.274204479138891,
+          "moderate_stage_spearman": 0.6618915051182731
+        },
+        "patient_mean_MAE_gain_EEG_plus_stage_vs_stage": {
+          "value": 0.6621064326116961,
+          "interval": [
+            -1.1742120268193752,
+            2.2736215355242195
+          ]
+        }
+      }
+    },
+    "cambridge_to_oslo": {
+      "AUROC": {
+        "value": 1.0,
+        "interval": [
+          1.0,
+          1.0
+        ]
+      },
+      "average_precision": {
+        "value": 1.0,
+        "interval": [
+          0.9999999999999999,
+          1.0000000000000002
+        ]
+      },
+      "paired_ordering": {
+        "value": 1.0,
+        "interval": [
+          1.0,
+          1.0
+        ]
+      },
+      "Brier": {
+        "value": 0.040374954741002035,
+        "interval": [
+          0.019232752210981995,
+          0.06875047391861348
+        ]
+      },
+      "sensitivity_at_half": {
+        "value": 1.0,
+        "interval": [
+          1.0,
+          1.0
+        ]
+      },
+      "specificity_at_half": {
+        "value": 0.9,
+        "interval": [
+          0.75,
+          1.0
+        ]
+      },
+      "frontal_delta_baseline_AUROC": 0.3325,
+      "paired_participants": 20,
+      "per_stage": {
+        "baseline": {
+          "participants": 20,
+          "median_score": 0.14221039441875305
+        },
+        "sedated": {
+          "participants": 20,
+          "median_score": 0.9471475162963587
+        }
+      }
+    },
+    "oslo_to_cambridge": {
+      "AUROC": {
+        "value": 0.8825000000000001,
+        "interval": [
+          0.7875,
+          0.9663125
+        ]
+      },
+      "average_precision": {
+        "value": 0.9098220881361871,
+        "interval": [
+          0.8380166031746102,
+          0.9740173221515326
+        ]
+      },
+      "paired_ordering": {
+        "value": 0.95,
+        "interval": [
+          0.85,
+          1.0
+        ]
+      },
+      "Brier": {
+        "value": 0.16875595611931,
+        "interval": [
+          0.10289492323331309,
+          0.22762950130961368
+        ]
+      },
+      "sensitivity_at_half": {
+        "value": 0.6,
+        "interval": [
+          0.4,
+          0.8
+        ]
+      },
+      "specificity_at_half": {
+        "value": 1.0,
+        "interval": [
+          1.0,
+          1.0
+        ]
+      },
+      "frontal_delta_baseline_AUROC": 0.2425,
+      "paired_participants": 20,
+      "per_stage": {
+        "baseline": {
+          "participants": 20,
+          "median_score": 0.11198859599030359
+        },
+        "mild": {
+          "participants": 20,
+          "median_score": 0.13565947771140002
+        },
+        "recovery": {
+          "participants": 20,
+          "median_score": 0.1458759099523216
+        },
+        "sedated": {
+          "participants": 20,
+          "median_score": 0.5318589424497889
+        }
+      },
+      "moderate_sedation_score_vs_correct_responses": {
+        "spearman": -0.6249101097353821,
+        "p_unadjusted": 0.003219695641358427,
+        "n": 20
+      }
+    }
+  },
+  "source_accounting": {
+    "cambridge": {
+      "participants": 20,
+      "recordings": 80,
+      "candidate_windows": 3082
+    },
+    "oslo": {
+      "participants": 20,
+      "recordings": 71,
+      "candidate_windows": 284
+    }
+  },
+  "label": "Protocol state. Cambridge baseline vs moderate propofol, Oslo eyes-closed baseline vs pre-awakening propofol.",
+  "unit": "One score per participant and state after summarising available 8-second windows."
+}
